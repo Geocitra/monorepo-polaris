@@ -1,14 +1,12 @@
 'use client';
 
 import { useState } from 'react';
-import Link from 'next/link';
-import { ArrowRight, Sparkles, CheckCircle2 } from 'lucide-react';
+import { ArrowRight, CheckCircle2, Search } from 'lucide-react';
 import { LandingNavbar } from '@/components/landing/landing-navbar';
-import { LaptopMockup } from '@/components/landing/laptop-mockup';
 import { FeaturePillars } from '@/components/landing/feature-pillars';
 import { InstitutionTrustBar } from '@/components/landing/institution-trust-bar';
 import { WorkflowSteps } from '@/components/landing/workflow-steps';
-import { ContentShowcase, showcaseItems } from '@/components/landing/content-showcase';
+import { ContentShowcase } from '@/components/landing/content-showcase';
 import { SolutionSection } from '@/components/landing/solution-section';
 import { PricingSection } from '@/components/landing/pricing-section';
 import { AboutSection } from '@/components/landing/about-section';
@@ -16,22 +14,18 @@ import { ContentReaderModal, ContentItemDetails } from '@/components/landing/con
 import { LegalPolicyModal, PolicyType } from '@/components/landing/legal-policy-modal';
 import { LandingFooter } from '@/components/landing/landing-footer';
 import { PublicConciergeWidget } from '@/components/chat/public-concierge-widget';
+import { HeroVideoBackground, HERO_REELS } from '@/components/landing/hero-video-background';
 
 export default function LandingHomePage() {
   const [selectedContent, setSelectedContent] = useState<ContentItemDetails | null>(null);
   const [activeCategory, setActiveCategory] = useState<'ALL' | 'ARTIKEL' | 'INFOGRAFIS' | 'POSTER'>('ALL');
   const [activeSolutionTab, setActiveSolutionTab] = useState<'DPR' | 'DPRD' | 'PEMDA'>('DPR');
   const [policyType, setPolicyType] = useState<PolicyType | null>(null);
+  const [activeReelIndex, setActiveReelIndex] = useState(0);
+  const [progressPct, setProgressPct] = useState(0);
+  const [searchQuery, setSearchQuery] = useState('');
 
   const DASHBOARD_URL = process.env.NEXT_PUBLIC_DASHBOARD_URL || 'http://localhost:3000';
-
-  const handleMockupSelectType = (type: 'ARTIKEL' | 'INFOGRAFIS' | 'POSTER') => {
-    setActiveCategory(type);
-    const found = showcaseItems.find((i) => i.type === type);
-    if (found) {
-      setSelectedContent(found);
-    }
-  };
 
   const scrollToPricing = () => {
     const el = document.getElementById('pricing');
@@ -48,72 +42,59 @@ export default function LandingHomePage() {
 
       <main className="flex-1">
         {/* ======================================================== */}
-        {/* 2. HERO SECTION                                          */}
+        {/* 2. HERO SECTION: FULL-BLEED VIDEO WITH CLEAN NARRATIVE   */}
         {/* ======================================================== */}
-        <section className="relative pt-10 sm:pt-16 pb-16 sm:pb-24 overflow-hidden bg-gradient-to-b from-white via-slate-50/50 to-[#fafbfc]">
-          {/* BACKGROUND DECORATIVE ELEMENTS */}
-          <div className="absolute top-1/4 left-1/2 -translate-x-1/2 w-[1000px] h-[450px] bg-gradient-to-tr from-blue-100/30 via-indigo-50/20 to-transparent blur-3xl rounded-full -z-10 pointer-events-none" />
+        <section className="relative min-h-[72vh] sm:min-h-[78vh] lg:min-h-[84vh] flex items-center bg-slate-950 py-16 sm:py-20 text-white overflow-hidden">
+          {/* Continuous Full-Bleed Video Background */}
+          <HeroVideoBackground
+            activeReelIndex={activeReelIndex}
+            onActiveIndexChange={setActiveReelIndex}
+            onProgressChange={setProgressPct}
+          />
 
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 lg:gap-8 items-center">
+          {/* CLEAN FRONT NARRATIVE WITHOUT CLUTTER */}
+          <div className="relative z-10 mx-auto w-full max-w-7xl px-4 sm:px-6 lg:px-8 py-8 sm:py-12">
+            <div className="max-w-2xl text-left space-y-3">
+              <h1 className="text-3xl font-black uppercase tracking-[0.2em] text-white sm:text-4xl lg:text-5xl drop-shadow-[0_2px_12px_rgba(0,0,0,0.9)]">
+                HALO DARI POLARIS
+              </h1>
+              <p className="text-xs font-bold uppercase tracking-[0.16em] text-slate-100 sm:text-sm drop-shadow-[0_2px_8px_rgba(0,0,0,0.9)]">
+                DARI GAGASAN PUBLIK MENJADI KOMUNIKASI YANG BERDAMPAK
+              </p>
 
-              {/* LEFT COLUMN: HERO TEXT CONTENT */}
-              <div className="lg:col-span-6 space-y-6 sm:space-y-7 text-left">
-                {/* BRAND NAME */}
-                <h1 className="text-4xl sm:text-5xl lg:text-6xl font-black text-slate-950 tracking-tight leading-none">
-                  POLARIS
-                </h1>
-
-                {/* MAIN HEADLINE */}
-                <h2 className="text-2xl sm:text-3xl lg:text-4xl font-extrabold text-slate-900 tracking-tight leading-[1.2]">
-                  Membuat setiap ide dan pemikiran Anda menjadi konten yang siap dibagikan.
-                </h2>
-
-                {/* SUBTITLE EXPLANATION */}
-                <p className="text-slate-600 text-sm sm:text-base lg:text-lg leading-relaxed font-normal max-w-xl">
-                  Platform untuk membantu Eksekutif, Legislatif, dan pemangku kepentingan publik menghasilkan artikel, infografis, dan poster secara cepat, berkualitas, dan sesuai kebutuhan.
-                </p>
-
-                {/* CTA BUTTONS ROW */}
-                <div className="pt-2 flex flex-col sm:flex-row items-stretch sm:items-center gap-3.5">
-                  <a
-                    href={`${DASHBOARD_URL}/register`}
-                    className="inline-flex items-center justify-center gap-2 px-7 py-3.5 rounded-xl bg-blue-600 text-white font-extrabold text-sm sm:text-base shadow-lg shadow-blue-600/25 hover:bg-blue-700 active:scale-95 transition-all text-center"
-                  >
-                    <span>Daftar Akun Workspace</span>
-                    <ArrowRight className="h-4 w-4" />
-                  </a>
-
-                  <button
-                    onClick={scrollToPricing}
-                    className="inline-flex items-center justify-center px-7 py-3.5 rounded-xl bg-white border border-slate-300 text-slate-700 font-extrabold text-sm sm:text-base hover:bg-slate-50 active:scale-95 transition-all text-center shadow-xs cursor-pointer"
-                  >
-                    <span>Lihat Paket Harga</span>
-                  </button>
+              {/* Translucent Search & Action Bar on top of video */}
+              <div className="pt-3 flex flex-col sm:flex-row items-stretch sm:items-center gap-3 max-w-xl">
+                <div className="relative flex-1">
+                  <input
+                    type="text"
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    placeholder="Cari isu publik, regulasi daerah, atau risalah kebijakan..."
+                    className="w-full rounded-xl border border-white/50 bg-black/40 px-4 py-3.5 pr-10 text-sm text-white placeholder-slate-300 backdrop-blur-md transition focus:border-white focus:bg-black/60 focus:outline-none shadow-lg"
+                  />
+                  <Search className="absolute right-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-200 pointer-events-none" />
                 </div>
 
-                {/* TRUST BADGE */}
-                <div className="pt-3 flex items-center gap-4 text-xs text-slate-500 font-semibold">
-                  <div className="flex items-center gap-1.5">
-                    <CheckCircle2 className="h-4 w-4 text-emerald-600 shrink-0" />
-                    <span>Terintegrasi Data Regulasi</span>
-                  </div>
-                  <span>•</span>
-                  <div className="flex items-center gap-1.5">
-                    <CheckCircle2 className="h-4 w-4 text-emerald-600 shrink-0" />
-                    <span>Format Standar Parlemen</span>
-                  </div>
-                </div>
+                <a
+                  href={`${DASHBOARD_URL}/register`}
+                  className="inline-flex shrink-0 items-center justify-center gap-2 rounded-xl bg-blue-600 px-6 py-3.5 text-center text-sm font-extrabold text-white shadow-xl shadow-blue-600/30 transition hover:bg-blue-500 hover:shadow-blue-500/40"
+                >
+                  <span>Mulai Sekarang</span>
+                  <ArrowRight className="h-4 w-4" />
+                </a>
               </div>
 
-              {/* RIGHT COLUMN: LAPTOP MOCKUP DISPLAYING POLARIS UI */}
-              <div className="lg:col-span-6 relative">
-                <LaptopMockup
-                  onSelectType={handleMockupSelectType}
-                  onRequestDemo={scrollToPricing}
-                />
+              {/* Micro Trust Checkmarks */}
+              <div className="flex flex-wrap items-center gap-4 pt-2 text-xs font-semibold text-slate-200 drop-shadow-[0_1px_4px_rgba(0,0,0,0.9)]">
+                <span className="inline-flex items-center gap-1.5">
+                  <CheckCircle2 className="h-3.5 w-3.5 text-emerald-400" />
+                  Terhubung data regulasi
+                </span>
+                <span className="inline-flex items-center gap-1.5">
+                  <CheckCircle2 className="h-3.5 w-3.5 text-emerald-400" />
+                  Format kerja parlemen
+                </span>
               </div>
-
             </div>
           </div>
         </section>

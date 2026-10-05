@@ -13,11 +13,23 @@ interface NewsItem {
   title: string;
   url: string;
   summary: string;
+  sector?: string | null;
 }
 
 interface RegionalNewsSectionProps {
   news?: NewsItem[];
 }
+
+const POLICY_SECTOR_LABELS: Record<string, string> = {
+  FISKAL_ANGGARAN: 'Fiskal & Anggaran',
+  INFRASTRUKTUR_RUANG: 'Infrastruktur & Ruang',
+  PANGAN_PERTANIAN: 'Pangan & Pertanian',
+  SOSIAL_KEMISKINAN: 'Sosial & Kemiskinan',
+  LAYANAN_DASAR: 'Layanan Dasar',
+  TATA_KELOLA_HUKUM: 'Tata Kelola & Hukum',
+  EKONOMI_KETENAGAKERJAAN: 'Ekonomi & Ketenagakerjaan',
+  LINGKUNGAN_BENCANA: 'Lingkungan & Bencana',
+};
 
 export function RegionalNewsSection({ news = [] }: RegionalNewsSectionProps) {
   return (
@@ -41,9 +53,14 @@ export function RegionalNewsSection({ news = [] }: RegionalNewsSectionProps) {
           news.map((item) => (
             <div key={item.id} className="py-3.5 space-y-1.5 first:pt-0 last:pb-0">
               <div className="flex items-center justify-between text-[10px]">
-                <span className="font-extrabold text-blue-600 uppercase">
-                  {item.portal} • {formatDateIndonesian(item.publishedAt)}
-                </span>
+                <div className="flex flex-wrap items-center gap-1.5">
+                  <span className="font-extrabold text-blue-600 uppercase">
+                    {item.portal} • {formatDateIndonesian(item.publishedAt)}
+                  </span>
+                  {item.sector && (
+                    <Badge variant="slate">{POLICY_SECTOR_LABELS[item.sector] || item.sector}</Badge>
+                  )}
+                </div>
                 <Badge variant={item.sentiment > 0 ? 'green' : item.sentiment < 0 ? 'red' : 'slate'}>
                   {item.sentiment > 0 ? 'Positif' : item.sentiment < 0 ? 'Negatif' : 'Netral'}
                 </Badge>

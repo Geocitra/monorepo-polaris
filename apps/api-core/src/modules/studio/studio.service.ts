@@ -8,7 +8,7 @@ import {
   ServiceUnavailableException,
 } from '@nestjs/common';
 import { randomUUID } from 'node:crypto';
-import { eq, and, desc, sql, gte, or } from 'drizzle-orm';
+import { eq, and, desc, sql, gte, or, isNotNull, inArray } from 'drizzle-orm';
 import { Queue } from 'bullmq';
 import { Redis } from 'ioredis';
 import {
@@ -31,6 +31,7 @@ import { GenerateArticleRequestDto, UpdateDraftArticleDto } from './dto/studio.d
 import { RedisService } from '../redis/redis.service.js';
 import { UrlScraperService } from './url-scraper.service.js';
 import { DocumentParserService } from './document-parser.service.js';
+import { PolicySector } from '@polaris/shared-types';
 
 function normalizeRegionAlias(region: string): string {
   return region
@@ -39,6 +40,24 @@ function normalizeRegionAlias(region: string): string {
     .toLowerCase()
     .replace(/^(kabupaten|kab|kota)\s*/i, '')
     .replace(/[^a-z0-9]/g, '');
+}
+
+function resolvePolicySectors(interests: string[], commissionName: string | null): PolicySector[] {
+  const memberFocus = normalizeRegionAlias(`${interests.join(' ')} ${commissionName || ''}`);
+  const sectorTerms: Record<PolicySector, string[]> = {
+    [PolicySector.FISKAL_ANGGARAN]: ['anggaran', 'fiskal', 'keuangan', 'apbd', 'apbn', 'pendapatan daerah'],
+    [PolicySector.INFRASTRUKTUR_RUANG]: ['infrastruktur', 'pekerjaan umum', 'tata ruang', 'pupr', 'perhubungan'],
+    [PolicySector.PANGAN_PERTANIAN]: ['pertanian', 'pangan', 'pupuk', 'nelayan', 'perikanan', 'perkebunan'],
+    [PolicySector.SOSIAL_KEMISKINAN]: ['sosial', 'kemiskinan', 'bansos', 'stunting', 'perlindungan sosial'],
+    [PolicySector.LAYANAN_DASAR]: ['pendidikan', 'kesehatan', 'bpjs', 'sekolah', 'puskesmas', 'rumah sakit'],
+    [PolicySector.TATA_KELOLA_HUKUM]: ['hukum', 'pemerintahan', 'tata kelola', 'pengawasan', 'legislasi'],
+    [PolicySector.EKONOMI_KETENAGAKERJAAN]: ['ekonomi', 'umkm', 'ketenagakerjaan', 'tenaga kerja', 'perdagangan'],
+    [PolicySector.LINGKUNGAN_BENCANA]: ['lingkungan', 'bencana', 'sampah', 'banjir', 'iklim'],
+  };
+
+  return Object.entries(sectorTerms)
+    .filter(([, terms]) => terms.some((term) => memberFocus.includes(normalizeRegionAlias(term))))
+    .map(([sector]) => sector as PolicySector);
 }
 
 @Injectable()
@@ -79,6 +98,7 @@ export class StudioService implements OnModuleDestroy {
         dapilId: tenantMembers.electoralDistrictId,
         personalCoverage: tenantMembers.personalCoverage,
         issueInterests: tenantMembers.issueInterests,
+        commissionName: tenantMembers.commissionName,
       })
       .from(tenantMembers)
       .where(eq(tenantMembers.id, tenantId))
@@ -180,7 +200,11 @@ export class StudioService implements OnModuleDestroy {
         };
       });
 
-    const regionAliases = [...new Set(regionCoverage.map(normalizeRegionAlias).filter(Boolean))];
+    const regionAliases = [...new Set([
+      ...regionCoverage.map(normalizeRegionAlias),
+      normalizeRegionAlias(dapil?.provinceName || ''),
+    ].filter(Boolean))];
+    const preferredSectors = resolvePolicySectors(member.issueInterests || [], member.commissionName);
     const normalizedNewsRegion = sql`regexp_replace(
       regexp_replace(lower(${mediaDiscourses.regionScope}), '^(kabupaten|kab|kota)', ''),
       '[^a-z0-9]', '', 'g'
@@ -199,13 +223,24 @@ export class StudioService implements OnModuleDestroy {
         sentiment: mediaDiscourses.sentimentScore,
         publishedAt: mediaDiscourses.publishedAt,
         regionScope: mediaDiscourses.regionScope,
+        sector: mediaDiscourses.sector,
+        relevanceScore: mediaDiscourses.relevanceScore,
       })
       .from(mediaDiscourses)
       .where(and(
         gte(mediaDiscourses.publishedAt, sevenDaysAgo),
-        or(...newsScopeConditions)
+        or(...newsScopeConditions),
+        isNotNull(mediaDiscourses.sector),
+        gte(mediaDiscourses.relevanceScore, 0.65),
+        ...(preferredSectors.length > 0
+          ? [inArray(mediaDiscourses.sector, preferredSectors)]
+          : [])
       ))
-      .orderBy(desc(mediaDiscourses.publishedAt))
+      .orderBy(
+        sql`CASE WHEN ${mediaDiscourses.regionScope} = 'NASIONAL' THEN 1 ELSE 0 END`,
+        desc(mediaDiscourses.relevanceScore),
+        desc(mediaDiscourses.publishedAt)
+      )
       .limit(5);
 
     const averageSentiment = recentNews.length

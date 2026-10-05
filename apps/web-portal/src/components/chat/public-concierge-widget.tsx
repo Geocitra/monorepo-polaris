@@ -6,7 +6,6 @@ import {
     Bot,
     ChevronDown,
     ExternalLink,
-    MessageCircle,
     RotateCcw,
     Send,
     ShieldCheck,
@@ -17,6 +16,7 @@ import {
 } from 'lucide-react';
 import { sendPublicChatMessage } from '@/lib/api';
 import type { PublicChatMessageTurn } from '@/lib/api';
+import { ConciergeAvatarLauncher } from './concierge-avatar-launcher';
 
 interface ChatMessage {
     id: string;
@@ -212,23 +212,11 @@ export function PublicConciergeWidget() {
                 ? 'fixed inset-0 z-50 flex items-end justify-end bg-slate-950/45 sm:inset-auto sm:bottom-6 sm:right-6 sm:bg-transparent'
                 : 'fixed bottom-4 right-4 z-50 sm:bottom-6 sm:right-6'}>
             {!isOpen ? (
-                <button
-                    ref={launcherRef}
-                    type="button"
-                    onClick={() => setIsOpen(true)}
-                    aria-label="Buka POLARIS Concierge"
-                    aria-expanded={false}
-                    aria-controls="public-concierge-panel"
-                    className="group flex min-h-14 items-center gap-3 rounded-full border border-slate-700 bg-slate-950 px-4 text-white shadow-[0_12px_36px_-12px_rgba(15,23,42,0.65)] transition-colors hover:bg-slate-800 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-700"
-                >
-                    <span className="flex h-9 w-9 items-center justify-center rounded-full bg-blue-600 text-white transition-colors group-hover:bg-blue-500">
-                        <MessageCircle aria-hidden="true" className="h-[18px] w-[18px]" />
-                    </span>
-                    <span className="pr-1 text-left">
-                        <span className="block text-sm font-semibold">Tanya POLARIS</span>
-                        <span className="hidden text-[11px] text-slate-300 sm:block">Asisten AI produk</span>
-                    </span>
-                </button>
+                <ConciergeAvatarLauncher
+                    isOpen={isOpen}
+                    onToggle={() => setIsOpen(true)}
+                    buttonRef={launcherRef}
+                />
             ) : (
                 <section
                     ref={panelRef}

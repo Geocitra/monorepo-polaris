@@ -1,6 +1,6 @@
 import Parser from 'rss-parser';
-import { eq } from 'drizzle-orm';
-import { db, mediaDiscourses, electoralDistricts } from '@polaris/database';
+import { db, mediaDiscourses } from '@polaris/database';
+import { CivicRelevanceGatekeeper } from './civic-relevance-gatekeeper.js';
 
 export interface ScraperJobPayload {
   regionScope: string;
@@ -49,54 +49,83 @@ export class NewsCrawlerProcessor {
   /**
    * processFeedScraping mengonsumsi feed berita daerah dan menyimpannya ke PostgreSQL
    */
-  public static async processFeedScraping(payload: ScraperJobPayload): Promise<{ insertedCount: number }> {
+  public static async processFeedScraping(payload: ScraperJobPayload): Promise<{
+    insertedCount: number;
+    rejectedCount: number;
+  }> {
     console.log(`[NewsCrawler] Memulai penyerapan berita untuk wilayah: ${payload.regionScope} dari ${payload.sourceName}...`);
 
     let feed;
     try {
       feed = await parser.parseURL(payload.feedUrl);
     } catch (error: any) {
-      console.warn(`[NewsCrawler] Gagal membaca feed ${payload.feedUrl}: ${error.message}`);
-      return { insertedCount: 0 };
+      const message = error instanceof Error ? error.message : String(error);
+      console.warn(`[NewsCrawler] Gagal membaca feed ${payload.feedUrl}: ${message}`);
+      throw error;
     }
 
     let insertedCount = 0;
+    let rejectedCount = 0;
 
     for (const item of feed.items) {
-      if (!item.link || !item.title) continue;
+      if (!item.link || !item.title?.trim()) {
+        rejectedCount++;
+        continue;
+      }
 
-      const cleanUrl = item.link.trim();
-      const cleanTitle = item.title.trim();
+      let articleUrl: URL;
+      try {
+        articleUrl = new URL(item.link.trim());
+      } catch {
+        rejectedCount++;
+        continue;
+      }
+      if (articleUrl.protocol !== 'http:' && articleUrl.protocol !== 'https:') {
+        rejectedCount++;
+        continue;
+      }
+
+      const cleanUrl = articleUrl.toString();
+      const cleanTitle = Array.from(item.title.trim()).slice(0, 255).join('');
       const rawContent = item.contentSnippet || item.content || cleanTitle;
       const cleanSummary = this.cleanHtmlText(rawContent).slice(0, 500);
-      const sentimentScore = this.calculateQuickSentiment(`${cleanTitle} ${cleanSummary}`);
-      const publishedAt = item.pubDate ? new Date(item.pubDate) : new Date();
+      const assessment = CivicRelevanceGatekeeper.assess(cleanTitle, cleanSummary);
+      if (!assessment.accepted || !assessment.sector) {
+        rejectedCount++;
+        continue;
+      }
 
-      try {
-        // Simpan berita dengan mekanisme ON CONFLICT DO NOTHING (Deduplikasi berbasis URL unik)
-        const [inserted] = await db
-          .insert(mediaDiscourses)
-          .values({
-            regionScope: payload.regionScope,
-            newsPortalName: payload.sourceName,
-            originalUrl: cleanUrl,
-            articleTitle: cleanTitle,
-            cleanSummary,
-            sentimentScore,
-            publishedAt,
-          })
-          .onConflictDoNothing({ target: mediaDiscourses.originalUrl })
-          .returning({ id: mediaDiscourses.id });
+      const publishedAt = new Date(item.isoDate || item.pubDate || '');
+      if (Number.isNaN(publishedAt.getTime())) {
+        rejectedCount++;
+        continue;
+      }
 
-        if (inserted) {
-          insertedCount++;
-        }
-      } catch (err: any) {
-        console.warn(`[NewsCrawler] Lewati artikel duplikat: ${cleanTitle}`);
+      const [inserted] = await db
+        .insert(mediaDiscourses)
+        .values({
+          regionScope: payload.regionScope,
+          newsPortalName: payload.sourceName,
+          originalUrl: cleanUrl,
+          articleTitle: cleanTitle,
+          cleanSummary,
+          sentimentScore: this.calculateQuickSentiment(`${cleanTitle} ${cleanSummary}`),
+          sector: assessment.sector,
+          relevanceScore: assessment.relevanceScore,
+          primaryKeywords: assessment.matchedKeywords,
+          publishedAt,
+        })
+        .onConflictDoNothing({ target: mediaDiscourses.originalUrl })
+        .returning({ id: mediaDiscourses.id });
+
+      if (inserted) {
+        insertedCount++;
       }
     }
 
-    console.log(`[NewsCrawler] Selesai. ${insertedCount} berita baru tersimpan untuk wilayah ${payload.regionScope}.`);
-    return { insertedCount };
+    console.log(
+      `[NewsCrawler] Selesai untuk ${payload.regionScope}: ${insertedCount} berita relevan baru disimpan, ${rejectedCount} item ditolak.`
+    );
+    return { insertedCount, rejectedCount };
   }
 }

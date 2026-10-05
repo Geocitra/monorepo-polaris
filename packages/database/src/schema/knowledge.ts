@@ -1,6 +1,8 @@
-import { pgTable, uuid, varchar, text, integer, real, timestamp, customType } from 'drizzle-orm/pg-core';
+import { pgTable, uuid, varchar, text, integer, real, timestamp, customType, check, index } from 'drizzle-orm/pg-core';
+import { sql } from 'drizzle-orm';
 import { tenantMembers } from './identity.js';
 import { docTypeEnum, legalStatusEnum } from './enums.js';
+import { PolicySector } from '@polaris/shared-types';
 
 // Custom type untuk pgvector vector(1536)
 const pgVector1536 = customType<{ data: number[]; driverData: string }>({
@@ -44,9 +46,26 @@ export const mediaDiscourses = pgTable('media_discourses', {
   articleTitle: varchar('article_title', { length: 255 }).notNull(),
   cleanSummary: text('clean_summary').notNull(),
   sentimentScore: real('sentiment_score').notNull(),
+  sector: varchar('sector', { length: 50 }),
+  relevanceScore: real('relevance_score'),
+  primaryKeywords: text('primary_keywords').array(),
   publishedAt: timestamp('published_at', { withTimezone: true }).notNull(),
   createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
-});
+}, (table) => ({
+  policySectorCheck: check(
+    'chk_media_discourses_policy_sector',
+    sql`${table.sector} IS NULL OR ${table.sector} IN (${sql.join(
+      Object.values(PolicySector).map((sector) => sql`${sector}`),
+      sql`, `
+    )})`
+  ),
+  relevanceScoreCheck: check(
+    'chk_media_discourses_relevance_score',
+    sql`${table.relevanceScore} IS NULL OR ${table.relevanceScore} BETWEEN 0 AND 1`
+  ),
+  sectorRegionPublishedAtIndex: index('idx_media_discourses_sector_region')
+    .on(table.sector, table.regionScope, table.publishedAt),
+}));
 
 export const memberWritingMemories = pgTable('member_writing_memories', {
   id: uuid('id').defaultRandom().primaryKey(),

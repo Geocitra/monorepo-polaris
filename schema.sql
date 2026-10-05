@@ -327,9 +327,30 @@ CREATE TABLE IF NOT EXISTS media_discourses (
   article_title VARCHAR(255) NOT NULL,
   clean_summary TEXT NOT NULL,
   sentiment_score REAL NOT NULL,
+  sector VARCHAR(50),
+  relevance_score REAL,
+  primary_keywords TEXT[],
   published_at TIMESTAMPTZ NOT NULL,
-  created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  CONSTRAINT chk_media_discourses_policy_sector CHECK (
+    sector IS NULL OR sector IN (
+      'FISKAL_ANGGARAN',
+      'INFRASTRUKTUR_RUANG',
+      'PANGAN_PERTANIAN',
+      'SOSIAL_KEMISKINAN',
+      'LAYANAN_DASAR',
+      'TATA_KELOLA_HUKUM',
+      'EKONOMI_KETENAGAKERJAAN',
+      'LINGKUNGAN_BENCANA'
+    )
+  ),
+  CONSTRAINT chk_media_discourses_relevance_score CHECK (
+    relevance_score IS NULL OR relevance_score BETWEEN 0 AND 1
+  )
 );
+
+CREATE INDEX IF NOT EXISTS idx_media_discourses_sector_region
+  ON media_discourses (sector, region_scope, published_at DESC);
 
 -- 8. BOUNDED CONTEXT: CONSTITUENT & UU PDP VAULT
 CREATE TABLE IF NOT EXISTS constituent_feedbacks (

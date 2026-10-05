@@ -81,7 +81,7 @@ export function RegisterStepBasic({
         {/* Kata Sandi */}
         <div>
           <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
-            Kata Sandi Baru
+            Buat Kata Sandi
           </label>
           <div className="relative">
             <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-400" />
@@ -95,13 +95,6 @@ export function RegisterStepBasic({
             />
           </div>
         </div>
-      </div>
-
-      <div className="p-2.5 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 flex items-start gap-2 text-xs text-slate-600 dark:text-slate-300">
-        <ShieldCheck className="h-4 w-4 text-blue-600 dark:text-blue-400 shrink-0 mt-0.5" />
-        <span className="text-[11px] leading-tight">
-          Data akun terlindungi enkripsi tingkat tinggi. Afiliasi komisi/fraksi dewan dapat disesuaikan kemudian.
-        </span>
       </div>
 
       <button

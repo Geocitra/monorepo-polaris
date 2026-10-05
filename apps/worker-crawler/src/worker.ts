@@ -50,7 +50,9 @@ const scraperWorker = new Worker<ScraperJobPayload>(
 );
 
 scraperWorker.on('completed', (job, result) => {
-  console.log(`[Worker Scraper] Tugas #${job.id} selesai. Berita baru: ${result.insertedCount}`);
+  console.log(
+    `[Worker Scraper] Tugas #${job.id} selesai. Berita baru: ${result.insertedCount}; item ditolak: ${result.rejectedCount}.`
+  );
 });
 
 scraperWorker.on('failed', (job, err) => {
