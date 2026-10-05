@@ -64,8 +64,8 @@ export class OpenAIAIEngineAdapter implements ILLMProviderPort {
 
       const response = await openaiClient.chat.completions.create({
         model: 'gpt-4o-mini',
-        temperature: 0.1,
-        max_tokens: 220,
+        temperature: 0.25,
+        max_tokens: 300,
         messages: [
           { role: 'system', content: systemPrompt },
           { role: 'user', content: inspection.sanitizedText },
@@ -77,7 +77,7 @@ export class OpenAIAIEngineAdapter implements ILLMProviderPort {
       const outputTokens = response.usage?.completion_tokens || 0;
 
       const isRefusal = reply.toLowerCase().includes('hanya dapat membantu menjawab pertanyaan seputar') ||
-                        reply.toLowerCase().includes('mohon maaf');
+                        reply.toLowerCase().includes('diprogram khusus untuk memberikan informasi seputar');
 
       await telemetry.endTrace({
         inputTokens,

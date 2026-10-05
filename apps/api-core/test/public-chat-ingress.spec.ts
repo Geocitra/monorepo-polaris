@@ -53,8 +53,8 @@ describe('PublicChat Ingress & Rate Limiting Integration', () => {
     await app.init();
   });
 
-  it('harus mengizinkan hingga 5 request berturut-turut dari IP yang sama (HTTP 200 OK)', async () => {
-    for (let i = 1; i <= 5; i++) {
+  it('harus mengizinkan hingga 10 request berturut-turut dari IP yang sama (HTTP 200 OK)', async () => {
+    for (let i = 1; i <= 10; i++) {
       const res = await request(app.getHttpServer())
         .post('/public/chat')
         .set('x-forwarded-for', '180.252.10.1')
@@ -65,20 +65,20 @@ describe('PublicChat Ingress & Rate Limiting Integration', () => {
     }
   });
 
-  it('harus memblokir request ke-6 dari IP yang sama dengan status HTTP 429 Too Many Requests', async () => {
-    // 5 request pertama lolos
-    for (let i = 1; i <= 5; i++) {
+  it('harus memblokir request ke-11 dari IP yang sama dengan status HTTP 429 Too Many Requests', async () => {
+    // 10 request pertama lolos
+    for (let i = 1; i <= 10; i++) {
       await request(app.getHttpServer())
         .post('/public/chat')
         .set('x-forwarded-for', '180.252.10.2')
         .send({ message: `Pertanyaan ${i}` });
     }
 
-    // Request ke-6 ditolak
+    // Request ke-11 ditolak
     const blockedRes = await request(app.getHttpServer())
       .post('/public/chat')
       .set('x-forwarded-for', '180.252.10.2')
-      .send({ message: 'Pertanyaan ke-6 yang melewati batas' });
+      .send({ message: 'Pertanyaan ke-11 yang melewati batas' });
 
     expect(blockedRes.status).toBe(HttpStatus.TOO_MANY_REQUESTS);
     expect(blockedRes.body.message).toContain('mencapai batas frekuensi');

@@ -15,7 +15,7 @@ import { RedisService } from '../../redis/redis.service.js';
 @Injectable()
 export class IpThrottleGuard implements CanActivate {
     private readonly logger = new Logger(IpThrottleGuard.name);
-    private static readonly MAX_REQUESTS = 5;
+    private static readonly MAX_REQUESTS = 10;
     private static readonly WINDOW_SECONDS = 120;
 
     constructor(private readonly redisService: RedisService) { }
@@ -41,7 +41,7 @@ export class IpThrottleGuard implements CanActivate {
                     {
                         success: false,
                         statusCode: HttpStatus.TOO_MANY_REQUESTS,
-                        message: 'Anda telah mencapai batas frekuensi obrolan (maksimal 5 pesan per 2 menit). Silakan coba kembali nanti.',
+                        message: 'Anda telah mencapai batas frekuensi obrolan (maksimal 10 pesan per 2 menit). Silakan coba kembali nanti.',
                         retryAfterSeconds: IpThrottleGuard.WINDOW_SECONDS,
                     },
                     HttpStatus.TOO_MANY_REQUESTS
