@@ -16,7 +16,7 @@ interface ParliamentAgendaSectionProps {
 
 export function ParliamentAgendaSection({
   agendas = [],
-  recommendation = 'Soroti aspirasi konstituen dan data capaian program daerah saat rapat komisi hari ini.',
+  recommendation = 'Rekomendasi belum tersedia karena ringkasan belum dimuat.',
 }: ParliamentAgendaSectionProps) {
   return (
     <Card className="space-y-4">

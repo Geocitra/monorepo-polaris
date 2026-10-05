@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { ApiClient } from '@/lib/api-client';
@@ -16,6 +16,7 @@ import {
   ChevronDown,
   Loader2,
   ShieldAlert,
+  Sparkles,
 } from 'lucide-react';
 
 import {
@@ -105,7 +106,9 @@ export default function InfografisStudioPage() {
 
   // Multi-Sesi & Multi-Iterasi States
   const [sessions, setSessions] = useState<InfographicSession[]>(SEED_SESSIONS);
+  const sessionsRef = useRef(sessions);
   const [activeSessionId, setActiveSessionId] = useState<string>(SEED_SESSIONS[0].id);
+  const activeSessionIdRef = useRef(activeSessionId);
 
   // Drawer States
   const [sessionDrawerOpen, setSessionDrawerOpen] = useState(false);
@@ -124,7 +127,9 @@ export default function InfografisStudioPage() {
         const parsed = JSON.parse(stored);
         if (Array.isArray(parsed) && parsed.length > 0) {
           setSessions(parsed);
+          sessionsRef.current = parsed;
           setActiveSessionId(parsed[0].id);
+          activeSessionIdRef.current = parsed[0].id;
         }
       }
     } catch {
@@ -134,6 +139,7 @@ export default function InfografisStudioPage() {
 
   // Save sessions to localStorage
   function persistSessions(newSessions: InfographicSession[]) {
+    sessionsRef.current = newSessions;
     setSessions(newSessions);
     try {
       localStorage.setItem(STORAGE_KEY, JSON.stringify(newSessions));
@@ -169,31 +175,20 @@ export default function InfografisStudioPage() {
   // Buat Sesi Baru (+ Chat Baru)
   function handleCreateNewSession() {
     const newSessionId = `session-${Date.now()}`;
+    const now = new Date().toISOString();
     const newSession: InfographicSession = {
       id: newSessionId,
       title: 'Desain Infografis Baru',
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
-      activeIterationId: `iter-${Date.now()}-1`,
-      iterations: [
-        {
-          id: `iter-${Date.now()}-1`,
-          versionNumber: 1,
-          timestamp: new Date().toISOString(),
-          prompt: 'Konsep awal poster kebijakan publik',
-          imageUrl: '/images/showcase-poster-surya.jpg',
-          caption: 'Visual Awal: Laboratorium Digital',
-          title: 'Gagasan Desain Kebijakan Publik',
-          style: 'infographic',
-          aspectRatio: '16:9',
-          source: 'INITIAL',
-        },
-      ],
+      createdAt: now,
+      updatedAt: now,
+      activeIterationId: '',
+      iterations: [],
     };
 
     const updated = [newSession, ...sessions];
     persistSessions(updated);
     setActiveSessionId(newSessionId);
+    activeSessionIdRef.current = newSessionId;
     setPromptInput('');
     toast({
       type: 'success',
@@ -205,6 +200,7 @@ export default function InfografisStudioPage() {
   // Ganti Sesi
   function handleSelectSession(sessionId: string) {
     setActiveSessionId(sessionId);
+    activeSessionIdRef.current = sessionId;
     setPromptInput('');
   }
 
@@ -223,6 +219,7 @@ export default function InfografisStudioPage() {
     persistSessions(filtered);
     if (activeSessionId === sessionId) {
       setActiveSessionId(filtered[0].id);
+      activeSessionIdRef.current = filtered[0].id;
     }
   }
 
@@ -269,13 +266,17 @@ export default function InfografisStudioPage() {
   async function handleAIPromptSubmit(e?: React.FormEvent, customSuggestion?: string) {
     if (e) e.preventDefault();
     const promptText = (customSuggestion || promptInput).trim();
-    if (!promptText) return;
+    const targetSessionId = activeSessionId;
+    const targetSession = sessionsRef.current.find((session) => session.id === targetSessionId);
+    if (!promptText || !targetSession || loading) return;
 
     if (isUnpaid) {
       setLockoutModalOpen(true);
       return;
     }
 
+    const submittedStyle = selectedStyle;
+    const submittedAspectRatio = selectedAspectRatio;
     setLoading(true);
     try {
       const res = await ApiClient.request<any>('/studio/generate', {
@@ -284,27 +285,29 @@ export default function InfografisStudioPage() {
           topic: `Infografis Publik: ${promptText}. STRICT CONSTRAINT: DO NOT generate any institutional logos, government emblems, regional seals, party logos, coat of arms, badges, or watermark symbols.`,
           comparisonRegion: profile?.electoralDistrict?.dapilName || 'Dapil Anda',
           generateDallePoster: true,
-          aspectRatio: selectedAspectRatio,
-          style: selectedStyle,
+          aspectRatio: submittedAspectRatio,
+          style: submittedStyle,
         }),
       });
 
       const jobId = res?.jobId || res?.data?.jobId;
       const publicationId = res?.publicationId || res?.data?.publicationId;
 
-      let newImageUrl = currentIteration?.imageUrl || '/images/showcase-poster-surya.jpg';
+      let newImageUrl = res?.dalleImageUrl || res?.imageUrl;
       let newTitle = promptText.slice(0, 50);
 
       if (jobId && publicationId) {
+        let completed = false;
         for (let i = 0; i < 60; i++) {
           await new Promise((resolve) => setTimeout(resolve, 1500));
           try {
             const statusRes = await ApiClient.request<any>(`/studio/jobs/${jobId}`);
-            if (statusRes?.status === 'COMPLETED' || (statusRes?.percent && statusRes.percent >= 100)) {
-              break;
-            }
             if (statusRes?.status === 'FAILED') {
               throw new Error(statusRes.failedReason || statusRes.errorDetails || 'Pemrosesan AI pada antrean gagal.');
+            }
+            if (statusRes?.status === 'COMPLETED' || (statusRes?.percent && statusRes.percent >= 100)) {
+              completed = true;
+              break;
             }
           } catch (pollErr: any) {
             if (pollErr.message && !pollErr.message.includes('tidak ditemukan')) {
@@ -313,18 +316,27 @@ export default function InfografisStudioPage() {
           }
         }
 
-        const detail = await ApiClient.request<any>(`/studio/articles/${publicationId}`);
-        if (detail?.asset?.cdnPublicUrl || detail?.asset?.r2StorageUrl) {
-          newImageUrl = detail.asset.cdnPublicUrl || detail.asset.r2StorageUrl;
+        if (!completed) {
+          throw new Error('Pembuatan infografis belum selesai. Silakan coba lagi beberapa saat.');
         }
+
+        const detail = await ApiClient.request<any>(`/studio/articles/${publicationId}`);
+        newImageUrl = detail?.asset?.cdnPublicUrl || detail?.asset?.r2StorageUrl || newImageUrl;
         if (detail?.article?.title) {
           newTitle = detail.article.title;
         }
-      } else if (res?.dalleImageUrl || res?.imageUrl) {
-        newImageUrl = res.dalleImageUrl || res.imageUrl;
       }
 
-      const nextVersionNumber = (currentSession?.iterations.length || 0) + 1;
+      if (!newImageUrl) {
+        throw new Error('Infografis belum memiliki hasil visual. Tidak ada versi yang disimpan.');
+      }
+
+      const latestTargetSession = sessionsRef.current.find((session) => session.id === targetSessionId);
+      if (!latestTargetSession) {
+        throw new Error('Sesi ini sudah dihapus. Hasil AI tidak ditambahkan ke riwayat.');
+      }
+
+      const nextVersionNumber = latestTargetSession.iterations.length + 1;
       const newIterationId = `iter-${Date.now()}`;
 
       const newIteration: InfographicIteration = {
@@ -335,13 +347,13 @@ export default function InfografisStudioPage() {
         imageUrl: newImageUrl,
         caption: `Visual AI: ${promptText}`,
         title: newTitle,
-        style: selectedStyle,
-        aspectRatio: selectedAspectRatio,
-        source: currentSession?.iterations.length === 0 ? 'INITIAL' : 'REFINE',
+        style: submittedStyle,
+        aspectRatio: submittedAspectRatio,
+        source: latestTargetSession.iterations.length === 0 ? 'INITIAL' : 'REFINE',
       };
 
-      const updated = sessions.map((s) => {
-        if (s.id === activeSessionId) {
+      const updated = sessionsRef.current.map((s) => {
+        if (s.id === targetSessionId) {
           return {
             ...s,
             title: s.title === 'Desain Infografis Baru' ? newTitle.slice(0, 35) : s.title,
@@ -354,7 +366,9 @@ export default function InfografisStudioPage() {
       });
 
       persistSessions(updated);
-      setPromptInput('');
+      if (activeSessionIdRef.current === targetSessionId) {
+        setPromptInput('');
+      }
 
       toast({
         type: 'success',
@@ -547,6 +561,21 @@ export default function InfografisStudioPage() {
                   onOpenHistoryDrawer={() => setVersionDrawerOpen(true)}
                 />
               )}
+            </div>
+          )}
+          {!currentIteration && (
+            <div className="rounded-3xl border border-dashed border-slate-300 dark:border-slate-700 bg-white/70 dark:bg-slate-900/60 px-6 py-12 text-center">
+              <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-2xl bg-blue-50 text-blue-600 dark:bg-blue-950/60 dark:text-blue-400">
+                {loading ? <Loader2 className="h-5 w-5 animate-spin" /> : <Sparkles className="h-5 w-5" />}
+              </div>
+              <h2 className="text-sm font-extrabold text-slate-900 dark:text-white">
+                {loading ? 'AI sedang merancang infografis pertama...' : 'Mulai sesi infografis'}
+              </h2>
+              <p className="mx-auto mt-2 max-w-lg text-xs leading-relaxed text-slate-500 dark:text-slate-400">
+                {loading
+                  ? 'Hasil visual akan muncul sebagai Versi 1 setelah proses AI selesai.'
+                  : 'Tulis ide atau isu di bawah, lalu kirim ke AI. Hasil pertama yang berhasil dibuat akan menjadi Versi 1.'}
+              </p>
             </div>
           )}
 

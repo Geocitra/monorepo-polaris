@@ -70,7 +70,19 @@ export function InfographicVersionDrawer({
 
         {/* DAFTAR ITERASI */}
         <div className="flex-1 overflow-y-auto p-4 space-y-3">
-          {iterations.map((it) => {
+          {iterations.length === 0 ? (
+            <div className="flex h-full flex-col items-center justify-center px-6 text-center">
+              <div className="mb-3 flex h-11 w-11 items-center justify-center rounded-2xl bg-purple-50 text-purple-600 dark:bg-purple-950/60 dark:text-purple-400">
+                <Sparkles className="h-5 w-5" />
+              </div>
+              <p className="text-xs font-bold text-slate-700 dark:text-slate-200">
+                Belum ada versi
+              </p>
+              <p className="mt-1 text-[11px] leading-relaxed text-slate-500 dark:text-slate-400">
+                Versi 1 akan muncul setelah Anda mengirim prompt dan AI berhasil membuat infografis.
+              </p>
+            </div>
+          ) : iterations.map((it) => {
             const isActive = it.id === activeIterationId;
 
             return (

@@ -20,13 +20,19 @@ export default function DashboardHomePage() {
   const [profile, setProfile] = useState<any>(null);
   const [billing, setBilling] = useState<any>(null);
   const [briefing, setBriefing] = useState<any>(null);
+  const [briefingError, setBriefingError] = useState(false);
 
   useEffect(() => {
     async function loadData() {
       try {
         const userProfile = await ApiClient.request<any>('/auth/me');
         const billingStatus = await ApiClient.request<any>('/billing/status').catch(() => null);
-        const morningData = await ApiClient.request<any>('/studio/morning-briefing').catch(() => null);
+        let morningData = null;
+        try {
+          morningData = await ApiClient.request<any>('/studio/morning-briefing');
+        } catch {
+          setBriefingError(true);
+        }
 
         setProfile(userProfile);
         setBilling(billingStatus);
@@ -115,6 +121,15 @@ export default function DashboardHomePage() {
               </Button>
             </Link>
           </div>
+
+          {briefingError && (
+            <div
+              role="alert"
+              className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-xs font-medium text-amber-900"
+            >
+              Ringkasan belum dapat dimuat. Data yang belum tersedia tidak ditampilkan sebagai angka contoh.
+            </div>
+          )}
 
           {/* 1. PULSE METRICS */}
           <PulseMetrics metrics={briefing?.metrics} />

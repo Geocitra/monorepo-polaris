@@ -35,6 +35,10 @@ export class AuthGuard implements CanActivate {
     }
     try {
       const payload = await this.jwtService.verifyAsync(token);
+      if (!payload?.sub || typeof payload.sub !== 'string' || !payload.sub.trim()) {
+        throw new UnauthorizedException('Token autentikasi tidak valid atau tidak memiliki tenant aktif.');
+      }
+
       request.user = {
         tenantId: payload.sub,
         email: payload.email,
@@ -43,7 +47,10 @@ export class AuthGuard implements CanActivate {
         isSuperadmin: payload.isSuperadmin === true,
       };
       return true;
-    } catch {
+    } catch (error) {
+      if (error instanceof UnauthorizedException) {
+        throw error;
+      }
       throw new UnauthorizedException('Token autentikasi tidak valid atau telah kadaluwarsa.');
     }
   }

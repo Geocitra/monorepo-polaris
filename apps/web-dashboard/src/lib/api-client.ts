@@ -8,7 +8,6 @@ export class ApiClient {
       token = localStorage.getItem('polaris_token');
     } catch {}
 
-    // Fallback: periksa cookie polaris_session jika localStorage kosong
     if (!token) {
       const match = document.cookie.match(/(?:^|;\s*)polaris_session=([^;]+)/);
       if (match && match[1]) {
@@ -18,14 +17,13 @@ export class ApiClient {
         } catch {}
       }
     } else {
-      // Pastikan cookie polaris_session selalu sinkron dan aktif
       const hasCookie = document.cookie.includes('polaris_session=');
       if (!hasCookie) {
         document.cookie = `polaris_session=${encodeURIComponent(token)}; path=/; max-age=${30 * 24 * 60 * 60}; SameSite=Lax`;
       }
     }
 
-    return token;
+    return token && token.trim().length > 0 ? token : null;
   }
 
   public static setToken(token: string): void {
@@ -33,7 +31,6 @@ export class ApiClient {
       try {
         localStorage.setItem('polaris_token', token);
       } catch {}
-      // Simpan cookie sesi bertahan 30 hari untuk Next.js middleware & SSR
       document.cookie = `polaris_session=${encodeURIComponent(token)}; path=/; max-age=${30 * 24 * 60 * 60}; SameSite=Lax`;
     }
   }
@@ -44,9 +41,7 @@ export class ApiClient {
         localStorage.removeItem('polaris_token');
         localStorage.removeItem('polaris_user');
       } catch {}
-      // Hapus cookie sesi
       document.cookie = 'polaris_session=; path=/; max-age=0; SameSite=Lax';
-      // PENTING: polaris_theme_mode dan polaris_theme_colors TIDAK dihapus agar tema tetap tersimpan!
     }
   }
 
@@ -54,11 +49,32 @@ export class ApiClient {
     return Boolean(this.getToken());
   }
 
+  private static async parseResponseData(response: Response): Promise<any> {
+    if (response.status === 204) return null;
+
+    const contentType = response.headers.get('content-type') || '';
+    if (!contentType.includes('application/json')) {
+      const text = await response.text();
+      if (!text) return null;
+      try {
+        return JSON.parse(text);
+      } catch {
+        return { message: text };
+      }
+    }
+
+    try {
+      return await response.json();
+    } catch {
+      return null;
+    }
+  }
+
   public static async request<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
     const token = this.getToken();
     const headers: Record<string, string> = {
       'Content-Type': 'application/json',
-      ...(options.headers as Record<string, string>),
+      ...(options.headers as Record<string, string> | undefined),
     };
 
     if (token) {
@@ -70,13 +86,14 @@ export class ApiClient {
       headers,
     });
 
-    const data = await response.json();
+    const data = await this.parseResponseData(response);
 
     if (!response.ok) {
       if (response.status === 401 && typeof window !== 'undefined') {
         this.removeToken();
       }
-      throw new Error(data?.error?.message || data?.message || 'Terjadi kesalahan sistem.');
+      const message = data?.error?.message || data?.message || 'Terjadi kesalahan sistem.';
+      throw new Error(message);
     }
 
     return data as T;
@@ -103,7 +120,8 @@ export class AdminApiClient {
         } catch {}
       }
     }
-    return token;
+
+    return token && token.trim().length > 0 ? token : null;
   }
 
   public static getUser(): any | null {
@@ -140,11 +158,32 @@ export class AdminApiClient {
     return Boolean(this.getToken());
   }
 
+  private static async parseResponseData(response: Response): Promise<any> {
+    if (response.status === 204) return null;
+
+    const contentType = response.headers.get('content-type') || '';
+    if (!contentType.includes('application/json')) {
+      const text = await response.text();
+      if (!text) return null;
+      try {
+        return JSON.parse(text);
+      } catch {
+        return { message: text };
+      }
+    }
+
+    try {
+      return await response.json();
+    } catch {
+      return null;
+    }
+  }
+
   public static async request<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
     const token = this.getToken();
     const headers: Record<string, string> = {
       'Content-Type': 'application/json',
-      ...(options.headers as Record<string, string>),
+      ...(options.headers as Record<string, string> | undefined),
     };
 
     if (token) {
@@ -156,17 +195,17 @@ export class AdminApiClient {
       headers,
     });
 
-    const data = await response.json();
+    const data = await this.parseResponseData(response);
 
     if (!response.ok) {
       if (response.status === 401 && typeof window !== 'undefined') {
         this.logout();
         window.location.href = '/superadmin/login';
       }
-      throw new Error(data?.error?.message || data?.message || 'Terjadi kesalahan sistem.');
+      const message = data?.error?.message || data?.message || 'Terjadi kesalahan sistem.';
+      throw new Error(message);
     }
 
     return data as T;
   }
 }
-

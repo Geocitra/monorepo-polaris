@@ -247,6 +247,11 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const fetchThemeFromAPI = useCallback(async () => {
+    if (!ApiClient.isAuthenticated()) {
+      injectCSSVariables(DEFAULT_COLORS);
+      return;
+    }
+
     try {
       const portalData = await ApiClient.request<any>('/cms/my-portal').catch(() => null);
       if (portalData?.theme) {
@@ -265,7 +270,7 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
       // Offline or not logged in — apply whatever is in state
       injectCSSVariables(colors);
     }
-  }, []);
+  }, [colors]);
 
   const setColors = useCallback((c: ThemeColors) => {
     setColorsState(c);

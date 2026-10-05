@@ -8,7 +8,7 @@ import {
   ServiceUnavailableException,
 } from '@nestjs/common';
 import { randomUUID } from 'node:crypto';
-import { eq, and, desc, sql, gte } from 'drizzle-orm';
+import { eq, and, desc, sql, gte, or } from 'drizzle-orm';
 import { Queue } from 'bullmq';
 import { Redis } from 'ioredis';
 import {
@@ -31,6 +31,15 @@ import { GenerateArticleRequestDto, UpdateDraftArticleDto } from './dto/studio.d
 import { RedisService } from '../redis/redis.service.js';
 import { UrlScraperService } from './url-scraper.service.js';
 import { DocumentParserService } from './document-parser.service.js';
+
+function normalizeRegionAlias(region: string): string {
+  return region
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .replace(/^(kabupaten|kab|kota)\s*/i, '')
+    .replace(/[^a-z0-9]/g, '');
+}
 
 @Injectable()
 export class StudioService implements OnModuleDestroy {
@@ -68,6 +77,7 @@ export class StudioService implements OnModuleDestroy {
         party: tenantMembers.partyAffiliation,
         level: tenantMembers.legislativeLevel,
         dapilId: tenantMembers.electoralDistrictId,
+        personalCoverage: tenantMembers.personalCoverage,
         issueInterests: tenantMembers.issueInterests,
       })
       .from(tenantMembers)
@@ -86,7 +96,10 @@ export class StudioService implements OnModuleDestroy {
         .limit(1)
       : [null];
 
-    const regionScope = dapil?.regencyCoverage?.[0] || 'NASIONAL';
+    const regionCoverage = member.personalCoverage?.length
+      ? member.personalCoverage
+      : dapil?.regencyCoverage || [];
+    const regionScope = regionCoverage[0] || 'NASIONAL';
 
     const [portal] = await db
       .select({ id: portalConfigs.id })
@@ -100,6 +113,7 @@ export class StudioService implements OnModuleDestroy {
         .select({
           category: constituentFeedbacks.category,
           district: constituentFeedbacks.districtKecamatan,
+          regency: constituentFeedbacks.regencyName,
           status: constituentFeedbacks.status,
         })
         .from(constituentFeedbacks)
@@ -112,9 +126,69 @@ export class StudioService implements OnModuleDestroy {
       : [];
 
     const totalAspirasi = recentFeedbacks.length;
-    const pendingFollowUp = recentFeedbacks.filter((f) => f.status === 'RECEIVED').length;
+    const pendingFollowUp = recentFeedbacks.filter(
+      (f) => f.status === 'RECEIVED' || f.status === 'VERIFIED'
+    ).length;
     const resolvedAspirasi = recentFeedbacks.filter((f) => f.status === 'RESPONDED').length;
 
+    const categoryLabels: Record<string, string> = {
+      INFRASTRUKTUR: 'Infrastruktur',
+      PERTANIAN: 'Pertanian',
+      PENDIDIKAN: 'Pendidikan',
+      KESEHATAN: 'Kesehatan',
+      BANSOS_UMKM: 'Bansos & UMKM',
+      LAINNYA: 'Lainnya',
+    };
+    const issueGroups = new Map<string, {
+      category: string;
+      district: string;
+      regency: string;
+      frequency: number;
+      pendingCount: number;
+    }>();
+
+    for (const feedback of recentFeedbacks) {
+      const key = `${feedback.category}:${feedback.district}:${feedback.regency}`;
+      const group = issueGroups.get(key) || {
+        category: feedback.category,
+        district: feedback.district,
+        regency: feedback.regency,
+        frequency: 0,
+        pendingCount: 0,
+      };
+      group.frequency += 1;
+      if (feedback.status === 'RECEIVED' || feedback.status === 'VERIFIED') {
+        group.pendingCount += 1;
+      }
+      issueGroups.set(key, group);
+    }
+
+    const priorityIssues = [...issueGroups.values()]
+      .sort((a, b) => b.frequency - a.frequency)
+      .slice(0, 3)
+      .map((group) => {
+        const location = [group.district, group.regency].filter(Boolean).join(', ');
+        return {
+          id: `${group.category}-${group.district}-${group.regency}`,
+          title: categoryLabels[group.category] || group.category,
+          location: location || regionScope,
+          frequency: group.frequency,
+          status: group.pendingCount > 0
+            ? `${group.pendingCount} perlu tindak lanjut`
+            : 'Tidak ada laporan tertunda',
+          description: `${group.frequency} aspirasi tercatat dalam 7 hari terakhir.`,
+        };
+      });
+
+    const regionAliases = [...new Set(regionCoverage.map(normalizeRegionAlias).filter(Boolean))];
+    const normalizedNewsRegion = sql`regexp_replace(
+      regexp_replace(lower(${mediaDiscourses.regionScope}), '^(kabupaten|kab|kota)', ''),
+      '[^a-z0-9]', '', 'g'
+    )`;
+    const newsScopeConditions = [
+      eq(mediaDiscourses.regionScope, 'NASIONAL'),
+      ...regionAliases.map((alias) => sql`${normalizedNewsRegion} = ${alias}`),
+    ];
     const recentNews = await db
       .select({
         id: mediaDiscourses.id,
@@ -124,45 +198,27 @@ export class StudioService implements OnModuleDestroy {
         summary: mediaDiscourses.cleanSummary,
         sentiment: mediaDiscourses.sentimentScore,
         publishedAt: mediaDiscourses.publishedAt,
+        regionScope: mediaDiscourses.regionScope,
       })
       .from(mediaDiscourses)
+      .where(and(
+        gte(mediaDiscourses.publishedAt, sevenDaysAgo),
+        or(...newsScopeConditions)
+      ))
       .orderBy(desc(mediaDiscourses.publishedAt))
       .limit(5);
 
-    const issueMap = [
-      {
-        id: 'issue-1',
-        title: 'Kerusakan Jalan Poros & Ambles Akibat Cuaca',
-        location: `Kec. Waled (${regionScope})`,
-        frequency: 42,
-        impact: 'TINGGI',
-        status: 'Perlu Tindak Lanjut Komisi',
-        description: 'Menghambat distribusi hasil panen hortikultura dan akses pelajar.',
-      },
-      {
-        id: 'issue-2',
-        title: 'Kelangkaan Alokasi Pupuk Bersubsidi',
-        location: `Kec. Gebang (${regionScope})`,
-        frequency: 28,
-        impact: 'TINGGI',
-        status: 'Investigasi Distribusi',
-        description: 'Petani mengeluhkan kuota kios resmi tidak mencukupi musim tanam.',
-      },
-      {
-        id: 'issue-3',
-        title: 'Penyaluran Bantuan Modal Usaha Mikro (UMKM)',
-        location: `Kec. Arjawinangun (${regionScope})`,
-        frequency: 19,
-        impact: 'SEDANG',
-        status: 'Monitoring Program',
-        description: 'Aspirasi masyarakat meminta transparansi penerima hibah peralatan usaha.',
-      },
-    ];
-
-    const todayAgenda = [
-      { time: '10:00 WIB', agenda: 'Rapat Dengar Pendapat (RDP) Komisi dengan Dinas Teknis', location: 'Ruang Sidang Paripurna' },
-      { time: '14:00 WIB', agenda: 'Kunjungan Lapangan Advokasi Tanggul Sungai', location: 'Titik Rawan Bencana Dapil' },
-    ];
+    const averageSentiment = recentNews.length
+      ? recentNews.reduce((total, news) => total + news.sentiment, 0) / recentNews.length
+      : null;
+    const sentimentLabel = averageSentiment === null
+      ? 'Belum ada data'
+      : averageSentiment > 0.15
+        ? 'Cenderung positif'
+        : averageSentiment < -0.15
+          ? 'Cenderung negatif'
+          : 'Cenderung netral';
+    const topIssue = priorityIssues[0];
 
     return {
       dateGreeting: new Intl.DateTimeFormat('id-ID', { dateStyle: 'full' }).format(new Date()),
@@ -177,11 +233,17 @@ export class StudioService implements OnModuleDestroy {
         totalAspirasi,
         pendingFollowUp,
         resolvedAspirasi,
-        sentimentIndex: '74% Positif',
+        sentimentIndex: averageSentiment === null
+          ? null
+          : `${Math.round(((averageSentiment + 1) / 2) * 100)}%`,
+        sentimentLabel,
       },
-      priorityIssues: issueMap,
+      priorityIssues,
       briefingNews: recentNews,
-      todayAgenda,
+      todayAgenda: [],
+      recommendation: topIssue
+        ? `Tinjau isu ${topIssue.title.toLowerCase()} di ${topIssue.location}; ${topIssue.frequency} aspirasi masuk dalam 7 hari terakhir.`
+        : 'Belum ada aspirasi terbaru yang perlu diprioritaskan. Periksa kembali setelah data aspirasi masuk.',
     };
   }
 
@@ -249,11 +311,15 @@ export class StudioService implements OnModuleDestroy {
       const baseSlug = ContentPublication.generateSlug(dto.topic.slice(0, 50));
       const finalSlug = `${baseSlug}-${randomUUID().slice(0, 8)}`;
       const canonicalUrlObj = new CanonicalUrl(new SubdomainSlug(subdomainSlug), finalSlug);
+      const topicCharacters = Array.from(dto.topic.trim());
+      const placeholderTitle = topicCharacters.length <= 255
+        ? topicCharacters.join('')
+        : `${topicCharacters.slice(0, 252).join('').trimEnd()}...`;
       const [created] = await tx
         .insert(contentPublications)
         .values({
           tenantId,
-          title: dto.topic,
+          title: placeholderTitle,
           slug: finalSlug,
           excerpt: 'Sedang disintesis oleh Polaris AI Engine...',
           bodyContentMarkdown: '# Sedang Disintesis...\n\nNaskah kebijakan Anda sedang diproses oleh AI Agent di antrean server.',

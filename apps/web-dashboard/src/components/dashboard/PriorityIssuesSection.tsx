@@ -25,13 +25,17 @@ export function PriorityIssuesSection({ issues = [] }: PriorityIssuesSectionProp
       <div className="flex items-center justify-between">
         <h3 className="text-base font-extrabold text-slate-900 flex items-center gap-2">
           <AlertTriangle className="h-5 w-5 text-amber-500" />
-          <span>3 Isu Wilayah Prioritas Utama</span>
+          <span>Isu Wilayah Prioritas Utama</span>
         </h3>
-        <span className="text-xs font-bold text-slate-400">Penilaian Berbasis Frekuensi & Dampak</span>
+        <span className="text-xs font-bold text-slate-400">Berdasarkan aspirasi 7 hari terakhir</span>
       </div>
 
       <div className="grid gap-4 md:grid-cols-3">
-        {issues.map((issue) => (
+        {issues.length === 0 ? (
+          <Card className="col-span-full py-8 text-center text-xs text-slate-500">
+            Belum ada aspirasi dalam 7 hari terakhir untuk menentukan isu prioritas.
+          </Card>
+        ) : issues.map((issue) => (
           <Card key={issue.id} className="space-y-3 flex flex-col justify-between hover:border-slate-300 transition-colors">
             <div className="space-y-2">
               <div className="flex justify-between items-start">
