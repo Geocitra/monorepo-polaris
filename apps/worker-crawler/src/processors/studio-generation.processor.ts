@@ -253,20 +253,28 @@ export class StudioGenerationProcessor {
           const infographicSpec = await this.aiEngine.generateInfographicSpec(generatedArticle.contentMarkdown, tenantId);
           const dallePrompt = await this.aiEngine.generateDallePrompt(infographicSpec);
           const dalleResult = await this.aiEngine.generateDalleImage(dallePrompt, tenantId);
-          const uploadResult = await this.storageAdapter.uploadFromUrl(
-            dalleResult.temporaryImageUrl,
-            `posters/${tenantId}/${Date.now()}-${publicationId}.webp`
-          );
+          let finalPublicUrl = dalleResult.temporaryImageUrl;
+          let finalSizeBytes = 1024 * 500;
+          try {
+            const uploadResult = await this.storageAdapter.uploadFromUrl(
+              dalleResult.temporaryImageUrl,
+              `posters/${tenantId}/${Date.now()}-${publicationId}.webp`
+            );
+            finalPublicUrl = uploadResult.publicUrl;
+            finalSizeBytes = uploadResult.sizeBytes;
+          } catch (storageErr) {
+            console.warn(`[StudioProcessor] GCS/R2 upload dialihkan ke URL DALL-E sementara:`, storageErr);
+          }
 
           await withTenantContext(tenantId, async (tx) => {
             await tx.insert(mediaAssets).values({
               publicationId,
               assetType: AssetType.DALLE_POSTER,
-              r2StorageUrl: uploadResult.publicUrl,
-              cdnPublicUrl: uploadResult.publicUrl,
-              promptUsed: dallePrompt,
+              r2StorageUrl: finalPublicUrl,
+              cdnPublicUrl: finalPublicUrl,
+              promptUsed: JSON.stringify({ dallePrompt, infographicSpec }),
               mimeType: 'image/webp',
-              fileSizeBytes: uploadResult.sizeBytes,
+              fileSizeBytes: finalSizeBytes,
             });
 
             await tx
@@ -360,10 +368,18 @@ export class StudioGenerationProcessor {
       const infographicSpec = await this.aiEngine.generateInfographicSpec(article.content, tenantId);
       const dallePrompt = await this.aiEngine.generateDallePrompt(infographicSpec);
       const dalleResult = await this.aiEngine.generateDalleImage(dallePrompt, tenantId);
-      const uploadResult = await this.storageAdapter.uploadFromUrl(
-        dalleResult.temporaryImageUrl,
-        `posters/${tenantId}/${Date.now()}-${publicationId}.webp`
-      );
+      let finalPublicUrl = dalleResult.temporaryImageUrl;
+      let finalSizeBytes = 1024 * 500;
+      try {
+        const uploadResult = await this.storageAdapter.uploadFromUrl(
+          dalleResult.temporaryImageUrl,
+          `posters/${tenantId}/${Date.now()}-${publicationId}.webp`
+        );
+        finalPublicUrl = uploadResult.publicUrl;
+        finalSizeBytes = uploadResult.sizeBytes;
+      } catch (storageErr) {
+        console.warn(`[StudioProcessor] GCS/R2 upload dialihkan ke URL DALL-E sementara:`, storageErr);
+      }
 
       await withTenantContext(tenantId, async (tx) => {
         await tx
@@ -376,11 +392,11 @@ export class StudioGenerationProcessor {
         await tx.insert(mediaAssets).values({
           publicationId,
           assetType: AssetType.DALLE_POSTER,
-          r2StorageUrl: uploadResult.publicUrl,
-          cdnPublicUrl: uploadResult.publicUrl,
-          promptUsed: dallePrompt,
+          r2StorageUrl: finalPublicUrl,
+          cdnPublicUrl: finalPublicUrl,
+          promptUsed: JSON.stringify({ dallePrompt, infographicSpec }),
           mimeType: 'image/webp',
-          fileSizeBytes: uploadResult.sizeBytes,
+          fileSizeBytes: finalSizeBytes,
         });
 
         const currentMonth = new Date().toISOString().slice(0, 7);

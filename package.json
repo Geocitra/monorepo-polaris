@@ -4,7 +4,7 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "dev": "turbo run dev",
+    "dev": "turbo run dev --concurrency=20",
     "build": "turbo run build",
     "test": "turbo run test",
     "test:unit": "vitest run packages/core-domain/test packages/payment/test packages/ai-engine/test",

@@ -129,14 +129,51 @@ function KampanyeTerpaduContent() {
         }),
       });
 
-      const data = res.data || res;
-      setGeneratedResult(data);
+      const jobId = res?.jobId || res?.data?.jobId;
+      const publicationId = res?.publicationId || res?.data?.publicationId;
+
+      let finalResult: any = null;
+      if (jobId && publicationId) {
+        // Polling status job sampai pemrosesan AI selesai
+        for (let i = 0; i < 60; i++) {
+          await new Promise((resolve) => setTimeout(resolve, 1500));
+          try {
+            const statusRes = await ApiClient.request<any>(`/studio/jobs/${jobId}`);
+            if (statusRes?.percent) {
+              if (statusRes.percent >= 20 && statusRes.percent < 50) setGenerationStep(2);
+              else if (statusRes.percent >= 50 && statusRes.percent < 85) setGenerationStep(3);
+              else if (statusRes.percent >= 85) setGenerationStep(4);
+            }
+            if (statusRes?.status === 'COMPLETED' || (statusRes?.percent && statusRes.percent >= 100)) {
+              break;
+            }
+            if (statusRes?.status === 'FAILED') {
+              throw new Error(statusRes.failedReason || statusRes.errorDetails || 'Pemrosesan AI pada antrean gagal.');
+            }
+          } catch (pollErr: any) {
+            if (pollErr.message && !pollErr.message.includes('tidak ditemukan')) {
+              throw pollErr;
+            }
+          }
+        }
+
+        // Ambil hasil lengkap artikel, poster DALL-E, dan paket media sosial
+        const detail = await ApiClient.request<any>(`/studio/articles/${publicationId}`);
+        finalResult = {
+          publication: detail.article,
+          posterUrl: detail.asset?.cdnPublicUrl || detail.asset?.r2StorageUrl || '',
+          socialPack: detail.socialPack,
+          infographicData: detail.infographicData,
+        };
+      }
+
+      setGeneratedResult(finalResult || res);
       setActiveTab('article');
 
       toast({
         type: 'success',
-        title: 'Konten Siap!',
-        description: 'Naskah artikel, poster visual, dan pesan siaran WhatsApp/Instagram telah selesai dibuat.',
+        title: 'Konten AI Siap!',
+        description: 'Naskah artikel, poster visual DALL-E, dan pesan siaran WhatsApp/Instagram telah selesai dibuat.',
       });
 
       const updatedBilling = await ApiClient.request<any>('/billing/status');

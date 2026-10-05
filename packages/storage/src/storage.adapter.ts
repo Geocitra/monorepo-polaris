@@ -12,14 +12,18 @@ export class CloudflareR2StorageAdapter implements IStoragePort {
     sourceUrl: string,
     destinationPath: string
   ): Promise<{ publicUrl: string; sizeBytes: number }> {
-    // 1. Fetch binary data dari URL sementara DALL-E
-    const response = await fetch(sourceUrl);
-    if (!response.ok) {
-      throw new Error(`[StorageFetchError] Gagal mengunduh aset dari URL: ${response.statusText}`);
+    let rawBuffer: Buffer;
+    if (sourceUrl.startsWith('data:')) {
+      const base64Part = sourceUrl.split(',')[1] || '';
+      rawBuffer = Buffer.from(base64Part, 'base64');
+    } else {
+      const response = await fetch(sourceUrl);
+      if (!response.ok) {
+        throw new Error(`[StorageFetchError] Gagal mengunduh aset dari URL: ${response.statusText}`);
+      }
+      const arrayBuffer = await response.arrayBuffer();
+      rawBuffer = Buffer.from(arrayBuffer);
     }
-
-    const arrayBuffer = await response.arrayBuffer();
-    const rawBuffer = Buffer.from(arrayBuffer);
 
     // 2. Kompresi otomatis menggunakan Sharp ke format WebP
     const optimized = await ImageOptimizer.optimizePosterBuffer(rawBuffer);

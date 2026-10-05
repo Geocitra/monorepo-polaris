@@ -17,6 +17,7 @@ import {
   mediaAssets,
   socialSyndicationPacks,
   portalConfigs,
+  portalThemeSettings,
   electoralDistricts,
   tenantMembers,
   mediaDiscourses,
@@ -199,19 +200,55 @@ export class StudioService implements OnModuleDestroy {
         );
       }
 
-      const [portal] = await tx
+      let [portal] = await tx
         .select({ subdomainSlug: portalConfigs.subdomainSlug })
         .from(portalConfigs)
         .where(eq(portalConfigs.tenantId, tenantId))
         .limit(1);
 
-      if (!portal?.subdomainSlug) {
-        throw new NotFoundException('Portal website dewan belum dikonfigurasi. Silakan lakukan setup di menu Branding terlebih dahulu.');
+      let subdomainSlug = portal?.subdomainSlug;
+      if (!subdomainSlug) {
+        const [member] = await tx
+          .select({ fullName: tenantMembers.fullName })
+          .from(tenantMembers)
+          .where(eq(tenantMembers.id, tenantId))
+          .limit(1);
+
+        const rawSlug = (member?.fullName || 'wakil-rakyat')
+          .toLowerCase()
+          .replace(/[^a-z0-9]/g, '-')
+          .replace(/-+/g, '-')
+          .slice(0, 30);
+        subdomainSlug = `${rawSlug}-${tenantId.slice(0, 4)}`;
+
+        const [createdPortal] = await tx
+          .insert(portalConfigs)
+          .values({
+            tenantId,
+            subdomainSlug,
+            isActive: true,
+            metaTitle: `Portal Resmi ${member?.fullName || 'Wakil Rakyat'}`,
+            metaDescription: `Portal transparansi kebijakan dan aspirasi konstituen.`,
+          })
+          .onConflictDoNothing()
+          .returning();
+
+        if (createdPortal) {
+          await tx
+            .insert(portalThemeSettings)
+            .values({
+              portalId: createdPortal.id,
+              primaryHexColor: '#1890ff',
+              secondaryHexColor: '#001529',
+              fontFamily: 'Inter, sans-serif',
+            })
+            .onConflictDoNothing();
+        }
       }
 
       const baseSlug = ContentPublication.generateSlug(dto.topic.slice(0, 50));
       const finalSlug = `${baseSlug}-${randomUUID().slice(0, 8)}`;
-      const canonicalUrlObj = new CanonicalUrl(new SubdomainSlug(portal.subdomainSlug), finalSlug);
+      const canonicalUrlObj = new CanonicalUrl(new SubdomainSlug(subdomainSlug), finalSlug);
       const [created] = await tx
         .insert(contentPublications)
         .values({
@@ -431,10 +468,23 @@ export class StudioService implements OnModuleDestroy {
       .where(eq(socialSyndicationPacks.publicationId, article.id))
       .limit(1);
 
+    let infographicData = null;
+    if (asset?.promptUsed) {
+      try {
+        const parsed = JSON.parse(asset.promptUsed);
+        if (parsed?.infographicSpec) {
+          infographicData = parsed.infographicSpec;
+        }
+      } catch {
+        // promptUsed is plain prompt string
+      }
+    }
+
     return {
       article,
       asset,
       socialPack: social,
+      infographicData,
     };
   }
 

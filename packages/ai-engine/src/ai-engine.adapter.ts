@@ -189,25 +189,58 @@ Keluarkan hasil dalam format JSON:
       metadata: { promptLength: englishPrompt.length },
     });
 
+    let activeModel = 'chatgpt-image-latest';
     try {
-      const response = await openaiClient.images.generate({
-        model: 'dall-e-3',
-        prompt: englishPrompt,
-        size: '1024x1792',
-        quality: 'standard',
-        n: 1,
-      });
+      let temporaryImageUrl: string | undefined;
 
-      const temporaryImageUrl = response.data?.[0]?.url;
+      // 1. Coba chatgpt-image-latest (model gambar terbaru OpenAI)
+      try {
+        const response = await (openaiClient.images as any).generate({
+          model: 'chatgpt-image-latest',
+          prompt: englishPrompt,
+          n: 1,
+        });
+        const first = response.data?.[0];
+        if (first?.url) {
+          temporaryImageUrl = first.url;
+        } else if (first?.b64_json) {
+          temporaryImageUrl = `data:image/png;base64,${first.b64_json}`;
+        }
+      } catch (chatgptErr: any) {
+        console.warn(`[AIEngine] chatgpt-image-latest dialihkan ke DALL-E: ${chatgptErr.message}`);
+        // 2. Fallback ke dall-e-3
+        activeModel = 'dall-e-3';
+        try {
+          const response = await openaiClient.images.generate({
+            model: 'dall-e-3',
+            prompt: englishPrompt,
+            size: '1024x1792',
+            quality: 'standard',
+            n: 1,
+          });
+          temporaryImageUrl = response.data?.[0]?.url;
+        } catch (dalle3Err: any) {
+          // 3. Fallback ke dall-e-2
+          activeModel = 'dall-e-2';
+          const response = await openaiClient.images.generate({
+            model: 'dall-e-2',
+            prompt: englishPrompt,
+            size: '1024x1024',
+            n: 1,
+          });
+          temporaryImageUrl = response.data?.[0]?.url;
+        }
+      }
+
       if (!temporaryImageUrl) {
-        throw new Error('DALL-E tidak mengembalikan URL gambar yang valid.');
+        throw new Error('AI Generator tidak mengembalikan URL atau data gambar yang valid.');
       }
 
       await telemetry.endTrace({
-        inputTokens: 1000, // Alokasi perkiraan ekuivalensi token visual
+        inputTokens: 1000,
         outputTokens: 0,
         status: 'SUCCESS',
-        outputPreview: { temporaryImageUrl },
+        outputPreview: { temporaryImageUrl: temporaryImageUrl.slice(0, 100), model: activeModel },
       });
 
       return {

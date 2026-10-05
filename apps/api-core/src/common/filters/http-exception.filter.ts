@@ -17,10 +17,10 @@ export class GlobalHttpExceptionFilter implements ExceptionFilter {
     const response = ctx.getResponse<Response>();
     const request = ctx.getRequest<Request>();
 
-    const status =
-      exception instanceof HttpException
-        ? exception.getStatus()
-        : HttpStatus.INTERNAL_SERVER_ERROR;
+    const isHttpExp = exception instanceof HttpException || typeof (exception as any)?.getStatus === 'function';
+    const status = isHttpExp
+      ? (exception as any).getStatus()
+      : HttpStatus.INTERNAL_SERVER_ERROR;
 
     const isProduction = process.env.NODE_ENV === 'production';
 
@@ -37,8 +37,8 @@ export class GlobalHttpExceptionFilter implements ExceptionFilter {
     // Sanitasi pesan response untuk klien
     let clientMessage: any;
 
-    if (exception instanceof HttpException) {
-      const res = exception.getResponse();
+    if (isHttpExp && typeof (exception as any)?.getResponse === 'function') {
+      const res = (exception as any).getResponse();
       clientMessage = typeof res === 'object' ? res : { message: res };
     } else {
       // PROTECTED VARIATIONS: Di mode produksi, jangan pernah membocorkan query error / stack trace!

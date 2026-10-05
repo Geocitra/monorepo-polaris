@@ -588,12 +588,41 @@ function AIArticleStudioContent() {
           topic: `${command}. Target panjang: ${lengthWordMap[selectedLength]}. Gaya: ${cfg.name}. Konteks: ${articleContent.slice(0, 1000)}`,
           targetAudience: cfg.audience,
           toneOverride: cfg.tone,
-          generateDalle: false,
+          generateDallePoster: false,
         }),
       });
 
-      if (res?.article?.bodyContentMarkdown) {
-        const refinedText = res.article.bodyContentMarkdown;
+      const jobId = res?.jobId || res?.data?.jobId;
+      const publicationId = res?.publicationId || res?.data?.publicationId;
+
+      let refinedText = '';
+      if (jobId && publicationId) {
+        for (let i = 0; i < 45; i++) {
+          await new Promise((resolve) => setTimeout(resolve, 1500));
+          try {
+            const statusRes = await ApiClient.request<any>(`/studio/jobs/${jobId}`);
+            if (statusRes?.status === 'COMPLETED' || (statusRes?.percent && statusRes.percent >= 100)) {
+              break;
+            }
+            if (statusRes?.status === 'FAILED') {
+              throw new Error(statusRes.failedReason || statusRes.errorDetails || 'Pemrosesan AI pada antrean gagal.');
+            }
+          } catch (pollErr: any) {
+            if (pollErr.message && !pollErr.message.includes('tidak ditemukan')) {
+              throw pollErr;
+            }
+          }
+        }
+
+        const detail = await ApiClient.request<any>(`/studio/articles/${publicationId}`);
+        if (detail?.article?.bodyContentMarkdown) {
+          refinedText = detail.article.bodyContentMarkdown;
+        }
+      } else if (res?.article?.bodyContentMarkdown) {
+        refinedText = res.article.bodyContentMarkdown;
+      }
+
+      if (refinedText) {
         setArticleContent(refinedText);
         setPreviewIteration(null);
         recordIteration(

@@ -283,22 +283,46 @@ export default function InfografisStudioPage() {
         body: JSON.stringify({
           topic: `Infografis Publik: ${promptText}. STRICT CONSTRAINT: DO NOT generate any institutional logos, government emblems, regional seals, party logos, coat of arms, badges, or watermark symbols.`,
           comparisonRegion: profile?.electoralDistrict?.dapilName || 'Dapil Anda',
-          generateDalle: true,
+          generateDallePoster: true,
           aspectRatio: selectedAspectRatio,
           style: selectedStyle,
         }),
       });
 
-      const newImageUrl =
-        res?.dalleImageUrl ||
-        res?.imageUrl ||
-        currentIteration?.imageUrl ||
-        '/images/showcase-poster-surya.jpg';
+      const jobId = res?.jobId || res?.data?.jobId;
+      const publicationId = res?.publicationId || res?.data?.publicationId;
 
-      const newTitle =
-        res?.infographic?.title ||
-        res?.publication?.title ||
-        promptText.slice(0, 50);
+      let newImageUrl = currentIteration?.imageUrl || '/images/showcase-poster-surya.jpg';
+      let newTitle = promptText.slice(0, 50);
+
+      if (jobId && publicationId) {
+        for (let i = 0; i < 60; i++) {
+          await new Promise((resolve) => setTimeout(resolve, 1500));
+          try {
+            const statusRes = await ApiClient.request<any>(`/studio/jobs/${jobId}`);
+            if (statusRes?.status === 'COMPLETED' || (statusRes?.percent && statusRes.percent >= 100)) {
+              break;
+            }
+            if (statusRes?.status === 'FAILED') {
+              throw new Error(statusRes.failedReason || statusRes.errorDetails || 'Pemrosesan AI pada antrean gagal.');
+            }
+          } catch (pollErr: any) {
+            if (pollErr.message && !pollErr.message.includes('tidak ditemukan')) {
+              throw pollErr;
+            }
+          }
+        }
+
+        const detail = await ApiClient.request<any>(`/studio/articles/${publicationId}`);
+        if (detail?.asset?.cdnPublicUrl || detail?.asset?.r2StorageUrl) {
+          newImageUrl = detail.asset.cdnPublicUrl || detail.asset.r2StorageUrl;
+        }
+        if (detail?.article?.title) {
+          newTitle = detail.article.title;
+        }
+      } else if (res?.dalleImageUrl || res?.imageUrl) {
+        newImageUrl = res.dalleImageUrl || res.imageUrl;
+      }
 
       const nextVersionNumber = (currentSession?.iterations.length || 0) + 1;
       const newIterationId = `iter-${Date.now()}`;

@@ -89,11 +89,59 @@ export class CmsService {
   }
 
   async getMyPortalConfig(tenantId: string) {
-    const [portal] = await db
+    let [portal] = await db
       .select()
       .from(portalConfigs)
       .where(eq(portalConfigs.tenantId, tenantId))
       .limit(1);
+
+    if (!portal) {
+      const [member] = await db
+        .select()
+        .from(tenantMembers)
+        .where(eq(tenantMembers.id, tenantId))
+        .limit(1);
+
+      if (member) {
+        const rawSlug = (member.fullName || 'wakil-rakyat')
+          .toLowerCase()
+          .replace(/[^a-z0-9]/g, '-')
+          .replace(/-+/g, '-')
+          .slice(0, 30);
+        const autoSlug = `${rawSlug}-${tenantId.slice(0, 4)}`;
+
+        const [created] = await db
+          .insert(portalConfigs)
+          .values({
+            tenantId,
+            subdomainSlug: autoSlug,
+            isActive: true,
+            metaTitle: `Portal Resmi ${member.fullName}`,
+            metaDescription: `Portal transparansi kebijakan dan aspirasi konstituen ${member.fullName}.`,
+          })
+          .onConflictDoNothing()
+          .returning();
+
+        const fetched = await db
+          .select()
+          .from(portalConfigs)
+          .where(eq(portalConfigs.tenantId, tenantId))
+          .limit(1);
+        portal = created || fetched[0];
+
+        if (portal) {
+          await db
+            .insert(portalThemeSettings)
+            .values({
+              portalId: portal.id,
+              primaryHexColor: '#1890ff',
+              secondaryHexColor: '#001529',
+              fontFamily: 'Inter, sans-serif',
+            })
+            .onConflictDoNothing();
+        }
+      }
+    }
 
     if (!portal) {
       throw new NotFoundException('Konfigurasi portal belum diinisialisasi.');

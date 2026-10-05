@@ -31,6 +31,23 @@ export class GenerateArticleRequestDto {
     base64: string;
   }>;
 
+  @IsOptional()
+  @IsString()
+  targetLength?: string;
+
+  @IsOptional()
+  @IsString()
+  writingStyle?: string;
+
+  @IsOptional()
+  @IsString()
+  style?: string;
+
+  @IsOptional()
+  @IsString()
+  aspectRatio?: string;
+
+  @IsOptional()
   @IsBoolean()
   generateDallePoster: boolean = true;
 }
