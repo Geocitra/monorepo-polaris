@@ -1,0 +1,29 @@
+flowchart TD
+    classDef dewan fill:#e6f7ff,stroke:#1890ff,stroke-width:2px;
+    classDef core fill:#f0f5ff,stroke:#2f54eb,stroke-width:2px;
+    classDef storage fill:#fffbe6,stroke:#faad14,stroke-width:2px;
+    classDef cdn fill:#f6ffed,stroke:#52c41a,stroke-width:2px;
+
+    Login([Dewan Masuk Menu Branding]):::dewan --> OpenEditor[Buka Visual Theme Customizer]:::dewan
+    
+    subgraph ConfigInputs [Atribut Kustomisasi Identitas]
+        OpenEditor --> SetBranding[1. Tentukan Identitas Visual:<br/>Warna Utama Partai, Font, Logo Fraksi]:::dewan
+        OpenEditor --> UploadAssets[2. Upload Foto Resmi & Banner Header]:::dewan
+        OpenEditor --> SetBio[3. Isi Profil: Riwayat Komisi, Dapil, Visi Misi]:::dewan
+        OpenEditor --> SetSocials[4. Tautkan Akun Resmi: IG, X, TikTok, YouTube]:::dewan
+    end
+
+    UploadAssets --> SanitizeUpload[S3/R2 Ingestion: Validasi Format File, Strip EXIF, Optimasi Ukuran]:::core
+    SetBranding --> SchemaValidator{Validasi Schema JSON:<br/>Bebas dari skrip berbahaya?}:::core
+    
+    SchemaValidator -->|Gagal: Ada Tag Script/HTML| RejectConfig[Tolak: Pelanggaran Keamanan]:::dewan
+    SchemaValidator -->|Lolos: JSON Valid| SaveDraftConfig[Simpan ke Draft Configuration]:::core
+
+    SaveDraftConfig --> LivePreview[Render Iframe Live Preview di Dashboard]:::dewan
+    
+    LivePreview --> ClickSave{Dewan Klik:<br/>Terapkan Perubahan ke Website}:::dewan
+    
+    ClickSave --> SaveDB[(PostgreSQL: Update Record PortalConfig)]:::storage
+    SaveDB --> InvalidateEdge[Edge CDN Cache Invalidation / Revalidate ISR]:::cdn
+    
+    InvalidateEdge --> PublicSiteReady([Website Pribadi Terupdate Instan:<br/>dewan.polaris.id]):::cdn

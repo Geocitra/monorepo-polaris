@@ -1,0 +1,47 @@
+flowchart TD
+    %% Styling
+    classDef user fill:#e6f7ff,stroke:#1890ff,stroke-width:2px;
+    classDef check fill:#fffbe6,stroke:#faad14,stroke-width:2px;
+    classDef ai fill:#fff7e6,stroke:#fa8c16,stroke-width:2px;
+    classDef storage fill:#fff0f6,stroke:#eb2f96,stroke-width:2px;
+    classDef log fill:#f0f5ff,stroke:#2f54eb,stroke-width:2px;
+
+    Start([Dewan Input Instruksi di Dashboard]):::user --> Prompt['Buat artikel teknokratis 3.000 kata<br/>tentang APBD & pupuk subsidi Cirebon<br/>beserta infografis DALL-E']:::user
+
+    Prompt --> PreFlightCheck{1. Pre-Flight Quota Check:<br/>Apakah sisa kuota artikel & DALL-E cukup?}:::check
+    PreFlightCheck -->|Kuota Habis| HaltAbort[Tolak Permintaan: Tampilkan Notifikasi Top-Up]:::check
+    PreFlightCheck -->|Kuota Valid| LockCredit[Hold 1 Kredit Konten Sementara]:::log
+
+    subgraph LangfuseSession [Langfuse Observability & Cost Tracker]
+        LockCredit --> StartTrace[Inisialisasi Tracing Session & Latency Counter]:::log
+        
+        subgraph TextPipeline [Jalur 1: Artikel Panjang 3.000 Kata]
+            StartTrace --> PullContext[Context Capsule: Tarik Perda + Data BPS Cirebon]:::log
+            PullContext --> CallGPT4o[OpenAI gpt-4o Flagship:<br/>Generate Teks Komprehensif ~4.500 Token Output]:::ai
+            CallGPT4o --> ArticleResult[Draft Artikel 3.000 Kata Siap]:::ai
+        end
+
+        subgraph VisualPipeline [Jalur 2: Infografis Visual DALL-E 3]
+            StartTrace --> MiniPromptGen[OpenAI gpt-4o-mini:<br/>Rakit Visual Prompt Khusus Bahasa Inggris]:::ai
+            MiniPromptGen --> CallDALLE[OpenAI DALL-E 3 API:<br/>Generate Gambar 1024x1792 Portrait]:::ai
+            CallDALLE --> TempURL[DALL-E Kembalikan Temporary Image URL]:::ai
+        end
+
+        subgraph SocialPipeline [Jalur 3: Adaptasi Format Medsos]
+            ArticleResult --> MiniSocial[OpenAI gpt-4o-mini:<br/>Pecah Artikel jadi Thread X, IG Caption, WA]:::ai
+        end
+    end
+
+    %% Storage Pipeline (Bypass VPS Disk)
+    TempURL --> StreamToR2[Worker Server: Stream Gambar Langsung dari OpenAI ke Cloudflare R2]:::storage
+    StreamToR2 --> GenPermURL[Hasilkan Permanent Public Asset URL:<br/>assets.polaris.id/posters/uuid.webp]:::storage
+
+    %% Final Accounting & Consolidation
+    ArticleResult --> Consolidate[Satukan Artikel + URL Gambar R2 + Teks Medsos]:::log
+    GenPermURL --> Consolidate
+    MiniSocial --> Consolidate
+
+    Consolidate --> EndTrace[Langfuse: Hitung Total Real Cost USD<br/>gpt-4o: Rp860 + DALLE: Rp1.280 = Rp2.140]:::log
+    
+    EndTrace --> DeductDB[(PostgreSQL Ledger:<br/>Potong Kuota Tenant Secara Permanen)]:::storage
+    DeductDB --> DeliverUI([Tampilkan Artikel 3.000 Kata & Poster PNG di Layar Dewan]):::user

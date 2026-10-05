@@ -1,0 +1,180 @@
+version: '3.9'
+
+networks:
+  polaris_prod_net:
+    driver: bridge
+    ipam:
+      driver: default
+
+volumes:
+  polaris_pg_data:
+    driver: local
+  polaris_redis_data:
+    driver: local
+
+services:
+  # =========================================================================
+  # 1. DATABASE KERNEL: POSTGRESQL 16 + PGVECTOR
+  # Port 5432 TIDAK DIEKSPOS KE HOST PUBLIK (Hanya internal bridge network)
+  # =========================================================================
+  postgres:
+    image: pgvector/pgvector:pg16
+    container_name: polaris_prod_postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-polaris_admin}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-polaris_secret_2026}
+      POSTGRES_DB: ${POSTGRES_DB:-polaris_db}
+    volumes:
+      - polaris_pg_data:/var/lib/postgresql/data
+      - ./schema.sql:/docker-entrypoint-initdb.d/01_schema.sql:ro
+    networks:
+      - polaris_prod_net
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-polaris_admin} -d ${POSTGRES_DB:-polaris_db}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    deploy:
+      resources:
+        limits:
+          cpus: '2.0'
+          memory: 2048M
+
+  # =========================================================================
+  # 2. CACHING & QUEUE BUS: REDIS 7
+  # Port 6379 TIDAK DIEKSPOS KE HOST PUBLIK
+  # =========================================================================
+  redis:
+    image: redis:7-alpine
+    container_name: polaris_prod_redis
+    restart: unless-stopped
+    command: redis-server --appendonly yes --requirepass ${REDIS_PASSWORD:-polaris_redis_secret_2026}
+    volumes:
+      - polaris_redis_data:/data
+    networks:
+      - polaris_prod_net
+    healthcheck:
+      test: ["CMD", "redis-cli", "-a", "${REDIS_PASSWORD:-polaris_redis_secret_2026}", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    deploy:
+      resources:
+        limits:
+          cpus: '1.0'
+          memory: 512M
+
+  # =========================================================================
+  # 3. BACKEND API CORE: NESTJS MODULAR APPLICATION
+  # =========================================================================
+  api-core:
+    build:
+      context: .
+      dockerfile: Dockerfile.api-core
+    container_name: polaris_prod_api_core
+    restart: unless-stopped
+    env_file:
+      - .env
+    environment:
+      - DATABASE_URL=postgresql://${POSTGRES_USER:-polaris_admin}:${POSTGRES_PASSWORD:-polaris_secret_2026}@postgres:5432/${POSTGRES_DB:-polaris_db}
+      - REDIS_URL=redis://:${REDIS_PASSWORD:-polaris_redis_secret_2026}@redis:6379
+      - NODE_ENV=production
+      - PORT=4000
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - polaris_prod_net
+    ports:
+      # Hanya bind ke localhost (127.0.0.1) agar reverse proxy Caddy/Nginx bisa mengakses
+      - "127.0.0.1:4000:4000"
+    deploy:
+      resources:
+        limits:
+          cpus: '1.5'
+          memory: 1024M
+
+  # =========================================================================
+  # 4. HEADLESS BACKGROUND WORKER: BULLMQ PROCESSORS & CRON
+  # =========================================================================
+  worker-crawler:
+    build:
+      context: .
+      dockerfile: Dockerfile.worker-crawler
+    container_name: polaris_prod_worker_crawler
+    restart: unless-stopped
+    env_file:
+      - .env
+    environment:
+      - DATABASE_URL=postgresql://${POSTGRES_USER:-polaris_admin}:${POSTGRES_PASSWORD:-polaris_secret_2026}@postgres:5432/${POSTGRES_DB:-polaris_db}
+      - REDIS_URL=redis://:${REDIS_PASSWORD:-polaris_redis_secret_2026}@redis:6379
+      - NODE_ENV=production
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      api-core:
+        condition: service_started
+    networks:
+      - polaris_prod_net
+    deploy:
+      resources:
+        limits:
+          cpus: '1.5'
+          memory: 1024M
+
+  # =========================================================================
+  # 5. PRIVATE EXECUTIVE WORKSPACE: NEXT.JS STANDALONE DASHBOARD
+  # =========================================================================
+  web-dashboard:
+    build:
+      context: .
+      dockerfile: Dockerfile.web-dashboard
+    container_name: polaris_prod_web_dashboard
+    restart: unless-stopped
+    env_file:
+      - .env
+    environment:
+      - NODE_ENV=production
+      - PORT=3000
+    depends_on:
+      - api-core
+    networks:
+      - polaris_prod_net
+    ports:
+      - "127.0.0.1:3000:3000"
+    deploy:
+      resources:
+        limits:
+          cpus: '1.0'
+          memory: 512M
+
+  # =========================================================================
+  # 6. PUBLIC CIVIC MICROSITE: NEXT.JS STANDALONE PORTAL
+  # =========================================================================
+  web-portal:
+    build:
+      context: .
+      dockerfile: Dockerfile.web-portal
+    container_name: polaris_prod_web_portal
+    restart: unless-stopped
+    env_file:
+      - .env
+    environment:
+      - NODE_ENV=production
+      - PORT=3001
+    depends_on:
+      - api-core
+    networks:
+      - polaris_prod_net
+    ports:
+      - "127.0.0.1:3001:3001"
+    deploy:
+      resources:
+        limits:
+          cpus: '1.0'
+          memory: 512M

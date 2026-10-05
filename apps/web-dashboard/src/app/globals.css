@@ -1,0 +1,57 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ═══════════════════════════════════════════════════════════
+   POLARIS — Global Design Tokens (CSS Custom Properties)
+   These are overridden at runtime by ThemeProvider.
+   ═══════════════════════════════════════════════════════════ */
+
+:root {
+  /* ─── Primary (accent actions, active states, CTAs) ─── */
+  --color-primary: #3B82F6;
+  --color-primary-h: 217;
+  --color-primary-s: 91%;
+  --color-primary-l: 60%;
+  --color-primary-50: hsl(217, 91%, 97%);
+  --color-primary-100: hsl(217, 91%, 90%);
+  --color-primary-200: hsl(217, 91%, 80%);
+  --color-primary-hover: hsl(217, 91%, 52%);
+  --color-primary-foreground: #FFFFFF;
+
+  /* ─── Secondary (sidebar bg, deep chrome) ─── */
+  --color-secondary: #0F172A;
+  --color-secondary-h: 222;
+  --color-secondary-s: 47%;
+  --color-secondary-l: 11%;
+  --color-secondary-50: hsl(222, 47%, 56%);
+  --color-secondary-foreground: #FFFFFF;
+
+  /* ─── Sidebar tokens ─── */
+  --sidebar-bg: #0F172A;
+  --sidebar-fg: #E2E8F0;
+  --sidebar-fg-muted: #94A3B8;
+  --sidebar-active-bg: hsla(217, 91%, 60%, 0.15);
+  --sidebar-active-fg: hsl(217, 91%, 80%);
+  --sidebar-hover-bg: rgba(255, 255, 255, 0.06);
+  --sidebar-border: rgba(255, 255, 255, 0.08);
+  --sidebar-logo-bg: #3B82F6;
+  --sidebar-logo-fg: #FFFFFF;
+  --sidebar-brand-accent: #3B82F6;
+}
+
+body {
+  color: #0f172a;
+  background-color: #f8fafc;
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* ═══════════════════════════════════════════════════
+   Smooth CSS transitions for theme color changes
+   ═══════════════════════════════════════════════════ */
+
+.theme-transition,
+.theme-transition * {
+  transition: background-color 0.35s ease, color 0.25s ease, border-color 0.3s ease, box-shadow 0.3s ease;
+}

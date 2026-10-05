@@ -1,0 +1,69 @@
+flowchart TD
+    %% Styling
+    classDef dewan fill:#e6f7ff,stroke:#1890ff,stroke-width:2px;
+    classDef payment fill:#fff0f6,stroke:#eb2f96,stroke-width:2px;
+    classDef system fill:#f0f5ff,stroke:#2f54eb,stroke-width:2px;
+    classDef ai fill:#fff7e6,stroke:#fa8c16,stroke-width:2px;
+    classDef web fill:#f6ffed,stroke:#52c41a,stroke-width:2px;
+    classDef social fill:#f9f0ff,stroke:#722ed1,stroke-width:2px;
+
+    %% FASE 1: SUBSCRIPTION
+    subgraph PhaseSubscription [Fase 1: Onboarding & Subscription Lifecycle]
+        DewanStart([Calon Pengguna / Anggota Dewan]):::dewan --> Register[Registrasi Akun & Pilih Dapil]:::dewan
+        Register --> SelectPlan[Pilih Paket Langganan SaaS]:::dewan
+        SelectPlan --> PayGate[Payment Gateway: Midtrans / Xendit]:::payment
+        
+        PayGate --> CheckPayment{Status Pembayaran Valid?}:::payment
+        CheckPayment -->|Gagal / Kadaluwarsa| PayFailed[Notifikasi Gagal / Batalkan Akses]:::payment
+        CheckPayment -->|Sukses: Webhook Terkirim| ProvisionTenant[Provisioning Workspace & Database Tenant]:::system
+        
+        ProvisionTenant --> AutoCreateWeb[Inisialisasi Website Pribadi:<br/>dewan.polaris.id]:::web
+    end
+
+    %% FASE 2: SETUP & KUSTOMISASI
+    subgraph PhaseCustomization [Fase 2: Branding & Website Customization]
+        AutoCreateWeb --> SetupPortal[Dewan Kustomisasi Website:<br/>1. Upload Foto Resmi & Bio<br/>2. Tentukan Warna Tema / Partai<br/>3. Hubungkan Akun Medsos]:::dewan
+        SetupPortal --> SaveConfig[(Simpan Konfigurasi Portal ke PostgreSQL)]:::system
+    end
+
+    %% FASE 3: AI CREATIVE STUDIO
+    subgraph PhaseStudio [Fase 3: Dialog Virtual Assistant & Konten Studio]
+        SaveConfig --> DashboardLogin([Dewan Buka Dashboard POLARIS]):::dewan
+        DashboardLogin --> ChatAI[Dialog dengan Virtual Assistant:<br/>'Buat analisis isu pupuk di Cirebon<br/>bandingkan dengan kebijakan di Jabar']:::dewan
+        
+        ChatAI --> QueryEngine[Context Builder: Tarik Data Shared Wilayah + Data Internet]:::system
+        QueryEngine --> OpenAIProcess[OpenAI Process via Langfuse Trace]:::ai
+        
+        OpenAIProcess --> OutputArticle[1. Teks Artikel Lengkap & Berita]:::ai
+        OpenAIProcess --> OutputPosterData[2. Struktur Data Infografis / Poster]:::ai
+        OpenAIProcess --> OutputSocialCopy[3. Teks Siap Sebar Medsos: IG, X, WA]:::ai
+        
+        OutputPosterData --> ImageRenderer[Template Engine: Render Gambar Poster PNG<br/>Lengkap dengan Foto Dewan & Logo]:::system
+    end
+
+    %% FASE 4: PUBLISHING & SHARING
+    subgraph PhasePublishing [Fase 4: Penerbitan & Distribusi Konten]
+        OutputArticle --> PreviewDashboard[Layar Pratinjau Terpadu Dewan]:::dewan
+        ImageRenderer --> PreviewDashboard
+        OutputSocialCopy --> PreviewDashboard
+        
+        PreviewDashboard --> ClickPublish{Dewan Klik:<br/>Terbitkan ke Website Pribadi}:::dewan
+        
+        ClickPublish --> LiveWeb[Tayang di Website Pribadi Dewan:<br/>dewan.polaris.id/artikel-pupuk]:::web
+        
+        LiveWeb --> GenSpokes[Sistem Buat Aset Sebaran Multi-Kanal<br/>dengan Link Canonical Menuju Website]:::system
+        
+        GenSpokes --> ShareIG[Instagram: Unduh Poster + Salin Caption]:::social
+        GenSpokes --> ShareX[X/Twitter: Thread Otomatis + Tautan Web]:::social
+        GenSpokes --> ShareWA[WhatsApp: Broadcast Teks + Gambar + Link Web]:::social
+    end
+
+    %% FASE 5: KONSUMSI PUBLIK
+    subgraph PhasePublic [Fase 5: Kunjungan Publik & Konstituen]
+        ShareIG -. Arahkan Pembaca .-> VisitWeb([Masyarakat Buka Website Pribadi Dewan]):::web
+        ShareX -. Arahkan Pembaca .-> VisitWeb
+        ShareWA -. Arahkan Pembaca .-> VisitWeb
+        
+        VisitWeb --> ReadContent[Baca Artikel Lengkap & Unduh Infografis]:::web
+        VisitWeb --> SendFeedback[Kirim Aspirasi / Pertanyaan via Web Widget]:::web
+    end

@@ -1,0 +1,16 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --portal-primary: #1890ff;
+  --portal-secondary: #001529;
+  --portal-font: Inter, sans-serif;
+}
+
+body {
+  color: #1a1a1a;
+  background-color: #fafafa;
+  font-family: var(--portal-font);
+  -webkit-font-smoothing: antialiased;
+}

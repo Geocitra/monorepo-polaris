@@ -1,0 +1,113 @@
+# =========================================================================
+# POLARIS PLATFORM — PRODUCTION MASTER CADDYFILE (CADDY V2.8+)
+# =========================================================================
+
+{
+    # Email resmi untuk pendaftaran sertifikat ACME Let's Encrypt / ZeroSSL
+    email admin@polaris.id
+
+    # ON-DEMAND TLS CONFIGURATION
+    # Menerbitkan sertifikat SSL instan untuk custom domain dewan secara otomatis
+    on_demand_tls {
+        # Endpoint validasi kepemilikan domain (Anti-DDoS Certificate)
+        ask http://127.0.0.1:4000/api/v1/cms/domain/check
+        interval 2m
+        burst 5
+    }
+
+    # Logging global terstruktur (JSON format)
+    log {
+        output stdout
+        format json
+        level INFO
+    }
+}
+
+# =========================================================================
+# SNIPPET: SECURITY HEADERS & COMPRESSION
+# =========================================================================
+(security_headers) {
+    header {
+        # HSTS Preload (Kekuatan SSL 1 Tahun Penuh)
+        Strict-Transport-Security "max-age=31536000; includeSubDomains; preload"
+        # Anti-MIME Sniffing
+        X-Content-Type-Options "nosniff"
+        # Mencegah Clickjacking (Izinkan iFrame hanya dari domain yang sama untuk live preview)
+        X-Frame-Options "SAMEORIGIN"
+        # Referrer Policy
+        Referrer-Policy "strict-origin-when-cross-origin"
+        # Permissions Policy
+        Permissions-Policy "camera=(), microphone=(), geolocation=(), payment=()"
+        # Hapus header identitas server untuk mencegah fingerprinting
+        -Server
+        -X-Powered-By
+    }
+    # Kompresi dinamis Zstandard dan Gzip
+    encode zstd gzip
+}
+
+# =========================================================================
+# 1. API BACKEND SUBSYSTEM: api.polaris.id
+# =========================================================================
+api.polaris.id {
+    import security_headers
+
+    reverse_proxy 127.0.0.1:4000 {
+        header_up Host {host}
+        header_up X-Real-IP {remote_host}
+        header_up X-Forwarded-For {remote_host}
+        header_up X-Forwarded-Proto {scheme}
+        
+        # Buffer response untuk efisiensi transfer data besar
+        transport http {
+            dial_timeout 5s
+            response_header_timeout 60s
+        }
+    }
+}
+
+# =========================================================================
+# 2. PRIVATE EXECUTIVE WORKSPACE: app.polaris.id
+# =========================================================================
+app.polaris.id {
+    import security_headers
+
+    reverse_proxy 127.0.0.1:3000 {
+        header_up Host {host}
+        header_up X-Real-IP {remote_host}
+        header_up X-Forwarded-For {remote_host}
+        header_up X-Forwarded-Proto {scheme}
+    }
+}
+
+# =========================================================================
+# 3. WILDCARD CIVIC MICROSITES & ROOT: polaris.id & *.polaris.id
+# =========================================================================
+polaris.id, *.polaris.id, cname.polaris.id {
+    import security_headers
+
+    reverse_proxy 127.0.0.1:3001 {
+        header_up Host {host}
+        header_up X-Real-IP {remote_host}
+        header_up X-Forwarded-For {remote_host}
+        header_up X-Forwarded-Proto {scheme}
+    }
+}
+
+# =========================================================================
+# 4. ON-DEMAND TLS CUSTOM DOMAIN CATCH-ALL (misal: achmadfauzi.id)
+# =========================================================================
+:443 {
+    tls {
+        on_demand
+    }
+
+    import security_headers
+
+    reverse_proxy 127.0.0.1:3001 {
+        header_up Host {host}
+        header_up X-Real-IP {remote_host}
+        header_up X-Forwarded-For {remote_host}
+        header_up X-Forwarded-Proto {scheme}
+    }
+}

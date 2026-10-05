@@ -1,0 +1,41 @@
+flowchart TD
+    %% Styling
+    classDef client fill:#e6fffb,stroke:#13c2c2,stroke-width:2px;
+    classDef edge fill:#f6ffed,stroke:#52c41a,stroke-width:2px;
+    classDef vps fill:#f0f5ff,stroke:#2f54eb,stroke-width:2px;
+    classDef db fill:#fffbe6,stroke:#faad14,stroke-width:2px;
+    classDef r2 fill:#fff0f6,stroke:#eb2f96,stroke-width:2px;
+
+    Visitor([Warga / Konstituen Buka Browser]):::client --> URLInput[Ketik URL: ahmad.polaris.id / budi.polaris.id]:::client
+
+    subgraph LayerEdge [1. Layer Edge & DNS - Cloudflare Terpusat]
+        URLInput --> WildcardDNS[Cloudflare Wildcard DNS:<br/>Record: *.polaris.id -> Arahkan ke IP VPS]:::edge
+        WildcardDNS --> CloudflareProxy[Cloudflare Proxy:<br/>Auto SSL/TLS + DDoS Shield + Edge CDN Cache]:::edge
+    end
+
+    CloudflareProxy --> IngressVPS[Trafik Masuk ke IP Server VPS]:::vps
+
+    subgraph LayerVPS [2. Layer Server VPS - 4 vCPU / 8 GB RAM]
+        IngressVPS --> ReverseProxy[Nginx / Caddy Reverse Proxy:<br/>Terima Request Port 80/443 & Forward ke Node.js]:::vps
+        
+        ReverseProxy --> NextMiddleware[Next.js App Middleware:<br/>Baca HTTP Header 'Host']:::vps
+        
+        NextMiddleware --> ExtractSlug[Ekstraksi Subdomain:<br/>'ahmad.polaris.id' -> slug = 'ahmad']:::vps
+        
+        subgraph DatabaseQuery [Pencarian Tenant Kilat]
+            ExtractSlug --> QueryTenant[(PostgreSQL Multi-Tenant DB:<br/>SELECT * FROM portals WHERE slug = 'ahmad'<br/>AND subscription_status = 'ACTIVE')]:::db
+        end
+        
+        QueryTenant --> IsActive{Apakah Tenant Valid<br/>& Langganan Aktif?}:::vps
+        
+        IsActive -->|Tidak / Expired| ShowSuspended[Render Halaman: Website Dinonaktifkan]:::vps
+        IsActive -->|Valid & Aktif| AssembleHTML[Render Halaman Web Pribadi Dewan:<br/>Suntikkan Foto, Profil, Warna & Artikel Terbitan]:::vps
+    end
+
+    subgraph LayerAssets [3. Layer Aset Gambar Terdistribusi - Cloudflare R2]
+        AssembleHTML -.-> DirectR2[Pengunjung Unduh Gambar Langsung dari R2 CDN]:::r2
+        DirectR2 -.-> Visitor
+    end
+
+    AssembleHTML --> SendHTML[Kirim Dokumen HTML/JS Responsif ke Browser Warga]:::vps
+    SendHTML --> VisitorScreen([Website Pribadi Dewan Terbuka Sempurna]):::client

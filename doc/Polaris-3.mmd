@@ -1,0 +1,36 @@
+flowchart TD
+    classDef dewan fill:#e6f7ff,stroke:#1890ff,stroke-width:2px;
+    classDef payment fill:#fff0f6,stroke:#eb2f96,stroke-width:2px;
+    classDef core fill:#f0f5ff,stroke:#2f54eb,stroke-width:2px;
+    classDef storage fill:#fffbe6,stroke:#faad14,stroke-width:2px;
+
+    StartReg([Calon Pengguna Registrasi]):::dewan --> InputForm[Input: Nama, Email, No HP, Asal Dapil, Pilihan Subdomain]:::dewan
+    InputForm --> ValidateSlug{Validasi Subdomain:<br/>Apakah slug tersedia & bukan kata terlarang?}:::core
+    
+    ValidateSlug -->|Ditolak/Duplikat| ReturnSlugErr[Tolak: Minta Ganti Slug Subdomain]:::dewan
+    ValidateSlug -->|Valid| SelectPlan[Pilih Tier Langganan:<br/>Bulanan / Tahunan / Periode 5 Tahun]:::dewan
+    
+    SelectPlan --> CreateInvoice[Subscription Engine:<br/>Generate Invoice & Token Transaksi]:::core
+    CreateInvoice --> MidtransSnap[Payment Gateway: Buka Snap Window Midtrans/Xendit]:::payment
+    
+    MidtransSnap --> UserPay[Dewan Bayar: QRIS / VA / Kartu Kredit]:::dewan
+    UserPay --> GatewayWebhook[Payment Gateway Kirim Webhook ke Backend]:::payment
+    
+    subgraph IdempotentVerification [Verifikasi Transaksional Aman]
+        GatewayWebhook --> VerifySig{Cek Signature Key & Idempotency Key}:::core
+        VerifySig -->|Invalid| DropWebhook[Drop Request: Potensi Serangan Fraud]:::core
+        VerifySig -->|Valid| CheckStatus{Status Pembayaran?}:::payment
+    end
+
+    CheckStatus -->|Failed/Expired| MarkCancel[Update Status: INVOICE_EXPIRED]:::core
+    CheckStatus -->|Settlement / Sukses| AtomicProvision[Eksekusi Atomic Provisioning Transaction]:::core
+
+    subgraph TenantProvisioning [Penyediaan Workspace & Subdomain]
+        AtomicProvision --> CreateTenant[1. Insert Tenant Record & Role Dewan]:::storage
+        AtomicProvision --> CreateSubdomain[2. Daftarkan DNS Subdomain: dewan.polaris.id]:::storage
+        AtomicProvision --> InitQuota[3. Alokasikan Kuota Token AI Bulanan]:::storage
+        AtomicProvision --> InitTheme[4. Inisialisasi Template Default Website Pribadi]:::storage
+    end
+
+    TenantProvisioning --> SendWelcome[Kirim Email Onboarding & Akses Login]:::core
+    SendWelcome --> ReadyToLogin([Dewan Siap Akses Dashboard]):::dewan

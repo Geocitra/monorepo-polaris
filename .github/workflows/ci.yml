@@ -1,0 +1,102 @@
+name: POLARIS Continuous Integration (CI)
+
+on:
+  push:
+    branches: [main, develop, 'feature/**']
+  pull_request:
+    branches: [main]
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  # =========================================================================
+  # JOB 1: STATIC ANALYSIS & TYPE CHECKING
+  # =========================================================================
+  static-analysis:
+    name: Lint & Type Safety Check
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js 22 LTS
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Setup PNPM Package Manager
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10.2.0
+
+      - name: Restore PNPM Cache
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.pnpm-store
+            node_modules
+          key: ${{ runner.os }}-pnpm-${{ hashFiles('**/pnpm-lock.yaml') }}
+          restore-keys: |
+            ${{ runner.os }}-pnpm-
+
+      - name: Install Monorepo Dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Execute Strict Type Checking Across All Workspaces
+        run: pnpm check-types
+
+  # =========================================================================
+  # JOB 2: AUTOMATED DOMAIN INVARIANTS & UNIT TESTS
+  # =========================================================================
+  unit-tests:
+    name: Domain & Financial Unit Tests (Vitest)
+    runs-on: ubuntu-latest
+    needs: [static-analysis]
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js 22 LTS
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Setup PNPM
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10.2.0
+
+      - name: Install Dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build Core Domain Packages
+        run: pnpm build
+
+      - name: Run Vitest Unit Tests (Pure Invariants, Fee Calculator, Guardrails)
+        run: pnpm test
+
+  # =========================================================================
+  # JOB 3: SECURITY AUDIT & SUPPLY CHAIN CHECK
+  # =========================================================================
+  security-audit:
+    name: Supply Chain Dependency Audit
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js 22 LTS
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Setup PNPM
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10.2.0
+
+      - name: Audit High & Critical Vulnerabilities
+        run: pnpm audit --audit-level=high
+        continue-on-error: true # Melaporkan temuan tanpa memblokir darurat non-kritis

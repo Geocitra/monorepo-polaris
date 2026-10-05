@@ -1,0 +1,275 @@
+classDiagram
+    direction TB
+
+    %% ==========================================
+    %% 1. TENANT & IDENTITY CONTEXT
+    %% ==========================================
+    class TenantMember {
+        <<aggregate root>>
+        +UUID id
+        +String email
+        +String password_hash
+        +String full_name
+        +String phone_number
+        +String party_affiliation
+        +LegislativeLevel legislative_level
+        +UUID electoral_district_id
+        +DateTime created_at
+        +DateTime updated_at
+        +register()
+        +updateProfile()
+    }
+
+    class ElectoralDistrict {
+        <<entity>>
+        +UUID id
+        +String dapil_code
+        +String dapil_name
+        +String province_name
+        +String[] regency_coverage
+    }
+
+    class LegislativeLevel {
+        <<enumeration>>
+        DPR_RI
+        DPRD_PROVINSI
+        DPRD_KABUPATEN_KOTA
+    }
+
+    %% ==========================================
+    %% 2. BILLING & SUBSCRIPTION CONTEXT
+    %% ==========================================
+    class Subscription {
+        <<aggregate root>>
+        +UUID id
+        +UUID tenant_id
+        +PlanTier plan_tier
+        +SubscriptionStatus status
+        +DateTime current_period_start
+        +DateTime current_period_end
+        +DateTime grace_period_end
+        +activate()
+        +suspend()
+        +renew()
+    }
+
+    class InvoiceTransaction {
+        <<entity>>
+        +UUID id
+        +UUID subscription_id
+        +String invoice_number
+        +Decimal amount_idr
+        +String gateway_order_id
+        +String payment_method
+        +PaymentStatus payment_status
+        +DateTime paid_at
+    }
+
+    class TenantQuotaLedger {
+        <<entity>>
+        +UUID id
+        +UUID tenant_id
+        +String billing_cycle_month
+        +Int article_limit
+        +Int article_used
+        +Int dalle_limit
+        +Int dalle_used
+        +BigInt total_tokens_consumed
+        +hasQuotaForArticle() Boolean
+        +hasQuotaForDalle() Boolean
+        +deductArticleQuota()
+        +deductDalleQuota()
+    }
+
+    class SubscriptionStatus {
+        <<enumeration>>
+        INACTIVE
+        PENDING_PAYMENT
+        ACTIVE
+        GRACE_PERIOD
+        SUSPENDED
+        ARCHIVED
+    }
+
+    %% ==========================================
+    %% 3. CMS & PERSONAL MICROSITE CONTEXT
+    %% ==========================================
+    class PortalConfig {
+        <<aggregate root>>
+        +UUID id
+        +UUID tenant_id
+        +String subdomain_slug
+        +String custom_domain
+        +Boolean is_active
+        +String meta_title
+        +String meta_description
+        +publish()
+        +unpublish()
+    }
+
+    class PortalThemeSetting {
+        <<value object>>
+        +String primary_hex_color
+        +String secondary_hex_color
+        +String font_family
+        +String hero_banner_url
+        +String official_photo_url
+        +String headline_tagline
+        +String bio_biography
+    }
+
+    class SocialLink {
+        <<entity>>
+        +UUID id
+        +UUID portal_id
+        +SocialPlatform platform
+        +String profile_url
+    }
+
+    %% ==========================================
+    %% 4. CONTENT & CREATIVE STUDIO CONTEXT
+    %% ==========================================
+    class ContentPublication {
+        <<aggregate root>>
+        +UUID id
+        +UUID tenant_id
+        +String title
+        +String slug
+        +String excerpt
+        +Text body_content_markdown
+        +Int word_count
+        +ContentStatus status
+        +String canonical_url
+        +DateTime published_at
+        +publishArticle()
+        +archiveArticle()
+    }
+
+    class MediaAsset {
+        <<entity>>
+        +UUID id
+        +UUID publication_id
+        +AssetType asset_type
+        +String r2_storage_url
+        +String cdn_public_url
+        +String prompt_used
+        +String mime_type
+        +Int file_size_bytes
+    }
+
+    class SocialSyndicationPack {
+        <<value object>>
+        +String instagram_caption
+        +String[] twitter_threads
+        +String whatsapp_broadcast_text
+    }
+
+    class ContentStatus {
+        <<enumeration>>
+        DRAFT
+        UNDER_REVIEW
+        PUBLISHED
+        UNPUBLISHED
+        ARCHIVED
+    }
+
+    class AssetType {
+        <<enumeration>>
+        DALLE_POSTER
+        INFOGRAPHIC_PNG
+        HEADER_IMAGE
+    }
+
+    %% ==========================================
+    %% 5. KNOWLEDGE & REGIONAL INTELLIGENCE CONTEXT
+    %% ==========================================
+    class KnowledgeDocument {
+        <<aggregate root>>
+        +UUID id
+        +String jurisdiction_region
+        +DocumentType doc_type
+        +String doc_number
+        +Int doc_year
+        +String title
+        +LegalStatus legal_status
+        +String source_url
+    }
+
+    class KnowledgeChunk {
+        <<entity>>
+        +UUID id
+        +UUID document_id
+        +String structural_reference
+        +Text chunk_content
+        +Vector_1536 vector_embedding
+    }
+
+    class MediaDiscourse {
+        <<entity>>
+        +UUID id
+        +String region_scope
+        +String news_portal_name
+        +String original_url
+        +String article_title
+        +Text clean_summary
+        +Float sentiment_score
+        +DateTime published_at
+    }
+
+    class MemberWritingMemory {
+        <<entity>>
+        +UUID id
+        +UUID tenant_id
+        +Text approved_sample_text
+        +String[] key_vocabulary
+        +Vector_1536 writing_style_embedding
+    }
+
+    %% ==========================================
+    %% 6. CONSTITUENT ENGAGEMENT CONTEXT
+    %% ==========================================
+    class ConstituentFeedback {
+        <<aggregate root>>
+        +UUID id
+        +UUID portal_id
+        +String tracking_ticket_code
+        +String regency_name
+        +String district_kecamatan
+        +IssueCategory category
+        +Text aspiration_message
+        +FeedbackStatus status
+        +DateTime submitted_at
+    }
+
+    class EncryptedPiiVault {
+        <<entity>>
+        +UUID id
+        +UUID feedback_id
+        +ByteA encrypted_citizen_name
+        +ByteA encrypted_phone_number
+        +String iv_vector
+    }
+
+    %% ==========================================
+    %% RELATIONSHIPS & ASSOCIATIONS (GRASP LOW COUPLING)
+    %% ==========================================
+    TenantMember "1" --> "1" ElectoralDistrict : bertugas di dapil
+    TenantMember "1" --> "1" Subscription : memiliki kontrak
+    TenantMember "1" --> "1" PortalConfig : memiliki website
+    TenantMember "1" --> "*" ContentPublication : memproduksi
+
+    Subscription "1" *-- "1..*" InvoiceTransaction : memiliki riwayat invoice
+    Subscription "1" *-- "1" TenantQuotaLedger : mengontrol kuota bulanan
+
+    PortalConfig "1" *-- "1" PortalThemeSetting : dikonfigurasi oleh
+    PortalConfig "1" *-- "0..*" SocialLink : menautkan akun
+    PortalConfig "1" --> "0..*" ContentPublication : menampilkan artikel live
+    PortalConfig "1" --> "0..*" ConstituentFeedback : menerima pesan warga
+
+    ContentPublication "1" *-- "0..*" MediaAsset : melampirkan gambar/poster
+    ContentPublication "1" *-- "1" SocialSyndicationPack : memiliki paket sebaran
+
+    KnowledgeDocument "1" *-- "1..*" KnowledgeChunk : dipecah menjadi pasal vektor
+    ContentPublication ..> KnowledgeChunk : referensi grounding via RAG
+
+    ConstituentFeedback "1" *-- "1" EncryptedPiiVault : mengisolasi data pribadi

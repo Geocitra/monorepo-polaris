@@ -1,0 +1,103 @@
+name: POLARIS Continuous Deployment (CD)
+
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+  packages: write
+
+jobs:
+  # =========================================================================
+  # JOB 1: MULTI-STAGE DOCKER CONTAINER BUILD & PUSH (GHCR)
+  # =========================================================================
+  build-and-push-images:
+    name: Build & Push Micro-Containers to GHCR
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        include:
+          - service: api-core
+            dockerfile: Dockerfile.api-core
+            image: polaris-api-core
+          - service: web-dashboard
+            dockerfile: Dockerfile.web-dashboard
+            image: polaris-web-dashboard
+          - service: web-portal
+            dockerfile: Dockerfile.web-portal
+            image: polaris-web-portal
+          - service: worker-crawler
+            dockerfile: Dockerfile.worker-crawler
+            image: polaris-worker-crawler
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Login to GitHub Container Registry (GHCR)
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Extract Metadata & Tags
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ghcr.io/${{ github.repository_owner }}/${{ matrix.image }}
+          tags: |
+            type=raw,value=latest
+            type=sha,format=short
+
+      - name: Build and Push Docker Image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: ${{ matrix.dockerfile }}
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+  # =========================================================================
+  # JOB 2: ZERO-DOWNTIME ROLLING DEPLOYMENT KE VPS PRODUKSI
+  # =========================================================================
+  deploy-to-production:
+    name: Zero-Downtime Rolling Rollout on VPS
+    runs-on: ubuntu-latest
+    needs: [build-and-push-images]
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Execute Remote Deployment via SSH
+        uses: appleboy/ssh-action@v1.2.0
+        with:
+          host: ${{ secrets.PROD_SSH_HOST }}
+          username: ${{ secrets.PROD_SSH_USER }}
+          key: ${{ secrets.PROD_SSH_KEY }}
+          port: ${{ secrets.PROD_SSH_PORT || 22 }}
+          script_stop: true
+          script: |
+            set -e
+            echo "=========================================================="
+            echo " [POLARIS CD] Memulai Rolling Deployment Versi ${{ github.sha }} "
+            echo "=========================================================="
+
+            cd /home/${{ secrets.PROD_SSH_USER }}/polaris-platform
+
+            # 1. Login ke GHCR di server VPS
+            echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
+
+            # 2. Sinkronkan file docker-compose.prod.yml & script terbaru
+            git fetch origin main
+            git reset --hard origin/main
+
+            # 3. Jalankan script rolling deployment aman
+            chmod +x ./scripts/deploy-production.sh
+            ./scripts/deploy-production.sh

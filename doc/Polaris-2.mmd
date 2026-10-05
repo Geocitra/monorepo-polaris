@@ -1,0 +1,26 @@
+stateDiagram-v2
+    [*] --> INACTIVE : Registrasi Selesai
+    INACTIVE --> PENDING_PAYMENT : Buat Invoice Checkout
+    
+    PENDING_PAYMENT --> ACTIVE : Pembayaran Terkonfirmasi (Webhook)
+    PENDING_PAYMENT --> CANCELLED : Batas Waktu Bayar Habis
+    
+    state ACTIVE {
+        [*] --> FULL_ACCESS : Kuota Token & Portal Siap
+        FULL_ACCESS --> USAGE_NORMAL : AI Generator & Portal Beroperasi
+    }
+    
+    ACTIVE --> GRACE_PERIOD : Masa Langganan Habis (H-7 s/d H+3)
+    GRACE_PERIOD --> ACTIVE : Perpanjangan Sukses Diterima
+    GRACE_PERIOD --> SUSPENDED : Lewat Masa Tenggang Belum Bayar
+    
+    state SUSPENDED {
+        [*] --> FROZEN_WORKSPACE
+        note right of FROZEN_WORKSPACE
+            1. Dashboard AI terkunci (Dewan tidak bisa generate baru).
+            2. Website Pribadi menjadi Read-Only atau dialihkan ke halaman suspend.
+        end note
+    }
+    
+    SUSPENDED --> ACTIVE : Tagihan Terbayar Kembali
+    SUSPENDED --> ARCHIVED : Melebihi 60 Hari Tanpa Pembayaran

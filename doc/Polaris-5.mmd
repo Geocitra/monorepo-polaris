@@ -1,0 +1,47 @@
+flowchart TD
+    classDef dewan fill:#e6f7ff,stroke:#1890ff,stroke-width:2px;
+    classDef core fill:#f0f5ff,stroke:#2f54eb,stroke-width:2px;
+    classDef ai fill:#fff7e6,stroke:#fa8c16,stroke-width:2px;
+    classDef queue fill:#f9f0ff,stroke:#722ed1,stroke-width:2px;
+    classDef render fill:#fff0f6,stroke:#eb2f96,stroke-width:2px;
+
+    ChatStart([Dewan Chat dengan Assistant]):::dewan --> PromptInput[Prompt: 'Buat analisis kelangkaan pupuk Cirebon,<br/>bandingkan efisiensinya dengan program Pemkot Bandung']:::dewan
+    
+    PromptInput --> QuotaCheck{Cek Kuota Token AI Tenant}:::core
+    QuotaCheck -->|Kuota Habis| PromptUpgrade[Tolak: Kuota Token Habis, Tampilkan Opsi Top Up]:::dewan
+    QuotaCheck -->|Kuota Aman| LangfuseInit[Langfuse: Inisialisasi Trace Session & Cost Counter]:::core
+
+    subgraph ContextAssembly [Context Capsule Builder]
+        LangfuseInit --> PullDapilLocal[Query Shared DB: Regulasi & BPS Cirebon]:::core
+        LangfuseInit --> PullDapilCompare[Query Shared DB: Kebijakan Pemkot Bandung]:::core
+        LangfuseInit --> PullWritingMemory[Query Private pgvector: Kosakata & Gaya Dewan]:::core
+        LangfuseInit --> PullRecentNews[Query Berita Internet Terkini Hasil Scraper]:::core
+    end
+
+    PullDapilLocal --> AssemblePrompt[Rakit System Prompt + Grounding Context]:::core
+    PullDapilCompare --> AssemblePrompt
+    PullWritingMemory --> AssemblePrompt
+    PullRecentNews --> AssemblePrompt
+
+    AssemblePrompt --> CallOpenAI[OpenAI GPT-4o Call via Strict JSON Schema]:::ai
+    
+    subgraph MultiModalParsing [Pemisahan Output Terstruktur]
+        CallOpenAI --> OutArticle[1. Objek Artikel: Judul, Lead, Body, Sumber]:::ai
+        CallOpenAI --> OutPosterSpec[2. Objek Infografis: Data Points, Headline, Icons, Palette]:::ai
+        CallOpenAI --> OutSocial[3. Objek Social Copy: IG, X, WA Variants]:::ai
+    end
+
+    OutArticle --> LangfuseEnd[Langfuse: Audit Token, Latensi & Evaluasi Faktual]:::core
+    OutSocial --> LangfuseEnd
+    OutPosterSpec --> PushRenderQueue[Kirim Data Grafis ke BullMQ Render Queue]:::queue
+
+    subgraph VisualRenderingEngine [Worker Grafis Headless - Asinkron]
+        PushRenderQueue --> WorkerSatori[Satori / Puppeteer SVG-to-PNG Engine]:::render
+        WorkerSatori --> InjectBranding[Suntikkan Template Visual, Foto Resmi & Logo]:::render
+        InjectBranding --> UploadImageStore[Simpan Gambar PNG Resolusi Tinggi ke Cloud Storage]:::render
+    end
+
+    UploadImageStore --> ConsolidatePackage[Satukan ke ContentPackageAggregate]:::core
+    LangfuseEnd --> ConsolidatePackage
+
+    ConsolidatePackage --> DisplayStudio([Sajikan Preview Lengkap di Dashboard Studio Dewan]):::dewan

@@ -1,0 +1,32 @@
+classDiagram
+    %% Styling
+    class TenantMember:::tenant
+    class Subscription:::billing
+    class PortalConfig:::cms
+    class ContentPublication:::studio
+    class KnowledgeDocument:::knowledge
+    class ConstituentFeedback:::citizen
+
+    %% Relasi Antar Sub-Domain (Kopling Rendah / Low Coupling)
+    TenantMember "1" --> "1" Subscription : memiliki kontrak langganan
+    TenantMember "1" --> "1" PortalConfig : memiliki 1 website pribadi
+    TenantMember "1" --> "*" ContentPublication : membuat banyak konten
+    
+    Subscription "1" --> "1" TenantQuotaLedger : mengontrol batas pemakaian
+    
+    PortalConfig "1" --> "*" ContentPublication : menampilkan artikel live
+    PortalConfig "1" --> "*" ConstituentFeedback : menerima pesan warga
+    
+    ContentPublication "1" --> "*" MediaAsset : memiliki poster DALL-E
+    ContentPublication "1" --> "1" SocialSyndicationPack : memiliki draf IG/X/WA
+    
+    KnowledgeDocument "1" --> "*" KnowledgeChunk : dipecah jadi pasal vektor
+    ContentPublication ..> KnowledgeChunk : menarik fakta grounding via RAG
+
+    %% Definisi Style
+    classDef tenant fill:#e6f7ff,stroke:#1890ff,stroke-width:2px;
+    classDef billing fill:#fff0f6,stroke:#eb2f96,stroke-width:2px;
+    classDef cms fill:#f6ffed,stroke:#52c41a,stroke-width:2px;
+    classDef studio fill:#fff7e6,stroke:#fa8c16,stroke-width:2px;
+    classDef knowledge fill:#f0f5ff,stroke:#2f54eb,stroke-width:2px;
+    classDef citizen fill:#f9f0ff,stroke:#722ed1,stroke-width:2px;

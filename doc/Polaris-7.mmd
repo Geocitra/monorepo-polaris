@@ -1,0 +1,30 @@
+flowchart TD
+    classDef public fill:#f6ffed,stroke:#52c41a,stroke-width:2px;
+    classDef security fill:#fff1f0,stroke:#f5222d,stroke-width:2px;
+    classDef core fill:#f0f5ff,stroke:#2f54eb,stroke-width:2px;
+    classDef storage fill:#fffbe6,stroke:#faad14,stroke-width:2px;
+
+    PublicUser([Masyarakat / Konstituen]):::public --> OpenLink[Buka Link dari Medsos / WhatsApp]:::public
+    OpenLink --> EdgeCDN[Edge CDN Caching Node]:::public
+    
+    EdgeCDN --> ViewArticle[Membaca Artikel Lengkap & Mengunduh Infografis]:::public
+    
+    ViewArticle --> DecideFeedback{Apakah Warga Ingin Mengirimkan Aspirasi?}:::public
+    DecideFeedback -->|Tidak| ReadOnlyEnd([Selesai Membaca]):::public
+    DecideFeedback -->|Ya| OpenFeedbackWidget[Buka Widget 'Kirim Masukan ke Dewan']:::public
+
+    subgraph BotDefense [Lapisan Keamanan Publik]
+        OpenFeedbackWidget --> InputMessage[Isi: Nama, Kecamatan, Pesan Aduan/Aspirasi]:::public
+        InputMessage --> RunCaptcha{Cloudflare Turnstile Challenge}:::security
+        RunCaptcha -->|Bot Terdeteksi| DropSubmission[Tolak & Blokir IP]:::security
+        RunCaptcha -->|Manusia Valid| RateLimitCheck{Cek Rate Limit IP}:::security
+        RateLimitCheck -->|Spamming| DropSubmission
+    end
+
+    subgraph PrivacyFilter [UU PDP Compliance Pipeline]
+        RateLimitCheck -->|Lolos| MaskPII[Enkripsi & Pisahkan Data Kontak Pribadi]:::security
+        MaskPII --> SaveToPrivateInbox[(Simpan ke Private Inbox Dewan)]:::storage
+    end
+
+    SaveToPrivateInbox --> UpdateMetrics[Agregasi Metrik Sentimen & Isu Wilayah Dapil]:::core
+    UpdateMetrics --> NotifyDewan[Notifikasi Masukan Baru Muncul di Dashboard Dewan]:::core

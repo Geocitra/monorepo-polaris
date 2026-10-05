@@ -1,0 +1,31 @@
+flowchart TD
+    classDef dewan fill:#e6f7ff,stroke:#1890ff,stroke-width:2px;
+    classDef core fill:#f0f5ff,stroke:#2f54eb,stroke-width:2px;
+    classDef hub fill:#f6ffed,stroke:#52c41a,stroke-width:2px;
+    classDef spoke fill:#f9f0ff,stroke:#722ed1,stroke-width:2px;
+
+    Preview([Dewan Cek Pratinjau Konten Studio]):::dewan --> ApprovePublish{Dewan Klik:<br/>Terbitkan & Buat Paket Sebaran}:::dewan
+    
+    ApprovePublish --> LockDraft[State Transition: Status = PUBLISHED]:::core
+    
+    subgraph CanonicalHubPublish [Eksekusi Penerbitan ke Website Pribadi]
+        LockDraft --> GenCanonicalURL[Generate Canonical URL Unik:<br/>dewan.polaris.id/artikel/analisis-pupuk-2026]:::core
+        GenCanonicalURL --> GenOpenGraph[Render Dinamis Dynamic OpenGraph Card Meta Tags]:::core
+        GenOpenGraph --> SaveContentDB[(Simpan ke PostgreSQL)]:::core
+        SaveContentDB --> PurgeCache[Invalidasi Cache Halaman Publik]:::hub
+        PurgeCache --> LiveWebArticle([Tayang Live di Website Pribadi]):::hub
+    end
+
+    subgraph SyndicationEngine [Penyusunan Paket Sebaran Multi-Kanal]
+        LiveWebArticle --> BuildSpokes[Syndication Strategy Pattern]:::core
+        
+        BuildSpokes --> BuildIG[1. Instagram Pack:<br/>• Download File PNG Infografis<br/>• Salin Caption Ringkas<br/>• Instruksi: 'Link di Bio']:::spoke
+        
+        BuildSpokes --> BuildX[2. X/Twitter Pack:<br/>• Thread 3 Cuitan Berurutan<br/>• Auto-attach Link Canonical<br/>• Karakter Dibatasi 280 Char]:::spoke
+        
+        BuildSpokes --> BuildWA[3. WhatsApp Pack:<br/>• Teks Format WA Bold/Italic<br/>• Tombol Forward One-Click<br/>• Tautan Rujukan Lengkap]:::spoke
+    end
+
+    BuildIG --> PresentDistribution[Tampilkan Tombol 'Salin & Sebar' di Dashboard]:::dewan
+    BuildX --> PresentDistribution
+    BuildWA --> PresentDistribution
