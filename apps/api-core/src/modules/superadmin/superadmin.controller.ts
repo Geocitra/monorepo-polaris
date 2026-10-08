@@ -3,6 +3,7 @@ import {
   Post,
   Get,
   Put,
+  Patch,
   Body,
   Param,
   Query,
@@ -23,9 +24,14 @@ import {
   UpdatePartyDto,
   CreateDapilDto,
   TopupTokenPoolDto,
+  AdminCreateTenantDto,
+  AdminUpdateLegislativeLevelDto,
+  AdminResetTenantPasswordDto,
+  AdminUpdatePricingMatrixDto,
 } from './dto/superadmin.dto.js';
 import { Public } from '../../common/decorators/public.decorator.js';
 import { SuperadminGuard } from '../../common/guards/superadmin.guard.js';
+import { LegislativeLevel } from '@polaris/shared-types';
 
 @Controller('admin')
 export class SuperadminController {
@@ -71,6 +77,50 @@ export class SuperadminController {
   @HttpCode(HttpStatus.OK)
   async getTenants(@Query('search') search?: string, @Query('party') party?: string) {
     return await this.superadminService.getTenants(search, party);
+  }
+
+  @UseGuards(SuperadminGuard)
+  @Post('tenants/create')
+  @HttpCode(HttpStatus.CREATED)
+  async createTenantWithCredentials(@Body() dto: AdminCreateTenantDto) {
+    return await this.superadminService.createTenantWithCredentials(dto);
+  }
+
+  @UseGuards(SuperadminGuard)
+  @Patch('tenants/:id/legislative-level')
+  @HttpCode(HttpStatus.OK)
+  async updateTenantLegislativeLevel(
+    @Param('id') id: string,
+    @Body() dto: AdminUpdateLegislativeLevelDto,
+  ) {
+    return await this.superadminService.updateTenantLegislativeLevel(id, dto);
+  }
+
+  @UseGuards(SuperadminGuard)
+  @Post('tenants/:id/reset-password')
+  @HttpCode(HttpStatus.OK)
+  async resetTenantPassword(
+    @Param('id') id: string,
+    @Body() dto: AdminResetTenantPasswordDto,
+  ) {
+    return await this.superadminService.resetTenantPassword(id, dto);
+  }
+
+  @UseGuards(SuperadminGuard)
+  @Get('pricing-matrices')
+  @HttpCode(HttpStatus.OK)
+  async getPricingMatrices(@Query('level') level?: LegislativeLevel) {
+    return await this.superadminService.getPricingMatrices(level);
+  }
+
+  @UseGuards(SuperadminGuard)
+  @Patch('pricing-matrices/:id')
+  @HttpCode(HttpStatus.OK)
+  async updatePricingMatrix(
+    @Param('id') id: string,
+    @Body() dto: AdminUpdatePricingMatrixDto,
+  ) {
+    return await this.superadminService.updatePricingMatrix(id, dto);
   }
 
   @UseGuards(SuperadminGuard)

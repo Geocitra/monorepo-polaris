@@ -25,7 +25,7 @@ interface OfficialIdentityFormProps {
   partyAffiliation?: string;
   setPartyAffiliation?: (val: string) => void;
   legislativeLevel: string;
-  setLegislativeLevel: (val: string) => void;
+  setLegislativeLevel?: (val: string) => void;
   commissionName?: string;
   setCommissionName?: (val: string) => void;
   email?: string;
@@ -338,26 +338,22 @@ export function OfficialIdentityForm({
       {/* PERAN JABATAN & EMAIL */}
       <div className="grid gap-2.5 sm:grid-cols-2">
         <div>
-          <label className="block text-[10px] font-bold text-slate-700 uppercase mb-0.5 flex items-center gap-1">
-            <Landmark className="h-3 w-3 text-blue-600" />
-            <span>Peran Jabatan Publik</span>
-          </label>
-          <select
-            value={legislativeLevel}
-            onChange={(e) => setLegislativeLevel(e.target.value)}
-            className="block w-full rounded-lg border border-slate-300 px-2.5 py-1.5 text-xs font-semibold text-slate-900 focus:border-blue-600 focus:outline-none focus:ring-1 focus:ring-blue-600 bg-white"
-          >
-            {PUBLIC_OFFICE_ROLE_OPTIONS.map((opt) => (
-              <option key={opt.value} value={opt.value}>
-                {opt.label}
-              </option>
-            ))}
-          </select>
-          {selectedRoleObj && (
-            <span className="text-[9px] text-blue-600 font-medium block mt-0.5 truncate">
-              {selectedRoleObj.scope}
+          <div className="flex items-center justify-between mb-0.5">
+            <label className="block text-[10px] font-bold text-slate-700 uppercase flex items-center gap-1">
+              <Landmark className="h-3 w-3 text-blue-600" />
+              <span>Peran Jabatan Publik</span>
+            </label>
+            <span className="inline-flex items-center gap-1 text-[9px] font-black uppercase tracking-wider px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200">
+              <CheckCircle2 className="w-2.5 h-2.5 text-emerald-600" />
+              Terkunci Mandat KPU
             </span>
-          )}
+          </div>
+          <div className="block w-full rounded-lg border border-slate-200 bg-slate-50 px-2.5 py-1.5 text-xs font-semibold text-slate-700 cursor-not-allowed">
+            {selectedRoleObj ? selectedRoleObj.label : legislativeLevel.replace(/_/g, ' ')}
+          </div>
+          <p className="text-[10px] text-slate-500 mt-1 leading-snug">
+            Tingkat jabatan resmi dikunci oleh sistem sesuai verifikasi mandat KPU. Hubungi Administrator untuk permohonan mutasi.
+          </p>
         </div>
 
         <div>

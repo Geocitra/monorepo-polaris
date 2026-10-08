@@ -28,6 +28,7 @@ export const portalThemeSettings = pgTable('portal_theme_settings', {
   officialPhotoUrl: text('official_photo_url'),
   headlineTagline: varchar('headline_tagline', { length: 255 }),
   bioBiography: text('bio_biography'),
+  layoutTemplateId: varchar('layout_template_id', { length: 50 }).default('standard-default').notNull(),
   updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
 });
 

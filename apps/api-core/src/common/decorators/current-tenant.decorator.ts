@@ -4,6 +4,8 @@ export interface AuthenticatedTenantPayload {
   tenantId: string;
   email: string;
   subdomainSlug: string;
+  role?: string;
+  mustChangePassword?: boolean;
 }
 
 export const CurrentTenant = createParamDecorator(

@@ -1,6 +1,15 @@
-import { Controller, Post, Get, Put, Body, HttpCode, HttpStatus } from '@nestjs/common';
+import { Controller, Post, Get, Put, Body, HttpCode, HttpStatus, ForbiddenException } from '@nestjs/common';
 import { IdentityService } from './identity.service.js';
-import { RegisterRequestDto, LoginRequestDto, LoginInitiateResponseDto, AuthResponseDto, SendOtpRequestDto, VerifyOtpRequestDto, UpdateProfileDto } from './dto/auth.dto.js';
+import {
+  RegisterRequestDto,
+  LoginRequestDto,
+  LoginInitiateResponseDto,
+  AuthResponseDto,
+  SendOtpRequestDto,
+  VerifyOtpRequestDto,
+  UpdateProfileDto,
+  ForceChangeInitialPasswordDto,
+} from './dto/auth.dto.js';
 import { Public } from '../../common/decorators/public.decorator.js';
 import { CurrentTenant, AuthenticatedTenantPayload } from '../../common/decorators/current-tenant.decorator.js';
 
@@ -10,9 +19,11 @@ export class IdentityController {
 
   @Public()
   @Post('register')
-  @HttpCode(HttpStatus.CREATED)
-  async register(@Body() dto: RegisterRequestDto): Promise<AuthResponseDto> {
-    return await this.identityService.registerTenant(dto);
+  @HttpCode(HttpStatus.FORBIDDEN)
+  async register(): Promise<never> {
+    throw new ForbiddenException(
+      'Pendaftaran publik mandiri telah ditutup. Pembukaan akun dewan resmi difasilitasi melalui jalur representasi institusi POLARIS. Silakan ajukan permohonan konsultasi lisensi di portal resmi.'
+    );
   }
 
   @Public()
@@ -34,6 +45,15 @@ export class IdentityController {
   @HttpCode(HttpStatus.OK)
   async verifyOtp(@Body() dto: VerifyOtpRequestDto): Promise<AuthResponseDto> {
     return await this.identityService.verifyOtp(dto);
+  }
+
+  @Post('force-change-password')
+  @HttpCode(HttpStatus.OK)
+  async forceChangePassword(
+    @CurrentTenant() user: AuthenticatedTenantPayload,
+    @Body() dto: ForceChangeInitialPasswordDto,
+  ) {
+    return await this.identityService.forceChangeInitialPassword(user.tenantId, dto);
   }
 
   @Get('me')

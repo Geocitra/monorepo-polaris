@@ -60,12 +60,12 @@ export default function TentangPage() {
                 <ArrowRight className="h-4 w-4" />
               </Link>
 
-              <a
-                href={`${DASHBOARD_URL}/register`}
+              <Link
+                href="/pricing"
                 className="inline-flex items-center px-6 py-3.5 rounded-xl bg-white border border-slate-300 text-slate-700 font-extrabold text-sm sm:text-base hover:bg-slate-50 transition-all shadow-xs"
               >
-                <span>Daftar Akun Workspace</span>
-              </a>
+                <span>Konsultasi Lisensi Dewan</span>
+              </Link>
             </div>
 
           </div>
@@ -189,13 +189,13 @@ export default function TentangPage() {
             </div>
 
             <div className="pt-4 text-center">
-              <a
-                href={`${DASHBOARD_URL}/register`}
+              <Link
+                href="/pricing"
                 className="inline-flex items-center gap-2 px-8 py-3.5 rounded-xl bg-blue-600 text-white font-extrabold text-sm shadow-lg shadow-blue-600/25 hover:bg-blue-700 transition-all"
               >
-                <span>Daftar Akun Workspace Sekarang</span>
+                <span>Ajukan Lisensi Workspace Sekarang</span>
                 <ArrowRight className="h-4 w-4" />
-              </a>
+              </Link>
             </div>
           </div>
         </section>

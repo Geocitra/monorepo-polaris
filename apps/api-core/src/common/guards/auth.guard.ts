@@ -45,6 +45,7 @@ export class AuthGuard implements CanActivate {
         subdomainSlug: payload.subdomainSlug,
         role: payload.role || 'MEMBER',
         isSuperadmin: payload.isSuperadmin === true,
+        mustChangePassword: payload.mustChangePassword === true,
       };
       return true;
     } catch (error) {

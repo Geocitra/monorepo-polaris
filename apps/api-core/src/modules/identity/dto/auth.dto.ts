@@ -45,12 +45,16 @@ export class RegisterRequestDto {
 }
 
 export class LoginRequestDto {
-  @IsEmail({}, { message: 'Format email tidak valid.' })
-  @IsNotEmpty()
-  email!: string;
+  @IsOptional()
+  @IsString()
+  email?: string;
+
+  @IsOptional()
+  @IsString()
+  identifier?: string;
 
   @IsString()
-  @IsNotEmpty()
+  @IsNotEmpty({ message: 'Password tidak boleh kosong.' })
   password!: string;
 }
 
@@ -67,10 +71,23 @@ export interface AuthResponseDto {
   user: {
     id: string;
     email: string;
+    username?: string | null;
     fullName: string;
     partyAffiliation?: string | null;
     subdomain: string;
+    mustChangePassword?: boolean;
+    legislativeLevel?: LegislativeLevel;
   };
+}
+
+export class ForceChangeInitialPasswordDto {
+  @IsString({ message: 'Kata sandi saat ini harus berupa teks.' })
+  @IsNotEmpty({ message: 'Kata sandi saat ini tidak boleh kosong.' })
+  currentPassword!: string;
+
+  @IsString({ message: 'Kata sandi baru harus berupa teks.' })
+  @MinLength(8, { message: 'Kata sandi baru minimal 8 karakter.' })
+  newPassword!: string;
 }
 
 export class SendOtpRequestDto {
@@ -92,6 +109,10 @@ export class VerifyOtpRequestDto {
 export class UpdateProfileDto {
   @IsOptional()
   @IsString()
+  username?: string;
+
+  @IsOptional()
+  @IsString()
   fullName?: string;
 
   @IsOptional()
@@ -106,13 +127,8 @@ export class UpdateProfileDto {
   @IsString()
   institutionPartyName?: string;
 
-  @IsOptional()
-  @IsEnum(LegislativeLevel, { message: 'Peran jabatan atau tingkat legislatif tidak valid.' })
-  legislativeLevel?: LegislativeLevel;
-
-  @IsOptional()
-  @IsEnum(LegislativeLevel, { message: 'Peran jabatan publik tidak valid.' })
-  officeRole?: LegislativeLevel;
+  // Catatan Arsitektur: legislativeLevel dan officeRole sengaja TIDAK dimasukkan di sini
+  // untuk mencegah arbitrase harga (Protected Variations). Mutasi level hanya via Superadmin.
 
   @IsOptional()
   @IsString()

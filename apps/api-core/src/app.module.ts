@@ -4,6 +4,7 @@ import { JwtModule } from '@nestjs/jwt';
 import { APP_FILTER, APP_GUARD, APP_INTERCEPTOR } from '@nestjs/core';
 import { GlobalHttpExceptionFilter } from './common/filters/http-exception.filter.js';
 import { AuthGuard } from './common/guards/auth.guard.js';
+import { ForcePasswordChangeGuard } from './common/guards/force-password-change.guard.js';
 import { RlsContextInterceptor } from './common/interceptors/rls-context.interceptor.js';
 import { IdentityModule } from './modules/identity/identity.module.js';
 import { BillingModule } from './modules/billing/billing.module.js';
@@ -13,6 +14,7 @@ import { ConstituentModule } from './modules/constituent/constituent.module.js';
 import { CommentsModule } from './modules/comments/comments.module.js';
 import { SuperadminModule } from './modules/superadmin/superadmin.module.js';
 import { PublicChatModule } from './modules/public-chat/public-chat.module.js';
+import { InquiryModule } from './modules/inquiry/inquiry.module.js';
 
 import { RedisModule } from './modules/redis/redis.module.js';
 import { RealtimeModule } from './modules/realtime/realtime.module.js';
@@ -38,6 +40,7 @@ import { RealtimeModule } from './modules/realtime/realtime.module.js';
     CommentsModule,    // 4.7: Komentar Publik Warga (Google OAuth) & Moderasi Dewan
     SuperadminModule,  // Superadmin Control Tower & Master Data Governance
     PublicChatModule,
+    InquiryModule,     // Inbound Lead Consultation & Google Meet Demo Triage
   ],
   providers: [
     {
@@ -47,6 +50,10 @@ import { RealtimeModule } from './modules/realtime/realtime.module.js';
     {
       provide: APP_GUARD,
       useClass: AuthGuard,
+    },
+    {
+      provide: APP_GUARD,
+      useClass: ForcePasswordChangeGuard,
     },
     {
       provide: APP_INTERCEPTOR,

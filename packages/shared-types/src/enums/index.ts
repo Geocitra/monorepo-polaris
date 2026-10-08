@@ -37,7 +37,6 @@ export enum SubscriptionStatus {
 export enum PlanTier {
   STARTER = 'STARTER',
   PRO = 'PRO',
-  VIP = 'VIP',
 }
 
 export enum PaymentStatus {
@@ -152,6 +151,27 @@ export enum DiscrepancyResolutionStatus {
   AUTO_RESOLVED = 'AUTO_RESOLVED',
   MANUALLY_RESOLVED = 'MANUALLY_RESOLVED',
   IGNORED = 'IGNORED',
+}
+
+export enum InquiryStatus {
+  NEW_LEAD = 'NEW_LEAD',
+  MEETING_SCHEDULED = 'MEETING_SCHEDULED',
+  PROPOSAL_SENT = 'PROPOSAL_SENT',
+  DEAL_CONVERTED = 'DEAL_CONVERTED',
+  REJECTED_DROPPED = 'REJECTED_DROPPED',
+}
+
+export enum BillingCycle {
+  MONTHLY = 'MONTHLY',
+  SEMESTER = 'SEMESTER',
+  ANNUAL = 'ANNUAL',
+}
+
+export enum PortalTemplateId {
+  STANDARD_DEFAULT = 'standard-default',
+  EDITORIAL_PRESTIGE = 'editorial-prestige',
+  BALIHO_HERO = 'baliho-hero',
+  NEWSROOM_BRIEF = 'newsroom-brief',
 }
 
 

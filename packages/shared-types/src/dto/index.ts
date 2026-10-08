@@ -12,6 +12,9 @@ import {
   ReconciliationBatchStatus,
   DiscrepancyType,
   DiscrepancyResolutionStatus,
+  InquiryStatus,
+  BillingCycle,
+  PortalTemplateId,
 } from '../enums/index.js';
 
 // ==========================================
@@ -38,6 +41,8 @@ export interface TenantProfileResponseDto {
   dapilName: string;
   subdomain: string;
   subscriptionStatus: SubscriptionStatus;
+  username?: string | null;
+  mustChangePassword?: boolean;
   photoUrl?: string | null;
   gender?: string | null;
   birthDate?: string | null;
@@ -106,11 +111,40 @@ export interface QuotaBalanceDto {
   dalleRemaining?: number;
 }
 
+export interface CyclePriceItemDto {
+  matrixId: string;
+  cycle: string;
+  durationDays: number;
+  amountIdr: number;
+  priceFormatted: string;
+  monthlyRateFormatted: string;
+  savingsNote?: string;
+}
+
+export interface TierOfferingDto {
+  tier: PlanTier;
+  name: string;
+  badge: string;
+  tagline: string;
+  isCurrentTier: boolean;
+  entitlements: {
+    thematicLayouts: boolean;
+    customDomain: boolean;
+    spkSupport: boolean;
+    priorityQueue: boolean;
+  };
+  perks: string[];
+  pricing: Record<string, CyclePriceItemDto>;
+}
+
 export interface BillingStatusDto {
   subscriptionStatus: string;
   planTier: string;
   currentPeriodEnd: string | null;
   quota: QuotaBalanceDto;
+  legislativeLevel?: LegislativeLevel;
+  availablePlans?: IsolatedPlanOptionDto[];
+  tierOfferings?: TierOfferingDto[];
   gatewayConfig?: {
     clientKey: string;
     isProduction: boolean;
@@ -147,6 +181,7 @@ export interface UpdatePortalThemeDto {
   officialPhotoUrl?: string;
   headlineTagline: string;
   bioBiography: string;
+  layoutTemplateId?: string | PortalTemplateId;
   socialLinks?: Array<{
     platform: SocialPlatform;
     profileUrl: string;
@@ -167,6 +202,7 @@ export interface PublicPortalDataDto {
     officialPhotoUrl?: string | null;
     tagline?: string | null;
     bio?: string | null;
+    layoutTemplateId?: string;
   };
   socialLinks: Array<{
     platform: SocialPlatform;
@@ -326,6 +362,127 @@ export interface GatewaySettlementRecordDto {
   paymentStatus: string;
   transactionTime: string;
   settlementTime: string;
+}
+
+// ==========================================
+// 8. LICENSE INQUIRIES & LEAD CRM DTOs
+// ==========================================
+export interface SubmitInquiryDto {
+  fullName: string;
+  phoneNumber: string;
+  officialEmail: string;
+  partyAffiliation?: string | null;
+  legislativeLevel: LegislativeLevel;
+  targetRegion: string;
+  preferredCycle?: BillingCycle | string;
+  preferredTier?: PlanTier;
+}
+
+export interface ScheduleMeetDto {
+  inquiryId: string;
+  meetingDatetime: string;
+  meetingUrl: string;
+  adminNotes?: string;
+}
+
+export interface UpdateInquiryStatusDto {
+  status: InquiryStatus;
+  adminNotes?: string;
+}
+
+export interface InquiryItemDto {
+  id: string;
+  fullName: string;
+  phoneNumber: string;
+  officialEmail: string;
+  partyAffiliation: string | null;
+  legislativeLevel: LegislativeLevel;
+  targetRegion: string;
+  preferredCycle: string;
+  preferredTier: PlanTier;
+  meetingDatetime: string | null;
+  meetingUrl: string | null;
+  adminNotes: string | null;
+  status: InquiryStatus;
+  handledByAdminId: string | null;
+  convertedTenantId: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+// ==========================================
+// 9. DYNAMIC PRICING MATRIX DTOs
+// ==========================================
+export interface PricingMatrixItemDto {
+  id: string;
+  legislativeLevel: LegislativeLevel;
+  planTier: PlanTier;
+  billingCycle: BillingCycle | string;
+  durationDays: number;
+  amountIdr: number;
+  isActive: boolean;
+  updatedAt: string;
+}
+
+export interface IsolatedPlanOptionDto {
+  tier: PlanTier;
+  cycle: BillingCycle | string;
+  durationDays: number;
+  amountIdr: number;
+  pricePerMonthIdr: number;
+  discountPercent?: number;
+}
+
+export interface UpdatePricingMatrixDto {
+  amountIdr?: number;
+  durationDays?: number;
+  isActive?: boolean;
+}
+
+// ==========================================
+// 10. IDENTITY SECURITY & ADMIN CREDENTIAL DTOs
+// ==========================================
+export interface ForceChangeInitialPasswordDto {
+  currentPassword: string;
+  newPassword: string;
+}
+
+export interface AdminCreateTenantWithCredentialDto {
+  email: string;
+  username?: string;
+  fullName: string;
+  phoneNumber: string;
+  partyAffiliation?: string | null;
+  legislativeLevel: LegislativeLevel;
+  electoralDistrictId?: string | null;
+  customDapilName?: string | null;
+  subdomainSlug: string;
+  planTier: PlanTier;
+  billingCycle?: BillingCycle | string;
+  generatePrepaidInvoice?: boolean;
+}
+
+export interface AdminResetPasswordDto {
+  tenantId: string;
+  newPassword?: string;
+}
+
+export interface AdminCreatedTenantResponseDto {
+  id: string;
+  email: string;
+  username: string;
+  fullName: string;
+  temporaryPasswordPlaintext: string;
+  subdomainSlug: string;
+  legislativeLevel: LegislativeLevel;
+  planTier: PlanTier;
+  prepaidInvoice?: {
+    orderId: string;
+    amountIdr: number;
+    paymentType?: string;
+    snapToken?: string;
+    redirectUrl?: string;
+  } | null;
 }
 
 

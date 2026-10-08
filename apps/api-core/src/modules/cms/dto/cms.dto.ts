@@ -54,6 +54,11 @@ export class UpdateThemeSettingsDto {
   bioBiography?: string;
 
   @IsOptional()
+  @IsString()
+  @MaxLength(50)
+  layoutTemplateId?: string;
+
+  @IsOptional()
   @IsArray()
   @ValidateNested({ each: true })
   @Type(() => SocialLinkItemDto)

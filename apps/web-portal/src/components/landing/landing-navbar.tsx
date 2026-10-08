@@ -239,20 +239,20 @@ export function LandingNavbar({ onSelectCategory, onSelectSolutionTab }: Landing
             </a>
 
             <a
-              href={`${DASHBOARD_URL}/register`}
+              href="/pricing"
               className="inline-flex items-center justify-center px-5 py-2.5 rounded-xl bg-blue-600 text-white text-sm font-bold shadow-md shadow-blue-600/20 hover:bg-blue-700 active:scale-95 transition-all"
             >
-              <span>Daftar Sekarang</span>
+              <span>Ajukan Lisensi</span>
             </a>
           </div>
 
           {/* MOBILE MENU TOGGLE */}
           <div className="flex md:hidden items-center gap-2">
             <a
-              href={`${DASHBOARD_URL}/register`}
+              href="/pricing"
               className="px-3.5 py-1.5 rounded-lg bg-blue-600 text-white text-xs font-bold"
             >
-              Daftar
+              Ajukan
             </a>
             <button
               onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
@@ -313,10 +313,10 @@ export function LandingNavbar({ onSelectCategory, onSelectSolutionTab }: Landing
               Masuk ke Workspace
             </a>
             <a
-              href={`${DASHBOARD_URL}/register`}
+              href="/pricing"
               className="w-full text-center py-2.5 rounded-xl bg-blue-600 text-white text-sm font-bold shadow-md shadow-blue-600/20"
             >
-              Daftar Akun Baru
+              Ajukan Lisensi Resmi
             </a>
           </div>
         </div>

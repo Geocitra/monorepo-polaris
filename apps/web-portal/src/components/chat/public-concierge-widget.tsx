@@ -199,7 +199,7 @@ export function PublicConciergeWidget() {
                 pricingSection.scrollIntoView({ behavior: reducedMotion ? 'auto' : 'smooth' });
             } else window.location.assign('/pricing');
         } else if (action === 'REGISTER') {
-            window.location.assign(`${DASHBOARD_URL}/register`);
+            window.location.assign('/pricing');
         }
     }
 

@@ -8,7 +8,7 @@ import {
 } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import * as bcrypt from 'bcrypt';
-import { eq, and, desc, sql } from 'drizzle-orm';
+import { eq, and, desc, sql, or, ne } from 'drizzle-orm';
 import {
   db,
   tenantMembers,
@@ -29,6 +29,7 @@ import {
   SendOtpRequestDto,
   VerifyOtpRequestDto,
   UpdateProfileDto,
+  ForceChangeInitialPasswordDto,
 } from './dto/auth.dto.js';
 import { EmailService } from '../../common/services/email.service.js';
 
@@ -199,23 +200,29 @@ export class IdentityService {
   }
 
   async login(dto: LoginRequestDto): Promise<LoginInitiateResponseDto> {
-    const cleanEmail = dto.email.toLowerCase().trim();
+    const rawIdentifier = (dto.identifier || dto.email || '').toLowerCase().trim();
+    if (!rawIdentifier) {
+      throw new UnauthorizedException('Email atau username wajib diisi.');
+    }
 
     const [member] = await db
       .select({
         id: tenantMembers.id,
         email: tenantMembers.email,
+        username: tenantMembers.username,
         passwordHash: tenantMembers.passwordHash,
         fullName: tenantMembers.fullName,
         accountStatus: tenantMembers.accountStatus,
       })
       .from(tenantMembers)
-      .where(eq(tenantMembers.email, cleanEmail))
+      .where(or(eq(tenantMembers.email, rawIdentifier), eq(tenantMembers.username, rawIdentifier)))
       .limit(1);
 
     if (!member) {
-      throw new UnauthorizedException('Email atau kata sandi tidak sesuai.');
+      throw new UnauthorizedException('Kredensial atau kata sandi tidak sesuai.');
     }
+
+    const cleanEmail = member.email;
 
     if (member.accountStatus === 'SUSPENDED') {
       throw new UnauthorizedException('Akun ini sedang ditangguhkan. Silakan hubungi Administrator.');
@@ -332,8 +339,11 @@ export class IdentityService {
       .select({
         id: tenantMembers.id,
         email: tenantMembers.email,
+        username: tenantMembers.username,
         fullName: tenantMembers.fullName,
         partyAffiliation: tenantMembers.partyAffiliation,
+        legislativeLevel: tenantMembers.legislativeLevel,
+        mustChangePassword: tenantMembers.mustChangePassword,
       })
       .from(tenantMembers)
       .where(eq(tenantMembers.email, cleanEmail))
@@ -355,6 +365,8 @@ export class IdentityService {
       sub: member.id,
       email: member.email,
       subdomainSlug,
+      mustChangePassword: member.mustChangePassword,
+      role: 'MEMBER',
     };
 
     const accessToken = await this.jwtService.signAsync(payload);
@@ -365,9 +377,12 @@ export class IdentityService {
       user: {
         id: member.id,
         email: member.email,
+        username: member.username,
         fullName: member.fullName,
         partyAffiliation: member.partyAffiliation,
         subdomain: subdomainSlug,
+        mustChangePassword: member.mustChangePassword,
+        legislativeLevel: member.legislativeLevel as any,
       },
     };
   }
@@ -381,6 +396,9 @@ export class IdentityService {
         phoneNumber: tenantMembers.phoneNumber,
         partyAffiliation: tenantMembers.partyAffiliation,
         legislativeLevel: tenantMembers.legislativeLevel,
+        username: tenantMembers.username,
+        mustChangePassword: tenantMembers.mustChangePassword,
+        passwordChangedAt: tenantMembers.passwordChangedAt,
         electoralDistrictId: tenantMembers.electoralDistrictId,
         customDapilName: tenantMembers.customDapilName,
         personalCoverage: tenantMembers.personalCoverage,
@@ -513,9 +531,32 @@ export class IdentityService {
       const party = dto.partyAffiliation?.trim() || dto.institutionPartyName?.trim() || null;
       updates.partyAffiliation = party;
     }
-    const role = dto.legislativeLevel || dto.officeRole;
-    if (role) {
-      updates.legislativeLevel = role;
+
+    // =========================================================================
+    // KEBIJAKAN ANTI-ARBITRASE (Craig Larman Protected Variations):
+    // Atribut legislativeLevel bersifat IMMUTABLE bagi dewan dan tidak boleh
+    // dimutasi melalui endpoint profil dewan. Hanya SUPERADMIN yang berwenang.
+    // =========================================================================
+
+    if (dto.username !== undefined) {
+      const cleanUsername = dto.username?.trim().toLowerCase() || null;
+      if (cleanUsername) {
+        if (!/^[a-z0-9_-]{3,30}$/.test(cleanUsername)) {
+          throw new BadRequestException('Username hanya boleh 3-30 karakter alphanumeric, minus, atau underscore.');
+        }
+        const [existing] = await db
+          .select({ id: tenantMembers.id })
+          .from(tenantMembers)
+          .where(and(eq(tenantMembers.username, cleanUsername), ne(tenantMembers.id, tenantId)))
+          .limit(1);
+
+        if (existing) {
+          throw new ConflictException('Username sudah digunakan oleh akun lain.');
+        }
+        updates.username = cleanUsername;
+      } else {
+        updates.username = null;
+      }
     }
 
     if (dto.photoUrl !== undefined) {
@@ -643,5 +684,46 @@ export class IdentityService {
       return rows.filter((r) => r.legislativeLevel === level);
     }
     return rows;
+  }
+
+  async forceChangeInitialPassword(tenantId: string, dto: ForceChangeInitialPasswordDto) {
+    const [member] = await db
+      .select({
+        id: tenantMembers.id,
+        passwordHash: tenantMembers.passwordHash,
+      })
+      .from(tenantMembers)
+      .where(eq(tenantMembers.id, tenantId))
+      .limit(1);
+
+    if (!member) {
+      throw new NotFoundException('Akun pengguna tidak ditemukan.');
+    }
+
+    const isMatch = await bcrypt.compare(dto.currentPassword, member.passwordHash);
+    if (!isMatch) {
+      throw new BadRequestException('Kata sandi saat ini atau kata sandi sementara tidak cocok.');
+    }
+
+    if (!dto.newPassword || dto.newPassword.length < 8) {
+      throw new BadRequestException('Kata sandi baru minimal 8 karakter.');
+    }
+
+    const newHash = await bcrypt.hash(dto.newPassword, 10);
+    await db
+      .update(tenantMembers)
+      .set({
+        passwordHash: newHash,
+        mustChangePassword: false,
+        temporaryPasswordPlaintextPreview: null,
+        passwordChangedAt: new Date(),
+        updatedAt: new Date(),
+      })
+      .where(eq(tenantMembers.id, tenantId));
+
+    return {
+      success: true,
+      message: 'Kata sandi akun Anda berhasil diperbarui. Akses dashboard telah dibuka penuh.',
+    };
   }
 }

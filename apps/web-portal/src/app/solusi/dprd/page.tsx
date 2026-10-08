@@ -61,12 +61,12 @@ export default function SolusiDPRDPage() {
                 <ArrowRight className="h-4 w-4" />
               </Link>
 
-              <a
-                href={`${DASHBOARD_URL}/register?plan=provinsi`}
+              <Link
+                href="/pricing"
                 className="inline-flex items-center px-6 py-3.5 rounded-xl bg-white border border-slate-300 text-slate-700 font-extrabold text-sm sm:text-base hover:bg-slate-50 transition-all shadow-xs"
               >
-                <span>Daftar Akun Workspace</span>
-              </a>
+                <span>Ajukan Konsultasi Lisensi</span>
+              </Link>
             </div>
 
           </div>
@@ -130,13 +130,13 @@ export default function SolusiDPRDPage() {
               POLARIS telah disesuaikan dengan nomenklatur Permendagri tentang pengelolaan keuangan daerah dan tata tertib dewan perwakilan rakyat daerah.
             </p>
             <div className="pt-2">
-              <a
-                href={`${DASHBOARD_URL}/register?plan=provinsi`}
+              <Link
+                href="/pricing"
                 className="inline-flex items-center gap-2 px-8 py-3.5 rounded-xl bg-indigo-600 text-white font-extrabold text-sm shadow-lg shadow-indigo-600/25 hover:bg-indigo-700 transition-all"
               >
-                <span>Daftarkan Akun DPRD Sekarang</span>
+                <span>Ajukan Permohonan Lisensi DPRD</span>
                 <ArrowRight className="h-4 w-4" />
-              </a>
+              </Link>
             </div>
           </div>
         </section>

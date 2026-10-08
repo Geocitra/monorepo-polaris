@@ -59,10 +59,15 @@ function LoginFormContent() {
       const res = await ApiClient.request<any>('/auth/login', {
         method: 'POST',
         body: JSON.stringify({
+          identifier: email.toLowerCase().trim(),
           email: email.toLowerCase().trim(),
           password,
         }),
       });
+
+      if (res.email) {
+        setEmail(res.email);
+      }
 
       setSuccessMsg(res.message || 'Kredensial valid! Kode OTP 2FA telah dikirim ke email Anda.');
       setStep('OTP');
@@ -188,12 +193,12 @@ function LoginFormContent() {
             <span>Kembali ke Landing Page</span>
           </a>
 
-          <Link
-            href="/register"
+          <a
+            href={`${LANDING_PAGE_URL}/pricing`}
             className="text-xs font-semibold text-blue-600 dark:text-blue-400 hover:text-blue-700 hover:underline"
           >
-            Daftar Akun Baru
-          </Link>
+            Ajukan Lisensi
+          </a>
         </div>
 
         {/* Center Card Content */}
@@ -250,10 +255,13 @@ function LoginFormContent() {
           {/* Secondary Link */}
           <div className="pt-1 text-center">
             <p className="text-xs text-slate-500 dark:text-slate-400">
-              Belum memiliki akun?{' '}
-              <Link href="/register" className="font-bold text-blue-600 dark:text-blue-400 hover:underline">
-                Minta Akses / Daftar di sini
-              </Link>
+              Belum memiliki lisensi dewan?{' '}
+              <a
+                href={`${LANDING_PAGE_URL}/pricing`}
+                className="font-bold text-blue-600 dark:text-blue-400 hover:underline"
+              >
+                Ajukan Permohonan Lisensi Resmi
+              </a>
             </p>
           </div>
         </div>

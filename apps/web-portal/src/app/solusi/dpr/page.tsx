@@ -62,12 +62,12 @@ export default function SolusiDPRPage() {
                 <ArrowRight className="h-4 w-4" />
               </Link>
 
-              <a
-                href={`${DASHBOARD_URL}/register?plan=nasional`}
+              <Link
+                href="/pricing"
                 className="inline-flex items-center px-6 py-3.5 rounded-xl bg-white border border-slate-300 text-slate-700 font-extrabold text-sm sm:text-base hover:bg-slate-50 transition-all shadow-xs"
               >
-                <span>Daftar Akun Workspace</span>
-              </a>
+                <span>Ajukan Konsultasi Lisensi</span>
+              </Link>
             </div>
 
           </div>
@@ -158,13 +158,13 @@ export default function SolusiDPRPage() {
                 <span className="text-xs text-slate-400">
                   Kerahasiaan naskah dewan dijamin sesuai UU Perlindungan Data Pribadi (UU PDP).
                 </span>
-                <a
-                  href={`${DASHBOARD_URL}/register?plan=nasional`}
+                <Link
+                  href="/pricing"
                   className="px-6 py-3 rounded-xl bg-blue-600 text-white font-extrabold text-xs hover:bg-blue-700 shadow-md shadow-blue-600/20 transition-all flex items-center gap-2"
                 >
-                  <span>Daftarkan Akun Kantor Dewan</span>
+                  <span>Ajukan Permohonan Lisensi</span>
                   <ArrowRight className="h-4 w-4" />
-                </a>
+                </Link>
               </div>
 
             </div>

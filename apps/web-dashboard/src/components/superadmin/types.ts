@@ -21,6 +21,10 @@ export interface TenantRow {
   id: string;
   fullName: string;
   email: string;
+  username?: string | null;
+  mustChangePassword?: boolean;
+  temporaryPasswordPlaintextPreview?: string | null;
+  passwordChangedAt?: string | null;
   phoneNumber: string;
   partyAffiliation: string;
   legislativeLevel: string;
@@ -37,6 +41,37 @@ export interface TenantRow {
   provinceName: string | null;
   commissionId: string | null;
   commissionName: string | null;
+}
+
+export interface PricingMatrixRow {
+  id: string;
+  legislativeLevel: string;
+  planTier: string;
+  billingCycle: string;
+  durationDays: number;
+  amountIdr: number;
+  isActive: boolean;
+  updatedAt: string;
+}
+
+export interface InquiryRow {
+  id: string;
+  fullName: string;
+  phoneNumber: string;
+  officialEmail: string;
+  partyAffiliation: string | null;
+  legislativeLevel: string;
+  targetRegion: string;
+  preferredCycle: string;
+  preferredTier: string;
+  meetingDatetime: string | null;
+  meetingUrl: string | null;
+  adminNotes: string | null;
+  status: 'NEW_LEAD' | 'MEETING_SCHEDULED' | 'PROPOSAL_SENT' | 'DEAL_CONVERTED' | 'REJECTED_DROPPED';
+  handledByAdminId: string | null;
+  convertedTenantId: string | null;
+  createdAt: string;
+  updatedAt: string;
 }
 
 export interface PoliticalParty {

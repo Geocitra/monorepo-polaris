@@ -16,7 +16,8 @@ import {
   CheckCircle, 
   Eye, 
   Edit3, 
-  ArrowLeft 
+  ArrowLeft,
+  ArrowRight
 } from 'lucide-react';
 import { 
   LicenseStatusBanner,
@@ -26,6 +27,8 @@ import {
   ElectoralDistrictForm,
   PublicWebsiteCard,
   ProfilePreviewView,
+  ProfileStepIndicator,
+  ProfileSessionStep,
 } from '@/components/profile';
 
 export default function ProfilePage() {
@@ -39,6 +42,9 @@ export default function ProfilePage() {
 
   // Mode Tampilan: 'PREVIEW' (Default tampilan eksekutif) vs 'EDIT' (Formulir pengisian)
   const [activeTabMode, setActiveTabMode] = useState<'PREVIEW' | 'EDIT'>('PREVIEW');
+
+  // Sesi Aktif Multi-Step Wizard: Sesi 1 (Identitas), Sesi 2 (Dapil), Sesi 3 (Pendidikan), Sesi 4 (Isu & Web)
+  const [activeStep, setActiveStep] = useState<ProfileSessionStep>(1);
 
   // Form states - Identitas Resmi Dewan
   const [fullName, setFullName] = useState('');
@@ -182,8 +188,6 @@ export default function ProfilePage() {
           phoneNumber,
           partyAffiliation,
           institutionPartyName: partyAffiliation,
-          legislativeLevel,
-          officeRole: legislativeLevel,
           commissionName,
           photoUrl,
           gender,
@@ -225,6 +229,13 @@ export default function ProfilePage() {
   }
 
   const isUnpaid = billing?.subscriptionStatus !== 'ACTIVE';
+
+  const completionMap: Record<ProfileSessionStep, boolean> = {
+    1: Boolean(fullName.trim() && phoneNumber.trim()),
+    2: Boolean(provinceName.trim() && dapilName.trim() && regencyCoverage.length > 0),
+    3: Boolean(education.trim() || courses.length > 0),
+    4: Boolean(issueInterests.length > 0),
+  };
 
   return (
     <div className="flex min-h-screen bg-slate-100/70 dark:bg-[#070A12] text-slate-900 dark:text-slate-100 font-sans theme-transition">
@@ -310,29 +321,22 @@ export default function ProfilePage() {
             />
           )}
 
-          {/* MODE 2: FORM EDIT COMPACT 2 KOLOM */}
+          {/* MODE 2: FORM EDIT DENGAN STEP INDICATOR (PER SESI TERPANDU) */}
           {activeTabMode === 'EDIT' && (
-            <form onSubmit={handleSaveProfile} className="space-y-3 animate-in fade-in duration-150">
-              {/* BACK TO PREVIEW BAR */}
-              <div className="flex items-center justify-between p-2 rounded-lg bg-blue-50/70 border border-blue-100">
-                <button
-                  type="button"
-                  onClick={() => setActiveTabMode('PREVIEW')}
-                  className="inline-flex items-center gap-1 text-xs font-bold text-blue-700 hover:underline cursor-pointer"
-                >
-                  <ArrowLeft className="h-3.5 w-3.5" />
-                  <span>Kembali ke Tampilan Preview</span>
-                </button>
-                <span className="text-[11px] text-blue-600 hidden sm:inline font-medium">
-                  Klik Simpan Profil di bawah setelah selesai mengubah data.
-                </span>
-              </div>
+            <form onSubmit={handleSaveProfile} className="space-y-4 animate-in fade-in duration-150">
+              {/* 1. STEP INDICATOR & PROGRESS TRACKER */}
+              <ProfileStepIndicator
+                currentStep={activeStep}
+                onStepChange={setActiveStep}
+                completionMap={completionMap}
+                onSave={handleSaveProfile}
+                isSaving={saving}
+                onCancel={() => setActiveTabMode('PREVIEW')}
+              />
 
-              {/* 2 KOLOM BALANCED: KIRI (Identitas & Pendidikan) | KANAN (Minat Isu & Dapil & Web) */}
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 items-start">
-                {/* KOLOM KIRI */}
-                <div className="space-y-3">
-                  {/* 1. Identitas Resmi & Foto Dewan */}
+              {/* SESI 1: IDENTITAS RESMI & FOTO DEWAN */}
+              {activeStep === 1 && (
+                <div className="space-y-3 animate-in fade-in slide-in-from-right-2 duration-150">
                   <OfficialIdentityForm
                     fullName={fullName}
                     setFullName={setFullName}
@@ -353,27 +357,26 @@ export default function ProfilePage() {
                     setBirthDate={setBirthDate}
                   />
 
-                  {/* 2. Kredensial Pendidikan & Kursus */}
-                  <CredentialsEducationForm
-                    education={education}
-                    setEducation={setEducation}
-                    courses={courses}
-                    onAddCourse={handleAddCourse}
-                    onRemoveCourse={handleRemoveCourse}
-                  />
+                  {/* Navigasi Sesi 1 */}
+                  <div className="p-3.5 px-4 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 flex items-center justify-between gap-3 shadow-xs">
+                    <span className="text-xs text-slate-500 font-medium">
+                      Langkah 1 dari 4: Identitas Personal & Parlemen
+                    </span>
+                    <Button
+                      type="button"
+                      onClick={() => setActiveStep(2)}
+                      className="bg-blue-600 hover:bg-blue-700 text-white font-extrabold text-xs px-5 py-2 rounded-xl cursor-pointer shadow-xs gap-1.5"
+                    >
+                      <span>Lanjut ke Wilayah Dapil</span>
+                      <ArrowRight className="w-3.5 h-3.5" />
+                    </Button>
+                  </div>
                 </div>
+              )}
 
-                {/* KOLOM KANAN */}
-                <div className="space-y-3">
-                  {/* 3. Minat Isu AI Grounding */}
-                  <PolicyInterestsForm
-                    issueInterests={issueInterests}
-                    onToggleInterest={handleToggleInterest}
-                    onAddCustomInterest={handleAddCustomInterest}
-                    onRemoveInterest={handleRemoveInterest}
-                  />
-
-                  {/* 4. Daerah Pemilihan (Dropdown & Wilayah) */}
+              {/* SESI 2: WILAYAH DAPIL KONSTITUEN */}
+              {activeStep === 2 && (
+                <div className="space-y-3 animate-in fade-in slide-in-from-right-2 duration-150">
                   <ElectoralDistrictForm
                     provinceName={provinceName}
                     setProvinceName={setProvinceName}
@@ -389,46 +392,150 @@ export default function ProfilePage() {
                     onQuickAddRegency={handleQuickAddRegency}
                   />
 
-                  {/* 5. Website Publik Resmi */}
-                  <PublicWebsiteCard subdomain={profile?.subdomain} />
+                  {/* Navigasi Sesi 2 */}
+                  <div className="p-3.5 px-4 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 flex items-center justify-between gap-3 shadow-xs">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={() => setActiveStep(1)}
+                      className="font-extrabold text-xs px-4 py-2 rounded-xl cursor-pointer"
+                    >
+                      <ArrowLeft className="w-3.5 h-3.5 mr-1" />
+                      <span>Kembali ke Identitas</span>
+                    </Button>
+                    <Button
+                      type="button"
+                      onClick={() => setActiveStep(3)}
+                      className="bg-blue-600 hover:bg-blue-700 text-white font-extrabold text-xs px-5 py-2 rounded-xl cursor-pointer shadow-xs gap-1.5"
+                    >
+                      <span>Lanjut ke Pendidikan & Diklat</span>
+                      <ArrowRight className="w-3.5 h-3.5" />
+                    </Button>
+                  </div>
                 </div>
-              </div>
+              )}
 
-              {/* STICKY SAVE BAR */}
-              <div className="pt-1 flex items-center justify-end gap-2 sticky bottom-3 p-2.5 px-3.5 bg-white/95 backdrop-blur-md rounded-xl border border-slate-200 shadow-md">
-                <div className="mr-auto hidden sm:flex items-center gap-1.5 text-[11px] text-slate-500 font-medium">
-                  <CheckCircle className="h-3.5 w-3.5 text-emerald-500 shrink-0" />
-                  <span>Tersinkronisasi otomatis ke portal publik dan mesin AI.</span>
+              {/* SESI 3: PENDIDIKAN & KREDENSIAL */}
+              {activeStep === 3 && (
+                <div className="space-y-3 animate-in fade-in slide-in-from-right-2 duration-150">
+                  <CredentialsEducationForm
+                    education={education}
+                    setEducation={setEducation}
+                    courses={courses}
+                    onAddCourse={handleAddCourse}
+                    onRemoveCourse={handleRemoveCourse}
+                  />
+
+                  {/* Navigasi Sesi 3 */}
+                  <div className="p-3.5 px-4 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 flex items-center justify-between gap-3 shadow-xs">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={() => setActiveStep(2)}
+                      className="font-extrabold text-xs px-4 py-2 rounded-xl cursor-pointer"
+                    >
+                      <ArrowLeft className="w-3.5 h-3.5 mr-1" />
+                      <span>Kembali ke Wilayah Dapil</span>
+                    </Button>
+                    <Button
+                      type="button"
+                      onClick={() => setActiveStep(4)}
+                      className="bg-blue-600 hover:bg-blue-700 text-white font-extrabold text-xs px-5 py-2 rounded-xl cursor-pointer shadow-xs gap-1.5"
+                    >
+                      <span>Lanjut ke Fokus Isu & Web</span>
+                      <ArrowRight className="w-3.5 h-3.5" />
+                    </Button>
+                  </div>
+                </div>
+              )}
+
+              {/* SESI 4: FOKUS ISU KEBIJAKAN & WEBSITE PUBLIK */}
+              {activeStep === 4 && (
+                <div className="space-y-3 animate-in fade-in slide-in-from-right-2 duration-150">
+                  <div className="grid grid-cols-1 lg:grid-cols-3 gap-3 items-start">
+                    <div className="lg:col-span-2">
+                      <PolicyInterestsForm
+                        issueInterests={issueInterests}
+                        onToggleInterest={handleToggleInterest}
+                        onAddCustomInterest={handleAddCustomInterest}
+                        onRemoveInterest={handleRemoveInterest}
+                      />
+                    </div>
+                    <div>
+                      <PublicWebsiteCard subdomain={profile?.subdomain} />
+                    </div>
+                  </div>
+
+                  {/* Navigasi Sesi 4 */}
+                  <div className="p-3.5 px-4 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 flex items-center justify-between gap-3 shadow-xs">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={() => setActiveStep(3)}
+                      className="font-extrabold text-xs px-4 py-2 rounded-xl cursor-pointer"
+                    >
+                      <ArrowLeft className="w-3.5 h-3.5 mr-1" />
+                      <span>Kembali ke Pendidikan</span>
+                    </Button>
+                    <Button
+                      type="submit"
+                      disabled={saving}
+                      className="bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold text-xs px-6 py-2 rounded-xl cursor-pointer shadow-xs gap-1.5"
+                    >
+                      {saving ? (
+                        <>
+                          <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                          <span>Menyimpan Seluruh Profil...</span>
+                        </>
+                      ) : (
+                        <>
+                          <Save className="w-3.5 h-3.5" />
+                          <span>Selesai & Simpan Profil</span>
+                        </>
+                      )}
+                    </Button>
+                  </div>
+                </div>
+              )}
+
+              {/* STICKY BOTTOM SAVE BAR */}
+              <div className="pt-1 flex items-center justify-between gap-3 sticky bottom-3 p-3 px-4 bg-white/95 dark:bg-slate-900/95 backdrop-blur-md rounded-2xl border border-slate-200/90 dark:border-slate-800 shadow-md">
+                <div className="flex items-center gap-2 text-xs font-medium text-slate-500 dark:text-slate-400">
+                  <CheckCircle className="h-4 w-4 text-emerald-500 shrink-0" />
+                  <span className="hidden sm:inline">Perubahan dapat disimpan kapan saja tanpa menunggu seluruh sesi selesai.</span>
+                  <span className="sm:hidden font-bold">Sesi {activeStep} / 4 Aktif</span>
                 </div>
 
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => setActiveTabMode('PREVIEW')}
-                  className="text-slate-600 font-bold text-xs cursor-pointer h-8 px-3"
-                >
-                  Batal
-                </Button>
+                <div className="flex items-center gap-2 shrink-0">
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => setActiveTabMode('PREVIEW')}
+                    className="text-slate-600 dark:text-slate-400 font-bold text-xs cursor-pointer h-8 px-3"
+                  >
+                    Batal
+                  </Button>
 
-                <Button
-                  type="submit"
-                  size="sm"
-                  disabled={saving}
-                  className="bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs h-8 px-4 rounded-lg gap-1.5 shadow-2xs transition-all cursor-pointer"
-                >
-                  {saving ? (
-                    <>
-                      <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                      <span>Menyimpan...</span>
-                    </>
-                  ) : (
-                    <>
-                      <Save className="h-3.5 w-3.5" />
-                      <span>Simpan Profil</span>
-                    </>
-                  )}
-                </Button>
+                  <Button
+                    type="submit"
+                    size="sm"
+                    disabled={saving}
+                    className="bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs h-8 px-4 rounded-xl gap-1.5 shadow-xs transition-all cursor-pointer"
+                  >
+                    {saving ? (
+                      <>
+                        <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                        <span>Menyimpan...</span>
+                      </>
+                    ) : (
+                      <>
+                        <Save className="h-3.5 w-3.5" />
+                        <span>Simpan Profil</span>
+                      </>
+                    )}
+                  </Button>
+                </div>
               </div>
             </form>
           )}

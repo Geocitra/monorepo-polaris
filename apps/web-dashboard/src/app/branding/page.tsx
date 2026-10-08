@@ -47,6 +47,7 @@ export default function BrandingPage() {
   const [bioBiography, setBioBiography] = useState('');
   const [subdomainSlug, setSubdomainSlug] = useState('');
   const [customDomain, setCustomDomain] = useState('');
+  const [layoutTemplateId, setLayoutTemplateId] = useState('standard-default');
 
   useEffect(() => {
     async function loadConfig() {
@@ -64,6 +65,7 @@ export default function BrandingPage() {
           setOfficialPhotoUrl(portalData.theme.officialPhotoUrl || '');
           setHeadlineTagline(portalData.theme.headlineTagline || '');
           setBioBiography(portalData.theme.bioBiography || '');
+          setLayoutTemplateId(portalData.theme.layoutTemplateId || 'standard-default');
         }
 
         if (portalData?.portal) {
@@ -100,6 +102,7 @@ export default function BrandingPage() {
           primaryHexColor: primaryColor,
           secondaryHexColor: secondaryColor,
           fontFamily: 'Inter, sans-serif',
+          layoutTemplateId,
           officialPhotoUrl: officialPhotoUrl.trim() || undefined,
           headlineTagline,
           bioBiography,
@@ -227,6 +230,9 @@ export default function BrandingPage() {
                 onPrimaryColorChange={setPrimaryColor}
                 secondaryColor={secondaryColor}
                 onSecondaryColorChange={setSecondaryColor}
+                layoutTemplateId={layoutTemplateId}
+                onLayoutTemplateIdChange={setLayoutTemplateId}
+                planTier={billing?.planTier}
                 officialPhotoUrl={officialPhotoUrl}
                 onOfficialPhotoUrlChange={setOfficialPhotoUrl}
                 headlineTagline={headlineTagline}

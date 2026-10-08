@@ -1,18 +1,27 @@
 'use client';
 
 import React, { useEffect, useState } from 'react';
+import { UserPlus } from 'lucide-react';
 import { AdminApiClient } from '@/lib/api-client';
 import { TenantRow } from '@/components/superadmin/types';
 import { TenantFiltersBar } from '@/components/superadmin/tenants/TenantFiltersBar';
 import { TenantTable } from '@/components/superadmin/tenants/TenantTable';
 import { ManualLicenseModal } from '@/components/superadmin/tenants/ManualLicenseModal';
+import { CreateTenantModal } from '@/components/superadmin/tenants/CreateTenantModal';
+import { UpdateLegislativeLevelModal } from '@/components/superadmin/tenants/UpdateLegislativeLevelModal';
+import { ResetPasswordModal } from '@/components/superadmin/tenants/ResetPasswordModal';
 
 export default function SuperadminTenantsPage() {
   const [tenants, setTenants] = useState<TenantRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [partyFilter, setPartyFilter] = useState('ALL');
+
+  // Modals
+  const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [selectedTenantForLicense, setSelectedTenantForLicense] = useState<TenantRow | null>(null);
+  const [selectedTenantForLevel, setSelectedTenantForLevel] = useState<TenantRow | null>(null);
+  const [selectedTenantForResetPassword, setSelectedTenantForResetPassword] = useState<TenantRow | null>(null);
 
   useEffect(() => {
     loadTenants();
@@ -68,6 +77,7 @@ export default function SuperadminTenantsPage() {
     return (
       t.fullName?.toLowerCase().includes(s) ||
       t.email?.toLowerCase().includes(s) ||
+      (t.username && t.username.toLowerCase().includes(s)) ||
       t.subdomainSlug?.toLowerCase().includes(s) ||
       t.partyAffiliation?.toLowerCase().includes(s)
     );
@@ -82,8 +92,19 @@ export default function SuperadminTenantsPage() {
             Direktori & Tata Kelola Anggota Dewan
           </h1>
           <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
-            Daftar seluruh klien eksekutif, verifikasi tanda sah KPU, dan penerbitan lisensi B2B parlemen.
+            Daftar seluruh klien eksekutif, verifikasi tanda sah KPU, penerbitan akun resmi & lisensi B2B parlemen.
           </p>
+        </div>
+
+        <div>
+          <button
+            type="button"
+            onClick={() => setIsCreateModalOpen(true)}
+            className="w-full sm:w-auto px-4 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold transition flex items-center justify-center gap-2 shadow-sm"
+          >
+            <UserPlus className="w-4 h-4" />
+            <span>+ Buat Akun Dewan Baru</span>
+          </button>
         </div>
       </div>
 
@@ -102,15 +123,52 @@ export default function SuperadminTenantsPage() {
         onVerifyToggle={handleVerifyToggle}
         onStatusToggle={handleStatusToggle}
         onOpenLicenseModal={(t) => setSelectedTenantForLicense(t)}
+        onOpenLegislativeLevelModal={(t) => setSelectedTenantForLevel(t)}
+        onOpenResetPasswordModal={(t) => setSelectedTenantForResetPassword(t)}
       />
 
-      {/* 4. MODULAR MANUAL LICENSE MODAL */}
+      {/* 4. CREATE TENANT MODAL */}
+      {isCreateModalOpen && (
+        <CreateTenantModal
+          onClose={() => setIsCreateModalOpen(false)}
+          onSuccess={() => {
+            setIsCreateModalOpen(false);
+            loadTenants();
+          }}
+        />
+      )}
+
+      {/* 5. MANUAL LICENSE MODAL */}
       {selectedTenantForLicense && (
         <ManualLicenseModal
           tenant={selectedTenantForLicense}
           onClose={() => setSelectedTenantForLicense(null)}
           onSuccess={() => {
             setSelectedTenantForLicense(null);
+            loadTenants();
+          }}
+        />
+      )}
+
+      {/* 6. UPDATE LEGISLATIVE LEVEL MODAL */}
+      {selectedTenantForLevel && (
+        <UpdateLegislativeLevelModal
+          tenant={selectedTenantForLevel}
+          onClose={() => setSelectedTenantForLevel(null)}
+          onSuccess={() => {
+            setSelectedTenantForLevel(null);
+            loadTenants();
+          }}
+        />
+      )}
+
+      {/* 7. RESET PASSWORD MODAL */}
+      {selectedTenantForResetPassword && (
+        <ResetPasswordModal
+          tenant={selectedTenantForResetPassword}
+          onClose={() => setSelectedTenantForResetPassword(null)}
+          onSuccess={() => {
+            setSelectedTenantForResetPassword(null);
             loadTenants();
           }}
         />

@@ -3,6 +3,7 @@ import {
   NotFoundException,
   ConflictException,
   BadRequestException,
+  ForbiddenException,
   Logger,
 } from '@nestjs/common';
 import * as crypto from 'crypto';
@@ -20,9 +21,10 @@ import {
   mediaAssets,
   socialSyndicationPacks,
   withTenantContext,
+  subscriptions,
 } from '@polaris/database';
 import { SubdomainSlug, HexColor } from '@polaris/core-domain';
-import { ContentStatus } from '@polaris/shared-types';
+import { ContentStatus, SubscriptionStatus, PlanTier } from '@polaris/shared-types';
 import { UpdateThemeSettingsDto, UpdateDomainConfigDto } from './dto/cms.dto.js';
 
 @Injectable()
@@ -193,6 +195,17 @@ export class CmsService {
       throw new NotFoundException('Portal konfigurasi tidak ditemukan.');
     }
 
+    // High Cohesion: Verifikasi Entitlement Pilihan Template Layout
+    const [sub] = await db
+      .select({
+        planTier: subscriptions.planTier,
+      })
+      .from(subscriptions)
+      .where(eq(subscriptions.tenantId, tenantId))
+      .limit(1);
+
+    const isPremium = sub?.planTier === PlanTier.PRO || (sub?.planTier as any) === 'VIP' || (sub?.planTier as any) === 'ENTERPRISE';
+
     await db.transaction(async (tx) => {
       const updateData: Record<string, any> = {
         primaryHexColor: primary.getValue(),
@@ -204,6 +217,16 @@ export class CmsService {
       if (dto.officialPhotoUrl !== undefined) updateData.officialPhotoUrl = dto.officialPhotoUrl;
       if (dto.headlineTagline !== undefined) updateData.headlineTagline = dto.headlineTagline;
       if (dto.bioBiography !== undefined) updateData.bioBiography = dto.bioBiography;
+
+      if (dto.layoutTemplateId !== undefined) {
+        const cleanLayout = dto.layoutTemplateId.trim().toLowerCase();
+        if (cleanLayout !== 'standard-default' && !isPremium) {
+          throw new ForbiddenException(
+            'Pemilihan template layout tematik eksklusif (Editorial, Baliho Hero, Newsroom) memerlukan lisensi PRO (Eksekutif Suite). Akun Standar Parlemen hanya mendukung tata letak standar.'
+          );
+        }
+        updateData.layoutTemplateId = cleanLayout;
+      }
 
       await tx
         .update(portalThemeSettings)
@@ -550,6 +573,24 @@ export class CmsService {
       .where(eq(portalThemeSettings.portalId, portal.id))
       .limit(1);
 
+    const [sub] = await db
+      .select({
+        status: subscriptions.status,
+        planTier: subscriptions.planTier,
+      })
+      .from(subscriptions)
+      .where(eq(subscriptions.tenantId, portal.tenantId))
+      .limit(1);
+
+    const isSubscriptionActive = sub?.status === SubscriptionStatus.ACTIVE;
+    const isPremiumTier = isSubscriptionActive && (sub?.planTier === PlanTier.PRO || (sub?.planTier as any) === 'VIP');
+
+    // Entitlement Hardening: Jika lisensi non-aktif / kadaluarsa atau tier STARTER,
+    // layout otomatis fallback ke standard-default demi integritas platform.
+    const resolvedLayout = isPremiumTier
+      ? (theme?.layoutTemplateId || 'standard-default')
+      : 'standard-default';
+
     const socials = await db
       .select({
         platform: socialLinks.platform,
@@ -592,6 +633,11 @@ export class CmsService {
         dapilName,
         provinceName,
       },
+      subscription: {
+        isActive: isSubscriptionActive,
+        status: sub?.status || SubscriptionStatus.INACTIVE,
+        planTier: sub?.planTier || PlanTier.STARTER,
+      },
       theme: {
         primaryHexColor: theme?.primaryHexColor || '#1890ff',
         secondaryHexColor: theme?.secondaryHexColor || '#001529',
@@ -600,6 +646,7 @@ export class CmsService {
         officialPhotoUrl: theme?.officialPhotoUrl,
         headlineTagline: theme?.headlineTagline,
         bioBiography: theme?.bioBiography,
+        layoutTemplateId: resolvedLayout,
       },
       socialLinks: socials,
       recentArticles,

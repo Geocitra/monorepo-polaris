@@ -1,6 +1,7 @@
 import { pgTable, uuid, varchar, timestamp, numeric, integer, bigint, text, unique, index, date } from 'drizzle-orm/pg-core';
 import { tenantMembers } from './identity.js';
 import { subscriptionStatusEnum, planTierEnum, paymentStatusEnum } from './enums.js';
+import { subscriptionPriceMatrices } from './pricing-matrix.js';
 
 export const subscriptions = pgTable('subscriptions', {
   id: uuid('id').defaultRandom().primaryKey(),
@@ -17,6 +18,7 @@ export const subscriptions = pgTable('subscriptions', {
 export const invoiceTransactions = pgTable('invoice_transactions', {
   id: uuid('id').defaultRandom().primaryKey(),
   subscriptionId: uuid('subscription_id').notNull().references(() => subscriptions.id, { onDelete: 'cascade' }),
+  matrixId: uuid('matrix_id').references(() => subscriptionPriceMatrices.id, { onDelete: 'set null' }),
   invoiceNumber: varchar('invoice_number', { length: 100 }).notNull().unique(),
   amountIdr: numeric('amount_idr', { precision: 12, scale: 2 }).notNull(),
   grossAmountIdr: numeric('gross_amount_idr', { precision: 12, scale: 2 }),

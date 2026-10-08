@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { ArrowRight, CheckCircle2, Search } from 'lucide-react';
+import { ArrowRight } from 'lucide-react';
 import { LandingNavbar } from '@/components/landing/landing-navbar';
 import { FeaturePillars } from '@/components/landing/feature-pillars';
 import { InstitutionTrustBar } from '@/components/landing/institution-trust-bar';
@@ -23,7 +23,6 @@ export default function LandingHomePage() {
   const [policyType, setPolicyType] = useState<PolicyType | null>(null);
   const [activeReelIndex, setActiveReelIndex] = useState(0);
   const [progressPct, setProgressPct] = useState(0);
-  const [searchQuery, setSearchQuery] = useState('');
 
   const DASHBOARD_URL = process.env.NEXT_PUBLIC_DASHBOARD_URL || 'http://localhost:3000';
 
@@ -44,7 +43,7 @@ export default function LandingHomePage() {
         {/* ======================================================== */}
         {/* 2. HERO SECTION: FULL-BLEED VIDEO WITH CLEAN NARRATIVE   */}
         {/* ======================================================== */}
-        <section className="relative min-h-[72vh] sm:min-h-[78vh] lg:min-h-[84vh] flex items-center bg-slate-950 py-16 sm:py-20 text-white overflow-hidden">
+        <section className="relative min-h-[85vh] sm:min-h-[90vh] lg:min-h-[96vh] flex flex-col justify-start bg-slate-950 pt-16 sm:pt-20 lg:pt-24 pb-36 sm:pb-48 lg:pb-52 text-white overflow-hidden">
           {/* Continuous Full-Bleed Video Background */}
           <HeroVideoBackground
             activeReelIndex={activeReelIndex}
@@ -62,38 +61,16 @@ export default function LandingHomePage() {
                 DARI GAGASAN PUBLIK MENJADI KOMUNIKASI YANG BERDAMPAK
               </p>
 
-              {/* Translucent Search & Action Bar on top of video */}
-              <div className="pt-3 flex flex-col sm:flex-row items-stretch sm:items-center gap-3 max-w-xl">
-                <div className="relative flex-1">
-                  <input
-                    type="text"
-                    value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
-                    placeholder="Cari isu publik, regulasi daerah, atau risalah kebijakan..."
-                    className="w-full rounded-xl border border-white/50 bg-black/40 px-4 py-3.5 pr-10 text-sm text-white placeholder-slate-300 backdrop-blur-md transition focus:border-white focus:bg-black/60 focus:outline-none shadow-lg"
-                  />
-                  <Search className="absolute right-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-200 pointer-events-none" />
-                </div>
-
-                <a
-                  href={`${DASHBOARD_URL}/register`}
-                  className="inline-flex shrink-0 items-center justify-center gap-2 rounded-xl bg-blue-600 px-6 py-3.5 text-center text-sm font-extrabold text-white shadow-xl shadow-blue-600/30 transition hover:bg-blue-500 hover:shadow-blue-500/40"
+              {/* Action Button on top of video */}
+              <div className="pt-3 flex items-center">
+                <button
+                  type="button"
+                  onClick={scrollToPricing}
+                  className="inline-flex shrink-0 items-center justify-center gap-2 rounded-xl bg-blue-600 px-6 py-3.5 text-center text-sm font-extrabold text-white shadow-xl shadow-blue-600/30 transition hover:bg-blue-500 hover:shadow-blue-500/40 cursor-pointer"
                 >
                   <span>Mulai Sekarang</span>
                   <ArrowRight className="h-4 w-4" />
-                </a>
-              </div>
-
-              {/* Micro Trust Checkmarks */}
-              <div className="flex flex-wrap items-center gap-4 pt-2 text-xs font-semibold text-slate-200 drop-shadow-[0_1px_4px_rgba(0,0,0,0.9)]">
-                <span className="inline-flex items-center gap-1.5">
-                  <CheckCircle2 className="h-3.5 w-3.5 text-emerald-400" />
-                  Terhubung data regulasi
-                </span>
-                <span className="inline-flex items-center gap-1.5">
-                  <CheckCircle2 className="h-3.5 w-3.5 text-emerald-400" />
-                  Format kerja parlemen
-                </span>
+                </button>
               </div>
             </div>
           </div>
@@ -135,9 +112,7 @@ export default function LandingHomePage() {
         {/* ======================================================== */}
         {/* 8. TRANSPARENT PRICING SECTION (PAKET HARGA WORKSPACE)   */}
         {/* ======================================================== */}
-        <PricingSection onSelectPlan={() => {
-          window.location.href = `${DASHBOARD_URL}/register`;
-        }} />
+        <PricingSection onSelectPlan={scrollToPricing} />
 
         {/* ======================================================== */}
         {/* 9. ABOUT POLARIS MISSION & METRICS                       */}
@@ -164,12 +139,13 @@ export default function LandingHomePage() {
             </p>
 
             <div className="pt-4 flex flex-col sm:flex-row items-center justify-center gap-4">
-              <a
-                href={`${DASHBOARD_URL}/register`}
-                className="w-full sm:w-auto px-8 py-3.5 rounded-xl bg-white text-blue-700 font-extrabold text-sm sm:text-base shadow-xl hover:bg-blue-50 transition-all text-center"
+              <button
+                type="button"
+                onClick={scrollToPricing}
+                className="w-full sm:w-auto px-8 py-3.5 rounded-xl bg-white text-blue-700 font-extrabold text-sm sm:text-base shadow-xl hover:bg-blue-50 transition-all text-center cursor-pointer"
               >
-                Daftar Akun Workspace Sekarang
-              </a>
+                Ajukan Permohonan Lisensi Sekarang
+              </button>
 
               <button
                 onClick={scrollToPricing}

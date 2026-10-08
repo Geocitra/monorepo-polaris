@@ -158,3 +158,87 @@ export class TopupTokenPoolDto {
   notes?: string;
 }
 
+export class AdminCreateTenantDto {
+  @IsEmail({}, { message: 'Format email tidak valid.' })
+  @IsNotEmpty({ message: 'Email tidak boleh kosong.' })
+  email!: string;
+
+  @IsOptional()
+  @IsString()
+  username?: string;
+
+  @IsString({ message: 'Nama lengkap tidak boleh kosong.' })
+  @IsNotEmpty()
+  fullName!: string;
+
+  @IsString({ message: 'Nomor telepon tidak boleh kosong.' })
+  @IsNotEmpty()
+  phoneNumber!: string;
+
+  @IsOptional()
+  @IsString()
+  partyAffiliation?: string;
+
+  @IsEnum(LegislativeLevel, { message: 'Tingkat legislatif tidak valid.' })
+  @IsNotEmpty()
+  legislativeLevel!: LegislativeLevel;
+
+  @IsOptional()
+  @IsString()
+  electoralDistrictId?: string;
+
+  @IsOptional()
+  @IsString()
+  customDapilName?: string;
+
+  @IsString()
+  @IsNotEmpty({ message: 'Subdomain slug tidak boleh kosong.' })
+  subdomainSlug!: string;
+
+  @IsEnum(PlanTier)
+  @IsOptional()
+  planTier?: PlanTier = PlanTier.PRO;
+
+  @IsOptional()
+  @IsString()
+  billingCycle?: string = 'SEMESTER';
+
+  @IsOptional()
+  @IsBoolean()
+  generatePrepaidInvoice?: boolean = false;
+
+  @IsOptional()
+  @IsString()
+  inquiryId?: string;
+}
+
+export class AdminUpdateLegislativeLevelDto {
+  @IsEnum(LegislativeLevel, { message: 'Tingkat legislatif baru tidak valid.' })
+  @IsNotEmpty()
+  legislativeLevel!: LegislativeLevel;
+
+  @IsOptional()
+  @IsString()
+  verificationNotes?: string;
+}
+
+export class AdminResetTenantPasswordDto {
+  @IsOptional()
+  @IsString()
+  newPassword?: string;
+}
+
+export class AdminUpdatePricingMatrixDto {
+  @IsNumber()
+  @IsNotEmpty()
+  amountIdr!: number;
+
+  @IsOptional()
+  @IsNumber()
+  durationDays?: number;
+
+  @IsOptional()
+  @IsBoolean()
+  isActive?: boolean;
+}
+

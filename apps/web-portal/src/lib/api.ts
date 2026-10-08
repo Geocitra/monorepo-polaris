@@ -166,3 +166,32 @@ export async function deleteOwnComment(commentId: string, token: string) {
   return await res.json();
 }
 
+export async function submitLicenseInquiry(payload: {
+  fullName: string;
+  phoneNumber: string;
+  officialEmail: string;
+  partyAffiliation?: string;
+  legislativeLevel: string;
+  targetRegion: string;
+  preferredCycle: string;
+  preferredTier: string;
+  notes?: string;
+}) {
+  const res = await fetch(`${API_BASE_URL}/inquiries/submit`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify(payload),
+  });
+
+  const data = await res.json().catch(() => ({}));
+
+  if (!res.ok) {
+    const message = data?.message || data?.error?.message;
+    throw new Error(Array.isArray(message) ? message.join(' ') : message || 'Gagal mengirim permohonan lisensi.');
+  }
+
+  return data;
+}
+

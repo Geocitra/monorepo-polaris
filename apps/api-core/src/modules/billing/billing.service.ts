@@ -11,13 +11,15 @@ import {
   invoiceTransactions,
   tenantQuotaLedgers,
   tenantMembers,
+  subscriptionPriceMatrices,
 } from '@polaris/database';
 import { MidtransPaymentAdapter, MidtransFeeCalculator } from '@polaris/payment';
 import {
   SubscriptionStatus,
   PaymentStatus,
+  PlanTier,
 } from '@polaris/shared-types';
-import { AiCostCalculator } from '@polaris/core-domain';
+import { AiCostCalculator, EntitlementPolicy } from '@polaris/core-domain';
 import { CreateCheckoutDto, CheckoutResponseDto, BillingStatusDto } from './dto/billing.dto.js';
 import { RedisService } from '../redis/redis.service.js';
 
@@ -28,26 +30,15 @@ export class BillingService {
 
   constructor(private readonly redisService?: RedisService) {}
 
-  private getCycleDetails(cycleOrTier?: string): { amountIdr: number; durationDays: number; name: string } {
-    const key = (cycleOrTier || 'MONTHLY').toUpperCase();
-
+  private getFallbackPrice(cycle?: string): { amountIdr: number; durationDays: number } {
+    const key = (cycle || 'MONTHLY').toUpperCase();
     switch (key) {
       case 'ANNUAL':
-      case 'TAHUNAN':
-      case 'VIP':
-      case '1TAHUN':
-        return { amountIdr: 20000000, durationDays: 365, name: 'Paket 1 Tahun (365 Hari)' };
+        return { amountIdr: 20000000, durationDays: 365 };
       case 'SEMESTER':
-      case 'SETENGAH_TAHUN':
-      case 'PRO':
-      case '6BULAN':
-        return { amountIdr: 10000000, durationDays: 180, name: 'Paket 6 Bulan (180 Hari)' };
-      case 'MONTHLY':
-      case 'BULANAN':
-      case 'STARTER':
-      case '1BULAN':
+        return { amountIdr: 10000000, durationDays: 180 };
       default:
-        return { amountIdr: 2000000, durationDays: 30, name: 'Paket 1 Bulan (30 Hari)' };
+        return { amountIdr: 2000000, durationDays: 30 };
     }
   }
 
@@ -56,7 +47,13 @@ export class BillingService {
     dto: CreateCheckoutDto
   ): Promise<CheckoutResponseDto> {
     const [member] = await db
-      .select()
+      .select({
+        id: tenantMembers.id,
+        fullName: tenantMembers.fullName,
+        email: tenantMembers.email,
+        phoneNumber: tenantMembers.phoneNumber,
+        legislativeLevel: tenantMembers.legislativeLevel,
+      })
       .from(tenantMembers)
       .where(eq(tenantMembers.id, tenantId))
       .limit(1);
@@ -75,11 +72,47 @@ export class BillingService {
       throw new NotFoundException('Data kontrak langganan tidak ditemukan.');
     }
 
+    let priceRecord: any = null;
+    if (dto.matrixId) {
+      [priceRecord] = await db
+        .select()
+        .from(subscriptionPriceMatrices)
+        .where(
+          and(
+            eq(subscriptionPriceMatrices.id, dto.matrixId),
+            eq(subscriptionPriceMatrices.legislativeLevel, member.legislativeLevel),
+            eq(subscriptionPriceMatrices.isActive, true)
+          )
+        )
+        .limit(1);
+    }
+
+    const selectedTier = (dto.planTier || priceRecord?.planTier || sub.planTier || 'PRO').toString().toUpperCase() as any;
+    const rawCycle = (dto.billingCycle || priceRecord?.billingCycle || 'MONTHLY').toString().toUpperCase();
+    const selectedCycle = rawCycle === 'ANNUAL' || rawCycle === 'SEMESTER' ? rawCycle : 'MONTHLY';
+
+    if (!priceRecord) {
+      // Information Expert: Kueri harga resmi dari subscription_price_matrices
+      [priceRecord] = await db
+        .select()
+        .from(subscriptionPriceMatrices)
+        .where(
+          and(
+            eq(subscriptionPriceMatrices.legislativeLevel, member.legislativeLevel),
+            eq(subscriptionPriceMatrices.planTier, selectedTier),
+            eq(subscriptionPriceMatrices.billingCycle, selectedCycle),
+            eq(subscriptionPriceMatrices.isActive, true)
+          )
+        )
+        .limit(1);
+    }
+
+    const fallback = this.getFallbackPrice(selectedCycle);
+    const amountIdr = priceRecord ? Number(priceRecord.amountIdr) : fallback.amountIdr;
+
     const dateStr = new Date().toISOString().slice(0, 10).replace(/-/g, '');
     const randomSuffix = Math.random().toString(36).substring(2, 7).toUpperCase();
     const invoiceNumber = `INV-${dateStr}-${randomSuffix}`;
-    const cycleDetails = this.getCycleDetails(dto.billingCycle || dto.planTier);
-    const amountIdr = cycleDetails.amountIdr;
 
     const snapResult = await this.paymentGateway.createInvoice({
       invoiceNumber,
@@ -91,6 +124,7 @@ export class BillingService {
 
     await db.insert(invoiceTransactions).values({
       subscriptionId: sub.id,
+      matrixId: priceRecord ? priceRecord.id : null,
       invoiceNumber,
       amountIdr: amountIdr.toString(),
       grossAmountIdr: amountIdr.toString(),
@@ -99,7 +133,9 @@ export class BillingService {
       reconciliationStatus: 'UNRECONCILED',
     });
 
-    this.logger.log(`[BillingCheckout] Invoice dibuat: ${invoiceNumber} (Rp ${amountIdr.toLocaleString('id-ID')}) untuk ${member.fullName}`);
+    this.logger.log(
+      `[BillingCheckout] Invoice dibuat: ${invoiceNumber} (Rp ${amountIdr.toLocaleString('id-ID')}) untuk ${member.fullName} [${member.legislativeLevel} / ${selectedTier} / ${selectedCycle}]`
+    );
 
     return {
       invoiceNumber,
@@ -220,12 +256,70 @@ export class BillingService {
 
       const now = new Date();
 
-      // Durasi Paket Berdasarkan Nilai Tagihan
+      // Resolusi Durasi dan Tier Paket Berdasarkan Matriks Harga Resmi
+      const [member] = await tx
+        .select({
+          id: tenantMembers.id,
+          legislativeLevel: tenantMembers.legislativeLevel,
+        })
+        .from(tenantMembers)
+        .where(eq(tenantMembers.id, sub.tenantId))
+        .limit(1);
+
       let durationDays = 30;
-      if (grossAmountIdr >= 15000000) {
-        durationDays = 365;
-      } else if (grossAmountIdr >= 8000000) {
-        durationDays = 180;
+      let targetPlanTier = sub.planTier;
+
+      if (invoice.matrixId) {
+        const [directMatrix] = await tx
+          .select()
+          .from(subscriptionPriceMatrices)
+          .where(eq(subscriptionPriceMatrices.id, invoice.matrixId))
+          .limit(1);
+
+        if (directMatrix) {
+          durationDays = directMatrix.durationDays;
+          targetPlanTier = directMatrix.planTier;
+        }
+      } else if (member) {
+        const [matchedMatrix] = await tx
+          .select()
+          .from(subscriptionPriceMatrices)
+          .where(
+            and(
+              eq(subscriptionPriceMatrices.legislativeLevel, member.legislativeLevel),
+              eq(subscriptionPriceMatrices.amountIdr, invoice.amountIdr)
+            )
+          )
+          .limit(1);
+
+        if (matchedMatrix) {
+          durationDays = matchedMatrix.durationDays;
+          targetPlanTier = matchedMatrix.planTier;
+        } else {
+          // Fallback deterministik: Cari matriks aktif dengan nominal persis sama
+          const [anyMatchedMatrix] = await tx
+            .select()
+            .from(subscriptionPriceMatrices)
+            .where(
+              and(
+                eq(subscriptionPriceMatrices.amountIdr, invoice.amountIdr),
+                eq(subscriptionPriceMatrices.isActive, true)
+              )
+            )
+            .limit(1);
+
+          if (anyMatchedMatrix) {
+            durationDays = anyMatchedMatrix.durationDays;
+            targetPlanTier = anyMatchedMatrix.planTier;
+            this.logger.warn(
+              `[BillingService] Matriks level mismatch untuk nominal ${invoice.amountIdr} (Level Anggota: ${member.legislativeLevel}, Level Matriks: ${anyMatchedMatrix.legislativeLevel}). Menggunakan durasi sah ${durationDays} hari.`
+            );
+          } else {
+            this.logger.warn(
+              `[BillingService] Tidak ditemukan matriks harga persis untuk invoice ${invoice.invoiceNumber} nominal ${invoice.amountIdr}. Menggunakan durasi standar (30 hari).`
+            );
+          }
+        }
       }
 
       // Garansi Akumulasi: Jika masa aktif masih berjalan, tambahkan di ujung periode berjalan
@@ -241,6 +335,7 @@ export class BillingService {
         .update(subscriptions)
         .set({
           status: SubscriptionStatus.ACTIVE,
+          planTier: targetPlanTier,
           currentPeriodStart: sub.currentPeriodStart || now,
           currentPeriodEnd: periodEnd,
           gracePeriodEnd: graceEnd,
@@ -390,10 +485,187 @@ export class BillingService {
       : serverKey.startsWith('Mid-server-');
     const clientKey = process.env.MIDTRANS_CLIENT_KEY || process.env.NEXT_PUBLIC_MIDTRANS_CLIENT_KEY || '';
 
+    // Ambil data anggota dewan untuk resolusi legislativeLevel
+    const [member] = await db
+      .select({
+        id: tenantMembers.id,
+        legislativeLevel: tenantMembers.legislativeLevel,
+      })
+      .from(tenantMembers)
+      .where(eq(tenantMembers.id, tenantId))
+      .limit(1);
+
+    // Information Expert: Kueri harga terisolasi HANYA untuk tingkat legislatif anggota ini
+    // Information Expert: Kueri penawaran berjenjang 3D Tensor untuk tingkat legislatif anggota ini
+    let availablePlans: any[] = [];
+    let tierOfferings: any[] = [];
+
+    if (member?.legislativeLevel) {
+      // Ambil SELURUH matriks aktif untuk level ini (3 Tier x 3 Siklus = 9 baris)
+      const allMatrices = await db
+        .select()
+        .from(subscriptionPriceMatrices)
+        .where(
+          and(
+            eq(subscriptionPriceMatrices.legislativeLevel, member.legislativeLevel),
+            eq(subscriptionPriceMatrices.isActive, true)
+          )
+        );
+
+      const targetTier = (sub.planTier || 'PRO') as any;
+      let priceRecords = allMatrices.filter((m) => m.planTier === targetTier);
+      if (priceRecords.length === 0) {
+        priceRecords = allMatrices;
+      }
+      priceRecords.sort((a, b) => a.durationDays - b.durationDays);
+
+      availablePlans = priceRecords.map((p) => {
+        const amt = Number(p.amountIdr);
+        const priceFormatted = new Intl.NumberFormat('id-ID', {
+          style: 'currency',
+          currency: 'IDR',
+          maximumFractionDigits: 0,
+        }).format(amt).replace(/\s/g, '');
+
+        let name = '1 Bulan';
+        let badge = 'Fleksibel';
+        let badgeClass = 'bg-slate-100 text-slate-600';
+        let tagline = 'Cocok untuk evaluasi awal atau masa sidang singkat';
+        let savings: string | null = null;
+        let originalPriceFormatted: string | null = null;
+        let rateNote = `/ 30 hari`;
+        let highlight = false;
+
+        if (p.billingCycle === 'SEMESTER') {
+          name = '6 Bulan';
+          badge = 'Paling Populer';
+          badgeClass = 'bg-blue-600 text-white shadow-xs';
+          highlight = true;
+          tagline = 'Ideal untuk 1 siklus masa persidangan & reses';
+          rateNote = `~Rp${(Math.round((amt / 6) / 100000) / 10).toLocaleString('id-ID')} Jt/bln`;
+        } else if (p.billingCycle === 'ANNUAL') {
+          name = '1 Tahun';
+          badge = 'Nilai Terbaik';
+          badgeClass = 'bg-amber-100 text-amber-900 border border-amber-200';
+          tagline = 'Mencakup 1 tahun anggaran APBN/APBD penuh';
+          rateNote = `~Rp${(Math.round((amt / 12) / 100000) / 10).toLocaleString('id-ID')} Jt/bln`;
+        }
+
+        return {
+          id: p.billingCycle,
+          matrixId: p.id,
+          name,
+          durationLabel: `${p.durationDays} Hari`,
+          badge,
+          badgeClass,
+          tier: p.planTier,
+          cycle: p.billingCycle,
+          durationDays: p.durationDays,
+          amountIdr: amt,
+          priceFormatted,
+          originalPriceFormatted,
+          rateNote,
+          tagline,
+          savings,
+          highlight,
+          perks: [
+            `+${p.durationDays} Hari Masa Aktif Penuh`,
+            'AI Unlimited (Naskah & Poster)',
+            p.planTier === 'STARTER' ? 'Portal Resmi Standar Parlemen' : 'Dukungan Custom Domain & Layout Tematik',
+            'Garansi Akumulasi Hari Tidak Hangus',
+          ],
+        };
+      });
+
+      // Pure Fabrication (EntitlementPolicy): Bangun struktur penawaran berjenjang 2 Tier (STARTER & PRO)
+      const tiers: PlanTier[] = [PlanTier.STARTER, PlanTier.PRO];
+      const cycles = ['MONTHLY', 'SEMESTER', 'ANNUAL'];
+
+      tierOfferings = tiers.map((tier) => {
+        const entitlement = EntitlementPolicy.getEntitlement(tier);
+        const tierMatrices = allMatrices.filter((m) => m.planTier === tier);
+        const cyclePricing: Record<string, any> = {};
+
+        cycles.forEach((cycle) => {
+          const matched = tierMatrices.find((m) => m.billingCycle === cycle);
+          if (matched) {
+            const amt = Number(matched.amountIdr);
+            const months = matched.durationDays <= 31 ? 1 : matched.durationDays <= 185 ? 6 : 12;
+            const monthlyRate = Math.round(amt / months);
+
+            let savingsNote: string | undefined;
+            if (cycle === 'SEMESTER') {
+              savingsNote = 'Hemat ~15% dibanding bulanan';
+            } else if (cycle === 'ANNUAL') {
+              savingsNote = 'Hemat ~25% dibanding bulanan';
+            }
+
+            cyclePricing[cycle] = {
+              matrixId: matched.id,
+              cycle,
+              durationDays: matched.durationDays,
+              amountIdr: amt,
+              priceFormatted: new Intl.NumberFormat('id-ID', {
+                style: 'currency',
+                currency: 'IDR',
+                maximumFractionDigits: 0,
+              }).format(amt).replace(/\s/g, ''),
+              monthlyRateFormatted: new Intl.NumberFormat('id-ID', {
+                style: 'currency',
+                currency: 'IDR',
+                maximumFractionDigits: 0,
+              }).format(monthlyRate).replace(/\s/g, '') + '/bln',
+              savingsNote,
+            };
+          }
+        });
+
+        // Daftar poin checklist faktual sesuai hak akses 2-tier (STARTER vs PRO)
+        const perks = tier === PlanTier.STARTER
+          ? [
+              'Durasi Masa Aktif Penuh Sesuai Siklus',
+              'AI Unlimited (Naskah Legislasi & Poster Dapil)',
+              'Tata Letak Standar Parlemen Saja (Default)',
+              'Domain Resmi Bawaan (subdomain.polaris.id)',
+              'Pembayaran Mandiri Cepat via VA Bank & QRIS',
+              'Garansi Akumulasi Sisa Hari Tidak Hangus',
+            ]
+          : [
+              'Durasi Masa Aktif Penuh Sesuai Siklus',
+              'AI Unlimited (Naskah Legislasi & Poster Dapil)',
+              'Bebas Pilih Layout Tematik (Editorial, Baliho, Newsroom)',
+              'Dukungan Custom Domain Pribadi (.id / .com)',
+              'Fasilitasi Dokumen Administrasi SPK & Setwan',
+              'Faktur Pajak Resmi Negara (PPN 11% & PPh Instansi)',
+              'Prioritas Jalur Antrean Pemrosesan AI 24/7',
+              'Garansi Akumulasi Sisa Hari Tidak Hangus',
+            ];
+
+        return {
+          tier,
+          name: entitlement.displayName,
+          badge: entitlement.badge,
+          tagline: entitlement.tagline,
+          isCurrentTier: sub.planTier === tier,
+          entitlements: {
+            thematicLayouts: entitlement.thematicLayoutsEnabled,
+            customDomain: entitlement.customDomainEnabled,
+            spkSupport: entitlement.spkProcurementEnabled,
+            priorityQueue: entitlement.priorityQueueEnabled,
+          },
+          perks,
+          pricing: cyclePricing,
+        };
+      });
+    }
+
     return {
       subscriptionStatus: sub.status,
       planTier: sub.planTier,
       currentPeriodEnd: sub.currentPeriodEnd ? sub.currentPeriodEnd.toISOString() : null,
+      legislativeLevel: member?.legislativeLevel as any,
+      availablePlans,
+      tierOfferings,
       quota: {
         billingMonth: currentMonth,
         articleLimit: 0,

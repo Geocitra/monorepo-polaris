@@ -151,10 +151,10 @@ export function ContentReaderModal({ item, onClose }: ContentReaderModalProps) {
               Lihat Paket Harga
             </button>
             <a
-              href={`${DASHBOARD_URL}/register`}
+              href="/pricing"
               className="w-full sm:w-auto px-5 py-2.5 rounded-xl bg-blue-600 text-white text-xs font-bold hover:bg-blue-700 shadow-md shadow-blue-600/20 transition-all flex items-center justify-center gap-1.5"
             >
-              <span>Daftar Akun Workspace</span>
+              <span>Ajukan Permohonan Lisensi</span>
               <ArrowRight className="h-3.5 w-3.5" />
             </a>
           </div>

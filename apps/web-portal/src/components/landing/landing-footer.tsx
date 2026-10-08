@@ -116,9 +116,9 @@ export function LandingFooter({ onOpenPolicy, onRequestDemo, onSelectCategory }:
                 </a>
               </li>
               <li>
-                <a href={`${DASHBOARD_URL}/register`} className="hover:text-white transition-colors block">
-                  Pendaftaran Akun Baru
-                </a>
+                <Link href="/pricing" className="hover:text-white transition-colors block">
+                  Permohonan Lisensi Dewan
+                </Link>
               </li>
               <li>
                 <Link href="/pricing" className="hover:text-white transition-colors block text-blue-400 font-bold">

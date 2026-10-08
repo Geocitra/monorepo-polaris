@@ -10,6 +10,10 @@ import {
   CreditCard,
   Ban,
   Check,
+  ShieldAlert,
+  KeyRound,
+  Copy,
+  Lock,
 } from 'lucide-react';
 import { TenantRow } from '../types';
 import { PaginationControls } from '../common/PaginationControls';
@@ -20,6 +24,8 @@ interface TenantTableProps {
   onVerifyToggle: (tenant: TenantRow) => void;
   onStatusToggle: (tenant: TenantRow) => void;
   onOpenLicenseModal: (tenant: TenantRow) => void;
+  onOpenLegislativeLevelModal?: (tenant: TenantRow) => void;
+  onOpenResetPasswordModal?: (tenant: TenantRow) => void;
 }
 
 export function TenantTable({
@@ -28,8 +34,11 @@ export function TenantTable({
   onVerifyToggle,
   onStatusToggle,
   onOpenLicenseModal,
+  onOpenLegislativeLevelModal,
+  onOpenResetPasswordModal,
 }: TenantTableProps) {
   const [currentPage, setCurrentPage] = useState(1);
+  const [copiedId, setCopiedId] = useState<string | null>(null);
   const itemsPerPage = 8;
 
   const totalPages = Math.ceil(tenants.length / itemsPerPage);
@@ -40,14 +49,35 @@ export function TenantTable({
     return tenants.slice(start, start + itemsPerPage);
   }, [tenants, safePage, itemsPerPage]);
 
+  const handleCopyPassword = (tenantId: string, pwd: string) => {
+    navigator.clipboard.writeText(pwd);
+    setCopiedId(tenantId);
+    setTimeout(() => setCopiedId(null), 2000);
+  };
+
+  const formatLegislativeLabel = (level: string) => {
+    switch (level) {
+      case 'DPR_RI':
+        return 'DPR RI';
+      case 'DPD_RI':
+        return 'DPD RI';
+      case 'DPRD_PROV':
+        return 'DPRD Provinsi';
+      case 'DPRD_KAB_KOTA':
+        return 'DPRD Kab/Kota';
+      default:
+        return level.replace(/_/g, ' ');
+    }
+  };
+
   return (
     <div className="rounded-2xl bg-white dark:bg-[#0B0F17] border border-slate-200 dark:border-slate-800 overflow-hidden shadow-xs p-4 space-y-4">
       <div className="overflow-x-auto">
         <table className="w-full text-left text-xs">
           <thead>
             <tr className="bg-slate-50 dark:bg-slate-950/80 border-b border-slate-200 dark:border-slate-800 text-slate-500 dark:text-slate-400 font-bold uppercase text-[10px]">
-              <th className="py-3 px-4">Nama Dewan & Kontak</th>
-              <th className="py-3 px-4">Fraksi, Komisi & Dapil</th>
+              <th className="py-3 px-4">Nama Dewan & Kredensial</th>
+              <th className="py-3 px-4">Tingkat & Dapil</th>
               <th className="py-3 px-4">Portal Publik</th>
               <th className="py-3 px-4">Verifikasi KPU</th>
               <th className="py-3 px-4">Lisensi & Masa Aktif</th>
@@ -58,41 +88,75 @@ export function TenantTable({
             {displayedTenants.map((t) => {
               const isSubActive = t.subscriptionStatus === 'ACTIVE';
               const periodEndDate = t.periodEnd ? new Date(t.periodEnd) : null;
-              const isExpired = periodEndDate && periodEndDate < new Date();
 
               return (
                 <tr
                   key={t.id}
                   className="hover:bg-slate-50/80 dark:hover:bg-slate-800/40 transition-colors"
                 >
-                  {/* 1. NAMA & EMAIL */}
+                  {/* 1. NAMA & KREDENSIAL */}
                   <td className="py-3 px-4">
                     <div className="font-extrabold text-slate-900 dark:text-white text-sm">
                       {t.fullName}
                     </div>
-                    <div className="text-slate-500 dark:text-slate-400 text-[11px]">
-                      {t.email}
+                    <div className="flex items-center gap-1.5 mt-0.5 text-slate-500 dark:text-slate-400 text-[11px]">
+                      <span>{t.email}</span>
+                      {t.username && (
+                        <span className="font-mono text-[10px] text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-950/50 px-1.5 py-0.2 rounded border border-indigo-200 dark:border-indigo-800/60">
+                          @{t.username}
+                        </span>
+                      )}
                     </div>
                     <div className="text-slate-400 dark:text-slate-500 text-[10px] font-mono mt-0.5">
                       {t.phoneNumber}
                     </div>
+
+                    {/* Temporary Password Tag / Mandatory Change */}
+                    {t.mustChangePassword && (
+                      <div className="mt-1.5 flex items-center gap-1.5">
+                        <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-medium bg-amber-50 dark:bg-amber-950/50 text-amber-700 dark:text-amber-300 border border-amber-200 dark:border-amber-800/60">
+                          <Lock className="w-2.5 h-2.5" />
+                          Wajib Ganti Password
+                        </span>
+                        {t.temporaryPasswordPlaintextPreview && (
+                          <button
+                            type="button"
+                            onClick={() => handleCopyPassword(t.id, t.temporaryPasswordPlaintextPreview!)}
+                            title="Salin kata sandi sementara"
+                            className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-mono bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 border border-slate-300 dark:border-slate-700 transition"
+                          >
+                            {copiedId === t.id ? (
+                              <>
+                                <Check className="w-2.5 h-2.5 text-emerald-500" />
+                                <span className="text-emerald-600 dark:text-emerald-400">Tersalin</span>
+                              </>
+                            ) : (
+                              <>
+                                <Copy className="w-2.5 h-2.5" />
+                                <span>Pwd Temp</span>
+                              </>
+                            )}
+                          </button>
+                        )}
+                      </div>
+                    )}
                   </td>
 
-                  {/* 2. FRAKSI, KOMISI & DAPIL */}
+                  {/* 2. TINGKAT & DAPIL */}
                   <td className="py-3 px-4">
                     <div className="flex flex-wrap items-center gap-1.5 mb-1">
                       <span className="inline-block px-2 py-0.5 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200 border border-slate-200 dark:border-slate-700 font-bold text-[10px]">
                         {t.partyAffiliation || 'Non-Fraksi'}
                       </span>
-                      {t.commissionName ? (
-                        <span className="inline-block px-2 py-0.5 rounded-full bg-blue-50 dark:bg-blue-950/60 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-800/60 font-semibold text-[10px]">
-                          {t.commissionName}
-                        </span>
-                      ) : (
-                        <span className="inline-block px-2 py-0.5 rounded-full bg-slate-50 dark:bg-slate-900 text-slate-400 dark:text-slate-500 text-[10px] italic">
-                          Belum pilih komisi
-                        </span>
-                      )}
+                      <button
+                        type="button"
+                        onClick={() => onOpenLegislativeLevelModal?.(t)}
+                        title="Klik untuk koreksi level wewenang legislatif"
+                        className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-indigo-50 dark:bg-indigo-950/60 text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800/60 font-bold text-[10px] hover:bg-indigo-100 transition cursor-pointer"
+                      >
+                        <ShieldAlert className="w-2.5 h-2.5" />
+                        <span>{formatLegislativeLabel(t.legislativeLevel)}</span>
+                      </button>
                     </div>
                     <div className="text-[11px] text-slate-600 dark:text-slate-300 font-medium">
                       {t.dapilName || 'Dapil belum diatur'}
@@ -142,10 +206,8 @@ export function TenantTable({
                     <div className="flex items-center gap-2">
                       <span
                         className={`inline-block px-2 py-0.5 rounded-md font-black text-[10px] uppercase tracking-wider ${
-                          t.planTier === 'ENTERPRISE'
-                            ? 'bg-purple-100 text-purple-800 dark:bg-purple-950/60 dark:text-purple-300 border border-purple-200 dark:border-purple-800'
-                            : t.planTier === 'PRO'
-                            ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800'
+                          t.planTier === 'PRO'
+                            ? 'bg-blue-100 text-blue-800 dark:bg-blue-950/60 dark:text-blue-300 border border-blue-200 dark:border-blue-800'
                             : 'bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300 border border-slate-200 dark:border-slate-700'
                         }`}
                       >
@@ -180,6 +242,30 @@ export function TenantTable({
                         <CreditCard className="h-3.5 w-3.5" />
                         <span>Beri Lisensi</span>
                       </button>
+
+                      {/* Koreksi Tingkat Jabatan */}
+                      {onOpenLegislativeLevelModal && (
+                        <button
+                          type="button"
+                          onClick={() => onOpenLegislativeLevelModal(t)}
+                          title="Koreksi Tingkat Legislatif (Audit KPU)"
+                          className="p-1.5 rounded-lg border border-indigo-200 dark:border-indigo-800/60 bg-indigo-50 text-indigo-700 dark:bg-indigo-950/40 dark:text-indigo-300 hover:bg-indigo-100 transition-all cursor-pointer"
+                        >
+                          <ShieldAlert className="h-3.5 w-3.5" />
+                        </button>
+                      )}
+
+                      {/* Reset Kata Sandi */}
+                      {onOpenResetPasswordModal && (
+                        <button
+                          type="button"
+                          onClick={() => onOpenResetPasswordModal(t)}
+                          title="Reset Kata Sandi Dewan"
+                          className="p-1.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 text-slate-700 dark:bg-slate-800 dark:text-slate-300 hover:bg-slate-100 transition-all cursor-pointer"
+                        >
+                          <KeyRound className="h-3.5 w-3.5" />
+                        </button>
+                      )}
 
                       {/* Toggle Verifikasi KPU */}
                       <button

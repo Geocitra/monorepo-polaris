@@ -18,10 +18,11 @@ export class PlatformFactsRegistry {
      * X (Twitter): Format utas (threads) bersambung yang ringkas dan padat.
    - Kanal yang BELUM Didukung Secara Langsung: Telegram, TikTok auto-upload, LinkedIn auto-post, atau platform lain di luar yang disebutkan di atas. Pengguna tetap dapat menyalin naskah secara manual.
 
-4. STRUKTUR HARGA LISENSI TRANSPARAN:
-   - Paket 1 Bulan: Rp 2.000.000 (Masa aktif 30 hari kalender, cocok untuk evaluasi atau masa sidang singkat).
-   - Paket 6 Bulan: Rp 10.000.000 (Masa aktif 180 hari, hemat Rp 2.000.000 dibanding harga bulanan, ideal untuk 1 masa persidangan & reses).
-   - Paket 1 Tahun: Rp 20.000.000 (Masa aktif 365 hari, hemat Rp 4.000.000 dibanding harga bulanan, mencakup 1 tahun anggaran APBN/APBD penuh).
+4. STRUKTUR HARGA LISENSI PROPORSIONAL & YURISDIKSI:
+   - Kebijakan Tarif: Biaya lisensi POLARIS dihitung secara proporsional dan transparan berdasarkan tingkat yurisdiksi keparlemenan dan pemerintahan (DPR RI, DPD RI, DPRD Provinsi, DPRD Kabupaten/Kota, Kepala Daerah, dan OPD Pemda).
+   - Durasi Tersedia: Tersedia dalam pilihan durasi 1 Bulan (30 hari), 6 Bulan (180 hari / 1 masa persidangan & reses), dan 1 Tahun (365 hari / tahun anggaran penuh).
+   - Tingkatan Layanan: Terbagi atas tier STARTER (Standard Parlemen), PRO (Premium Parlemen dengan custom layout tematik dan domain), dan VIP/ENTERPRISE (Fasilitasi SPK dan prioritas antrean).
+   - Panduan Inquiry: POLARIS tidak menggunakan tarif kaku seragam untuk seluruh dewan. Calon pengguna atau fraksi diarahkan untuk mengajukan formulir permohonan lisensi resmi atau meminta Surat Penawaran Harga (SPH).
    - Kebijakan Pemakaian: Seluruh paket berstatus Unlimited AI Generation (Naskah & Poster). Sisa hari aktif bersifat akumulatif saat perpanjangan (tidak pernah hangus).
 
 5. TATA KELOLA PENGADAAN & KEUANGAN:

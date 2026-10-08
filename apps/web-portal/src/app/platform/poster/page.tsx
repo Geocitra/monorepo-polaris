@@ -64,12 +64,12 @@ export default function PlatformPosterPage() {
                 <ArrowRight className="h-4 w-4" />
               </Link>
 
-              <a
-                href={`${DASHBOARD_URL}/register`}
+              <Link
+                href="/pricing"
                 className="inline-flex items-center px-6 py-3.5 rounded-xl bg-white border border-slate-300 text-slate-700 font-extrabold text-sm sm:text-base hover:bg-slate-50 transition-all shadow-xs"
               >
-                <span>Daftar Akun Workspace</span>
-              </a>
+                <span>Konsultasi Lisensi</span>
+              </Link>
             </div>
 
           </div>

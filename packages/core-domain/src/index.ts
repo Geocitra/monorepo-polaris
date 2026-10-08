@@ -13,9 +13,14 @@ export * from './entities/InvoiceTransaction.js';
 export * from './entities/ReconciliationBatch.js';
 export * from './entities/ReconciliationDiscrepancy.js';
 export * from './entities/PlatformTokenPool.js';
+export * from './entities/LicenseInquiry.js';
+export * from './entities/SubscriptionPriceMatrix.js';
 
 // Ports
 export * from './ports/llm-provider.port.js';
 export * from './ports/storage.port.js';
 export * from './ports/payment-gateway.port.js';
 export * from './ports/payment-report.port.js';
+
+// Policies
+export * from './policies/EntitlementPolicy.js';

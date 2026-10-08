@@ -139,10 +139,10 @@ export function SolutionSection({ activeTab: externalTab, onTabChange, onRequest
 
                 <div className="pt-4 flex flex-wrap items-center gap-4">
                   <a
-                    href={`${DASHBOARD_URL}/register?role=dpr`}
+                    href="/pricing"
                     className="inline-flex items-center gap-2 px-6 py-3.5 rounded-xl bg-blue-600 text-white font-extrabold text-sm hover:bg-blue-700 shadow-md shadow-blue-600/20 active:scale-95 transition-all text-center"
                   >
-                    <span>Daftar Akun DPR / DPD RI</span>
+                    <span>Konsultasi Lisensi DPR / DPD RI</span>
                     <ArrowRight className="h-4 w-4" />
                   </a>
 
@@ -229,10 +229,10 @@ export function SolutionSection({ activeTab: externalTab, onTabChange, onRequest
 
                 <div className="pt-4 flex flex-wrap items-center gap-4">
                   <a
-                    href={`${DASHBOARD_URL}/register?role=dprd`}
+                    href="/pricing"
                     className="inline-flex items-center gap-2 px-6 py-3.5 rounded-xl bg-indigo-600 text-white font-extrabold text-sm hover:bg-indigo-700 shadow-md shadow-indigo-600/20 active:scale-95 transition-all text-center"
                   >
-                    <span>Daftar Akun DPRD</span>
+                    <span>Konsultasi Lisensi DPRD</span>
                     <ArrowRight className="h-4 w-4" />
                   </a>
 
@@ -319,10 +319,10 @@ export function SolutionSection({ activeTab: externalTab, onTabChange, onRequest
 
                 <div className="pt-4 flex flex-wrap items-center gap-4">
                   <a
-                    href={`${DASHBOARD_URL}/register?role=pemda`}
+                    href="/pricing"
                     className="inline-flex items-center gap-2 px-6 py-3.5 rounded-xl bg-emerald-600 text-white font-extrabold text-sm hover:bg-emerald-700 shadow-md shadow-emerald-600/20 active:scale-95 transition-all text-center"
                   >
-                    <span>Daftar Akun Eksekutif Pemda</span>
+                    <span>Konsultasi Lisensi Pemda</span>
                     <ArrowRight className="h-4 w-4" />
                   </a>
 

@@ -32,7 +32,7 @@ const steps = [
 
 export function WorkflowSteps() {
   return (
-    <section id="keunggulan" className="py-20 bg-white scroll-mt-20">
+    <section id="keunggulan" className="pt-6 sm:pt-8 pb-16 sm:pb-20 bg-white scroll-mt-20">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-16">
         <div className="text-center max-w-2xl mx-auto space-y-3">
           <span className="text-xs font-black uppercase tracking-wider text-blue-600 block">

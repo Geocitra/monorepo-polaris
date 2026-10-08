@@ -19,6 +19,7 @@ import {
 } from 'lucide-react';
 import { ColorPicker } from '@/components/ui/color-picker';
 import { cn } from '@/lib/utils';
+import { TemplateLayoutSelector } from './TemplateLayoutSelector';
 
 interface ColorPalette {
   name: string;
@@ -62,6 +63,9 @@ interface ThemeFormProps {
   onPrimaryColorChange: (val: string) => void;
   secondaryColor: string;
   onSecondaryColorChange: (val: string) => void;
+  layoutTemplateId?: string;
+  onLayoutTemplateIdChange?: (val: string) => void;
+  planTier?: string | null;
   officialPhotoUrl: string;
   onOfficialPhotoUrlChange: (val: string) => void;
   headlineTagline: string;
@@ -83,6 +87,9 @@ export function ThemeForm({
   onPrimaryColorChange,
   secondaryColor,
   onSecondaryColorChange,
+  layoutTemplateId = 'standard-default',
+  onLayoutTemplateIdChange,
+  planTier,
   officialPhotoUrl,
   onOfficialPhotoUrlChange,
   headlineTagline,
@@ -382,6 +389,15 @@ export function ThemeForm({
             className="mt-1.5 block w-full rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-3 text-xs sm:text-sm text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:border-blue-600 focus:outline-none focus:ring-1 focus:ring-blue-600"
           />
         </div>
+      </div>
+
+      {/* ─── SECTION 4.5: TEMPLATE THEMATIC LAYOUT SELECTOR ─── */}
+      <div className="pt-4 border-t border-slate-100 dark:border-slate-800">
+        <TemplateLayoutSelector
+          selectedTemplateId={layoutTemplateId}
+          onSelectTemplate={(id) => onLayoutTemplateIdChange?.(id)}
+          planTier={planTier}
+        />
       </div>
 
       {/* ─── SECTION 5: DOMAIN SETTINGS ─── */}

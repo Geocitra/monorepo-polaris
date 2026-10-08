@@ -62,12 +62,12 @@ export default function SolusiPemdaPage() {
                 <ArrowRight className="h-4 w-4" />
               </Link>
 
-              <a
-                href={`${DASHBOARD_URL}/register?plan=kabkota`}
+              <Link
+                href="/pricing"
                 className="inline-flex items-center px-6 py-3.5 rounded-xl bg-white border border-slate-300 text-slate-700 font-extrabold text-sm sm:text-base hover:bg-slate-50 transition-all shadow-xs"
               >
-                <span>Daftar Akun Workspace</span>
-              </a>
+                <span>Ajukan Konsultasi Lisensi</span>
+              </Link>
             </div>
 
           </div>
@@ -131,13 +131,13 @@ export default function SolusiPemdaPage() {
               Tingkatkan standar komunikasi Dinas Kominfo, Bagian Protokol & Komunikasi Pimpinan (Prokopim), serta OPD teknis dengan sistem terpadu POLARIS.
             </p>
             <div className="pt-2">
-              <a
-                href={`${DASHBOARD_URL}/register?plan=kabkota`}
+              <Link
+                href="/pricing"
                 className="inline-flex items-center gap-2 px-8 py-3.5 rounded-xl bg-emerald-600 text-white font-extrabold text-sm shadow-lg shadow-emerald-600/25 hover:bg-emerald-700 transition-all"
               >
-                <span>Daftarkan Akun OPD Pemda Sekarang</span>
+                <span>Ajukan Permohonan Lisensi Pemda</span>
                 <ArrowRight className="h-4 w-4" />
-              </a>
+              </Link>
             </div>
           </div>
         </section>

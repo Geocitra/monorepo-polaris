@@ -10,11 +10,20 @@ export class PortalProfile {
     public secondaryColor: HexColor,
     public customDomain?: string | null,
     public isActive: boolean = true,
+    public layoutTemplateId: string = 'standard-default',
   ) {}
 
   public updateBrandingColors(primary: HexColor, secondary: HexColor): void {
     this.primaryColor = primary;
     this.secondaryColor = secondary;
+  }
+
+  public updateLayoutTemplate(templateId: string, isPremiumTier: boolean): void {
+    const cleanTemplateId = templateId.trim().toLowerCase();
+    if (cleanTemplateId !== 'standard-default' && !isPremiumTier) {
+      throw new Error(`[EntitlementViolation] Kustomisasi template layout tematik '${templateId}' memerlukan lisensi Premium.`);
+    }
+    this.layoutTemplateId = cleanTemplateId;
   }
 
   public attachCustomDomain(domain: string): void {

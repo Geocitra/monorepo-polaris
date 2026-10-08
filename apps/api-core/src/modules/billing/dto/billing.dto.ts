@@ -1,4 +1,5 @@
 import { IsOptional, IsString } from 'class-validator';
+import { TierOfferingDto } from '@polaris/shared-types';
 
 export class CreateCheckoutDto {
   @IsOptional()
@@ -8,6 +9,10 @@ export class CreateCheckoutDto {
   @IsOptional()
   @IsString()
   planTier?: string;
+
+  @IsOptional()
+  @IsString()
+  matrixId?: string;
 }
 
 export interface CheckoutResponseDto {
@@ -31,6 +36,27 @@ export interface BillingStatusDto {
   subscriptionStatus: string;
   planTier: string;
   currentPeriodEnd: string | null;
+  legislativeLevel?: string;
+  tierOfferings?: TierOfferingDto[];
+  availablePlans?: Array<{
+    id: string;
+    matrixId?: string;
+    name?: string;
+    durationLabel?: string;
+    badge?: string;
+    badgeClass?: string;
+    tier: string;
+    cycle: string;
+    durationDays: number;
+    amountIdr: number;
+    priceFormatted?: string;
+    originalPriceFormatted?: string | null;
+    rateNote?: string;
+    tagline?: string;
+    savings?: string | null;
+    highlight?: boolean;
+    perks?: string[];
+  }>;
   quota: {
     billingMonth: string;
     articleLimit: number;

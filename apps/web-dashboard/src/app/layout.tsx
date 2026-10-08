@@ -3,6 +3,8 @@ import type { Metadata } from 'next';
 import { ToastProvider } from '@/components/ui/toast';
 import { ThemeProvider } from '@/contexts/ThemeContext';
 
+import { SessionSecurityGate } from '@/components/auth/SessionSecurityGate';
+
 export const metadata: Metadata = {
   title: 'POLARIS — Executive Chief of Staff Dashboard',
   description: 'Ruang kerja eksekutif anggota dewan untuk analisis isu, pembuatan artikel AI, dan sebaran publik.',
@@ -25,7 +27,9 @@ export default function RootLayout({
       </head>
       <body className="min-h-screen">
         <ThemeProvider>
-          <ToastProvider>{children}</ToastProvider>
+          <ToastProvider>
+            <SessionSecurityGate>{children}</SessionSecurityGate>
+          </ToastProvider>
         </ThemeProvider>
       </body>
     </html>

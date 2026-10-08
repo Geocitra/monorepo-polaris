@@ -44,18 +44,18 @@ export function TwoFactorLoginForm({
   if (step === 'CREDENTIALS') {
     return (
       <form onSubmit={onVerifyCredentials} className="space-y-3.5">
-        {/* Input Email */}
+        {/* Input Email atau Username */}
         <div>
           <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
-            Email
+            Email Resmi atau Username Akun
           </label>
           <div className="relative">
             <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
             <input
-              type="email"
+              type="text"
               required
               autoFocus
-              placeholder="nama@email.com"
+              placeholder="nama@dpr.go.id atau budi_santoso"
               value={email}
               onChange={(e) => {
                 setEmail(e.target.value);

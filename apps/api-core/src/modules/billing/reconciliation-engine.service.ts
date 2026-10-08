@@ -12,6 +12,8 @@ import {
   invoiceTransactions,
   subscriptions,
   tenantQuotaLedgers,
+  tenantMembers,
+  subscriptionPriceMatrices,
 } from '@polaris/database';
 import {
   GatewaySettlementRecord,
@@ -383,8 +385,51 @@ export class ReconciliationEngineService {
     if (!sub) return;
 
     let durationDays = 30;
-    if (grossAmountIdr >= 15000000) durationDays = 365;
-    else if (grossAmountIdr >= 8000000) durationDays = 180;
+    let targetPlanTier = sub.planTier;
+
+    const [member] = await tx
+      .select({ legislativeLevel: tenantMembers.legislativeLevel })
+      .from(tenantMembers)
+      .where(eq(tenantMembers.id, sub.tenantId))
+      .limit(1);
+
+    if (member) {
+      const [matchedMatrix] = await tx
+        .select()
+        .from(subscriptionPriceMatrices)
+        .where(
+          and(
+            eq(subscriptionPriceMatrices.legislativeLevel, member.legislativeLevel),
+            eq(subscriptionPriceMatrices.amountIdr, grossAmountIdr.toString())
+          )
+        )
+        .limit(1);
+
+      if (matchedMatrix) {
+        durationDays = matchedMatrix.durationDays;
+        targetPlanTier = matchedMatrix.planTier;
+      } else {
+        const [anyMatchedMatrix] = await tx
+          .select()
+          .from(subscriptionPriceMatrices)
+          .where(
+            and(
+              eq(subscriptionPriceMatrices.amountIdr, grossAmountIdr.toString()),
+              eq(subscriptionPriceMatrices.isActive, true)
+            )
+          )
+          .limit(1);
+
+        if (anyMatchedMatrix) {
+          durationDays = anyMatchedMatrix.durationDays;
+          targetPlanTier = anyMatchedMatrix.planTier;
+        } else {
+          this.logger.warn(
+            `[ReconciliationEngine:AutoHeal] Tidak ada matriks harga pas untuk nominal Rp ${grossAmountIdr} (Tenant: ${sub.tenantId}). Menggunakan durasi 30 hari.`
+          );
+        }
+      }
+    }
 
     const baseDate = sub.currentPeriodEnd && new Date(sub.currentPeriodEnd) > settlementDate
       ? new Date(sub.currentPeriodEnd)
@@ -398,6 +443,7 @@ export class ReconciliationEngineService {
       .update(subscriptions)
       .set({
         status: SubscriptionStatus.ACTIVE,
+        planTier: targetPlanTier,
         currentPeriodStart: sub.currentPeriodStart || settlementDate,
         currentPeriodEnd: periodEnd,
         gracePeriodEnd: graceEnd,

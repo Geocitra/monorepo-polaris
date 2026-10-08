@@ -100,3 +100,11 @@ export const commentStatusEnum = pgEnum('comment_status_enum', [
   'HIDDEN',
   'FLAGGED_SPAM',
 ]);
+
+export const inquiryStatusEnum = pgEnum('inquiry_status_enum', [
+  'NEW_LEAD',
+  'MEETING_SCHEDULED',
+  'PROPOSAL_SENT',
+  'DEAL_CONVERTED',
+  'REJECTED_DROPPED',
+]);
