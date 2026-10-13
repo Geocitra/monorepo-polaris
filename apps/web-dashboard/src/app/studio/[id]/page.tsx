@@ -224,7 +224,11 @@ export default function ArticleEditorPage() {
                 isRegenerating={regeneratingPoster}
                 onRegenerate={handleRegeneratePoster}
               />
-              <ArticleSocialSidebar socialPack={socialPack} />
+              <ArticleSocialSidebar
+                socialPack={socialPack}
+                articleId={articleId}
+                posterUrl={posterUrl}
+              />
             </div>
           </div>
         </main>

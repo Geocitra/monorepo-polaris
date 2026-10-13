@@ -72,6 +72,7 @@ export const legalStatusEnum = pgEnum('legal_status_enum', [
 
 export const socialPlatformEnum = pgEnum('social_platform_enum', [
   'INSTAGRAM',
+  'THREADS',
   'X_TWITTER',
   'TIKTOK',
   'YOUTUBE',

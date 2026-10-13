@@ -60,6 +60,7 @@ Hasilkan JSON murni dengan skema:
   public static getDalleVisualPrompt(topic: string, headline: string): string {
     return `High-end editorial political illustration representing: "${topic} - ${headline}".
 Professional graphic poster art style, clean modern composition, balanced colors, sharp focal points, suitable for a national parliamentary report cover.
+COMPOSITION RULE: Compose all primary subjects, focal points, and symbolic elements comfortably within the central 80% vertical safe zone, keeping top and bottom margins atmospheric and uncluttered for flexible 4:5 editorial framing.
 STRICT NEGATIVE CONSTRAINT: DO NOT generate any institutional logos, government emblems, regional seals, party logos, coat of arms, badges, crests, or watermark insignias. Absolutely NO fake or AI-hallucinated logos anywhere on the canvas.
 NO random text, NO gibberish characters, NO distorted human hands. Minimalist, dignified, and technocratic atmosphere, 8k resolution, flat color accents.`;
   }

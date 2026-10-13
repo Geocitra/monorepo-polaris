@@ -18,6 +18,12 @@ import {
   registerScheduledReconciliationJobs,
 } from './queues/reconciliation.queue.js';
 import { ReconciliationProcessor } from './processors/reconciliation.processor.js';
+import {
+  SOCIAL_PUBLISHING_QUEUE_NAME,
+  SocialPublishingJobPayload,
+} from './queues/social-publishing.queue.js';
+import { InstagramPublishingProcessor } from './processors/instagram-publishing.processor.js';
+import { ThreadsPublishingProcessor } from './processors/threads-publishing.processor.js';
 
 console.log('====================================================');
 console.log(' POLARIS ASYNCHRONOUS BACKGROUND DAEMON WORKER     ');
@@ -115,6 +121,26 @@ reconWorker.on('failed', (job, err) => {
   console.error(`[Worker Recon] Audit rekonsiliasi #${job?.id} gagal: ${err.message}`);
 });
 
+// 6. Worker Penerbitan Meta (Instagram & Threads) (Concurrency 2)
+const socialPublishingWorker = new Worker<SocialPublishingJobPayload>(
+  SOCIAL_PUBLISHING_QUEUE_NAME,
+  async (job) => {
+    if (job.name === 'publish-threads-post') {
+      return await ThreadsPublishingProcessor.process(job as any);
+    }
+    return await InstagramPublishingProcessor.process(job);
+  },
+  { connection: redisConnection, concurrency: 2 }
+);
+
+socialPublishingWorker.on('completed', (job) => {
+  console.log(`[Worker SocialPublish] Job #${job.id} selesai dipublikasikan.`);
+});
+
+socialPublishingWorker.on('failed', (job, err) => {
+  console.error(`[Worker SocialPublish] Job #${job?.id} gagal: ${err.message}`);
+});
+
 // Inisialisasi Seluruh Penjadwalan Cron ke Redis
 async function initSchedulers() {
   await registerScheduledCrawlers();
@@ -134,6 +160,7 @@ async function shutdown(signal: string) {
   await maintenanceWorker.close();
   await studioWorker.close();
   await reconWorker.close();
+  await socialPublishingWorker.close();
   await redisConnection.quit();
   console.log('[Worker Shutdown] Seluruh background worker berhasil dimatikan dengan aman. Keluar.');
   process.exit(0);

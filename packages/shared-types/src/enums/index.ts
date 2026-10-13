@@ -78,6 +78,7 @@ export enum LegalStatus {
 
 export enum SocialPlatform {
   INSTAGRAM = 'INSTAGRAM',
+  THREADS = 'THREADS',
   X_TWITTER = 'X_TWITTER',
   TIKTOK = 'TIKTOK',
   YOUTUBE = 'YOUTUBE',
@@ -172,6 +173,30 @@ export enum PortalTemplateId {
   EDITORIAL_PRESTIGE = 'editorial-prestige',
   BALIHO_HERO = 'baliho-hero',
   NEWSROOM_BRIEF = 'newsroom-brief',
+}
+
+export enum SocialAccountStatus {
+  ACTIVE = 'ACTIVE',
+  REAUTHORIZATION_REQUIRED = 'REAUTHORIZATION_REQUIRED',
+  REVOKED = 'REVOKED',
+  DISCONNECTED = 'DISCONNECTED',
+}
+
+export enum PublishingJobStatus {
+  PENDING = 'PENDING',
+  QUEUED = 'QUEUED',
+  PREPARING_MEDIA = 'PREPARING_MEDIA',
+  CONTAINER_CREATED = 'CONTAINER_CREATED',
+  PUBLISHING = 'PUBLISHING',
+  PUBLISHED = 'PUBLISHED',
+  FAILED = 'FAILED',
+  CANCELLED = 'CANCELLED',
+}
+
+export enum SocialMediaFormat {
+  FEED_IMAGE = 'FEED_IMAGE',
+  REELS_VIDEO = 'REELS_VIDEO',
+  CAROUSEL = 'CAROUSEL',
 }
 
 

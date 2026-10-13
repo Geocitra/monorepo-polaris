@@ -15,6 +15,8 @@ import { CommentsModule } from './modules/comments/comments.module.js';
 import { SuperadminModule } from './modules/superadmin/superadmin.module.js';
 import { PublicChatModule } from './modules/public-chat/public-chat.module.js';
 import { InquiryModule } from './modules/inquiry/inquiry.module.js';
+import { InstagramModule } from './modules/instagram/instagram.module.js';
+import { ThreadsModule } from './modules/threads/threads.module.js';
 
 import { RedisModule } from './modules/redis/redis.module.js';
 import { RealtimeModule } from './modules/realtime/realtime.module.js';
@@ -41,6 +43,8 @@ import { RealtimeModule } from './modules/realtime/realtime.module.js';
     SuperadminModule,  // Superadmin Control Tower & Master Data Governance
     PublicChatModule,
     InquiryModule,     // Inbound Lead Consultation & Google Meet Demo Triage
+    InstagramModule,   // Sub-Fase F.2: Integrasi Meta Instagram Graph API
+    ThreadsModule,     // Integrasi Meta Threads API (Cuitan Opini Dewan)
   ],
   providers: [
     {

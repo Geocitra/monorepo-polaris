@@ -485,6 +485,4 @@ export interface AdminCreatedTenantResponseDto {
   } | null;
 }
 
-
-
-
+export * from './social-distribution.dto.js';

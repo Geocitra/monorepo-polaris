@@ -8,6 +8,7 @@ import * as content from './schema/content.js';
 import * as knowledge from './schema/knowledge.js';
 import * as constituent from './schema/constituent.js';
 import * as comments from './schema/comments.js';
+import * as socialDistribution from './schema/social-distribution.js';
 import { tenantContextStorage } from './rls/tenant-context.js';
 
 export const schema = {
@@ -19,6 +20,7 @@ export const schema = {
   ...knowledge,
   ...constituent,
   ...comments,
+  ...socialDistribution,
 };
 
 const connectionString = process.env.DATABASE_URL || 'postgresql://polaris_admin:polaris_secret_2026@localhost:5432/polaris_db';

@@ -1,16 +1,19 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, Suspense } from 'react';
+import { useSearchParams } from 'next/navigation';
 import { ApiClient } from '@/lib/api-client';
 import { Sidebar } from '@/components/layout/sidebar';
 import { Topbar } from '@/components/layout/topbar';
 import { useToast } from '@/components/ui/toast';
 import { useTheme } from '@/contexts/ThemeContext';
-import { Palette, Globe, ExternalLink, Loader2, Monitor, Paintbrush } from 'lucide-react';
+import { Palette, Globe, ExternalLink, Loader2, Monitor, Paintbrush, Instagram, Sparkles } from 'lucide-react';
 
 import { ThemeForm } from '@/components/branding/ThemeForm';
 import { DeviceSimulator } from '@/components/branding/DeviceSimulator';
 import { DashboardThemeCustomizer } from '@/components/branding/DashboardThemeCustomizer';
+import { InstagramConnectionCard } from '@/components/social/InstagramConnectionCard';
+import { ThreadsConnectionCard } from '@/components/social/ThreadsConnectionCard';
 import { Card } from '@/components/ui/card';
 
 const PARTY_COLOR_PRESETS = [
@@ -24,11 +27,12 @@ const PARTY_COLOR_PRESETS = [
   { name: 'PAN', primary: '#003399', secondary: '#FFFFFF' },
 ];
 
-type ActiveTab = 'dashboard' | 'website';
+type ActiveTab = 'dashboard' | 'website' | 'instagram' | 'threads';
 
-export default function BrandingPage() {
+function BrandingContent() {
   const { toast } = useToast();
   const { setColors } = useTheme();
+  const searchParams = useSearchParams();
   const iframeRef = useRef<HTMLIFrameElement>(null);
 
   const [profile, setProfile] = useState<any>(null);
@@ -48,6 +52,29 @@ export default function BrandingPage() {
   const [subdomainSlug, setSubdomainSlug] = useState('');
   const [customDomain, setCustomDomain] = useState('');
   const [layoutTemplateId, setLayoutTemplateId] = useState('standard-default');
+
+  useEffect(() => {
+    // Tangkap feedback redirect setelah OAuth Meta selesai
+    const socialStatus = searchParams.get('social_status');
+    const handle = searchParams.get('handle');
+    const reason = searchParams.get('reason');
+
+    if (socialStatus === 'connected' && handle) {
+      setActiveTab('instagram');
+      toast({
+        type: 'success',
+        title: 'Instagram Berhasil Ditautkan!',
+        description: `Akun resmi @${handle} siap digunakan untuk penerbitan otomatis dari Studio.`,
+      });
+    } else if (socialStatus === 'error') {
+      setActiveTab('instagram');
+      toast({
+        type: 'error',
+        title: 'Gagal Menautkan Akun',
+        description: reason || 'Terjadi kesalahan saat otorisasi Meta.',
+      });
+    }
+  }, [searchParams, toast]);
 
   useEffect(() => {
     async function loadConfig() {
@@ -143,7 +170,7 @@ export default function BrandingPage() {
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-slate-50">
-        <Loader2 className="h-8 w-8 animate-spin" style={{ color: 'var(--color-primary)' }} />
+        <Loader2 className="h-8 w-8 animate-spin text-blue-600" />
       </div>
     );
   }
@@ -173,7 +200,7 @@ export default function BrandingPage() {
                 Tema & Desain
               </h1>
               <p className="text-xs sm:text-sm text-slate-500 mt-0.5">
-                Atur tampilan dashboard dan website publik Anda agar tampil profesional.
+                Atur tampilan dashboard, website publik, dan akun media sosial resmi Anda.
               </p>
             </div>
 
@@ -191,39 +218,65 @@ export default function BrandingPage() {
           </div>
 
           {/* TAB SWITCHER */}
-          <div className="flex items-center gap-1 bg-slate-100 rounded-xl p-1 w-fit">
+          <div className="flex items-center gap-1 bg-slate-100 dark:bg-slate-800 rounded-xl p-1 w-fit">
             <button
               type="button"
               onClick={() => setActiveTab('dashboard')}
               className={`flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-bold transition-all ${
                 activeTab === 'dashboard'
-                  ? 'bg-white text-slate-900 shadow-sm'
-                  : 'text-slate-500 hover:text-slate-700'
+                  ? 'bg-white dark:bg-slate-900 text-slate-900 dark:text-white shadow-sm'
+                  : 'text-slate-500 hover:text-slate-700 dark:hover:text-slate-300'
               }`}
             >
               <Paintbrush className="h-3.5 w-3.5" />
-              Tema Dashboard
+              <span>Tema Dashboard</span>
             </button>
             <button
               type="button"
               onClick={() => setActiveTab('website')}
               className={`flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-bold transition-all ${
                 activeTab === 'website'
-                  ? 'bg-white text-slate-900 shadow-sm'
-                  : 'text-slate-500 hover:text-slate-700'
+                  ? 'bg-white dark:bg-slate-900 text-slate-900 dark:text-white shadow-sm'
+                  : 'text-slate-500 hover:text-slate-700 dark:hover:text-slate-300'
               }`}
             >
               <Monitor className="h-3.5 w-3.5" />
-              Branding Website
+              <span>Branding Website</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => setActiveTab('instagram')}
+              className={`flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-bold transition-all ${
+                activeTab === 'instagram'
+                  ? 'bg-gradient-to-r from-purple-600 to-rose-600 text-white shadow-sm'
+                  : 'text-slate-500 hover:text-slate-700 dark:hover:text-slate-300'
+              }`}
+            >
+              <Instagram className="h-3.5 w-3.5" />
+              <span>Instagram Resmi</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => setActiveTab('threads')}
+              className={`flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-bold transition-all ${
+                activeTab === 'threads'
+                  ? 'bg-slate-900 dark:bg-white text-white dark:text-slate-900 shadow-sm'
+                  : 'text-slate-500 hover:text-slate-700 dark:hover:text-slate-300'
+              }`}
+            >
+              <Sparkles className="h-3.5 w-3.5" />
+              <span>Meta Threads</span>
             </button>
           </div>
 
           {/* TAB CONTENT */}
-          {activeTab === 'dashboard' ? (
+          {activeTab === 'dashboard' && (
             <Card className="space-y-0">
               <DashboardThemeCustomizer />
             </Card>
-          ) : (
+          )}
+
+          {activeTab === 'website' && (
             <form onSubmit={handleSave} className="grid gap-6 lg:grid-cols-12 items-start">
               <ThemeForm
                 primaryColor={primaryColor}
@@ -259,8 +312,30 @@ export default function BrandingPage() {
               />
             </form>
           )}
+
+          {activeTab === 'instagram' && (
+            <InstagramConnectionCard isUnpaid={isUnpaid} />
+          )}
+
+          {activeTab === 'threads' && (
+            <ThreadsConnectionCard isUnpaid={isUnpaid} />
+          )}
         </main>
       </div>
     </div>
+  );
+}
+
+export default function BrandingPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="min-h-screen flex items-center justify-center bg-slate-50">
+          <Loader2 className="h-8 w-8 animate-spin text-blue-600" />
+        </div>
+      }
+    >
+      <BrandingContent />
+    </Suspense>
   );
 }
