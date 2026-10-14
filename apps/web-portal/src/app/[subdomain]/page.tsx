@@ -1,11 +1,7 @@
 import { notFound } from 'next/navigation';
 import type { Metadata } from 'next';
 import { fetchPortalData } from '@/lib/api';
-import { StandardDefaultLayout } from '@/components/themes/StandardDefaultLayout';
-import { EditorialPrestigeLayout } from '@/components/themes/EditorialPrestigeLayout';
-import { BalihoHeroLayout } from '@/components/themes/BalihoHeroLayout';
-import { NewsroomBriefLayout } from '@/components/themes/NewsroomBriefLayout';
-import { PortalTemplateId } from '@polaris/shared-types';
+import { DynamicSectionRenderer } from '@/components/sections/DynamicSectionRenderer';
 
 export async function generateMetadata({
   params,
@@ -22,9 +18,11 @@ export async function generateMetadata({
   }
 
   const { member, theme, portal } = data;
-  const title = `${member.fullName} - Portal Akuntabilitas Publik Resmi`;
-  const description = theme.headlineTagline || `Portal resmi transparansi kinerja, gagasan kebijakan, dan layanan aspirasi masyarakat ${member.fullName}.`;
-  
+  const title = `${member.fullName} - Portal Publik Resmi`;
+  const description =
+    theme.headlineTagline ||
+    `Portal resmi publikasi pemikiran kebijakan, naskah risalah, dan dokumentasi kerja ${member.fullName}.`;
+
   const ogImageUrl = `/api/og?title=${encodeURIComponent(title)}&author=${encodeURIComponent(member.fullName)}&dapil=${encodeURIComponent(member.dapilName)}&party=${encodeURIComponent(member.partyAffiliation)}&color=${encodeURIComponent(theme.primaryHexColor)}`;
 
   return {
@@ -63,52 +61,15 @@ export default async function TenantHomePage({
 
   if (!data) notFound();
 
-  const { member, theme, recentArticles, subscription } = data;
-  const isLicenseActive = subscription?.isActive !== false;
-  const layoutId = isLicenseActive
-    ? (theme?.layoutTemplateId || PortalTemplateId.STANDARD_DEFAULT)
-    : PortalTemplateId.STANDARD_DEFAULT;
+  const { member, theme, recentArticles, documents } = data;
 
-  switch (layoutId) {
-    case PortalTemplateId.EDITORIAL_PRESTIGE:
-    case 'editorial-prestige':
-      return (
-        <EditorialPrestigeLayout
-          member={member}
-          theme={theme}
-          recentArticles={recentArticles || []}
-        />
-      );
-
-    case PortalTemplateId.BALIHO_HERO:
-    case 'baliho-hero':
-      return (
-        <BalihoHeroLayout
-          member={member}
-          theme={theme}
-          recentArticles={recentArticles || []}
-        />
-      );
-
-    case PortalTemplateId.NEWSROOM_BRIEF:
-    case 'newsroom-brief':
-      return (
-        <NewsroomBriefLayout
-          member={member}
-          theme={theme}
-          recentArticles={recentArticles || []}
-        />
-      );
-
-    case PortalTemplateId.STANDARD_DEFAULT:
-    case 'standard-default':
-    default:
-      return (
-        <StandardDefaultLayout
-          member={member}
-          theme={theme}
-          recentArticles={recentArticles || []}
-        />
-      );
-  }
+  return (
+    <DynamicSectionRenderer
+      member={member}
+      theme={theme}
+      recentArticles={recentArticles || []}
+      documents={documents || []}
+      subdomain={subdomain}
+    />
+  );
 }

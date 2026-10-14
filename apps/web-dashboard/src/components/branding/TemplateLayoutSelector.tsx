@@ -14,6 +14,15 @@ interface TemplateLayoutSelectorProps {
 
 export const TEMPLATE_LAYOUTS = [
   {
+    id: PortalTemplateId.POLARIS_INSIGHT,
+    name: 'POLARIS Insight (Think-Tank Media)',
+    tagline: 'Kajian Kebijakan, Headline & Dokumen PDF',
+    description: 'Etalase majalah pemikiran modern berbobot tinggi. Menonjolkan artikel utama dengan waktu baca, opini terhangat samping, dan pojok unduh berkas PDF resmi.',
+    icon: Sparkles,
+    isPremium: true,
+    previewBadge: 'Rekomendasi Flagship',
+  },
+  {
     id: PortalTemplateId.STANDARD_DEFAULT,
     name: 'Standar Parlemen (Default)',
     tagline: 'Klasik, Resmi & Terstruktur',

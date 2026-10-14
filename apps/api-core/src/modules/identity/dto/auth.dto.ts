@@ -90,6 +90,26 @@ export class ForceChangeInitialPasswordDto {
   newPassword!: string;
 }
 
+export class ChangePasswordDto {
+  @IsString({ message: 'Kata sandi saat ini harus berupa teks.' })
+  @IsNotEmpty({ message: 'Kata sandi saat ini tidak boleh kosong.' })
+  currentPassword!: string;
+
+  @IsString({ message: 'Kata sandi baru harus berupa teks.' })
+  @MinLength(8, { message: 'Kata sandi baru minimal 8 karakter.' })
+  newPassword!: string;
+}
+
+export class ChangeEmailDto {
+  @IsEmail({}, { message: 'Format alamat email baru tidak valid.' })
+  @IsNotEmpty({ message: 'Alamat email baru tidak boleh kosong.' })
+  newEmail!: string;
+
+  @IsString({ message: 'Kata sandi saat ini harus berupa teks.' })
+  @IsNotEmpty({ message: 'Kata sandi saat ini diperlukan untuk otorisasi pergantian email.' })
+  currentPassword!: string;
+}
+
 export class SendOtpRequestDto {
   @IsEmail({}, { message: 'Format email tidak valid.' })
   @IsNotEmpty({ message: 'Email tidak boleh kosong.' })
@@ -152,6 +172,9 @@ export class UpdateProfileDto {
   @IsOptional()
   @IsString()
   photoUrl?: string;
+
+  @IsOptional()
+  photoGallery?: string[] | string;
 
   @IsOptional()
   @IsString()

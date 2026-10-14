@@ -95,6 +95,7 @@ CREATE TABLE IF NOT EXISTS tenant_members (
   commission_id UUID,
   commission_name VARCHAR(150),
   photo_url TEXT,
+  photo_gallery TEXT[] DEFAULT ARRAY[]::TEXT[],
   gender VARCHAR(20),
   birth_date VARCHAR(30),
   education TEXT,

@@ -9,6 +9,8 @@ import {
   VerifyOtpRequestDto,
   UpdateProfileDto,
   ForceChangeInitialPasswordDto,
+  ChangePasswordDto,
+  ChangeEmailDto,
 } from './dto/auth.dto.js';
 import { Public } from '../../common/decorators/public.decorator.js';
 import { CurrentTenant, AuthenticatedTenantPayload } from '../../common/decorators/current-tenant.decorator.js';
@@ -54,6 +56,24 @@ export class IdentityController {
     @Body() dto: ForceChangeInitialPasswordDto,
   ) {
     return await this.identityService.forceChangeInitialPassword(user.tenantId, dto);
+  }
+
+  @Post('change-password')
+  @HttpCode(HttpStatus.OK)
+  async changePassword(
+    @CurrentTenant() user: AuthenticatedTenantPayload,
+    @Body() dto: ChangePasswordDto,
+  ) {
+    return await this.identityService.changePassword(user.tenantId, dto);
+  }
+
+  @Post('change-email')
+  @HttpCode(HttpStatus.OK)
+  async changeEmail(
+    @CurrentTenant() user: AuthenticatedTenantPayload,
+    @Body() dto: ChangeEmailDto,
+  ) {
+    return await this.identityService.changeEmail(user.tenantId, dto);
   }
 
   @Get('me')

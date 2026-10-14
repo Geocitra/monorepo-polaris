@@ -1,5 +1,6 @@
 'use client';
 
+import { useState, useEffect } from 'react';
 import { 
   User, 
   MapPin, 
@@ -19,6 +20,13 @@ import {
   Compass, 
   School,
   ShieldCheck,
+  Images,
+  Eye,
+  X,
+  ChevronLeft,
+  ChevronRight,
+  Star,
+  Lock,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
@@ -31,6 +39,7 @@ interface ProfilePreviewViewProps {
   partyAffiliation?: string | null;
   legislativeLevel: string;
   photoUrl?: string;
+  photoGallery?: string[];
   gender: string;
   birthDate: string;
   education: string;
@@ -43,6 +52,7 @@ interface ProfilePreviewViewProps {
   commissionName?: string;
   subdomain?: string;
   onEditClick: () => void;
+  onOpenSecurity?: (tab: 'PASSWORD' | 'EMAIL') => void;
 }
 
 export function ProfilePreviewView({
@@ -53,6 +63,7 @@ export function ProfilePreviewView({
   legislativeLevel,
   commissionName,
   photoUrl,
+  photoGallery = [],
   gender,
   birthDate,
   education,
@@ -64,6 +75,7 @@ export function ProfilePreviewView({
   regencyCoverage,
   subdomain,
   onEditClick,
+  onOpenSecurity,
 }: ProfilePreviewViewProps) {
   const selectedRole = PUBLIC_OFFICE_ROLE_OPTIONS.find((r) => r.value === legislativeLevel);
 
@@ -93,6 +105,25 @@ export function ProfilePreviewView({
 
   const age = calculateAge(birthDate);
   const portalUrl = subdomain ? `http://${subdomain}.localhost:3001` : '#';
+
+  const [lightboxIndex, setLightboxIndex] = useState<number | null>(null);
+
+  useEffect(() => {
+    if (lightboxIndex === null) return;
+
+    function handleKeyDown(e: KeyboardEvent) {
+      if (e.key === 'Escape') {
+        setLightboxIndex(null);
+      } else if (e.key === 'ArrowLeft') {
+        setLightboxIndex((prev) => (prev !== null && prev > 0 ? prev - 1 : photoGallery.length - 1));
+      } else if (e.key === 'ArrowRight') {
+        setLightboxIndex((prev) => (prev !== null && prev < photoGallery.length - 1 ? prev + 1 : 0));
+      }
+    }
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [lightboxIndex, photoGallery.length]);
 
   return (
     <div className="space-y-3 animate-in fade-in duration-150">
@@ -162,6 +193,19 @@ export function ProfilePreviewView({
 
               {/* ACTION BUTTONS (INLINE DI ATAS KANAN AGAR TIDAK MAKAN TEMPAT) */}
               <div className="flex items-center gap-1.5 shrink-0">
+                {onOpenSecurity && (
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="outline"
+                    onClick={() => onOpenSecurity('PASSWORD')}
+                    className="font-bold text-xs h-7 px-2.5 rounded-lg border-slate-300 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800 gap-1 cursor-pointer text-slate-700 dark:text-slate-300"
+                  >
+                    <Lock className="h-3 w-3 text-slate-400" />
+                    <span>Keamanan Akun</span>
+                  </Button>
+                )}
+
                 <Button
                   type="button"
                   size="sm"
@@ -224,18 +268,125 @@ export function ProfilePreviewView({
                 </span>
               </div>
 
-              <div className="p-1.5 px-2 rounded-lg bg-slate-50 dark:bg-slate-800/60 border border-slate-100 dark:border-slate-800">
-                <span className="text-[9px] text-slate-400 font-bold uppercase block leading-none">Email Akun</span>
-                <span className="text-xs font-bold text-slate-800 dark:text-slate-200 mt-0.5 block truncate">
-                  {email || 'dewan@dpr.go.id'}
-                </span>
+              <div className="p-1.5 px-2 rounded-lg bg-slate-50 dark:bg-slate-800/60 border border-slate-100 dark:border-slate-800 flex items-center justify-between">
+                <div className="min-w-0 flex-1">
+                  <span className="text-[9px] text-slate-400 font-bold uppercase block leading-none">Email Akun</span>
+                  <span className="text-xs font-bold text-slate-800 dark:text-slate-200 mt-0.5 block truncate">
+                    {email || 'dewan@dpr.go.id'}
+                  </span>
+                </div>
+                {onOpenSecurity && (
+                  <button
+                    type="button"
+                    onClick={() => onOpenSecurity('EMAIL')}
+                    className="text-[10px] font-bold text-blue-600 dark:text-blue-400 hover:underline cursor-pointer ml-1.5 shrink-0"
+                  >
+                    Ubah
+                  </button>
+                )}
               </div>
             </div>
           </div>
         </div>
       </Card>
 
-      {/* 2. GRID DETAILS (2 KOLOM RAPAT, GAP-3) */}
+      {/* 2. KATALOG FOTO PRIBADI DEWAN */}
+      <Card className="p-3.5 sm:p-4 space-y-3 border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-2xs rounded-xl">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-100 dark:border-slate-800 pb-2.5">
+          <div className="flex items-center gap-2">
+            <div className="w-7 h-7 rounded-lg bg-blue-50 dark:bg-blue-950/60 border border-blue-200/60 dark:border-blue-800/60 flex items-center justify-center text-blue-600 dark:text-blue-400">
+              <Images className="h-4 w-4" />
+            </div>
+            <div>
+              <h3 className="text-xs sm:text-sm font-extrabold text-slate-900 dark:text-white flex items-center gap-1.5">
+                <span>Katalog Foto Pribadi & Dokumentasi Dewan</span>
+              </h3>
+              <p className="text-[10px] text-slate-400 dark:text-slate-500">
+                Portofolio foto resmi, kunjungan dapil, dan dokumentasi parlemen
+              </p>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-2 self-start sm:self-auto">
+            <span className="px-2 py-0.5 rounded-md bg-blue-50 dark:bg-blue-950/40 text-blue-700 dark:text-blue-400 border border-blue-200 dark:border-blue-800 text-[10px] font-bold">
+              {photoGallery.length} / 10 Foto
+            </span>
+            <Button
+              type="button"
+              size="sm"
+              variant="outline"
+              onClick={onEditClick}
+              className="text-xs h-7 px-2.5 rounded-lg border-slate-200 dark:border-slate-700 gap-1 cursor-pointer font-bold"
+            >
+              <Edit3 className="h-3 w-3" />
+              <span>Kelola Foto</span>
+            </Button>
+          </div>
+        </div>
+
+        {photoGallery.length > 0 ? (
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3 pt-0.5">
+            {photoGallery.map((photo, index) => {
+              const isPrimary = photo === photoUrl;
+              return (
+                <div
+                  key={`preview-gallery-${index}`}
+                  onClick={() => setLightboxIndex(index)}
+                  className={`group relative rounded-xl overflow-hidden border bg-slate-100 dark:bg-slate-800 shadow-2xs hover:shadow-md transition-all duration-200 cursor-pointer aspect-[4/5] ${
+                    isPrimary
+                      ? 'border-emerald-500 ring-2 ring-emerald-500/40'
+                      : 'border-slate-200 dark:border-slate-700 hover:border-blue-400'
+                  }`}
+                >
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img
+                    src={photo}
+                    alt={`Foto ${index + 1}`}
+                    className="h-full w-full object-cover object-center group-hover:scale-105 transition-transform duration-300"
+                  />
+
+                  {/* OVERLAY */}
+                  <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                    <div className="p-2 rounded-full bg-white/20 backdrop-blur-xs text-white">
+                      <Eye className="h-4 w-4" />
+                    </div>
+                  </div>
+
+                  {/* NUMBER */}
+                  <div className="absolute top-1.5 left-1.5 px-1.5 py-0.5 rounded-md bg-black/60 backdrop-blur-xs text-white text-[9px] font-bold">
+                    #{index + 1}
+                  </div>
+
+                  {/* PRIMARY BADGE */}
+                  {isPrimary && (
+                    <div className="absolute top-1.5 right-1.5 px-2 py-0.5 rounded-md bg-emerald-600 text-white text-[9px] font-extrabold shadow-xs flex items-center gap-1">
+                      <CheckCircle2 className="h-2.5 w-2.5" />
+                      <span>Foto Utama</span>
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        ) : (
+          <div className="py-6 px-4 rounded-xl border border-dashed border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/30 text-center space-y-2">
+            <p className="text-xs text-slate-500 dark:text-slate-400">
+              Belum ada foto dalam katalog pribadi dewan. Anda dapat menyimpan hingga 10 foto untuk ditampilkan di profil resmi.
+            </p>
+            <Button
+              type="button"
+              size="sm"
+              onClick={onEditClick}
+              className="bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs px-3 h-7 rounded-lg cursor-pointer gap-1 shadow-2xs"
+            >
+              <Edit3 className="h-3 w-3" />
+              <span>Tambah Foto Sekarang</span>
+            </Button>
+          </div>
+        )}
+      </Card>
+
+      {/* 3. GRID DETAILS (2 KOLOM RAPAT, GAP-3) */}
       <div className="grid gap-3 md:grid-cols-2">
         {/* WILAYAH KERJA & BASIS DAPIL */}
         <Card className="p-3.5 space-y-2.5 border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-2xs rounded-xl">
@@ -376,6 +527,92 @@ export function ProfilePreviewView({
           </div>
         </Card>
       </div>
+
+      {/* LIGHTBOX MODAL */}
+      {lightboxIndex !== null && photoGallery[lightboxIndex] && (
+        <div
+          className="fixed inset-0 z-50 bg-black/90 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in duration-200"
+          onClick={() => setLightboxIndex(null)}
+        >
+          <div
+            className="relative max-w-4xl max-h-[90vh] w-full flex flex-col items-center"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* CLOSE BUTTON */}
+            <button
+              type="button"
+              onClick={() => setLightboxIndex(null)}
+              className="absolute -top-10 right-0 text-white/80 hover:text-white p-1 rounded-lg bg-white/10 hover:bg-white/20 backdrop-blur-xs transition cursor-pointer"
+            >
+              <X className="h-5 w-5" />
+            </button>
+
+            {/* MAIN IMAGE */}
+            <div className="relative rounded-2xl overflow-hidden bg-black shadow-2xl border border-white/10 max-h-[75vh] flex items-center justify-center">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src={photoGallery[lightboxIndex]}
+                alt={`Foto ${lightboxIndex + 1}`}
+                className="max-h-[75vh] w-auto max-w-full object-contain"
+              />
+
+              {/* PREV BUTTON */}
+              {photoGallery.length > 1 && (
+                <button
+                  type="button"
+                  onClick={() =>
+                    setLightboxIndex((prev) => (prev !== null && prev > 0 ? prev - 1 : photoGallery.length - 1))
+                  }
+                  className="absolute left-2 top-1/2 -translate-y-1/2 p-2 rounded-full bg-black/60 hover:bg-black/90 text-white transition backdrop-blur-xs cursor-pointer shadow-lg"
+                >
+                  <ChevronLeft className="h-5 w-5" />
+                </button>
+              )}
+
+              {/* NEXT BUTTON */}
+              {photoGallery.length > 1 && (
+                <button
+                  type="button"
+                  onClick={() =>
+                    setLightboxIndex((prev) => (prev !== null && prev < photoGallery.length - 1 ? prev + 1 : 0))
+                  }
+                  className="absolute right-2 top-1/2 -translate-y-1/2 p-2 rounded-full bg-black/60 hover:bg-black/90 text-white transition backdrop-blur-xs cursor-pointer shadow-lg"
+                >
+                  <ChevronRight className="h-5 w-5" />
+                </button>
+              )}
+            </div>
+
+            {/* LIGHTBOX FOOTER */}
+            <div className="mt-3 flex items-center justify-between w-full max-w-2xl px-2 text-white">
+              <div className="flex items-center gap-2">
+                <span className="text-xs font-bold text-white/90">
+                  Foto {lightboxIndex + 1} dari {photoGallery.length}
+                </span>
+                {photoGallery[lightboxIndex] === photoUrl && (
+                  <span className="px-2 py-0.5 rounded-full bg-emerald-600 text-white text-[10px] font-black">
+                    ★ Foto Profil Utama
+                  </span>
+                )}
+              </div>
+
+              <Button
+                type="button"
+                size="sm"
+                variant="outline"
+                onClick={() => {
+                  setLightboxIndex(null);
+                  onEditClick();
+                }}
+                className="text-xs h-7 px-3 bg-white/10 hover:bg-white/20 text-white border-white/20 cursor-pointer font-bold"
+              >
+                <Edit3 className="h-3 w-3 mr-1" />
+                <span>Kelola di Mode Edit</span>
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

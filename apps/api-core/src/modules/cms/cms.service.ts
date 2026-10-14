@@ -14,6 +14,8 @@ import {
   db,
   portalConfigs,
   portalThemeSettings,
+  portalDocuments,
+  portalNewsletterSubscribers,
   socialLinks,
   tenantMembers,
   electoralDistricts,
@@ -25,7 +27,7 @@ import {
 } from '@polaris/database';
 import { SubdomainSlug, HexColor } from '@polaris/core-domain';
 import { ContentStatus, SubscriptionStatus, PlanTier } from '@polaris/shared-types';
-import { UpdateThemeSettingsDto, UpdateDomainConfigDto } from './dto/cms.dto.js';
+import { UpdateThemeSettingsDto, UpdateDomainConfigDto, CreatePortalDocumentRequestDto } from './dto/cms.dto.js';
 
 @Injectable()
 export class CmsService {
@@ -160,9 +162,16 @@ export class CmsService {
       .from(socialLinks)
       .where(eq(socialLinks.portalId, portal.id));
 
+    const documents = await db
+      .select()
+      .from(portalDocuments)
+      .where(eq(portalDocuments.portalId, portal.id))
+      .orderBy(desc(portalDocuments.publishedAt));
+
     return {
       portal,
       theme,
+      documents,
       socialLinks: socials,
       dnsInstructions: portal.customDomain
         ? {
@@ -222,10 +231,29 @@ export class CmsService {
         const cleanLayout = dto.layoutTemplateId.trim().toLowerCase();
         if (cleanLayout !== 'standard-default' && !isPremium) {
           throw new ForbiddenException(
-            'Pemilihan template layout tematik eksklusif (Editorial, Baliho Hero, Newsroom) memerlukan lisensi PRO (Eksekutif Suite). Akun Standar Parlemen hanya mendukung tata letak standar.'
+            'Pemilihan template layout tematik eksklusif memerlukan lisensi PRO (Eksekutif Suite). Akun Standar Parlemen hanya mendukung tata letak standar.'
           );
         }
         updateData.layoutTemplateId = cleanLayout;
+        if (dto.layoutSchema === undefined) {
+          updateData.layoutSchema = {
+            templatePreset: cleanLayout,
+            updatedAt: new Date().toISOString(),
+          };
+        }
+      }
+
+      if (dto.layoutSchema !== undefined) {
+        const preset = (dto.layoutSchema?.templatePreset || dto.layoutTemplateId || '').trim().toLowerCase();
+        if (preset !== 'standard-default' && !isPremium) {
+          throw new ForbiddenException(
+            'Pemilihan template layout tematik eksklusif memerlukan lisensi PRO (Eksekutif Suite). Akun Standar Parlemen hanya mendukung tata letak standar.'
+          );
+        }
+        updateData.layoutSchema = dto.layoutSchema;
+        if (dto.layoutSchema?.templatePreset) {
+          updateData.layoutTemplateId = dto.layoutSchema.templatePreset;
+        }
       }
 
       await tx
@@ -538,6 +566,8 @@ export class CmsService {
     const [member] = await db
       .select({
         fullName: tenantMembers.fullName,
+        photoUrl: tenantMembers.photoUrl,
+        photoGallery: tenantMembers.photoGallery,
         partyAffiliation: tenantMembers.partyAffiliation,
         legislativeLevel: tenantMembers.legislativeLevel,
         dapilId: tenantMembers.electoralDistrictId,
@@ -605,6 +635,7 @@ export class CmsService {
         title: contentPublications.title,
         slug: contentPublications.slug,
         excerpt: contentPublications.excerpt,
+        commentCount: contentPublications.commentCount,
         publishedAt: contentPublications.publishedAt,
         canonicalUrl: contentPublications.canonicalUrl,
       })
@@ -616,7 +647,23 @@ export class CmsService {
         )
       )
       .orderBy(desc(contentPublications.publishedAt))
-      .limit(6);
+      .limit(50);
+
+    const documents = await db
+      .select({
+        id: portalDocuments.id,
+        title: portalDocuments.title,
+        docType: portalDocuments.docType,
+        description: portalDocuments.description,
+        fileUrl: portalDocuments.fileUrl,
+        fileSizeBytes: portalDocuments.fileSizeBytes,
+        downloadCount: portalDocuments.downloadCount,
+        publishedAt: portalDocuments.publishedAt,
+      })
+      .from(portalDocuments)
+      .where(eq(portalDocuments.portalId, portal.id))
+      .orderBy(desc(portalDocuments.publishedAt))
+      .limit(8);
 
     return {
       portal: {
@@ -628,6 +675,8 @@ export class CmsService {
       },
       member: {
         fullName: member?.fullName,
+        photoUrl: member?.photoUrl || theme?.officialPhotoUrl || null,
+        photoGallery: Array.isArray(member?.photoGallery) ? member.photoGallery : [],
         partyAffiliation: member?.partyAffiliation,
         legislativeLevel: member?.legislativeLevel,
         dapilName,
@@ -647,9 +696,11 @@ export class CmsService {
         headlineTagline: theme?.headlineTagline,
         bioBiography: theme?.bioBiography,
         layoutTemplateId: resolvedLayout,
+        layoutSchema: isPremiumTier ? theme?.layoutSchema : null,
       },
       socialLinks: socials,
       recentArticles,
+      documents,
     };
   }
 
@@ -751,5 +802,179 @@ export class CmsService {
       .limit(1);
 
     return Boolean(portal);
+  }
+
+  async getPortalDocuments(tenantId: string) {
+    const [portal] = await db
+      .select({ id: portalConfigs.id })
+      .from(portalConfigs)
+      .where(eq(portalConfigs.tenantId, tenantId))
+      .limit(1);
+
+    if (!portal) {
+      throw new NotFoundException('Portal konfigurasi tidak ditemukan.');
+    }
+
+    return await db
+      .select()
+      .from(portalDocuments)
+      .where(eq(portalDocuments.portalId, portal.id))
+      .orderBy(desc(portalDocuments.publishedAt));
+  }
+
+  async createPortalDocument(tenantId: string, dto: CreatePortalDocumentRequestDto) {
+    const [portal] = await db
+      .select({ id: portalConfigs.id })
+      .from(portalConfigs)
+      .where(eq(portalConfigs.tenantId, tenantId))
+      .limit(1);
+
+    if (!portal) {
+      throw new NotFoundException('Portal konfigurasi tidak ditemukan.');
+    }
+
+    const [doc] = await db
+      .insert(portalDocuments)
+      .values({
+        portalId: portal.id,
+        title: dto.title,
+        docType: dto.docType || 'REPORT_TRIWULAN',
+        description: dto.description || null,
+        fileUrl: dto.fileUrl,
+        fileSizeBytes: dto.fileSizeBytes || null,
+      })
+      .returning();
+
+    return { message: 'Dokumen publik berhasil ditambahkan.', document: doc };
+  }
+
+  async deletePortalDocument(tenantId: string, id: string) {
+    const [portal] = await db
+      .select({ id: portalConfigs.id })
+      .from(portalConfigs)
+      .where(eq(portalConfigs.tenantId, tenantId))
+      .limit(1);
+
+    if (!portal) {
+      throw new NotFoundException('Portal konfigurasi tidak ditemukan.');
+    }
+
+    await db
+      .delete(portalDocuments)
+      .where(and(eq(portalDocuments.id, id), eq(portalDocuments.portalId, portal.id)));
+
+    return { message: 'Dokumen berhasil dihapus.' };
+  }
+
+  async trackDocumentDownload(slugOrDomain: string, docId: string) {
+    const cleanIdentifier = slugOrDomain.toLowerCase().trim();
+    const isSubdomain = !cleanIdentifier.includes('.');
+
+    const [portal] = await db
+      .select({ id: portalConfigs.id })
+      .from(portalConfigs)
+      .where(
+        isSubdomain
+          ? eq(portalConfigs.subdomainSlug, cleanIdentifier)
+          : eq(portalConfigs.customDomain, cleanIdentifier)
+      )
+      .limit(1);
+
+    if (!portal) {
+      throw new NotFoundException('Portal tidak ditemukan.');
+    }
+
+    const [doc] = await db
+      .select()
+      .from(portalDocuments)
+      .where(and(eq(portalDocuments.id, docId), eq(portalDocuments.portalId, portal.id)))
+      .limit(1);
+
+    if (!doc) {
+      throw new NotFoundException('Dokumen tidak ditemukan.');
+    }
+
+    await db
+      .update(portalDocuments)
+      .set({ downloadCount: (doc.downloadCount || 0) + 1, updatedAt: new Date() })
+      .where(eq(portalDocuments.id, doc.id));
+
+    return { success: true, fileUrl: doc.fileUrl };
+  }
+
+  async subscribeNewsletter(slug: string, email: string) {
+    if (!email || !email.includes('@') || email.length > 255) {
+      throw new BadRequestException('Format alamat email tidak valid.');
+    }
+    const cleanEmail = email.trim().toLowerCase();
+
+    const [portal] = await db
+      .select({ id: portalConfigs.id })
+      .from(portalConfigs)
+      .where(
+        or(
+          eq(portalConfigs.subdomainSlug, slug.toLowerCase()),
+          eq(portalConfigs.customDomain, slug.toLowerCase())
+        )
+      )
+      .limit(1);
+
+    if (!portal) {
+      throw new NotFoundException('Portal publik dewan tidak ditemukan.');
+    }
+
+    await db
+      .insert(portalNewsletterSubscribers)
+      .values({
+        portalId: portal.id,
+        email: cleanEmail,
+        isActive: true,
+        updatedAt: new Date(),
+      })
+      .onConflictDoUpdate({
+        target: [portalNewsletterSubscribers.portalId, portalNewsletterSubscribers.email],
+        set: {
+          isActive: true,
+          updatedAt: new Date(),
+        },
+      });
+
+    return {
+      success: true,
+      message: 'Email Anda berhasil didaftarkan dalam buletin catatan dewan.',
+    };
+  }
+
+  async getNewsletterSubscribers(tenantId: string) {
+    const [portal] = await db
+      .select({ id: portalConfigs.id })
+      .from(portalConfigs)
+      .where(eq(portalConfigs.tenantId, tenantId))
+      .limit(1);
+
+    if (!portal) {
+      return { total: 0, subscribers: [] };
+    }
+
+    const subscribers = await db
+      .select({
+        id: portalNewsletterSubscribers.id,
+        email: portalNewsletterSubscribers.email,
+        isActive: portalNewsletterSubscribers.isActive,
+        createdAt: portalNewsletterSubscribers.createdAt,
+      })
+      .from(portalNewsletterSubscribers)
+      .where(
+        and(
+          eq(portalNewsletterSubscribers.portalId, portal.id),
+          eq(portalNewsletterSubscribers.isActive, true)
+        )
+      )
+      .orderBy(desc(portalNewsletterSubscribers.createdAt));
+
+    return {
+      total: subscribers.length,
+      subscribers,
+    };
   }
 }

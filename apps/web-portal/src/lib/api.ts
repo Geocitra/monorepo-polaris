@@ -85,7 +85,7 @@ export async function loginCitizenGoogle(payload: {
   mockEmail?: string;
   mockAvatar?: string;
 }) {
-  const res = await fetch(`${API_BASE_URL}/public/comments/auth/google`, {
+  const res = await fetch(`${API_BASE_URL}/comments/auth/google`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(payload),
@@ -101,7 +101,7 @@ export async function loginCitizenGoogle(payload: {
 
 export async function fetchComments(slug: string, callerCitizenId?: string) {
   const query = callerCitizenId ? `?callerCitizenId=${encodeURIComponent(callerCitizenId)}` : '';
-  const res = await fetch(`${API_BASE_URL}/public/comments/articles/${slug}${query}`, {
+  const res = await fetch(`${API_BASE_URL}/comments/article/${slug}${query}`, {
     cache: 'no-store',
   });
 
@@ -117,7 +117,7 @@ export async function postComment(
   token: string,
   payload: { commentText: string; parentCommentId?: string | null }
 ) {
-  const res = await fetch(`${API_BASE_URL}/public/comments/articles/${slug}`, {
+  const res = await fetch(`${API_BASE_URL}/comments/article/${slug}`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
@@ -135,7 +135,7 @@ export async function postComment(
 }
 
 export async function likeComment(commentId: string, token: string) {
-  const res = await fetch(`${API_BASE_URL}/public/comments/${commentId}/like`, {
+  const res = await fetch(`${API_BASE_URL}/comments/${commentId}/like`, {
     method: 'POST',
     headers: {
       Authorization: `Bearer ${token}`,
@@ -151,7 +151,7 @@ export async function likeComment(commentId: string, token: string) {
 }
 
 export async function deleteOwnComment(commentId: string, token: string) {
-  const res = await fetch(`${API_BASE_URL}/public/comments/${commentId}`, {
+  const res = await fetch(`${API_BASE_URL}/comments/${commentId}`, {
     method: 'DELETE',
     headers: {
       Authorization: `Bearer ${token}`,
@@ -195,3 +195,31 @@ export async function submitLicenseInquiry(payload: {
   return data;
 }
 
+export async function trackDocumentDownload(subdomain: string, docId: string) {
+  try {
+    const res = await fetch(`${API_BASE_URL}/cms/public/${subdomain}/documents/${docId}/download`, {
+      method: 'POST',
+    });
+    return await res.json();
+  } catch (error) {
+    console.error('[TrackDownloadError]', error);
+    return null;
+  }
+}
+
+
+
+export async function subscribeNewsletter(subdomain: string, email: string) {
+  const res = await fetch(`${API_BASE_URL}/cms/public/${subdomain}/newsletter/subscribe`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ email }),
+  });
+
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err?.message || 'Gagal mendaftar buletin catatan dewan.');
+  }
+
+  return await res.json();
+}

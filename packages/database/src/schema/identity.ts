@@ -25,6 +25,7 @@ export const tenantMembers = pgTable('tenant_members', {
   commissionId: uuid('commission_id'),
   commissionName: varchar('commission_name', { length: 150 }),
   photoUrl: text('photo_url'),
+  photoGallery: text('photo_gallery').array().default([]),
   gender: varchar('gender', { length: 20 }),
   birthDate: varchar('birth_date', { length: 30 }),
   education: text('education'),

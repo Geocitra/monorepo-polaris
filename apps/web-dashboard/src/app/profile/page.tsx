@@ -29,7 +29,10 @@ import {
   ProfilePreviewView,
   ProfileStepIndicator,
   ProfileSessionStep,
+  PersonalPhotoCatalog,
+  AccountSecurityModal,
 } from '@/components/profile';
+
 
 export default function ProfilePage() {
   const router = useRouter();
@@ -46,12 +49,27 @@ export default function ProfilePage() {
   // Sesi Aktif Multi-Step Wizard: Sesi 1 (Identitas), Sesi 2 (Dapil), Sesi 3 (Pendidikan), Sesi 4 (Isu & Web)
   const [activeStep, setActiveStep] = useState<ProfileSessionStep>(1);
 
+  // Modal Keamanan Akun (Ganti Password & Ganti Email)
+  const [securityModalOpen, setSecurityModalOpen] = useState(false);
+  const [securityInitialTab, setSecurityInitialTab] = useState<'PASSWORD' | 'EMAIL'>('PASSWORD');
+
+  function handleOpenSecurity(tab: 'PASSWORD' | 'EMAIL' = 'PASSWORD') {
+    setSecurityInitialTab(tab);
+    setSecurityModalOpen(true);
+  }
+
+  function handleEmailUpdated(newEmail: string) {
+    setProfile((prev: any) => (prev ? { ...prev, email: newEmail } : prev));
+  }
+
+
   // Form states - Identitas Resmi Dewan
   const [fullName, setFullName] = useState('');
   const [phoneNumber, setPhoneNumber] = useState('');
   const [partyAffiliation, setPartyAffiliation] = useState<string | null>(null);
   const [legislativeLevel, setLegislativeLevel] = useState('DPRD_PROVINSI');
   const [photoUrl, setPhotoUrl] = useState('');
+  const [photoGallery, setPhotoGallery] = useState<string[]>([]);
   const [commissionName, setCommissionName] = useState('');
   const [gender, setGender] = useState('LAKI_LAKI');
   const [birthDate, setBirthDate] = useState('');
@@ -84,6 +102,7 @@ export default function ProfilePage() {
         setPartyAffiliation(userProfile.partyAffiliation || userProfile.institutionPartyName || null);
         setLegislativeLevel(userProfile.legislativeLevel || userProfile.officeRole || 'DPRD_PROVINSI');
         setPhotoUrl(userProfile.photoUrl || '');
+        setPhotoGallery(Array.isArray(userProfile.photoGallery) ? userProfile.photoGallery : []);
         setCommissionName(userProfile.commissionName || '');
         setGender(userProfile.gender || 'LAKI_LAKI');
         setBirthDate(userProfile.birthDate || '');
@@ -190,6 +209,7 @@ export default function ProfilePage() {
           institutionPartyName: partyAffiliation,
           commissionName,
           photoUrl,
+          photoGallery,
           gender,
           birthDate,
           education,
@@ -307,6 +327,7 @@ export default function ProfilePage() {
               legislativeLevel={legislativeLevel}
               commissionName={commissionName}
               photoUrl={photoUrl}
+              photoGallery={photoGallery}
               gender={gender}
               birthDate={birthDate}
               education={education}
@@ -318,6 +339,7 @@ export default function ProfilePage() {
               regencyCoverage={regencyCoverage}
               subdomain={profile?.subdomain}
               onEditClick={() => setActiveTabMode('EDIT')}
+              onOpenSecurity={handleOpenSecurity}
             />
           )}
 
@@ -355,6 +377,15 @@ export default function ProfilePage() {
                     setGender={setGender}
                     birthDate={birthDate}
                     setBirthDate={setBirthDate}
+                    onOpenSecurity={handleOpenSecurity}
+                  />
+
+                  {/* KATALOG FOTO PRIBADI DEWAN (MAKSIMAL 10 FOTO) */}
+                  <PersonalPhotoCatalog
+                    photoGallery={photoGallery}
+                    setPhotoGallery={setPhotoGallery}
+                    photoUrl={photoUrl}
+                    setPhotoUrl={setPhotoUrl}
                   />
 
                   {/* Navigasi Sesi 1 */}
@@ -540,6 +571,15 @@ export default function ProfilePage() {
             </form>
           )}
         </main>
+
+        {/* MODAL KEAMANAN AKUN (GANTI PASSWORD & GANTI EMAIL) */}
+        <AccountSecurityModal
+          isOpen={securityModalOpen}
+          onClose={() => setSecurityModalOpen(false)}
+          currentEmail={profile?.email || ''}
+          initialTab={securityInitialTab}
+          onEmailUpdated={handleEmailUpdated}
+        />
       </div>
     </div>
   );

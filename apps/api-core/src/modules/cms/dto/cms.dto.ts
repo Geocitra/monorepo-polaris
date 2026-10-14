@@ -59,10 +59,37 @@ export class UpdateThemeSettingsDto {
   layoutTemplateId?: string;
 
   @IsOptional()
+  layoutSchema?: any;
+
+  @IsOptional()
   @IsArray()
   @ValidateNested({ each: true })
   @Type(() => SocialLinkItemDto)
   socialLinks?: SocialLinkItemDto[];
+}
+
+export class CreatePortalDocumentRequestDto {
+  @IsString()
+  @IsNotEmpty({ message: 'Judul dokumen tidak boleh kosong.' })
+  @MaxLength(255)
+  title!: string;
+
+  @IsString()
+  @IsNotEmpty()
+  @MaxLength(50)
+  docType: string = 'REPORT_TRIWULAN';
+
+  @IsOptional()
+  @IsString()
+  description?: string;
+
+  @IsString()
+  @IsNotEmpty({ message: 'URL berkas PDF wajib diisi.' })
+  @IsUrl({}, { message: 'URL berkas harus berupa tautan yang valid.' })
+  fileUrl!: string;
+
+  @IsOptional()
+  fileSizeBytes?: number;
 }
 
 export class UpdateDomainConfigDto {

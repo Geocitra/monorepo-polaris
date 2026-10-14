@@ -3,6 +3,7 @@ import {
   Get,
   Put,
   Post,
+  Delete,
   Body,
   Param,
   Query,
@@ -12,7 +13,7 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { CmsService } from './cms.service.js';
-import { UpdateThemeSettingsDto, UpdateDomainConfigDto } from './dto/cms.dto.js';
+import { UpdateThemeSettingsDto, UpdateDomainConfigDto, CreatePortalDocumentRequestDto } from './dto/cms.dto.js';
 import { Public } from '../../common/decorators/public.decorator.js';
 import { CurrentTenant, AuthenticatedTenantPayload } from '../../common/decorators/current-tenant.decorator.js';
 import { SubscriptionGuard } from '../../common/guards/subscription.guard.js';
@@ -40,6 +41,32 @@ export class CmsController {
   @HttpCode(HttpStatus.OK)
   async getMyPortal(@CurrentTenant() user: AuthenticatedTenantPayload) {
     return await this.cmsService.getMyPortalConfig(user.tenantId);
+  }
+
+  @Get('portal/documents')
+  @HttpCode(HttpStatus.OK)
+  async getMyDocuments(@CurrentTenant() user: AuthenticatedTenantPayload) {
+    return await this.cmsService.getPortalDocuments(user.tenantId);
+  }
+
+  @UseGuards(SubscriptionGuard)
+  @Post('portal/documents')
+  @HttpCode(HttpStatus.CREATED)
+  async createDocument(
+    @CurrentTenant() user: AuthenticatedTenantPayload,
+    @Body() dto: CreatePortalDocumentRequestDto
+  ) {
+    return await this.cmsService.createPortalDocument(user.tenantId, dto);
+  }
+
+  @UseGuards(SubscriptionGuard)
+  @Delete('portal/documents/:id')
+  @HttpCode(HttpStatus.OK)
+  async deleteDocument(
+    @CurrentTenant() user: AuthenticatedTenantPayload,
+    @Param('id') id: string
+  ) {
+    return await this.cmsService.deletePortalDocument(user.tenantId, id);
   }
 
   @UseGuards(SubscriptionGuard)
@@ -83,5 +110,33 @@ export class CmsController {
     @Param('articleSlug') articleSlug: string
   ) {
     return await this.cmsService.getPublicArticleBySlug(slug, articleSlug);
+  }
+
+  @Public()
+  @Post('public/:slug/documents/:id/download')
+  @HttpCode(HttpStatus.OK)
+  async trackDocumentDownload(
+    @Param('slug') slug: string,
+    @Param('id') id: string
+  ) {
+    return await this.cmsService.trackDocumentDownload(slug, id);
+  }
+
+  @Get('portal/newsletter/subscribers')
+  @HttpCode(HttpStatus.OK)
+  async getNewsletterSubscribers(
+    @CurrentTenant() user: AuthenticatedTenantPayload
+  ) {
+    return await this.cmsService.getNewsletterSubscribers(user.tenantId);
+  }
+
+  @Public()
+  @Post('public/:slug/newsletter/subscribe')
+  @HttpCode(HttpStatus.OK)
+  async subscribeNewsletter(
+    @Param('slug') slug: string,
+    @Body() dto: { email: string }
+  ) {
+    return await this.cmsService.subscribeNewsletter(slug, dto?.email);
   }
 }

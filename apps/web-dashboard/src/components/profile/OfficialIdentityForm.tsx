@@ -14,6 +14,8 @@ import {
   CheckCircle2,
   Info,
   Layers,
+  Lock,
+  KeyRound,
 } from 'lucide-react';
 import { PUBLIC_OFFICE_ROLE_OPTIONS, GENDER_OPTIONS } from './profile-constants';
 
@@ -35,6 +37,7 @@ interface OfficialIdentityFormProps {
   setGender: (val: string) => void;
   birthDate: string;
   setBirthDate: (val: string) => void;
+  onOpenSecurity?: (tab: 'PASSWORD' | 'EMAIL') => void;
 }
 
 export function OfficialIdentityForm({
@@ -53,6 +56,7 @@ export function OfficialIdentityForm({
   setGender,
   birthDate,
   setBirthDate,
+  onOpenSecurity,
 }: OfficialIdentityFormProps) {
   const selectedRoleObj = PUBLIC_OFFICE_ROLE_OPTIONS.find((r) => r.value === legislativeLevel);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -357,16 +361,43 @@ export function OfficialIdentityForm({
         </div>
 
         <div>
-          <label className="block text-[10px] font-bold text-slate-700 uppercase mb-0.5 flex items-center gap-1">
-            <Mail className="h-3 w-3 text-slate-400" />
-            <span>Email Akun Terdaftar</span>
-          </label>
+          <div className="flex items-center justify-between mb-0.5">
+            <label className="block text-[10px] font-bold text-slate-700 uppercase flex items-center gap-1">
+              <Mail className="h-3 w-3 text-slate-400" />
+              <span>Email Akun Terdaftar</span>
+            </label>
+            {onOpenSecurity && (
+              <button
+                type="button"
+                onClick={() => onOpenSecurity('EMAIL')}
+                className="text-[10px] font-bold text-blue-600 hover:text-blue-700 hover:underline cursor-pointer"
+              >
+                Ubah Email
+              </button>
+            )}
+          </div>
           <input
             type="email"
             disabled
             value={email || 'dewan@dpr.go.id'}
-            className="block w-full rounded-lg border border-slate-200 bg-slate-50 px-2.5 py-1.5 text-xs font-semibold text-slate-400 cursor-not-allowed"
+            className="block w-full rounded-lg border border-slate-200 bg-slate-50 px-2.5 py-1.5 text-xs font-semibold text-slate-700 cursor-not-allowed"
           />
+          <div className="flex items-center justify-between mt-1.5 pt-1 border-t border-slate-100">
+            <span className="text-[10px] text-slate-500 flex items-center gap-1">
+              <Lock className="w-2.5 h-2.5 text-slate-400" />
+              <span>Kredensial Login Akun</span>
+            </span>
+            {onOpenSecurity && (
+              <button
+                type="button"
+                onClick={() => onOpenSecurity('PASSWORD')}
+                className="text-[10px] font-bold text-blue-600 hover:text-blue-700 hover:underline cursor-pointer flex items-center gap-1"
+              >
+                <KeyRound className="w-2.5 h-2.5" />
+                <span>Ganti Password</span>
+              </button>
+            )}
+          </div>
         </div>
       </div>
 

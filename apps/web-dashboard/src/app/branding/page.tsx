@@ -27,7 +27,7 @@ const PARTY_COLOR_PRESETS = [
   { name: 'PAN', primary: '#003399', secondary: '#FFFFFF' },
 ];
 
-type ActiveTab = 'dashboard' | 'website' | 'instagram' | 'threads';
+type ActiveTab = 'dashboard' | 'website' | 'documents' | 'instagram' | 'threads';
 
 function BrandingContent() {
   const { toast } = useToast();

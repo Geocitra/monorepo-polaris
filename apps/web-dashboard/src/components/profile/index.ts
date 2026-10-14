@@ -7,3 +7,5 @@ export * from './ElectoralDistrictForm';
 export * from './PublicWebsiteCard';
 export * from './ProfilePreviewView';
 export * from './ProfileStepIndicator';
+export * from './PersonalPhotoCatalog';
+export * from './AccountSecurityModal';

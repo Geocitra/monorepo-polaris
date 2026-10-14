@@ -15,6 +15,8 @@ import {
   InquiryStatus,
   BillingCycle,
   PortalTemplateId,
+  PortalSectionType,
+  PortalDocumentType,
 } from '../enums/index.js';
 
 // ==========================================
@@ -44,6 +46,7 @@ export interface TenantProfileResponseDto {
   username?: string | null;
   mustChangePassword?: boolean;
   photoUrl?: string | null;
+  photoGallery?: string[];
   gender?: string | null;
   birthDate?: string | null;
   education?: string | null;
@@ -173,6 +176,41 @@ export interface PaymentWebhookPayloadDto {
 // ==========================================
 // 4. CMS & MICROSITE DTOs
 // ==========================================
+export interface PortalLayoutSectionDto {
+  id: string;
+  type: PortalSectionType | string;
+  variant?: string;
+  enabled: boolean;
+  order: number;
+  config?: Record<string, any>;
+}
+
+export interface PortalLayoutSchemaDto {
+  templatePreset: PortalTemplateId | string;
+  sections: PortalLayoutSectionDto[];
+}
+
+export interface PortalDocumentItemDto {
+  id: string;
+  portalId?: string;
+  title: string;
+  docType: PortalDocumentType | string;
+  description?: string | null;
+  fileUrl: string;
+  fileSizeBytes?: number | null;
+  downloadCount: number;
+  publishedAt: string;
+  createdAt?: string;
+}
+
+export interface CreatePortalDocumentDto {
+  title: string;
+  docType: PortalDocumentType | string;
+  description?: string;
+  fileUrl: string;
+  fileSizeBytes?: number;
+}
+
 export interface UpdatePortalThemeDto {
   primaryHexColor: string;
   secondaryHexColor: string;
@@ -182,6 +220,7 @@ export interface UpdatePortalThemeDto {
   headlineTagline: string;
   bioBiography: string;
   layoutTemplateId?: string | PortalTemplateId;
+  layoutSchema?: PortalLayoutSchemaDto;
   socialLinks?: Array<{
     platform: SocialPlatform;
     profileUrl: string;
@@ -203,6 +242,7 @@ export interface PublicPortalDataDto {
     tagline?: string | null;
     bio?: string | null;
     layoutTemplateId?: string;
+    layoutSchema?: PortalLayoutSchemaDto | null;
   };
   socialLinks: Array<{
     platform: SocialPlatform;
@@ -215,6 +255,7 @@ export interface PublicPortalDataDto {
     publishedAt: string;
     thumbnailUrl?: string | null;
   }>;
+  documents?: PortalDocumentItemDto[];
 }
 
 // ==========================================

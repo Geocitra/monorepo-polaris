@@ -11,6 +11,7 @@ export class PortalProfile {
     public customDomain?: string | null,
     public isActive: boolean = true,
     public layoutTemplateId: string = 'standard-default',
+    public layoutSchema?: any,
   ) {}
 
   public updateBrandingColors(primary: HexColor, secondary: HexColor): void {
@@ -24,6 +25,17 @@ export class PortalProfile {
       throw new Error(`[EntitlementViolation] Kustomisasi template layout tematik '${templateId}' memerlukan lisensi Premium.`);
     }
     this.layoutTemplateId = cleanTemplateId;
+  }
+
+  public updateLayoutSchema(schema: any, isPremiumTier: boolean): void {
+    const preset = (schema?.templatePreset || this.layoutTemplateId || '').trim().toLowerCase();
+    if (preset !== 'standard-default' && !isPremiumTier) {
+      throw new Error(`[EntitlementViolation] Kustomisasi template layout tematik '${preset}' memerlukan lisensi Premium.`);
+    }
+    this.layoutSchema = schema;
+    if (schema?.templatePreset) {
+      this.layoutTemplateId = schema.templatePreset;
+    }
   }
 
   public attachCustomDomain(domain: string): void {

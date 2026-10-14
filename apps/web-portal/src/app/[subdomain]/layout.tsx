@@ -2,7 +2,6 @@ import { notFound } from 'next/navigation';
 import { fetchPortalData } from '@/lib/api';
 import { Navbar } from '@/components/layout/navbar';
 import { Footer } from '@/components/layout/footer';
-import { AskPolarisWidget } from '@/components/chat/ask-polaris-widget';
 
 export default async function TenantLayout({
   children,
@@ -42,8 +41,6 @@ export default async function TenantLayout({
         dapilName={member.dapilName}
         partyAffiliation={member.partyAffiliation}
       />
-      {/* FLOATING AI CIVIC CHAT WIDGET */}
-      <AskPolarisWidget subdomain={subdomain} officialName={member.fullName} />
     </div>
   );
 }

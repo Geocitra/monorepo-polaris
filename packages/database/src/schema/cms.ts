@@ -1,4 +1,4 @@
-import { pgTable, uuid, varchar, text, boolean, timestamp, unique } from 'drizzle-orm/pg-core';
+import { pgTable, uuid, varchar, text, boolean, timestamp, unique, jsonb, integer, index } from 'drizzle-orm/pg-core';
 import { tenantMembers } from './identity.js';
 import { socialPlatformEnum } from './enums.js';
 
@@ -29,6 +29,21 @@ export const portalThemeSettings = pgTable('portal_theme_settings', {
   headlineTagline: varchar('headline_tagline', { length: 255 }),
   bioBiography: text('bio_biography'),
   layoutTemplateId: varchar('layout_template_id', { length: 50 }).default('standard-default').notNull(),
+  layoutSchema: jsonb('layout_schema'),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
+});
+
+export const portalDocuments = pgTable('portal_documents', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  portalId: uuid('portal_id').notNull().references(() => portalConfigs.id, { onDelete: 'cascade' }),
+  title: varchar('title', { length: 255 }).notNull(),
+  docType: varchar('doc_type', { length: 50 }).default('REPORT_TRIWULAN').notNull(),
+  description: text('description'),
+  fileUrl: text('file_url').notNull(),
+  fileSizeBytes: integer('file_size_bytes'),
+  downloadCount: integer('download_count').default(0).notNull(),
+  publishedAt: timestamp('published_at', { withTimezone: true }).defaultNow().notNull(),
+  createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
   updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
 });
 
@@ -40,4 +55,16 @@ export const socialLinks = pgTable('social_links', {
   createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
 }, (t) => ({
   unqPortalPlatform: unique().on(t.portalId, t.platform),
+}));
+
+export const portalNewsletterSubscribers = pgTable('portal_newsletter_subscribers', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  portalId: uuid('portal_id').notNull().references(() => portalConfigs.id, { onDelete: 'cascade' }),
+  email: varchar('email', { length: 255 }).notNull(),
+  isActive: boolean('is_active').default(true).notNull(),
+  createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
+}, (t) => ({
+  unqPortalEmail: unique().on(t.portalId, t.email),
+  idxPortalSubscribers: index('idx_portal_subscribers').on(t.portalId, t.createdAt),
 }));
