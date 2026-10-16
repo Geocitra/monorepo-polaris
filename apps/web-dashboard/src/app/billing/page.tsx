@@ -78,7 +78,7 @@ export default function BillingPage() {
               setBilling(synced);
               setSuccessDetails({
                 invoiceNumber: orderId,
-                planName: 'Paket Parlemen Eksekutif',
+                planName: 'Paket Polaris Executive',
                 amountFormatted: 'Lunas Terverifikasi',
                 validUntil: synced?.currentPeriodEnd ? formatDateIndonesian(synced.currentPeriodEnd) : 'Aktif',
               });
@@ -129,7 +129,7 @@ export default function BillingPage() {
             // Tampilkan Layar Sukses Eksekutif Kustom dengan hitungan mundur
             setSuccessDetails({
               invoiceNumber: res.invoiceNumber,
-              planName: offering?.name ? `${offering.name} (${cycle})` : 'Paket Parlemen Eksekutif',
+              planName: offering?.name ? `${offering.name} (${cycle})` : 'Paket Polaris Executive',
               amountFormatted: cycleInfo?.priceFormatted || 'Terbayar',
               validUntil: updatedBilling?.currentPeriodEnd ? formatDateIndonesian(updatedBilling.currentPeriodEnd) : 'Aktif',
             });
@@ -158,7 +158,7 @@ export default function BillingPage() {
               if (updated?.subscriptionStatus === 'ACTIVE') {
                 setSuccessDetails({
                   invoiceNumber: res.invoiceNumber,
-                  planName: offering?.name ? `${offering.name} (${cycle})` : 'Paket Parlemen Eksekutif',
+                  planName: offering?.name ? `${offering.name} (${cycle})` : 'Paket Polaris Executive',
                   amountFormatted: cycleInfo?.priceFormatted || 'Terbayar',
                   validUntil: updated?.currentPeriodEnd ? formatDateIndonesian(updated?.currentPeriodEnd) : 'Aktif',
                 });
@@ -205,14 +205,14 @@ export default function BillingPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-slate-50">
+      <div className="min-h-screen flex items-center justify-center bg-slate-50 dark:bg-[#0A0D14]">
         <Loader2 className="h-8 w-8 animate-spin text-blue-600" />
       </div>
     );
   }
 
   return (
-    <div className="flex min-h-screen bg-slate-50">
+    <div className="flex min-h-screen bg-slate-100/70 dark:bg-[#070A12] text-slate-900 dark:text-slate-100 font-sans theme-transition">
       <Script
         src={snapScriptUrl}
         data-client-key={clientKey}
@@ -232,45 +232,45 @@ export default function BillingPage() {
 
         <main className="flex-1 p-4 sm:p-6 md:p-8 max-w-7xl w-full mx-auto space-y-6 transition-all duration-300">
           {/* 1. STATUS BAR MINIMALIS (BUKAN CARD BERLAPIS) */}
-          <div className="bg-white border border-slate-200/90 rounded-2xl p-4 sm:p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4 shadow-xs">
+          <div className="bg-white dark:bg-[#0E131F] border border-slate-200/90 dark:border-slate-800 rounded-2xl p-4 sm:p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4 shadow-xs transition-colors">
             <div className="flex items-center gap-3.5">
               <div className="h-11 w-11 rounded-2xl bg-gradient-to-tr from-blue-700 to-blue-500 text-white flex items-center justify-center shadow-md shadow-blue-500/20 shrink-0">
                 <ShieldCheck className="h-6 w-6" />
               </div>
               <div>
                 <div className="flex items-center gap-2 flex-wrap">
-                  <h1 className="text-base font-extrabold text-slate-900 leading-tight">
+                  <h1 className="text-base font-extrabold text-slate-900 dark:text-white leading-tight">
                     {profile?.fullName || 'Anggota Dewan'}
                   </h1>
                   {profile?.partyAffiliation ? (
-                    <span className="text-[11px] font-bold px-2 py-0.5 rounded-full bg-slate-100 text-slate-700 border border-slate-200">
+                    <span className="text-[11px] font-bold px-2 py-0.5 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700">
                       Fraksi {profile.partyAffiliation}
                     </span>
                   ) : (
-                    <span className="text-[11px] font-bold px-2 py-0.5 rounded-full bg-slate-100 text-slate-700 border border-slate-200">
-                      Dewan / Lembaga Publik
+                    <span className="text-[11px] font-bold px-2 py-0.5 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700">
+                      Lembaga / Korporat
                     </span>
                   )}
                 </div>
-                <p className="text-xs text-slate-500 font-medium mt-0.5 flex items-center gap-2">
-                  <span>Ruang Kerja Parlemen POLARIS</span>
-                  <span className="text-slate-300">•</span>
-                  <span className="text-emerald-700 font-semibold flex items-center gap-1">
-                    <Sparkles className="h-3 w-3 text-emerald-600" />
+                <p className="text-xs text-slate-500 dark:text-slate-400 font-medium mt-0.5 flex items-center gap-2">
+                  <span>Ruang Kerja Resmi POLARIS</span>
+                  <span className="text-slate-300 dark:text-slate-600">•</span>
+                  <span className="text-emerald-700 dark:text-emerald-400 font-semibold flex items-center gap-1">
+                    <Sparkles className="h-3 w-3 text-emerald-600 dark:text-emerald-400" />
                     AI Unlimited
                   </span>
                 </p>
               </div>
             </div>
 
-            <div className="flex items-center gap-4 sm:border-l sm:border-slate-100 sm:pl-6 self-start sm:self-auto">
+            <div className="flex items-center gap-4 sm:border-l sm:border-slate-100 dark:sm:border-slate-800 sm:pl-6 self-start sm:self-auto">
               <div>
                 <div className="text-[10px] font-black uppercase tracking-wider text-slate-400">
                   Status Masa Aktif
                 </div>
-                <div className="text-sm font-black text-slate-900 flex items-center gap-1.5 mt-0.5">
+                <div className="text-sm font-black text-slate-900 dark:text-white flex items-center gap-1.5 mt-0.5">
                   {isSubActive && daysLeft !== null ? (
-                    <span className="text-emerald-700 font-black flex items-center gap-1.5">
+                    <span className="text-emerald-700 dark:text-emerald-400 font-black flex items-center gap-1.5">
                       <span className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
                       Aktif ({daysLeft} Hari Lagi)
                     </span>

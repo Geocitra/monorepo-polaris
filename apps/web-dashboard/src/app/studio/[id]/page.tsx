@@ -137,14 +137,14 @@ export default function ArticleEditorPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-slate-50">
+      <div className="min-h-screen flex items-center justify-center bg-slate-50 dark:bg-[#0A0D14]">
         <Loader2 className="h-8 w-8 animate-spin text-blue-600" />
       </div>
     );
   }
 
   return (
-    <div className="flex min-h-screen bg-slate-50">
+    <div className="flex min-h-screen bg-slate-100/70 dark:bg-[#070A12] text-slate-900 dark:text-slate-100 font-sans theme-transition">
       <Sidebar subdomain={profile?.subdomain} />
 
       <div className="flex-1 flex flex-col min-w-0">
@@ -160,7 +160,7 @@ export default function ArticleEditorPage() {
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
             <Link
               href="/studio/library"
-              className="inline-flex items-center space-x-2 text-xs font-bold text-slate-500 hover:text-blue-600 transition-colors"
+              className="inline-flex items-center space-x-2 text-xs font-bold text-slate-500 dark:text-slate-300 hover:text-blue-600 dark:hover:text-blue-400 transition-colors"
             >
               <ArrowLeft className="h-4 w-4" />
               <span>Kembali ke Kelola Konten & Web</span>
@@ -214,6 +214,7 @@ export default function ArticleEditorPage() {
                 setExcerpt={setExcerpt}
                 bodyContentMarkdown={bodyContentMarkdown}
                 setBodyContentMarkdown={setBodyContentMarkdown}
+                posterUrl={posterUrl}
               />
             </div>
 

@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import dynamic from 'next/dynamic';
 import Link from 'next/link';
 import Image from 'next/image';
 import { Button } from '@/components/ui/button';
@@ -44,6 +45,19 @@ import {
 import { ApiClient } from '@/lib/api-client';
 import { InstagramPublishProgressModal } from '@/components/studio/InstagramPublishProgressModal';
 import { ThreadsPublishProgressModal } from '@/components/studio/ThreadsPublishProgressModal';
+
+const TiptapExecutiveEditor = dynamic(
+  () => import('@/components/studio/artikel/TiptapExecutiveEditor').then((m) => m.TiptapExecutiveEditor),
+  {
+    ssr: false,
+    loading: () => (
+      <div className="p-12 text-center text-xs text-slate-400 flex items-center justify-center gap-2">
+        <Loader2 className="h-4 w-4 animate-spin text-blue-500" />
+        <span>Memuat Kanvas Naskah Artikel...</span>
+      </div>
+    ),
+  }
+);
 
 interface CampaignPreviewProps {
   generatedResult: any;
@@ -117,6 +131,23 @@ export function CampaignPreview({
       setThreadsCustomText(initial);
     }
   }, [generatedResult?.socialPack]);
+
+  // Auto-sync posterUrl saat background polling selesai (tanpa butuh refresh)
+  useEffect(() => {
+    if (generatedResult?.posterUrl && generatedResult.posterUrl !== selectedPosterUrl) {
+      setSelectedPosterUrl(generatedResult.posterUrl);
+    }
+  }, [generatedResult?.posterUrl, selectedPosterUrl]);
+
+  // Auto-sync naskah artikel saat draf selesai
+  useEffect(() => {
+    if (generatedResult?.publication?.title && !isEditingArticle) {
+      setEditedTitle(generatedResult.publication.title);
+    }
+    if (generatedResult?.publication?.bodyContentMarkdown && !isEditingArticle) {
+      setEditedBody(generatedResult.publication.bodyContentMarkdown);
+    }
+  }, [generatedResult?.publication?.title, generatedResult?.publication?.bodyContentMarkdown, isEditingArticle]);
 
   useEffect(() => {
     const poster = selectedPosterUrl || generatedResult?.posterUrl;
@@ -419,13 +450,13 @@ export function CampaignPreview({
   const readTimeMinutes = Math.max(1, Math.round(wordCount / 200));
 
   const infoData = generatedResult?.infographicData;
-  const infoHeadline = infoData?.headline || currentTitle || 'Infografik Kebijakan Parlemen';
+  const infoHeadline = infoData?.headline || currentTitle || 'Infografik Isu & Kebijakan';
   const infoTakeaway = infoData?.policyTakeaway || generatedResult?.publication?.excerpt || 'Kajian ringkas pokok pikiran kebijakan daerah.';
   const keyStats: Array<{ label: string; value: string; context?: string }> =
     Array.isArray(infoData?.keyStatistics) && infoData.keyStatistics.length > 0
       ? infoData.keyStatistics
       : [
-          { label: 'Indikator Utama', value: 'Prioritas', context: 'Fokus advokasi parlemen' },
+          { label: 'Indikator Utama', value: 'Prioritas', context: 'Fokus isu utama' },
           { label: 'Cakupan Riset', value: `${wordCount} Kata`, context: 'Sintesis teknokratis' },
           { label: 'Estimasi Baca', value: `${readTimeMinutes} Menit`, context: 'Ringkasan eksekutif' },
           { label: 'Kanal Rilis', value: 'Multi-Format', context: 'Portal web & media sosial' },
@@ -604,34 +635,53 @@ export function CampaignPreview({
             {generatedResult.publication?.excerpt}
           </div>
 
-          {/* ISI NASKAH */}
-          {isEditingArticle ? (
-            <div className="space-y-3">
-              <div>
-                <label className="text-[11px] font-bold text-slate-600 dark:text-slate-300 block mb-1">Judul:</label>
-                <input
-                  type="text"
-                  value={editedTitle}
-                  onChange={(e) => setEditedTitle(e.target.value)}
-                  className="w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 p-2.5 text-sm font-bold text-slate-900 dark:text-white"
-                />
-              </div>
-              <div>
-                <label className="text-[11px] font-bold text-slate-600 dark:text-slate-300 block mb-1">Isi Naskah:</label>
-                <textarea
-                  rows={14}
-                  value={editedBody}
-                  onChange={(e) => setEditedBody(e.target.value)}
-                  className="w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 p-3 font-mono text-xs text-slate-800 dark:text-slate-100 leading-relaxed"
-                />
-              </div>
-              <Button size="sm" onClick={handleSaveArticleEdit} className="bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs">
-                Simpan Perubahan
+          {/* JUDUL ARTIKEL (BISA DISUNTING LANGSUNG) */}
+          <div className="space-y-1.5">
+            <label className="text-[11px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+              Judul Artikel Kebijakan:
+            </label>
+            {isEditingArticle ? (
+              <input
+                type="text"
+                value={editedTitle}
+                onChange={(e) => setEditedTitle(e.target.value)}
+                placeholder="Judul artikel kebijakan..."
+                className="w-full rounded-xl border border-blue-500 dark:border-blue-500 bg-white dark:bg-slate-800 p-3 text-base sm:text-lg font-black text-slate-900 dark:text-white shadow-xs focus:outline-none"
+              />
+            ) : (
+              <h2 className="text-lg sm:text-xl font-black text-slate-900 dark:text-white tracking-tight">
+                {currentTitle}
+              </h2>
+            )}
+          </div>
+
+          {/* ISI NASKAH DENGAN TIPTAP TRUE WYSIWYG EDITOR */}
+          <div className="border border-slate-200 dark:border-slate-800 rounded-2xl shadow-inner bg-slate-50/50 dark:bg-slate-950/40 p-2 sm:p-4">
+            <TiptapExecutiveEditor
+              content={currentBody}
+              onContentChange={(newHtml) => {
+                setEditedBody(newHtml);
+              }}
+              authorName={authorName}
+              partyName={partyAffiliation}
+              editable={isEditingArticle}
+              compactMode={true}
+              aiPosterUrl={selectedPosterUrl || generatedResult?.posterUrl}
+            />
+          </div>
+
+          {isEditingArticle && (
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pt-2">
+              <span className="text-xs text-slate-500">
+                Gunakan bilah di atas naskah untuk menyisipkan foto lapangan, tabel data, atau grafik kebijakan.
+              </span>
+              <Button
+                size="sm"
+                onClick={handleSaveArticleEdit}
+                className="bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs shadow-xs self-end sm:self-auto"
+              >
+                Simpan Perubahan Naskah
               </Button>
-            </div>
-          ) : (
-            <div className="max-h-[480px] overflow-y-auto pr-3 space-y-3 font-sans text-xs sm:text-sm text-slate-800 dark:text-slate-200 leading-relaxed whitespace-pre-line border border-slate-200 dark:border-slate-800 rounded-2xl p-5 bg-white dark:bg-slate-950/50 shadow-inner">
-              {currentBody}
             </div>
           )}
         </div>
@@ -693,7 +743,7 @@ export function CampaignPreview({
               <div className="flex items-center justify-between text-[10px] font-black uppercase tracking-widest text-blue-400 border-b border-slate-700/60 pb-3">
                 <span className="flex items-center gap-1.5">
                   <ShieldCheck className="h-4 w-4 text-blue-400" />
-                  <span>POLARIS GOV • INFOGRAFIK KEBIJAKAN PARLEMEN</span>
+                  <span>POLARIS • INFOGRAFIK KEBIJAKAN &amp; ISU STRATEGIS</span>
                 </span>
                 <span className="text-slate-400 font-mono">EDISI 2026</span>
               </div>
@@ -734,10 +784,10 @@ export function CampaignPreview({
 
                 {/* VISUAL CENTERPIECE BUATAN AI */}
                 <div className="lg:col-span-7 relative rounded-2xl overflow-hidden border border-slate-700 bg-slate-950 min-h-[280px] sm:min-h-[320px] flex items-center justify-center shadow-lg">
-                  {selectedPosterUrl ? (
+                  {(selectedPosterUrl || generatedResult?.posterUrl) ? (
                     <>
                       <Image
-                        src={selectedPosterUrl}
+                        src={selectedPosterUrl || generatedResult?.posterUrl}
                         alt="Poster Infografis AI"
                         fill
                         unoptimized
@@ -750,7 +800,7 @@ export function CampaignPreview({
                           Visual Sintesis AI
                         </span>
                         <a
-                          href={selectedPosterUrl}
+                          href={selectedPosterUrl || generatedResult?.posterUrl}
                           download
                           target="_blank"
                           rel="noopener noreferrer"
@@ -763,9 +813,12 @@ export function CampaignPreview({
                     </>
                   ) : (
                     <div className="p-8 text-center space-y-3">
-                      <Cpu className="h-10 w-10 text-blue-400 animate-pulse mx-auto opacity-75" />
-                      <p className="text-xs text-slate-300 font-bold">
-                        Visual infografis telah dirumuskan dari intisari kajian naskah Anda.
+                      <Loader2 className="h-9 w-9 text-blue-400 animate-spin mx-auto opacity-90" />
+                      <p className="text-xs text-white font-bold">
+                        🎨 AI Sedang Melukis Poster Visual di Latar Belakang...
+                      </p>
+                      <p className="text-[11px] text-slate-400 max-w-xs mx-auto">
+                        Naskah artikel Anda sudah siap ditinjau. Gambar akan otomatis muncul di sini seketika tanpa perlu refresh halaman.
                       </p>
                     </div>
                   )}
@@ -786,10 +839,10 @@ export function CampaignPreview({
           {visualMode === 'raw_poster' && (
             <div className="rounded-3xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-5 space-y-4 shadow-sm">
               <div className="relative rounded-2xl overflow-hidden border border-slate-700 bg-slate-950 aspect-video max-h-[520px] flex items-center justify-center shadow-lg">
-                {selectedPosterUrl ? (
+                {(selectedPosterUrl || generatedResult?.posterUrl) ? (
                   <>
                     <Image
-                      src={selectedPosterUrl}
+                      src={selectedPosterUrl || generatedResult?.posterUrl}
                       alt="Poster Visual Resolusi Tinggi"
                       fill
                       unoptimized
@@ -799,10 +852,10 @@ export function CampaignPreview({
                     <div className="absolute inset-0 bg-gradient-to-t from-slate-950/80 via-transparent to-transparent pointer-events-none" />
                     <div className="absolute bottom-4 left-4 right-4 flex items-center justify-between text-white text-xs">
                       <span className="font-bold text-xs bg-slate-900/90 px-3 py-1.5 rounded-xl backdrop-blur-md border border-slate-700">
-                        Resolusi Penuh (Format Berita Parlemen)
+                        Resolusi Penuh (Format Berita &amp; Media)
                       </span>
                       <a
-                        href={selectedPosterUrl}
+                        href={selectedPosterUrl || generatedResult?.posterUrl}
                         download
                         target="_blank"
                         rel="noopener noreferrer"
@@ -814,9 +867,14 @@ export function CampaignPreview({
                     </div>
                   </>
                 ) : (
-                  <div className="p-8 text-center space-y-2 text-slate-400">
-                    <ImageIcon className="h-10 w-10 mx-auto text-slate-600" />
-                    <p className="text-xs">Gambar visual sedang diproses oleh AI.</p>
+                  <div className="p-8 text-center space-y-3">
+                    <Loader2 className="h-9 w-9 text-blue-400 animate-spin mx-auto opacity-90" />
+                    <p className="text-xs text-white font-bold">
+                      🎨 AI Sedang Merender Poster Resolusi Penuh...
+                    </p>
+                    <p className="text-[11px] text-slate-400 max-w-xs mx-auto">
+                      Gambar akan otomatis muncul begitu proses selesai di latar belakang.
+                    </p>
                   </div>
                 )}
               </div>

@@ -90,20 +90,39 @@ function hexDarken(hex: string, amount: number): string {
   return `hsl(${h}, ${s}%, ${newL}%)`;
 }
 
-/** Check if a color is "light" (for contrast decisions) */
+/** Check if a color is "light" (for contrast decisions using perceived luminance) */
 function isLight(hex: string): boolean {
-  const { l } = hexToHSL(hex);
-  return l > 55;
+  let clean = hex.replace('#', '');
+  if (clean.length === 3) {
+    clean = clean[0] + clean[0] + clean[1] + clean[1] + clean[2] + clean[2];
+  }
+  const r = parseInt(clean.substring(0, 2), 16);
+  const g = parseInt(clean.substring(2, 4), 16);
+  const b = parseInt(clean.substring(4, 6), 16);
+  const brightness = (r * 299 + g * 587 + b * 114) / 1000;
+  return brightness > 165;
 }
 
 /* ───────────── Inject CSS Custom Properties ────────────── */
 
-function injectCSSVariables(colors: ThemeColors) {
+function injectCSSVariables(colors: ThemeColors, isDark: boolean = false) {
   if (typeof document === 'undefined') return;
 
   const root = document.documentElement;
   const { h: ph, s: ps, l: pl } = hexToHSL(colors.primary);
-  const { h: sh, s: ss, l: sl } = hexToHSL(colors.secondary);
+  
+  let cleanPrimary = colors.primary.replace('#', '');
+  if (cleanPrimary.length === 3) {
+    cleanPrimary = cleanPrimary[0] + cleanPrimary[0] + cleanPrimary[1] + cleanPrimary[1] + cleanPrimary[2] + cleanPrimary[2];
+  }
+  const pr = parseInt(cleanPrimary.substring(0, 2), 16);
+  const pg = parseInt(cleanPrimary.substring(2, 4), 16);
+  const pb = parseInt(cleanPrimary.substring(4, 6), 16);
+  root.style.setProperty('--color-primary-rgb', `${pr} ${pg} ${pb}`);
+  
+  // In dark mode, ensure secondary color is dark if user previously set a light secondary
+  const effectiveSecondary = isDark && isLight(colors.secondary) ? '#0F172A' : colors.secondary;
+  const { h: sh, s: ss, l: sl } = hexToHSL(effectiveSecondary);
 
   // Primary palette
   root.style.setProperty('--color-primary', colors.primary);
@@ -117,30 +136,30 @@ function injectCSSVariables(colors: ThemeColors) {
   root.style.setProperty('--color-primary-foreground', isLight(colors.primary) ? '#0F172A' : '#FFFFFF');
 
   // Secondary palette
-  root.style.setProperty('--color-secondary', colors.secondary);
+  root.style.setProperty('--color-secondary', effectiveSecondary);
   root.style.setProperty('--color-secondary-h', String(sh));
   root.style.setProperty('--color-secondary-s', `${ss}%`);
   root.style.setProperty('--color-secondary-l', `${sl}%`);
-  root.style.setProperty('--color-secondary-50', hexLighten(colors.secondary, 45));
-  root.style.setProperty('--color-secondary-foreground', isLight(colors.secondary) ? '#0F172A' : '#FFFFFF');
+  root.style.setProperty('--color-secondary-50', hexLighten(effectiveSecondary, 45));
+  root.style.setProperty('--color-secondary-foreground', isLight(effectiveSecondary) ? '#0F172A' : '#FFFFFF');
 
   // Derived semantic tokens
-  root.style.setProperty('--sidebar-bg', colors.secondary);
-  root.style.setProperty('--sidebar-fg', isLight(colors.secondary) ? '#334155' : '#E2E8F0');
-  root.style.setProperty('--sidebar-fg-muted', isLight(colors.secondary) ? '#64748B' : '#94A3B8');
-  root.style.setProperty('--sidebar-active-bg', isLight(colors.secondary)
+  root.style.setProperty('--sidebar-bg', effectiveSecondary);
+  root.style.setProperty('--sidebar-fg', isLight(effectiveSecondary) ? '#334155' : '#E2E8F0');
+  root.style.setProperty('--sidebar-fg-muted', isLight(effectiveSecondary) ? '#64748B' : '#94A3B8');
+  root.style.setProperty('--sidebar-active-bg', isLight(effectiveSecondary)
     ? hexLighten(colors.primary, 38)
     : `hsla(${ph}, ${ps}%, ${pl}%, 0.15)`
   );
-  root.style.setProperty('--sidebar-active-fg', isLight(colors.secondary)
+  root.style.setProperty('--sidebar-active-fg', isLight(effectiveSecondary)
     ? colors.primary
     : hexLighten(colors.primary, 20)
   );
-  root.style.setProperty('--sidebar-hover-bg', isLight(colors.secondary)
+  root.style.setProperty('--sidebar-hover-bg', isLight(effectiveSecondary)
     ? '#F1F5F9'
     : 'rgba(255,255,255,0.06)'
   );
-  root.style.setProperty('--sidebar-border', isLight(colors.secondary)
+  root.style.setProperty('--sidebar-border', isLight(effectiveSecondary)
     ? '#E2E8F0'
     : 'rgba(255,255,255,0.08)'
   );
@@ -200,9 +219,12 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
     const root = document.documentElement;
     if (currentResolved === 'dark') {
       root.classList.add('dark');
+      root.style.colorScheme = 'dark';
     } else {
       root.classList.remove('dark');
+      root.style.colorScheme = 'light';
     }
+    injectCSSVariables(colors, currentResolved === 'dark');
 
     if (mode === 'system') {
       const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
@@ -211,14 +233,17 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
         setResolvedMode(nextResolved);
         if (nextResolved === 'dark') {
           root.classList.add('dark');
+          root.style.colorScheme = 'dark';
         } else {
           root.classList.remove('dark');
+          root.style.colorScheme = 'light';
         }
+        injectCSSVariables(colors, nextResolved === 'dark');
       };
       mediaQuery.addEventListener('change', handler);
       return () => mediaQuery.removeEventListener('change', handler);
     }
-  }, [mode]);
+  }, [mode, colors]);
 
   const setMode = useCallback((newMode: ThemeMode) => {
     setModeState(newMode);

@@ -274,33 +274,31 @@ export function ThreadsConnectionCard({ isUnpaid }: ThreadsConnectionCardProps) 
           </div>
 
           {/* Action Buttons */}
-          <div className="flex flex-wrap items-center justify-between gap-2 pt-1">
-            <div className="flex items-center gap-2">
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={handleRefresh}
-                disabled={actionLoading}
-                className="rounded-xl text-xs font-bold gap-1.5 cursor-pointer"
-              >
-                {actionLoading ? (
-                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                ) : (
-                  <RotateCw className="h-3.5 w-3.5" />
-                )}
-                <span>Perpanjang Token (60 Hari)</span>
-              </Button>
-            </div>
+          <div className="flex items-center justify-between gap-2 pt-1">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleRefresh}
+              disabled={actionLoading}
+              className="rounded-xl text-xs font-bold gap-1.5 cursor-pointer h-8 px-3"
+            >
+              {actionLoading ? (
+                <Loader2 className="h-3.5 w-3.5 animate-spin" />
+              ) : (
+                <RotateCw className="h-3.5 w-3.5" />
+              )}
+              <span>Perpanjang Token</span>
+            </Button>
 
             <Button
               variant="ghost"
               size="sm"
               onClick={handleDisconnect}
               disabled={actionLoading}
-              className="rounded-xl text-xs font-bold text-rose-600 hover:text-rose-700 hover:bg-rose-50 dark:hover:bg-rose-950/30 gap-1.5 cursor-pointer"
+              className="rounded-xl text-xs font-bold text-rose-600 hover:text-rose-700 hover:bg-rose-50 dark:hover:bg-rose-950/30 gap-1.5 cursor-pointer h-8 px-3"
             >
               <LogOut className="h-3.5 w-3.5" />
-              <span>Putuskan Hubungan</span>
+              <span>Putuskan</span>
             </Button>
           </div>
         </div>

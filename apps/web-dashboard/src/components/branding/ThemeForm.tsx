@@ -131,7 +131,7 @@ export function ThemeForm({
           <Link href="/billing" className="block pt-1">
             <Button size="sm" className="w-full bg-amber-600 hover:bg-amber-700 text-white font-bold text-xs gap-1.5 shadow-sm">
               <Lock className="h-3.5 w-3.5" />
-              <span>Aktifkan Lisensi Parlemen</span>
+              <span>Aktifkan Akun POLARIS</span>
             </Button>
           </Link>
         </div>
@@ -197,11 +197,11 @@ export function ThemeForm({
       {/* ─── SECTION 1: PALET WARNA TERKURASI (1-KLIK) ─── */}
       <div className="space-y-2.5">
         <div>
-          <label className="text-xs font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wide flex items-center gap-1.5">
+          <label className="text-xs font-bold text-slate-700 dark:text-white uppercase tracking-wide flex items-center gap-1.5">
             <Paintbrush className="h-3.5 w-3.5" style={{ color: primaryColor }} />
             Palet Warna Terkurasi Website
           </label>
-          <p className="text-[11px] text-slate-400 mt-0.5">
+          <p className="text-[11px] text-slate-400 dark:text-slate-300 mt-0.5">
             Kombinasi warna website resmi — klik langsung terlihat di simulator sebelah kanan.
           </p>
         </div>
@@ -234,7 +234,7 @@ export function ThemeForm({
                     style={{ backgroundColor: p.secondary }}
                   />
                 </div>
-                <span className="text-[10px] font-bold text-slate-700 dark:text-slate-300 truncate w-full mt-0.5">
+                <span className="text-[10px] font-bold text-slate-700 dark:text-slate-100 truncate w-full mt-0.5">
                   {p.name}
                 </span>
                 {active && (
@@ -268,7 +268,7 @@ export function ThemeForm({
               <span className="block text-xs font-extrabold text-slate-900 dark:text-white">
                 Pilih Warna Kustom Presisi (Color Picker)
               </span>
-              <span className="block text-[10px] text-slate-500 dark:text-slate-400">
+              <span className="block text-[10px] text-slate-500 dark:text-slate-300">
                 Sesuaikan rona dan saturasi warna secara presisi menggunakan spektrum interaktif.
               </span>
             </div>
@@ -296,7 +296,7 @@ export function ThemeForm({
 
       {/* ─── SECTION 2: PRESET PARTAI POLITIK ─── */}
       <div className="space-y-2.5">
-        <label className="text-xs font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wide block">
+        <label className="text-xs font-bold text-slate-700 dark:text-white uppercase tracking-wide block">
           🏛️ Preset Resmi Partai Politik
         </label>
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
@@ -327,7 +327,7 @@ export function ThemeForm({
                     style={{ backgroundColor: p.secondary }}
                   />
                 </div>
-                <span className="text-[10.5px] font-bold text-slate-700 dark:text-slate-300 truncate">
+                <span className="text-[10.5px] font-bold text-slate-700 dark:text-slate-100 truncate">
                   {p.name}
                 </span>
                 {active && (
@@ -344,7 +344,7 @@ export function ThemeForm({
       {/* ─── SECTION 4: FOTO BALIHO & TAGLINE PROFIL ─── */}
       <div className="space-y-4 pt-4 border-t border-slate-100 dark:border-slate-800">
         <div>
-          <label className="text-xs font-bold text-slate-700 dark:text-slate-300 uppercase flex items-center gap-1.5">
+          <label className="text-xs font-bold text-slate-700 dark:text-white uppercase flex items-center gap-1.5">
             <ImageIcon className="h-3.5 w-3.5 text-blue-500" />
             URL Foto Resmi Dewan (Format Portrait)
           </label>
@@ -355,13 +355,13 @@ export function ThemeForm({
             onChange={(e) => onOfficialPhotoUrlChange(e.target.value)}
             className="mt-1.5 block w-full rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 px-3.5 py-2.5 text-xs sm:text-sm text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:border-blue-600 focus:outline-none focus:ring-1 focus:ring-blue-600"
           />
-          <p className="text-[11px] text-slate-400 mt-1">
+          <p className="text-[11px] text-slate-400 dark:text-slate-300 mt-1">
             Gunakan foto formal resolusi tinggi dengan latar belakang bersih.
           </p>
         </div>
 
         <div>
-          <label className="text-xs font-bold text-slate-700 dark:text-slate-300 uppercase flex items-center gap-1.5">
+          <label className="text-xs font-bold text-slate-700 dark:text-white uppercase flex items-center gap-1.5">
             <Sparkles className="h-3.5 w-3.5 text-blue-500" />
             Tagline Visi Kebijakan
           </label>
@@ -376,7 +376,7 @@ export function ThemeForm({
         </div>
 
         <div>
-          <label className="text-xs font-bold text-slate-700 dark:text-slate-300 uppercase flex items-center gap-1.5">
+          <label className="text-xs font-bold text-slate-700 dark:text-white uppercase flex items-center gap-1.5">
             <FileText className="h-3.5 w-3.5 text-blue-500" />
             Biografi Singkat Dewan
           </label>
@@ -403,7 +403,7 @@ export function ThemeForm({
       {/* ─── SECTION 5: DOMAIN SETTINGS ─── */}
       <div className="space-y-4 pt-4 border-t border-slate-100 dark:border-slate-800">
         <div>
-          <label className="text-xs font-bold text-slate-700 dark:text-slate-300 uppercase flex items-center gap-1.5">
+          <label className="text-xs font-bold text-slate-700 dark:text-white uppercase flex items-center gap-1.5">
             <Globe className="h-3.5 w-3.5 text-blue-500" />
             Subdomain Polaris.id
           </label>
@@ -415,14 +415,14 @@ export function ThemeForm({
               onChange={(e) => onSubdomainSlugChange(e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, ''))}
               className="block w-full rounded-l-xl border border-r-0 border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 px-3.5 py-2.5 text-xs sm:text-sm font-semibold text-slate-900 dark:text-white"
             />
-            <span className="inline-flex items-center px-4 py-2.5 rounded-r-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-800 text-xs font-bold text-slate-500 dark:text-slate-400">
+            <span className="inline-flex items-center px-4 py-2.5 rounded-r-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-800 text-xs font-bold text-slate-500 dark:text-slate-300">
               .polaris.id
             </span>
           </div>
         </div>
 
         <div>
-          <label className="text-xs font-bold text-slate-700 dark:text-slate-300 uppercase block">
+          <label className="text-xs font-bold text-slate-700 dark:text-white uppercase block">
             Custom Domain Pribadi (Opsional)
           </label>
           <input
@@ -432,7 +432,7 @@ export function ThemeForm({
             onChange={(e) => onCustomDomainChange(e.target.value.toLowerCase().trim())}
             className="mt-1.5 block w-full rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 px-3.5 py-2.5 text-xs sm:text-sm text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-500"
           />
-          <p className="text-[11px] text-slate-400 mt-1">
+          <p className="text-[11px] text-slate-400 dark:text-slate-300 mt-1">
             Arahkan CNAME domain ke: <code className="font-bold text-blue-600 dark:text-blue-400">cname.polaris.id</code>
           </p>
         </div>
@@ -445,9 +445,9 @@ export function ThemeForm({
             <Button
               type="button"
               size="lg"
-              className="w-full bg-slate-900 dark:bg-slate-800 hover:bg-slate-800 text-white shadow-md gap-2"
+              className="w-full bg-amber-600 hover:bg-amber-700 text-white shadow-md gap-2 cursor-pointer"
             >
-              <Lock className="h-4 w-4 text-amber-400" />
+              <Lock className="h-4 w-4 text-amber-100" />
               <span>Aktivasi Lisensi untuk Menyimpan Tema</span>
             </Button>
           </Link>

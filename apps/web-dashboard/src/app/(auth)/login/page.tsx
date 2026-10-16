@@ -159,10 +159,10 @@ function LoginFormContent() {
               </span>
             </div>
             <h3 className="text-base sm:text-lg font-black text-white leading-snug tracking-tight">
-              Kecerdasan Artifisial & Tata Kelola Aspirasi Terpadu untuk Parlemen Modern
+              Kecerdasan Artifisial &amp; Tata Kelola Komunikasi Terpadu untuk Pemimpin Modern
             </h3>
             <p className="text-[11px] text-slate-300 leading-relaxed line-clamp-2">
-              Mempercepat penyusunan naskah kebijakan, visualisasi data APBD, dan orkestrasi kanal advokasi publik dalam satu ruang kerja eksekutif terenkripsi.
+              Mempercepat penyusunan naskah kebijakan, analisis data publik, dan orkestrasi kanal komunikasi dalam satu ruang kerja eksekutif terenkripsi.
             </p>
             <div className="pt-1 flex flex-wrap items-center gap-1.5 text-[9px] font-bold text-slate-300">
               <span className="px-2 py-0.5 rounded-full bg-white/10 border border-white/10">

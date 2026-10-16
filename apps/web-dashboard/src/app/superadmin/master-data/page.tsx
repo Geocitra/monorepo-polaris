@@ -51,10 +51,10 @@ export default function SuperadminMasterDataPage() {
       {/* 1. HEADER */}
       <div className="border-b border-slate-200 dark:border-slate-800 pb-5">
         <h1 className="text-xl sm:text-2xl font-black text-slate-900 dark:text-white tracking-tight">
-          Pusat Master Data Keparlemenan, Wilayah & Tarif
+          Pusat Master Data Institusi, Wilayah &amp; Tarif
         </h1>
         <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
-          Fondasi sistem yang digunakan bersama oleh seluruh anggota legislatif: Partai, Dapil, Komisi, dan Matriks Tarif Resmi B2B.
+          Fondasi sistem yang digunakan bersama oleh seluruh klien eksekutif: Partai, Wilayah, Bidang Komisi, dan Matriks Tarif Resmi.
         </p>
       </div>
 

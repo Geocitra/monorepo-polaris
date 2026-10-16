@@ -64,7 +64,7 @@ export function AspirasiTabSwitcher({
           </span>
         </div>
 
-        <p className="text-xs text-slate-500 dark:text-slate-400 font-medium leading-relaxed">
+        <p className="text-xs text-slate-500 dark:text-slate-200 font-medium leading-relaxed">
           Pesan pribadi, permohonan bantuan, dan keluhan warga yang dikirim melalui formulir aspirasi. Dilengkapi nomor tiket dan tombol WhatsApp.
         </p>
       </button>
@@ -115,7 +115,7 @@ export function AspirasiTabSwitcher({
           </span>
         </div>
 
-        <p className="text-xs text-slate-500 dark:text-slate-400 font-medium leading-relaxed">
+        <p className="text-xs text-slate-500 dark:text-slate-200 font-medium leading-relaxed">
           Tanggapan dan diskusi terbuka warga pada kolom komentar artikel atau berita dewan. Sembunyikan tanggapan negatif atau bersihkan spam.
         </p>
       </button>

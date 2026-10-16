@@ -175,60 +175,60 @@ export function InstagramConnectionCard({ isUnpaid }: InstagramConnectionCardPro
 
       {account ? (
         <div className="space-y-5">
-          <div className="p-5 rounded-2xl bg-gradient-to-br from-slate-50 via-white to-blue-50/30 dark:from-slate-800/60 dark:via-slate-900 dark:to-blue-950/20 border border-slate-200/90 dark:border-slate-700 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-            <div className="flex items-center gap-3.5">
+          <div className="p-4 sm:p-5 rounded-2xl bg-gradient-to-br from-slate-50 via-white to-blue-50/30 dark:from-slate-800/60 dark:via-slate-900 dark:to-blue-950/20 border border-slate-200/90 dark:border-slate-700 flex flex-col gap-3.5">
+            <div className="flex items-center gap-3.5 min-w-0">
               {account.profilePictureUrl ? (
                 <img
                   src={account.profilePictureUrl}
                   alt={account.accountHandle}
-                  className="h-14 w-14 rounded-2xl object-cover border-2 border-white dark:border-slate-700 shadow-md shrink-0"
+                  className="h-12 w-12 sm:h-14 sm:w-14 rounded-2xl object-cover border-2 border-white dark:border-slate-700 shadow-md shrink-0"
                 />
               ) : (
-                <div className="h-14 w-14 rounded-2xl bg-gradient-to-tr from-purple-600 to-rose-500 text-white font-black text-xl flex items-center justify-center shadow-md shrink-0">
+                <div className="h-12 w-12 sm:h-14 sm:w-14 rounded-2xl bg-gradient-to-tr from-purple-600 to-rose-500 text-white font-black text-xl flex items-center justify-center shadow-md shrink-0">
                   {account.accountHandle[0]?.toUpperCase()}
                 </div>
               )}
 
-              <div>
+              <div className="min-w-0 flex-1">
                 <div className="flex items-center gap-2">
-                  <h4 className="text-base font-extrabold text-slate-900 dark:text-white leading-tight">
+                  <h4 className="text-sm sm:text-base font-extrabold text-slate-900 dark:text-white leading-tight truncate">
                     @{account.accountHandle}
                   </h4>
                   <a
                     href={`https://instagram.com/${account.accountHandle}`}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="text-slate-400 hover:text-blue-600 dark:hover:text-blue-400 transition-colors"
+                    className="text-slate-400 hover:text-blue-600 dark:hover:text-blue-400 transition-colors shrink-0"
                   >
                     <ExternalLink className="h-3.5 w-3.5" />
                   </a>
                 </div>
 
-                <p className="text-xs text-slate-500 dark:text-slate-400 font-medium mt-0.5">
+                <p className="text-xs text-slate-500 dark:text-slate-400 font-medium mt-0.5 truncate">
                   {account.accountName || 'Akun Resmi Parlemen'} • Tipe: {account.accountType}
                 </p>
 
-                <div className="flex items-center gap-2 mt-2">
-                  <span className="inline-flex items-center gap-1 text-[10px] font-black uppercase text-emerald-700 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/60 px-2 py-0.5 rounded-md border border-emerald-200 dark:border-emerald-800">
+                <div className="flex flex-wrap items-center gap-2 mt-2">
+                  <span className="inline-flex items-center gap-1 text-[10px] font-black uppercase text-emerald-700 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/60 px-2 py-0.5 rounded-md border border-emerald-200 dark:border-emerald-800 shrink-0">
                     <CheckCircle2 className="h-3 w-3" />
                     <span>Terhubung Aktif</span>
                   </span>
 
-                  <span className="inline-flex items-center gap-1 text-[10px] font-mono font-bold text-slate-600 dark:text-slate-300 bg-white dark:bg-slate-800 px-2 py-0.5 rounded-md border border-slate-200 dark:border-slate-700">
+                  <span className="inline-flex items-center gap-1 text-[10px] font-mono font-bold text-slate-600 dark:text-slate-300 bg-white dark:bg-slate-800 px-2 py-0.5 rounded-md border border-slate-200 dark:border-slate-700 shrink-0">
                     <Clock className="h-3 w-3 text-slate-400" />
-                    <span>Token: {account.daysRemaining} Hari Tersisa</span>
+                    <span>{account.daysRemaining} Hari</span>
                   </span>
                 </div>
               </div>
             </div>
 
-            <div className="flex sm:flex-col gap-2 shrink-0 self-start sm:self-auto border-t sm:border-t-0 sm:border-l border-slate-100 dark:border-slate-800 pt-3 sm:pt-0 sm:pl-4">
+            <div className="flex items-center justify-between gap-2 border-t border-slate-100 dark:border-slate-800 pt-3">
               <Button
                 size="sm"
                 variant="outline"
                 onClick={handleRefresh}
                 disabled={actionLoading}
-                className="gap-1.5 text-xs font-bold border-slate-300 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800"
+                className="gap-1.5 text-xs font-bold border-slate-300 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800 h-8 px-3 rounded-xl cursor-pointer"
               >
                 <RotateCw className={`h-3.5 w-3.5 ${actionLoading ? 'animate-spin' : ''}`} />
                 <span>Perpanjang Sesi</span>
@@ -239,10 +239,10 @@ export function InstagramConnectionCard({ isUnpaid }: InstagramConnectionCardPro
                 variant="outline"
                 onClick={handleDisconnect}
                 disabled={actionLoading}
-                className="gap-1.5 text-xs font-bold text-rose-600 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/40 border-rose-200 dark:border-rose-900"
+                className="gap-1.5 text-xs font-bold text-rose-600 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/40 border-rose-200 dark:border-rose-900 h-8 px-3 rounded-xl cursor-pointer"
               >
                 <LogOut className="h-3.5 w-3.5" />
-                <span>Putuskan Akun</span>
+                <span>Putuskan</span>
               </Button>
             </div>
           </div>

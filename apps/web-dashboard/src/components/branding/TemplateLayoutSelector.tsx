@@ -24,9 +24,9 @@ export const TEMPLATE_LAYOUTS = [
   },
   {
     id: PortalTemplateId.STANDARD_DEFAULT,
-    name: 'Standar Parlemen (Default)',
+    name: 'Standar Eksekutif (Default)',
     tagline: 'Klasik, Resmi & Terstruktur',
-    description: 'Tata letak institusional berbobot seimbang antara profil dewan, warta kinerja, dan kanal aspirasi warga.',
+    description: 'Tata letak resmi berbobot seimbang antara profil pimpinan, warta kinerja, dan kanal aspirasi publik.',
     icon: Layout,
     isPremium: false,
     previewBadge: 'Tersedia di Semua Paket',
@@ -84,12 +84,12 @@ export function TemplateLayoutSelector({
     <div className="space-y-3">
       <div className="flex items-center justify-between">
         <div>
-          <label className="text-xs font-bold text-slate-800 dark:text-slate-200 flex items-center gap-1.5">
+          <label className="text-xs font-bold text-slate-800 dark:text-white flex items-center gap-1.5">
             <Layout className="w-4 h-4 text-indigo-500" />
             <span>Tata Letak Halaman Utama Publik (Thematic Layout)</span>
           </label>
-          <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">
-            Pilih arsitektur visual portal publik Anda sesuai persona keparlemenan yang ingin dibangun.
+          <p className="text-[11px] text-slate-500 dark:text-slate-300 mt-0.5">
+            Pilih arsitektur visual portal publik Anda sesuai persona kepemimpinan yang ingin dibangun.
           </p>
         </div>
       </div>
@@ -109,7 +109,7 @@ export function TemplateLayoutSelector({
                 isSelected
                   ? 'border-indigo-600 dark:border-indigo-500 bg-indigo-50/50 dark:bg-indigo-950/30 shadow-xs ring-2 ring-indigo-600/10'
                   : isLocked
-                  ? 'border-slate-200 dark:border-slate-800 bg-slate-50/60 dark:bg-slate-900/40 opacity-80 hover:opacity-100 hover:border-slate-300'
+                  ? 'border-slate-200 dark:border-slate-800 bg-slate-50/60 dark:bg-slate-900/40 opacity-80 hover:opacity-100 hover:border-slate-300 dark:hover:border-slate-700'
                   : 'border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 hover:border-slate-300 dark:hover:border-slate-700'
               )}
             >
@@ -132,7 +132,7 @@ export function TemplateLayoutSelector({
                       <h4 className="text-xs font-black text-slate-900 dark:text-white leading-tight">
                         {tpl.name}
                       </h4>
-                      <p className="text-[10px] text-slate-400 dark:text-slate-500 font-medium">
+                      <p className="text-[10px] text-slate-400 dark:text-slate-300 font-medium">
                         {tpl.tagline}
                       </p>
                     </div>
@@ -148,7 +148,7 @@ export function TemplateLayoutSelector({
                   ) : null}
                 </div>
 
-                <p className="text-[11px] text-slate-600 dark:text-slate-400 leading-relaxed mt-1">
+                <p className="text-[11px] text-slate-600 dark:text-slate-200 leading-relaxed mt-1">
                   {tpl.description}
                 </p>
               </div>

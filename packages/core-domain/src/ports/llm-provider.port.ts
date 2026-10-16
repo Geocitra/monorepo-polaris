@@ -7,6 +7,10 @@ export interface GenerateArticleParams {
   targetAudience?: string;
   comparisonContextData?: string;
   tenantId?: string;
+  targetLength?: string;
+  writingStyle?: string;
+  toneOverride?: string;
+  onProgress?: (step: string, percent: number) => Promise<void> | void;
 }
 
 export interface GeneratedArticleResult {

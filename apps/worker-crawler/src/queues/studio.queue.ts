@@ -14,6 +14,8 @@ export interface StudioGenerationJobPayload {
   comparisonRegion?: string;
   framingStance?: string;
   generateDallePoster: boolean;
+  targetLength?: string;
+  writingStyle?: string;
   externalUrls?: string[];
   attachments?: Array<{
     name: string;

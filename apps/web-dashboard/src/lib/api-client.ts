@@ -92,11 +92,40 @@ export class ApiClient {
       if (response.status === 401 && typeof window !== 'undefined') {
         this.removeToken();
       }
-      const message = data?.error?.message || data?.message || 'Terjadi kesalahan sistem.';
+      const message = this.normalizeErrorMessage(data, response.status);
       throw new Error(message);
     }
 
     return data as T;
+  }
+
+  private static normalizeErrorMessage(data: any, status: number): string {
+    let raw = data?.error?.message || data?.message;
+    if (Array.isArray(raw)) {
+      raw = raw.join(', ');
+    }
+
+    if (typeof raw === 'string' && raw.trim().length > 0) {
+      if (/^Cannot\s+(GET|POST|PATCH|PUT|DELETE)/i.test(raw) || status === 404) {
+        return 'Layanan atau fitur yang diminta sedang tidak tersedia. Silakan coba beberapa saat lagi.';
+      }
+      if (raw.toLowerCase().includes('internal server error') || status >= 500) {
+        return 'Terjadi kendala pada server sistem. Silakan coba beberapa saat lagi.';
+      }
+      return raw;
+    }
+
+    if (status === 404) {
+      return 'Data atau layanan yang diminta tidak ditemukan.';
+    }
+    if (status === 403) {
+      return 'Anda tidak memiliki hak akses untuk melakukan tindakan ini.';
+    }
+    if (status >= 500) {
+      return 'Terjadi kendala pada server sistem. Silakan coba beberapa saat lagi.';
+    }
+
+    return 'Terjadi kendala sistem. Silakan coba beberapa saat lagi.';
   }
 }
 
@@ -202,7 +231,7 @@ export class AdminApiClient {
         this.logout();
         window.location.href = '/superadmin/login';
       }
-      const message = data?.error?.message || data?.message || 'Terjadi kesalahan sistem.';
+      const message = ApiClient['normalizeErrorMessage'](data, response.status);
       throw new Error(message);
     }
 

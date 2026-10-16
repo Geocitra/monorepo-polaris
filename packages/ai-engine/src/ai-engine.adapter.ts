@@ -12,6 +12,7 @@ import { openaiClient } from './client.js';
 import { PromptTemplates } from './prompts.js';
 import { PromptSanitizer } from './guardrails/prompt-sanitizer.js';
 import { AiTelemetryService } from './telemetry/ai-telemetry.service.js';
+import { TwoStageArticleEngine } from './two-stage-article.engine.js';
 
 export class OpenAIAIEngineAdapter implements ILLMProviderPort {
 
@@ -112,70 +113,7 @@ export class OpenAIAIEngineAdapter implements ILLMProviderPort {
   }
 
   public async generateArticle(params: GenerateArticleParams): Promise<GeneratedArticleResult> {
-    const telemetry = AiTelemetryService.startTrace({
-      operation: 'generate-parliamentary-article-3000w',
-      model: 'gpt-4o',
-      tenantId: params.tenantId,
-      metadata: { topic: params.topic, targetAudience: params.targetAudience },
-    });
-
-    const userPrompt = `TOPIK ANALISIS KEBIJAKAN: "${params.topic}"
-${params.targetAudience ? `TARGET AUDIENS: ${params.targetAudience}` : ''}
-
-${params.regionalContextData}
-${params.comparisonContextData ? `\nDATA KOMPARASI: ${params.comparisonContextData}` : ''}
-${params.memberWritingStyleSample ? `\nSAMPEL GAYA BAHASA: ${params.memberWritingStyleSample}` : ''}
-
-Instruksikan: Susun artikel utuh, kaya data, kutip pasal yang tersedia, dan capai kedalaman analisis teknokratis setara kajian 3.000 kata.
-Keluarkan hasil dalam format JSON:
-{
-  "title": "Judul Artikel",
-  "excerpt": "Ringkasan Eksekutif 2 Kalimat",
-  "contentMarkdown": "Isi lengkap artikel berformat Markdown..."
-}`;
-
-    try {
-      const response = await openaiClient.chat.completions.create({
-        model: 'gpt-4o',
-        temperature: 0.3,
-        response_format: { type: 'json_object' },
-        messages: [
-          { role: 'system', content: PromptTemplates.getArticleSystemPrompt() },
-          { role: 'user', content: userPrompt },
-        ],
-      });
-
-      const messageContent = response.choices[0]?.message?.content || '{}';
-      const parsed = JSON.parse(messageContent);
-      const inputTokens = response.usage?.prompt_tokens || 0;
-      const outputTokens = response.usage?.completion_tokens || 0;
-      const wordCount = (parsed.contentMarkdown || '').split(/\s+/).filter(Boolean).length;
-
-      await telemetry.endTrace({
-        inputTokens,
-        outputTokens,
-        status: 'SUCCESS',
-        outputPreview: { title: parsed.title, wordCount },
-      });
-
-      return {
-        title: parsed.title || params.topic,
-        excerpt: parsed.excerpt || '',
-        contentMarkdown: parsed.contentMarkdown || '',
-        wordCount,
-        totalTokensUsed: inputTokens + outputTokens,
-        canonicalTraceId: telemetry.canonicalTraceId,
-      };
-    } catch (error: any) {
-      await telemetry.endTrace({
-        inputTokens: 0,
-        outputTokens: 0,
-        status: 'FAILED',
-        errorMessage: error.message,
-      });
-
-      throw new Error(`[AIEngineArticleError] Gagal menghasilkan artikel: ${error.message}`);
-    }
+    return TwoStageArticleEngine.execute(params);
   }
 
   public async generateDalleImage(

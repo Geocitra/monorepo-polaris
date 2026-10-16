@@ -38,7 +38,7 @@ export function ArticleAiRefineBar({
             <Sparkles className="h-3.5 w-3.5" />
           </div>
           <span className="text-xs font-black uppercase tracking-wider text-slate-900 dark:text-white">
-            AI Co-Pilot Kebijakan Parlemen
+            AI Asisten Penulisan &amp; Komunikasi
           </span>
         </div>
         <span className="text-[10px] font-bold text-slate-400">

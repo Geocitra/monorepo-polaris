@@ -24,6 +24,7 @@ yarn-debug.log*
 pnpm-debug.log*
 polaris-platform.txt
 *-bundle.txt
+apps/akls_ai_architecture.txt
 
 # OS & Junk files
 .DS_Store
@@ -34,3 +35,13 @@ Thumbs.db
 playwright-report/
 test-results/
 *.tsbuildinfo
+
+# User uploaded assets & local symlinks
+uploads/
+**/uploads/
+**/public/uploads
+apps/web-dashboard/public/uploads
+apps/web-portal/public/uploads
+apps/api-core/uploads/
+
+

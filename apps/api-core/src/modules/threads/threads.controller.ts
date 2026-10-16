@@ -47,7 +47,7 @@ export class ThreadsController {
     @Query() query: ThreadsCallbackQueryDto,
     @Res() res: Response
   ): Promise<void> {
-    const redirectTarget = `${this.dashboardBaseUrl}/branding`;
+    const redirectTarget = `${this.dashboardBaseUrl}/profile`;
 
     // 1. Tangani jika dibatalkan oleh pengguna
     if (query.error || query.error_reason) {

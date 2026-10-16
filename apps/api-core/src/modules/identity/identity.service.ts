@@ -498,6 +498,8 @@ export class IdentityService {
     return {
       ...member,
       photoUrl: resolvedPhotoUrl,
+      officialPhotoUrl: resolvedPhotoUrl,
+      avatarUrl: resolvedPhotoUrl,
       photoGallery: Array.isArray(member.photoGallery) ? member.photoGallery : [],
       institutionPartyName: member.partyAffiliation,
       officeRole: member.legislativeLevel,

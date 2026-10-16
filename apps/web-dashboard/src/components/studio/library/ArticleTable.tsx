@@ -95,7 +95,7 @@ export function ArticleTable({
                     >
                       {item.title}
                     </Link>
-                    <p className="text-xs text-slate-400 dark:text-slate-500 line-clamp-1 mt-0.5">
+                    <p className="text-xs text-slate-400 dark:text-slate-300 line-clamp-1 mt-0.5">
                       {item.excerpt || 'Tidak ada intisari ringkasan.'}
                     </p>
                   </td>
@@ -122,11 +122,11 @@ export function ArticleTable({
                     </span>
                   </td>
 
-                  <td className="px-6 py-4 whitespace-nowrap font-mono text-slate-600 dark:text-slate-400">
+                  <td className="px-6 py-4 whitespace-nowrap font-mono text-slate-600 dark:text-slate-200">
                     {item.wordCount ? `${item.wordCount} kata` : '-'}
                   </td>
 
-                  <td className="px-6 py-4 whitespace-nowrap text-slate-500 dark:text-slate-400">
+                  <td className="px-6 py-4 whitespace-nowrap text-slate-500 dark:text-slate-300">
                     {formatDateIndonesian(item.publishedAt || item.createdAt)}
                   </td>
 

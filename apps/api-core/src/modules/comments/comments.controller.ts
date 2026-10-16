@@ -60,7 +60,7 @@ export class CommentsController {
     return await this.commentsService.likeComment(commentId);
   }
 
-  @Patch(':commentId/moderate')
+  @Patch([':commentId/moderate', 'moderation/:commentId', ':commentId'])
   @UseGuards(SubscriptionGuard)
   @HttpCode(HttpStatus.OK)
   async moderateComment(
@@ -90,7 +90,7 @@ export class CommentsController {
     return await this.commentsService.getCommentsForDewan(user.tenantId, statusFilter, search);
   }
 
-  @Delete(':commentId')
+  @Delete([':commentId', 'moderation/:commentId'])
   @UseGuards(SubscriptionGuard)
   @HttpCode(HttpStatus.OK)
   async deleteCommentByDewan(

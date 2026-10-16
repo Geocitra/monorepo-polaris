@@ -13,10 +13,12 @@ export const contentPublications = pgTable('content_publications', {
   status: contentStatusEnum('status').default('DRAFT').notNull(),
   canonicalUrl: text('canonical_url').notNull(),
   commentCount: integer('comment_count').default(0).notNull(),
+  researchJobId: uuid('research_job_id'),
   publishedAt: timestamp('published_at', { withTimezone: true }),
   createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
   updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
 }, (t) => ({
+
   unqTenantSlug: unique().on(t.tenantId, t.slug),
 }));
 

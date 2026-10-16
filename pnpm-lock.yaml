@@ -550,6 +550,9 @@ importers:
       dotenv:
         specifier: ^16.4.7
         version: 16.6.1
+      drizzle-orm:
+        specifier: ^0.39.3
+        version: 0.39.3(postgres@3.4.9)
       langfuse:
         specifier: ^3.35.0
         version: 3.39.2

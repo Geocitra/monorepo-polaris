@@ -24,10 +24,21 @@ import {
   constituentFeedbacks,
   subscriptions,
   withTenantContext,
+  researchJobs,
+  researchQuestions,
+  sources,
+  sourceVersions,
+  sourceAssessments,
+  evidenceSpans,
+  claims,
+  claimEvidence,
+  researchOutputs,
+  researchJobSources,
 } from '@polaris/database';
+
 import { ContentPublication, SubdomainSlug, CanonicalUrl } from '@polaris/core-domain';
 import { ContentStatus, AssetType, SubscriptionStatus } from '@polaris/shared-types';
-import { GenerateArticleRequestDto, UpdateDraftArticleDto } from './dto/studio.dto.js';
+import { GenerateArticleRequestDto, UpdateDraftArticleDto, UploadArticleImageDto } from './dto/studio.dto.js';
 import { RedisService } from '../redis/redis.service.js';
 import { UrlScraperService } from './url-scraper.service.js';
 import { DocumentParserService } from './document-parser.service.js';
@@ -99,6 +110,7 @@ export class StudioService implements OnModuleDestroy {
         personalCoverage: tenantMembers.personalCoverage,
         issueInterests: tenantMembers.issueInterests,
         commissionName: tenantMembers.commissionName,
+        photoUrl: tenantMembers.photoUrl,
       })
       .from(tenantMembers)
       .where(eq(tenantMembers.id, tenantId))
@@ -261,8 +273,10 @@ export class StudioService implements OnModuleDestroy {
         fullName: member.fullName,
         party: member.party,
         dapilName: dapil?.dapilName || 'Dapil',
+        commissionName: member.commissionName || 'Komisi Terkait',
         regionScope,
         issueInterests: member.issueInterests || [],
+        photoUrl: member.photoUrl || null,
       },
       metrics: {
         totalAspirasi,
@@ -383,6 +397,8 @@ export class StudioService implements OnModuleDestroy {
         comparisonRegion: dto.comparisonRegion,
         framingStance: dto.framingStance,
         generateDallePoster: dto.generateDallePoster ?? true,
+        targetLength: dto.targetLength,
+        writingStyle: dto.writingStyle,
         externalUrls: allUrls,
         attachments: dto.attachments,
       }, {
@@ -693,4 +709,314 @@ export class StudioService implements OnModuleDestroy {
 
     return { message: 'Artikel berhasil ditarik dari tayangan publik (Status: UNPUBLISHED).' };
   }
+
+  async deleteArticle(tenantId: string, articleId: string) {
+    const [article] = await db
+      .select({ id: contentPublications.id })
+      .from(contentPublications)
+      .where(
+        and(
+          eq(contentPublications.id, articleId),
+          eq(contentPublications.tenantId, tenantId)
+        )
+      )
+      .limit(1);
+
+    if (!article) {
+      throw new NotFoundException('Sesi artikel tidak ditemukan.');
+    }
+
+    await db
+      .delete(contentPublications)
+      .where(
+        and(
+          eq(contentPublications.id, article.id),
+          eq(contentPublications.tenantId, tenantId)
+        )
+      );
+
+    return { message: 'Sesi pembuatan konten berhasil dihapus.' };
+  }
+
+  async uploadArticleImage(tenantId: string, dto: UploadArticleImageDto) {
+    if (!dto.base64) {
+      throw new BadRequestException('Data gambar base64 wajib diisi.');
+    }
+
+    try {
+      const fs = await import('node:fs/promises');
+      const path = await import('node:path');
+
+      let mimeType = 'image/jpeg';
+      let buffer: Buffer;
+
+      if (dto.base64.startsWith('data:')) {
+        const matches = dto.base64.match(/^data:([A-Za-z-+\/]+);base64,(.+)$/);
+        if (matches && matches.length === 3) {
+          mimeType = matches[1];
+          buffer = Buffer.from(matches[2], 'base64');
+        } else {
+          const parts = dto.base64.split(',');
+          buffer = Buffer.from(parts[1] || '', 'base64');
+        }
+      } else {
+        buffer = Buffer.from(dto.base64, 'base64');
+      }
+
+      if (buffer.length > 10 * 1024 * 1024) {
+        throw new BadRequestException('Ukuran gambar melebihi batas 10MB.');
+      }
+
+      const ext = mimeType.includes('png') ? 'png' : mimeType.includes('webp') ? 'webp' : 'jpg';
+      const filename = `${Date.now()}-${randomUUID().slice(0, 8)}.${ext}`;
+
+      // Simpan ke root uploads dan local uploads agar dapat diakses dari Caddy, Next.js proxy, maupun Express
+      const rootDir = process.cwd().includes('apps') ? path.resolve(process.cwd(), '../../') : process.cwd();
+      const rootUploadDir = path.resolve(rootDir, 'uploads', 'articles', tenantId);
+      await fs.mkdir(rootUploadDir, { recursive: true });
+      await fs.writeFile(path.join(rootUploadDir, filename), buffer);
+
+      const localUploadDir = path.resolve(process.cwd(), 'uploads', 'articles', tenantId);
+      if (localUploadDir !== rootUploadDir) {
+        await fs.mkdir(localUploadDir, { recursive: true });
+        await fs.writeFile(path.join(localUploadDir, filename), buffer);
+      }
+
+      const apiHost = process.env.PUBLIC_API_URL || process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000';
+      const cleanHost = apiHost.replace(/\/api\/v1\/?$/, '');
+      const publicUrl = `${cleanHost}/uploads/articles/${tenantId}/${filename}`;
+
+      return {
+        success: true,
+        url: publicUrl,
+        relativePath: `/uploads/articles/${tenantId}/${filename}`,
+        filename,
+        caption: dto.caption || '',
+      };
+    } catch (err: any) {
+      this.logger.error(`Failed to upload article image: ${err.message}`);
+      throw new BadRequestException(`Gagal mengunggah foto: ${err.message}`);
+    }
+  }
+
+  /**
+   * Mengambil data jejak audit riset, rujukan, bukti kutipan, dan laporan QC untuk sebuah naskah artikel
+   */
+  async getArticleResearchAuditTrail(tenantId: string, articleId: string) {
+    const [pub] = await db
+      .select({
+        id: contentPublications.id,
+        title: contentPublications.title,
+        researchJobId: contentPublications.researchJobId,
+      })
+      .from(contentPublications)
+      .where(and(eq(contentPublications.id, articleId), eq(contentPublications.tenantId, tenantId)))
+      .limit(1);
+
+    if (!pub) {
+      throw new NotFoundException('Artikel tidak ditemukan.');
+    }
+
+    if (!pub.researchJobId) {
+      return {
+        hasResearchJob: false,
+        message: 'Artikel ini tidak menggunakan sesi riset otonom terpisah.',
+      };
+    }
+
+    const [job] = await db
+      .select()
+      .from(researchJobs)
+      .where(eq(researchJobs.id, pub.researchJobId))
+      .limit(1);
+
+    const questions = await db
+      .select()
+      .from(researchQuestions)
+      .where(eq(researchQuestions.researchJobId, pub.researchJobId));
+
+    // Ambil sumber-sumber yang diikutsertakan
+    const jobSources = await db
+      .select({
+        sourceId: sources.id,
+        url: sources.url,
+        canonicalUrl: sources.canonicalUrl,
+        publisherName: sources.publisherName,
+        publisherType: sources.publisherType,
+        publisherCredibilityScore: sources.publisherCredibilityScore,
+        doi: sources.doi,
+        isPeerReviewed: sources.isPeerReviewed,
+        lifecycleStatus: sources.lifecycleStatus,
+        relevanceScore: researchJobSources.relevanceScore,
+        retrievedAt: sources.retrievedAt,
+      })
+      .from(researchJobSources)
+      .innerJoin(sources, eq(researchJobSources.sourceId, sources.id))
+      .where(eq(researchJobSources.researchJobId, pub.researchJobId));
+
+    // Ambil versi snapshot untuk setiap sumber (Mitigasi Risiko Link Rot!)
+    const sourceIds = jobSources.map((s) => s.sourceId);
+    let versions: any[] = [];
+    if (sourceIds.length > 0) {
+      versions = await db
+        .select({
+          id: sourceVersions.id,
+          sourceId: sourceVersions.sourceId,
+          contentHash: sourceVersions.contentHash,
+          title: sourceVersions.title,
+          extractedText: sourceVersions.extractedText,
+          fetchedAt: sourceVersions.fetchedAt,
+        })
+        .from(sourceVersions)
+        .where(inArray(sourceVersions.sourceId, sourceIds));
+    }
+
+    // Ambil bukti kutipan konkret (Evidence Spans)
+    let spans: any[] = [];
+    if (sourceIds.length > 0) {
+      spans = await db
+        .select()
+        .from(evidenceSpans)
+        .where(inArray(evidenceSpans.sourceId, sourceIds));
+    }
+
+    // Ambil claims
+    const claimList = await db
+      .select()
+      .from(claims)
+      .where(eq(claims.researchJobId, pub.researchJobId));
+
+    // Ambil research output & QC report
+    const [output] = await db
+      .select()
+      .from(researchOutputs)
+      .where(eq(researchOutputs.researchJobId, pub.researchJobId))
+      .limit(1);
+
+    // Gabungkan data versi snapshot ke jobSources
+    const enrichedSources = jobSources.map((s) => {
+      const v = versions.find((ver) => ver.sourceId === s.sourceId);
+      return {
+        ...s,
+        cachedSnapshot: v
+          ? {
+              versionId: v.id,
+              title: v.title,
+              contentHash: v.contentHash,
+              snippet: v.extractedText.slice(0, 1000),
+              fetchedAt: v.fetchedAt,
+            }
+          : null,
+      };
+    });
+
+    return {
+      hasResearchJob: true,
+      job: {
+        id: job?.id,
+        topic: job?.topic,
+        status: job?.status,
+        evidenceSufficient: job?.evidenceSufficient,
+        qcPassed: job?.qcPassed,
+        summaryReport: job?.summaryReport,
+        createdAt: job?.createdAt,
+      },
+      questions,
+      sources: enrichedSources,
+      evidenceSpans: spans,
+      claims: claimList,
+      qcReport: output?.qcReport || null,
+      bibliography: output?.bibliographyJson || [],
+    };
+  }
+
+  /**
+   * Menambahkan rujukan / sumber internal secara manual oleh Staf Ahli (Mitigasi Kontrol Pengguna)
+   */
+  async addManualResearchSource(
+    tenantId: string,
+    articleId: string,
+    dto: { url: string; title: string; publisherName: string; notes?: string }
+  ) {
+    const [pub] = await db
+      .select({ id: contentPublications.id, researchJobId: contentPublications.researchJobId })
+      .from(contentPublications)
+      .where(and(eq(contentPublications.id, articleId), eq(contentPublications.tenantId, tenantId)))
+      .limit(1);
+
+    if (!pub) {
+      throw new NotFoundException('Artikel tidak ditemukan.');
+    }
+
+    let jobId = pub.researchJobId;
+    if (!jobId) {
+      const [newJob] = await db
+        .insert(researchJobs)
+        .values({
+          tenantId,
+          topic: 'Riset Manual Dewan',
+          userPrompt: 'Penyusunan Rujukan Manual',
+          targetRegion: 'NASIONAL',
+          status: 'COMPLETED',
+          evidenceSufficient: true,
+          qcPassed: true,
+        })
+        .returning();
+      jobId = newJob.id;
+      await db
+        .update(contentPublications)
+        .set({ researchJobId: jobId })
+        .where(eq(contentPublications.id, articleId));
+    }
+
+    const [src] = await db
+      .insert(sources)
+      .values({
+        url: dto.url,
+        canonicalUrl: dto.url,
+        sourceType: 'USER_ATTACHMENT',
+        publisherName: dto.publisherName,
+        publisherType: 'USER',
+        publisherCredibilityScore: 0.90,
+        lifecycleStatus: 'VERIFIED',
+      })
+      .returning();
+
+    await db.insert(researchJobSources).values({
+      researchJobId: jobId,
+      sourceId: src.id,
+      relevanceScore: 1.0,
+      queryUsed: 'Manual Added by Staff',
+    });
+
+    return { success: true, source: src };
+  }
+
+  /**
+   * Menghapus rujukan dari naskah artikel
+   */
+  async deleteResearchSource(tenantId: string, articleId: string, sourceId: string) {
+    const [pub] = await db
+      .select({ id: contentPublications.id, researchJobId: contentPublications.researchJobId })
+      .from(contentPublications)
+      .where(and(eq(contentPublications.id, articleId), eq(contentPublications.tenantId, tenantId)))
+      .limit(1);
+
+    if (!pub || !pub.researchJobId) {
+      throw new NotFoundException('Artikel atau sesi riset tidak ditemukan.');
+    }
+
+    await db
+      .delete(researchJobSources)
+      .where(
+        and(
+          eq(researchJobSources.researchJobId, pub.researchJobId),
+          eq(researchJobSources.sourceId, sourceId)
+        )
+      );
+
+    return { success: true };
+  }
 }
+
+

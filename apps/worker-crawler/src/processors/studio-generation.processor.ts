@@ -10,10 +10,18 @@ import {
   electoralDistricts,
   findSimilarKnowledgeChunks,
   withTenantContext,
+  researchJobs,
+  researchOutputs,
 } from '@polaris/database';
-import { OpenAIAIEngineAdapter, ContextCapsuleBuilder } from '@polaris/ai-engine';
+import {
+  OpenAIAIEngineAdapter,
+  ContextCapsuleBuilder,
+  AutonomousResearchOrchestrator,
+  DeterministicQualityGates,
+} from '@polaris/ai-engine';
 import { CloudflareR2StorageAdapter } from '@polaris/storage';
-import { ContentStatus, AssetType } from '@polaris/shared-types';
+import { ContentStatus, AssetType, ResearchJobStatus } from '@polaris/shared-types';
+
 import { AiCostCalculator } from '@polaris/core-domain';
 import { StudioGenerationJobPayload } from '../queues/studio.queue.js';
 import { redisConnection } from '../config/redis.connection.js';
@@ -29,7 +37,9 @@ export class StudioGenerationProcessor {
     step: string,
     status: 'RUNNING' | 'COMPLETED' | 'FAILED' = 'RUNNING',
     resultUrl?: string,
-    errorDetails?: string
+    errorDetails?: string,
+    textReady?: boolean,
+    publicationId?: string
   ) {
     const payload = {
       jobId,
@@ -38,6 +48,8 @@ export class StudioGenerationProcessor {
       status,
       resultUrl,
       errorDetails,
+      textReady: textReady ?? false,
+      publicationId,
       timestamp: Date.now(),
     };
     const serialized = JSON.stringify(payload);
@@ -145,11 +157,42 @@ export class StudioGenerationProcessor {
         console.warn(`[StudioProcessor] Query embedding gagal: ${err.message}`);
       }
 
+      // -----------------------------------------------------------------------
+      // LANGKAH 1B (20%-35%): Autonomous Research Pipeline (Planner, Multi-Source, Evidence Spans)
+      // Menghubungkan regulasi internal, berita media lokal, Crossref DOI, dan web discovery
+      // -----------------------------------------------------------------------
+      await this.emitProgress(tenantId, jobId, 20, 'Menjalankan Riset Otonom & Pencarian Bukti Terverifikasi...');
+
+      let researchJobId: string | undefined;
+      let groundedEvidenceText = '';
+      let evidenceMap = new Map<string, string>();
+
+      try {
+        const researchResult = await AutonomousResearchOrchestrator.executeResearchPipeline({
+          tenantId,
+          topic: data.topic,
+          userPrompt: data.prompt || data.topic,
+          targetRegion,
+          queryEmbedding: queryVector || undefined,
+          attachedDocuments: parsedDocuments,
+          providedUrls: data.referencedUrls || [],
+          onProgress: async (step, pct) => {
+            const scaledPct = Math.round(20 + (pct / 100) * 15);
+            await this.emitProgress(tenantId, jobId, scaledPct, step);
+          },
+        });
+        researchJobId = researchResult.jobId;
+        groundedEvidenceText = researchResult.groundedContextText;
+        evidenceMap = researchResult.evidenceIdMap;
+      } catch (researchErr: any) {
+        console.warn(`[StudioProcessor] Autonomous research error, fallback ke RAG dasar: ${researchErr.message}`);
+      }
+
       const similarChunks = queryVector
         ? await findSimilarKnowledgeChunks(queryVector, 3, targetRegion, 0.60)
         : [];
 
-      const contextPayload = ContextCapsuleBuilder.assembleContext({
+      const baseContext = ContextCapsuleBuilder.assembleContext({
         regionName: `${dapilName} (${targetRegion})`,
         regulations: similarChunks.map((c) => ({
           reference: c.structuralReference,
@@ -161,18 +204,64 @@ export class StudioGenerationProcessor {
         framingStance: data.framingStance,
       });
 
+      const contextPayload = groundedEvidenceText
+        ? `${baseContext}\n\n${groundedEvidenceText}`
+        : baseContext;
+
       // -----------------------------------------------------------------------
       // LANGKAH 2 (50%): Sintesis Naskah Kebijakan Panjang (GPT-4o)
       // Telemetri Langfuse dan ai_trace_logs otomatis tersinkronisasi 1:1 via AiTelemetryService
       // -----------------------------------------------------------------------
-      await this.emitProgress(tenantId, jobId, 50, 'Menyusun Naskah Kebijakan Teknokratis 3.000 Kata...');
+      await this.emitProgress(tenantId, jobId, 35, 'Menyusun Naskah Kebijakan Modular Berantai...');
 
       const generatedArticle = await this.aiEngine.generateArticle({
         topic: data.topic,
         regionalContextData: contextPayload,
         targetAudience: data.targetAudience,
+        targetLength: data.targetLength,
+        writingStyle: data.writingStyle,
+        toneOverride: data.toneOverride,
         tenantId,
+        onProgress: async (step, pct) => {
+          await this.emitProgress(tenantId, jobId, pct, step);
+        },
       });
+
+      // -----------------------------------------------------------------------
+      // LANGKAH 2B: Deterministic Quality Control Gate (Sitasi & Bukti Integritas)
+      // -----------------------------------------------------------------------
+      const validEvidenceKeys = new Set(evidenceMap.keys());
+      const qcResult = DeterministicQualityGates.verifyCitationQualityControl(
+        generatedArticle.contentMarkdown,
+        validEvidenceKeys
+      );
+
+      if (researchJobId) {
+        try {
+          await db
+            .update(researchJobs)
+            .set({
+              qcPassed: qcResult.qcPassed,
+              status: ResearchJobStatus.COMPLETED,
+              updatedAt: new Date(),
+            })
+            .where(eq(researchJobs.id, researchJobId));
+
+          await db.insert(researchOutputs).values({
+            researchJobId,
+            title: generatedArticle.title,
+            executiveSummary: generatedArticle.excerpt,
+            markdownBody: generatedArticle.contentMarkdown,
+            bibliographyJson: Array.from(evidenceMap.entries()).map(([token, spanId]) => ({
+              citationToken: token,
+              evidenceSpanId: spanId,
+            })),
+            qcReport: qcResult,
+          });
+        } catch (dbErr: any) {
+          console.warn(`[StudioProcessor] Gagal menyimpan research outputs: ${dbErr.message}`);
+        }
+      }
 
       let socialPack = {
         instagramCaption: '',
@@ -192,7 +281,7 @@ export class StudioGenerationProcessor {
       }
 
       // Commit naskah artikel sebelum operasi gambar opsional
-      await this.emitProgress(tenantId, jobId, 70, 'Menyimpan naskah dan paket teks...');
+      await this.emitProgress(tenantId, jobId, 69, 'Menyimpan naskah dan paket teks...');
       const textCostUsd = AiCostCalculator.calculateCostUsd(generatedArticle.totalTokensUsed, 0);
       await withTenantContext(tenantId, async (tx) => {
         await tx
@@ -203,9 +292,11 @@ export class StudioGenerationProcessor {
             bodyContentMarkdown: generatedArticle.contentMarkdown,
             wordCount: generatedArticle.wordCount,
             status: ContentStatus.DRAFT,
+            researchJobId: researchJobId || null,
             updatedAt: new Date(),
           })
           .where(eq(contentPublications.id, publicationId));
+
         const currentMonth = new Date().toISOString().slice(0, 7);
 
         await tx
@@ -244,6 +335,20 @@ export class StudioGenerationProcessor {
           },
         });
       });
+
+      // PROGRESSIVE INSTANT DELIVERY: Naskah teks 100% siap di database!
+      // Emit textReady: true agar frontend langsung membuka naskah di layar
+      await this.emitProgress(
+        tenantId,
+        jobId,
+        70,
+        'Naskah kebijakan telah tersimpan. Merender materi visual...',
+        'RUNNING',
+        undefined,
+        undefined,
+        true,
+        publicationId
+      );
 
       let posterSucceeded = !data.generateDallePoster;
       let posterFailure: string | undefined;

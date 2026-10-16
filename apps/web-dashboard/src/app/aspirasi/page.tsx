@@ -16,7 +16,9 @@ import {
   MessageSquare,
   Lock,
   ArrowLeft,
+  Trash2,
 } from 'lucide-react';
+import { Modal } from '@/components/ui/modal';
 
 import { AspirasiTabSwitcher } from '@/components/aspirasi/AspirasiTabSwitcher';
 import { AspirasiFilters } from '@/components/aspirasi/AspirasiFilters';
@@ -49,6 +51,9 @@ function AspirasiContent() {
   const [commentStatusFilter, setCommentStatusFilter] = useState('ALL');
   const [commentSearch, setCommentSearch] = useState('');
   const [actionLoadingId, setActionLoadingId] = useState<string | null>(null);
+
+  // Modal Konfirmasi Hapus Komentar
+  const [commentToDelete, setCommentToDelete] = useState<any | null>(null);
 
   // Modal Detail Kasus Aspirasi
   const [selectedItem, setSelectedItem] = useState<any | null>(null);
@@ -141,7 +146,7 @@ function AspirasiContent() {
 
     setActionLoadingId(commentId);
     try {
-      await ApiClient.request<any>(`/comments/moderation/${commentId}`, {
+      await ApiClient.request<any>(`/comments/${commentId}/moderate`, {
         method: 'PATCH',
         body: JSON.stringify({ status: newStatus }),
       });
@@ -150,23 +155,29 @@ function AspirasiContent() {
         prev.map((c) => (c.id === commentId ? { ...c, status: newStatus } : c))
       );
 
+      const statusLabels: Record<string, string> = {
+        PUBLISHED: 'ditayangkan di portal publik',
+        HIDDEN: 'disembunyikan dari portal publik',
+        FLAGGED_SPAM: 'ditandai sebagai spam',
+      };
+
       toast({
         type: 'success',
         title: 'Moderasi Berhasil',
-        description: `Status komentar diubah menjadi ${newStatus}.`,
+        description: `Komentar berhasil ${statusLabels[newStatus] || newStatus}. Penulis komentar tidak akan menerima notifikasi status ini.`,
       });
     } catch (err: any) {
       toast({
         type: 'error',
-        title: 'Gagal Memoderasi',
-        description: err.message || 'Terjadi kesalahan sistem.',
+        title: 'Gagal Memoderasi Komentar',
+        description: err.message || 'Terjadi kendala sistem saat memproses moderasi komentar.',
       });
     } finally {
       setActionLoadingId(null);
     }
   }
 
-  async function handleDeleteComment(commentId: string) {
+  function handleDeleteComment(comment: any) {
     if (isUnpaid) {
       toast({
         type: 'error',
@@ -176,26 +187,32 @@ function AspirasiContent() {
       return;
     }
 
-    if (!window.confirm('Hapus komentar ini secara permanen dari basis data?')) return;
+    setCommentToDelete(comment);
+  }
+
+  async function handleConfirmDelete() {
+    if (!commentToDelete) return;
+    const commentId = commentToDelete.id;
 
     setActionLoadingId(commentId);
     try {
-      await ApiClient.request<any>(`/comments/moderation/${commentId}`, {
+      await ApiClient.request<any>(`/comments/${commentId}`, {
         method: 'DELETE',
       });
 
       setComments((prev) => prev.filter((c) => c.id !== commentId));
+      setCommentToDelete(null);
 
       toast({
         type: 'success',
         title: 'Komentar Dihapus',
-        description: 'Komentar berhasil dihapus permanen oleh dewan.',
+        description: 'Komentar berhasil dihapus permanen. Warga yang bersangkutan tidak diberi tahu.',
       });
     } catch (err: any) {
       toast({
         type: 'error',
-        title: 'Gagal Menghapus',
-        description: err.message || 'Terjadi gangguan saat menghapus komentar.',
+        title: 'Gagal Menghapus Komentar',
+        description: err.message || 'Terjadi kendala saat menghapus komentar.',
       });
     } finally {
       setActionLoadingId(null);
@@ -230,7 +247,7 @@ function AspirasiContent() {
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-slate-50">
+      <div className="min-h-screen flex items-center justify-center bg-slate-50 dark:bg-[#0A0D14]">
         <Loader2 className="h-8 w-8 animate-spin text-blue-600" />
       </div>
     );
@@ -317,10 +334,10 @@ function AspirasiContent() {
               />
 
               {filteredInbox.length === 0 ? (
-                <div className="p-12 text-center rounded-2xl bg-white border border-slate-200">
-                  <Inbox className="h-10 w-10 text-slate-300 mx-auto mb-2" />
-                  <h4 className="text-sm font-bold text-slate-700">Tidak Ada Aduan Ditemukan</h4>
-                  <p className="text-xs text-slate-500 mt-1">
+                <div className="p-12 text-center rounded-2xl bg-white dark:bg-[#0E131F] border border-slate-200 dark:border-slate-800">
+                  <Inbox className="h-10 w-10 text-slate-300 dark:text-slate-600 mx-auto mb-2" />
+                  <h4 className="text-sm font-bold text-slate-700 dark:text-white">Tidak Ada Aduan Ditemukan</h4>
+                  <p className="text-xs text-slate-500 dark:text-slate-300 mt-1">
                     Belum ada pesan konstituen yang cocok dengan filter pencarian Anda.
                   </p>
                 </div>
@@ -356,10 +373,10 @@ function AspirasiContent() {
               />
 
               {filteredComments.length === 0 ? (
-                <div className="p-12 text-center rounded-2xl bg-white border border-slate-200">
-                  <MessageSquare className="h-10 w-10 text-slate-300 mx-auto mb-2" />
-                  <h4 className="text-sm font-bold text-slate-700">Belum Ada Komentar Sesuai Filter</h4>
-                  <p className="text-xs text-slate-500 mt-1">
+                <div className="p-12 text-center rounded-2xl bg-white dark:bg-[#0E131F] border border-slate-200 dark:border-slate-800">
+                  <MessageSquare className="h-10 w-10 text-slate-300 dark:text-slate-600 mx-auto mb-2" />
+                  <h4 className="text-sm font-bold text-slate-700 dark:text-white">Belum Ada Komentar Sesuai Filter</h4>
+                  <p className="text-xs text-slate-500 dark:text-slate-300 mt-1">
                     Seluruh komentar warga pada artikel dewan akan tercantum di sini untuk peninjauan.
                   </p>
                 </div>
@@ -387,6 +404,84 @@ function AspirasiContent() {
             updatingId={updatingId}
             representativeName={profile?.fullName}
           />
+
+          {/* Modal Konfirmasi Hapus Komentar (Pengganti window.confirm) */}
+          <Modal
+            isOpen={Boolean(commentToDelete)}
+            onClose={() => {
+              if (!actionLoadingId) setCommentToDelete(null);
+            }}
+            title="Konfirmasi Hapus Komentar"
+          >
+            <div className="space-y-4">
+              <div className="flex items-start gap-3.5 p-3.5 bg-red-50/80 dark:bg-red-950/30 rounded-2xl border border-red-100 dark:border-red-900/40">
+                <div className="p-2 rounded-xl bg-red-100 dark:bg-red-900/50 text-red-600 dark:text-red-400 shrink-0">
+                  <Trash2 className="w-5 h-5" />
+                </div>
+                <div className="text-xs space-y-1">
+                  <p className="font-bold text-red-950 dark:text-red-200">
+                    Hapus komentar ini secara permanen?
+                  </p>
+                  <p className="text-red-700/90 dark:text-red-300/90 leading-relaxed">
+                    Tindakan ini tidak dapat dibatalkan. Komentar akan dihapus dari basis data dan tidak akan lagi muncul di artikel publik.
+                  </p>
+                </div>
+              </div>
+
+              {commentToDelete && (
+                <div className="p-3.5 rounded-xl bg-slate-50 dark:bg-slate-800/80 border border-slate-200/80 dark:border-slate-700 space-y-2 text-xs">
+                  <div className="flex items-center justify-between text-slate-500 dark:text-slate-400">
+                    <span className="font-semibold text-slate-700 dark:text-slate-200">
+                      {commentToDelete.citizen?.fullName || 'Warga'}
+                    </span>
+                    <span className="text-[11px] text-slate-400 dark:text-slate-400 truncate max-w-[200px]">
+                      &ldquo;{commentToDelete.articleTitle}&rdquo;
+                    </span>
+                  </div>
+                  <p className="text-slate-800 dark:text-white italic line-clamp-3 bg-white dark:bg-slate-900 p-2.5 rounded-lg border border-slate-200/60 dark:border-slate-700">
+                    &ldquo;{commentToDelete.commentText}&rdquo;
+                  </p>
+                </div>
+              )}
+
+              <div className="p-3 rounded-xl bg-blue-50/70 border border-blue-100/80 flex items-center gap-2 text-xs text-blue-800">
+                <ShieldCheck className="w-4 h-4 text-blue-600 shrink-0" />
+                <span>
+                  <strong>Privasi Terjaga:</strong> Warga yang berkomentar tidak akan diberi tahu bahwa komentarnya dihapus.
+                </span>
+              </div>
+
+              <div className="flex items-center justify-end gap-2.5 pt-2 border-t border-slate-100">
+                <Button
+                  type="button"
+                  variant="outline"
+                  disabled={Boolean(actionLoadingId)}
+                  onClick={() => setCommentToDelete(null)}
+                  className="font-bold text-xs px-4 py-2 rounded-xl cursor-pointer"
+                >
+                  Batal
+                </Button>
+                <Button
+                  type="button"
+                  disabled={Boolean(actionLoadingId)}
+                  onClick={handleConfirmDelete}
+                  className="bg-red-600 hover:bg-red-700 text-white font-bold text-xs px-4 py-2 rounded-xl gap-1.5 shadow-xs cursor-pointer"
+                >
+                  {actionLoadingId ? (
+                    <>
+                      <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                      <span>Menghapus...</span>
+                    </>
+                  ) : (
+                    <>
+                      <Trash2 className="w-3.5 h-3.5" />
+                      <span>Ya, Hapus Komentar</span>
+                    </>
+                  )}
+                </Button>
+              </div>
+            </div>
+          </Modal>
         </main>
       </div>
     </div>

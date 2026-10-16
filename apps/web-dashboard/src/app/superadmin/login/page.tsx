@@ -153,10 +153,10 @@ function SuperadminLoginFormContent() {
               </span>
             </div>
             <h3 className="text-base sm:text-lg font-black text-white leading-snug tracking-tight">
-              Pusat Kendali Sistem & Tata Kelola Platform Parlemen
+              Pusat Kendali Sistem &amp; Tata Kelola Platform POLARIS
             </h3>
             <p className="text-[11px] text-slate-300 leading-relaxed line-clamp-2">
-              Konsol operasional terpadu untuk monitoring server, manajemen lisensi B2B dewan, dan integrasi master data nasional se-Indonesia.
+              Konsol operasional terpadu untuk monitoring server, manajemen lisensi pimpinan eksekutif, dan integrasi master data nasional se-Indonesia.
             </p>
             <div className="pt-1 flex flex-wrap items-center gap-1.5 text-[9px] font-bold text-slate-300">
               <span className="px-2 py-0.5 rounded-full bg-white/10 border border-white/10">

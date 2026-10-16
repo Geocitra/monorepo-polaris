@@ -32,10 +32,10 @@ function EnterpriseRegisterGate() {
               </span>
             </div>
             <h3 className="text-base sm:text-lg font-black text-white leading-snug tracking-tight">
-              Akses Eksklusif Anggota Parlemen & Pimpinan Daerah
+              Akses Eksklusif Tokoh Publik, Pimpinan Daerah &amp; Eksekutif
             </h3>
             <p className="text-[11px] text-slate-300 leading-relaxed">
-              Setiap akun POLARIS diterbitkan melalui verifikasi mandat KPU dan penetapan yurisdiksi resmi, menjamin kedaulatan data aspirasi dan keamanan publikasi fraksi.
+              Setiap akun POLARIS diterbitkan melalui verifikasi kelembagaan resmi, menjamin kedaulatan data dan keamanan komunikasi kepemimpinan Anda.
             </p>
             <div className="pt-1 flex flex-wrap items-center gap-1.5 text-[9px] font-bold text-slate-300">
               <span className="px-2 py-0.5 rounded-full bg-white/10 border border-white/10">
@@ -100,10 +100,10 @@ function EnterpriseRegisterGate() {
               </div>
               <div className="text-left space-y-0.5">
                 <h4 className="text-xs font-bold text-slate-900 dark:text-white">
-                  Kesesuaian Tarif Yurisdiksi Parlemen
+                  Kesesuaian Tarif Jabatan &amp; Institusi
                 </h4>
                 <p className="text-[11px] text-slate-500 dark:text-slate-400 leading-snug">
-                  Tarif resmi disesuaikan secara proporsional berdasarkan tingkat jabatan (DPR RI, DPD RI, DPRD Provinsi, DPRD Kab/Kota, Kepala Daerah, dan OPD Pemda).
+                  Tarif resmi disesuaikan secara proporsional berdasarkan tingkat jabatan dan institusi Anda.
                 </p>
               </div>
             </div>

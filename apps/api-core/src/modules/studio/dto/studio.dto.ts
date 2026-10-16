@@ -65,3 +65,18 @@ export class UpdateDraftArticleDto {
   @IsString()
   bodyContentMarkdown?: string;
 }
+
+export class UploadArticleImageDto {
+  @IsString()
+  @IsNotEmpty({ message: 'Data gambar wajib disertakan.' })
+  base64!: string;
+
+  @IsOptional()
+  @IsString()
+  filename?: string;
+
+  @IsOptional()
+  @IsString()
+  caption?: string;
+}
+

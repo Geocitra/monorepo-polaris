@@ -37,6 +37,8 @@ import { OmnichannelExportModal } from '@/components/studio/artikel/OmnichannelE
 import { LockoutModal } from '@/components/studio/LockoutModal';
 import { ArticleVersionHistoryDrawer, ArticleIteration } from '@/components/studio/artikel/ArticleVersionHistoryDrawer';
 import { ArticleSessionDrawer, ArticleSession } from '@/components/studio/artikel/ArticleSessionDrawer';
+import { ArticleReferencesCard } from '@/components/studio/artikel/ArticleReferencesCard';
+
 
 const DEFAULT_ARTICLE_MARKDOWN = `# KAJIAN KEBIJAKAN PUBLIK: REFORMASI TATA KELOLA SUBSIDI PUPUK DAERAH
 **Oleh: Tim Advokasi Kebijakan Parlemen**
@@ -588,6 +590,8 @@ function AIArticleStudioContent() {
           topic: `${command}. Target panjang: ${lengthWordMap[selectedLength]}. Gaya: ${cfg.name}. Konteks: ${articleContent.slice(0, 1000)}`,
           targetAudience: cfg.audience,
           toneOverride: cfg.tone,
+          targetLength: lengthWordMap[selectedLength],
+          writingStyle: selectedStyle,
           generateDallePoster: false,
         }),
       });
@@ -601,8 +605,12 @@ function AIArticleStudioContent() {
           await new Promise((resolve) => setTimeout(resolve, 1500));
           try {
             const statusRes = await ApiClient.request<any>(`/studio/jobs/${jobId}`);
-            if (statusRes?.status === 'COMPLETED' || (statusRes?.percent && statusRes.percent >= 100)) {
-              break;
+            if (statusRes?.textReady || (statusRes?.percent && statusRes.percent >= 69) || statusRes?.status === 'COMPLETED') {
+              const detail = await ApiClient.request<any>(`/studio/articles/${publicationId}`);
+              if (detail?.article?.bodyContentMarkdown) {
+                refinedText = detail.article.bodyContentMarkdown;
+                break;
+              }
             }
             if (statusRes?.status === 'FAILED') {
               throw new Error(statusRes.failedReason || statusRes.errorDetails || 'Pemrosesan AI pada antrean gagal.');
@@ -871,7 +879,7 @@ function AIArticleStudioContent() {
               <div className="flex items-center gap-3">
                 <ShieldAlert className="h-5 w-5 text-amber-600 shrink-0" />
                 <p className="text-xs">
-                  <strong>Mode Pratinjau:</strong> Bantuan AI dan publikasi website memerlukan aktivasi lisensi parlemen.
+                  <strong>Mode Pratinjau:</strong> Bantuan AI dan publikasi artikel memerlukan aktivasi akun POLARIS.
                 </p>
               </div>
               <Link href="/billing">
@@ -928,8 +936,12 @@ function AIArticleStudioContent() {
               onEditorReady={(ed) => setTiptapEditor(ed)}
             />
           )}
+
+          {/* ─── DAFTAR RUJUKAN & BUKTI TERVERIFIKASI (EVIDENCE HUB) ─── */}
+          <ArticleReferencesCard articleId={activeSession?.id || ''} />
         </main>
       </div>
+
 
       {/* ─── DRAWER RIWAYAT ITERASI & LOG AKTIVITAS ─── */}
       <ArticleVersionHistoryDrawer
