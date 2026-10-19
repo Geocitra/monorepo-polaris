@@ -15,4 +15,4 @@ export * from './research/connectors/academic-discovery.connector.js';
 export * from './research/connectors/internal-knowledge.connector.js';
 export * from './research/connectors/web-discovery.connector.js';
 export * from './research/autonomous-research.orchestrator.js';
-
+export * from './creative-poster/index.js';

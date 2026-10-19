@@ -33,19 +33,15 @@ const STYLE_OPTIONS = [
     id: 'infographic' as VisualStyle,
     name: 'Infografis Data',
     icon: BarChart3,
-    desc: 'Statistik, diagram & grafik kebijakan',
+    desc: 'Statistik, perbandingan angka & ringkasan indikator kebijakan',
+    defaultRatio: '16:9' as AspectRatio,
   },
   {
-    id: 'photo' as VisualStyle,
-    name: 'Foto Realis',
-    icon: Camera,
-    desc: 'Dokumentasi jurnalistik & lapangan',
-  },
-  {
-    id: 'illustration' as VisualStyle,
-    name: 'Ilustrasi',
+    id: 'poster' as VisualStyle,
+    name: 'Poster Kebijakan',
     icon: Palette,
-    desc: 'Visual artistik & infografis kreatif',
+    desc: 'Desain poster editorial, headline advokasi publik & tata letak resmi',
+    defaultRatio: '3:4' as AspectRatio,
   },
 ];
 
@@ -83,6 +79,17 @@ export function InfographicPromptBar({
   isUnpaid,
   hasExistingIteration,
 }: InfographicPromptBarProps) {
+  const handleSelectStyle = (opt: (typeof STYLE_OPTIONS)[number]) => {
+    onStyleChange(opt.id);
+    if (opt.id === 'poster' && (selectedAspectRatio === '16:9' || selectedAspectRatio === '4:3')) {
+      onAspectRatioChange('3:4');
+    } else if (opt.id === 'infographic' && (selectedAspectRatio === '3:4' || selectedAspectRatio === '9:16')) {
+      onAspectRatioChange('16:9');
+    }
+  };
+
+  const isPoster = selectedStyle === 'poster';
+
   return (
     <div className="rounded-3xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-5 sm:p-6 shadow-sm space-y-4">
       {/* HEADER: KONTROL GAYA VISUAL & RASIO UKURAN */}
@@ -94,9 +101,9 @@ export function InfographicPromptBar({
           </span>
         </div>
 
-        {/* CONTROLS: GAYA VISUAL & RASIO ASPEK */}
+        {/* CONTROLS: 2 PILIHAN FORMAT UTAMA (INFOGRAFIS VS POSTER) & RASIO */}
         <div className="flex flex-wrap items-center gap-2.5">
-          {/* 3 PILIHAN GAYA VISUAL */}
+          {/* 2 PILIHAN UTAMA: INFOGRAFIS vs POSTER */}
           <div className="flex items-center gap-1 bg-slate-100 dark:bg-slate-800/80 p-1 rounded-xl border border-slate-200/80 dark:border-slate-700/60">
             {STYLE_OPTIONS.map((opt) => {
               const Icon = opt.icon;
@@ -106,8 +113,8 @@ export function InfographicPromptBar({
                 <button
                   key={opt.id}
                   type="button"
-                  onClick={() => onStyleChange(opt.id)}
-                  className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                  onClick={() => handleSelectStyle(opt)}
+                  className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
                     isSelected
                       ? 'bg-white dark:bg-slate-900 text-blue-600 dark:text-blue-400 shadow-2xs'
                       : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
@@ -158,8 +165,10 @@ export function InfographicPromptBar({
             onChange={(e) => onPromptChange(e.target.value)}
             placeholder={
               hasExistingIteration
-                ? `Ketik instruksi revisi (contoh: "Ganti suasananya jadi sawah di senja hari, buat rasio ${selectedAspectRatio}, dan tambahkan tulisan Fraksi...")`
-                : `Tulis ide atau isu yang ingin divisualisasikan dalam rasio ${selectedAspectRatio} (contoh: "Infografis pemerataan akses internet di sekolah 3T dengan data alokasi dana desa...")`
+                ? `Ketik instruksi revisi (contoh: "Perjelas kutipan headline dan sesuaikan warna aksen...")`
+                : isPoster
+                ? `Tuliskan topik poster kebijakan atau aspirasi publik yang ingin dirancang (contoh: "Poster advokasi peningkatan beasiswa santri dan siswa berprestasi di pedesaan...")`
+                : `Tuliskan ide infografis data atau indikator capaian yang ingin divisualisasikan (contoh: "Infografis pemerataan akses internet di sekolah 3T dengan data alokasi dana desa...")`
             }
             className="w-full p-4 rounded-2xl border border-slate-200 dark:border-slate-700 bg-slate-50/70 dark:bg-slate-800/60 text-xs sm:text-sm text-slate-900 dark:text-slate-100 placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none focus:border-blue-600 dark:focus:border-blue-500 focus:bg-white dark:focus:bg-slate-800 transition-all resize-none"
           />
@@ -168,7 +177,9 @@ export function InfographicPromptBar({
             <span className="text-[11px] text-slate-400 dark:text-slate-500 hidden sm:inline">
               {hasExistingIteration
                 ? `Setiap revisi akan otomatis menciptakan iterasi/versi baru dalam format ${selectedAspectRatio}.`
-                : `AI akan menyusun poster visual berkualitas tinggi sesuai arahan dan rasio ${selectedAspectRatio}.`}
+                : isPoster
+                ? `AI akan merancang poster kebijakan resmi berstandar publikasi editorial sesuai arahan dan rasio ${selectedAspectRatio}.`
+                : `AI akan menyusun infografis data kebijakan terstruktur sesuai arahan dan rasio ${selectedAspectRatio}.`}
             </span>
 
             <Button
@@ -184,7 +195,13 @@ export function InfographicPromptBar({
               ) : (
                 <>
                   <Send className="h-3.5 w-3.5" />
-                  <span>{hasExistingIteration ? 'Buat Versi Baru' : 'Rancang Infografis'}</span>
+                  <span>
+                    {hasExistingIteration
+                      ? 'Buat Versi Baru'
+                      : isPoster
+                      ? 'Rancang Poster'
+                      : 'Rancang Infografis'}
+                  </span>
                 </>
               )}
             </Button>

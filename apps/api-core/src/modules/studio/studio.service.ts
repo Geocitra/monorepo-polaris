@@ -385,9 +385,27 @@ export class StudioService implements OnModuleDestroy {
     const detectedUrls = this.urlScraperService ? this.urlScraperService.extractUrlsFromText(dto.topic) : [];
     const allUrls = Array.from(new Set([...detectedUrls, ...(dto.externalUrls || [])]));
 
+    // Pemetaan gaya visual dari UI ke Arketipe Desain POLARIS
+    let forcedArchetype: string | undefined = undefined;
+    if (dto.style === 'infographic') {
+      forcedArchetype = 'MODULAR_GRID_CARDS';
+    } else if (dto.style === 'poster') {
+      forcedArchetype = undefined; // Otomatis dipilihkan arketipe poster terbaik dari katalog blueprint
+    } else if (dto.style === 'photo') {
+      forcedArchetype = 'POP_OUT_HERO';
+    } else if (dto.style === 'illustration') {
+      forcedArchetype = 'RETRO_CAMPAIGN';
+    }
+
     // 5. Masukkan Job ke Antrean BullMQ
+    const effectiveTaskType = dto.taskType || 
+      (dto.topic.startsWith('Infografis Publik:') || dto.topic.startsWith('Poster Publik:') || (dto.generateDallePoster && !dto.writingStyle && !dto.targetLength)
+        ? 'INFOGRAPHIC_ONLY'
+        : 'FULL_CAMPAIGN');
+
     try {
       await this.studioQueue.add('generate-content-package', {
+        taskType: effectiveTaskType,
         jobId,
         tenantId,
         publicationId: publication.id,
@@ -397,6 +415,9 @@ export class StudioService implements OnModuleDestroy {
         comparisonRegion: dto.comparisonRegion,
         framingStance: dto.framingStance,
         generateDallePoster: dto.generateDallePoster ?? true,
+        style: dto.style,
+        aspectRatio: dto.aspectRatio,
+        forcedArchetype,
         targetLength: dto.targetLength,
         writingStyle: dto.writingStyle,
         externalUrls: allUrls,

@@ -79,7 +79,12 @@ Konten TIDAK BOLEH monoton teks saja! Artikel harus memiliki irama visual jurnal
    - Bab 5: Rekomendasi Solutif & Komitmen Aksi Pengawasan Dewan
 
 7. LANDASAN FAKTA: Anda HANYA boleh mengambil data dan regulasi dari KONTEKS WILAYAH yang disertakan. Jangan pernah mengarang nomor pasal fiktif!
-8. Format Output wajib berupa JSON terstruktur murni tanpa markdown pembungkus.`;
+8. PANTANGAN MASTER EDITORIAL & GARIS PEMISAH (ZERO-TOLERANCE):
+   - DILARANG KERAS menggunakan kata "sekadar".
+   - DILARANG KERAS menggunakan kata "nyata" (seperti "dampak nyata", "langkah nyata", "ikhtiar nyata"). Paparkan fakta dan capaian konkret.
+   - DILARANG KERAS menggunakan tanda baca em dash (—). Gunakan koma, titik dua, titik, atau tanda kurung.
+   - DILARANG KERAS MENYISIPKAN GARIS PEMISAH HORIZONTAL (seperti "---", "***", "___", atau deretan tanda hubung) di bawah judul bab maupun di sela-sela paragraf. Transisi wajib murni mengalir alami melalui spasi paragraf normal.
+9. Format Output wajib berupa JSON terstruktur murni tanpa markdown pembungkus.`;
   }
 
   public static getInfographicSystemPrompt(): string {

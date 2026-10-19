@@ -279,10 +279,12 @@ export default function InfografisStudioPage() {
     const submittedAspectRatio = selectedAspectRatio;
     setLoading(true);
     try {
+      const prefix = submittedStyle === 'poster' ? 'Poster Publik' : 'Infografis Publik';
       const res = await ApiClient.request<any>('/studio/generate', {
         method: 'POST',
         body: JSON.stringify({
-          topic: `Infografis Publik: ${promptText}. STRICT CONSTRAINT: DO NOT generate any institutional logos, government emblems, regional seals, party logos, coat of arms, badges, or watermark symbols.`,
+          taskType: 'INFOGRAPHIC_ONLY',
+          topic: `${prefix}: ${promptText}. STRICT CONSTRAINT: DO NOT generate any institutional logos, government emblems, regional seals, party logos, coat of arms, badges, or watermark symbols.`,
           comparisonRegion: profile?.electoralDistrict?.dapilName || 'Dapil Anda',
           generateDallePoster: true,
           aspectRatio: submittedAspectRatio,

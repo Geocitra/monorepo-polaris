@@ -417,6 +417,7 @@ export class AutonomousResearchOrchestrator {
     // Simpan claims dan evidence_spans ke DB
     const evidenceCountPerQuestion: Record<string, number> = {};
     const evidenceIdMap = new Map<string, string>(); // 'EV-1' -> database uuid
+    const evidenceDetailMap = new Map<string, { id: string; quote: string; context: string }>();
     let spanCounter = 1;
 
     for (const c of extractedClaims) {
@@ -452,6 +453,11 @@ export class AutonomousResearchOrchestrator {
           .returning();
 
         evidenceIdMap.set(shortToken, evSpan.id);
+        evidenceDetailMap.set(shortToken, {
+          id: evSpan.id,
+          quote: ev.verbatimQuote,
+          context: ev.contextSnippet,
+        });
 
         await db.insert(claimEvidence).values({
           claimId: claimRow.id,
@@ -493,14 +499,10 @@ export class AutonomousResearchOrchestrator {
     evidenceCapsuleLines.push(`WILAYAH SASARAN: ${input.targetRegion}\n`);
 
     evidenceCapsuleLines.push(`--- DAFTAR BUKTI BERSERTIFIKAT (SITASI RESMI) ---`);
-    for (const [token, spanDbId] of evidenceIdMap.entries()) {
-      // Cari detail span
-      const matchedClaim = extractedClaims.flatMap((c) => c.evidenceItems).find((item) => item);
-      if (matchedClaim) {
-        evidenceCapsuleLines.push(
-          `[${token}] (ID: ${spanDbId}) - Kutipan: "${matchedClaim.verbatimQuote}" (Konteks: ${matchedClaim.contextSnippet})`
-        );
-      }
+    for (const [token, detail] of evidenceDetailMap.entries()) {
+      evidenceCapsuleLines.push(
+        `[${token}] (ID: ${detail.id}) - Kutipan: "${detail.quote}" (Konteks: ${detail.context})`
+      );
     }
 
     evidenceCapsuleLines.push(`\n--- DAFTAR SUMBER RUJUKAN RESMI ---`);

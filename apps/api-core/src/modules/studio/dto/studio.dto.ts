@@ -50,6 +50,10 @@ export class GenerateArticleRequestDto {
   @IsOptional()
   @IsBoolean()
   generateDallePoster: boolean = true;
+
+  @IsOptional()
+  @IsString()
+  taskType?: 'FULL_CAMPAIGN' | 'INFOGRAPHIC_ONLY' | 'ARTICLE_ONLY' | 'REGENERATE_POSTER';
 }
 
 export class UpdateDraftArticleDto {

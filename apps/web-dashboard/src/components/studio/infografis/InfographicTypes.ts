@@ -1,4 +1,4 @@
-export type VisualStyle = 'infographic' | 'photo' | 'illustration';
+export type VisualStyle = 'infographic' | 'poster' | 'photo' | 'illustration';
 export type AspectRatio = '16:9' | '9:16' | '1:1' | '4:3' | '3:4';
 
 export interface InfographicIteration {

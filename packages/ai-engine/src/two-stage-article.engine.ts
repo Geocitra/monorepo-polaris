@@ -45,13 +45,13 @@ export class TwoStageArticleEngine {
   } {
     const raw = (targetLength || '').toUpperCase();
     if (raw.includes('750') || raw.includes('SHORT')) {
-      return { totalTargetWords: 800, chapterCount: 2, wordsPerChapter: 400 };
+      return { totalTargetWords: 850, chapterCount: 2, wordsPerChapter: 450 };
     }
     if (raw.includes('1500') || raw.includes('1.500') || raw.includes('MEDIUM')) {
-      return { totalTargetWords: 1600, chapterCount: 3, wordsPerChapter: 530 };
+      return { totalTargetWords: 1750, chapterCount: 4, wordsPerChapter: 450 };
     }
     // Default LONG: 3.000 - 3.500 kata (5 Bab eksekutif)
-    return { totalTargetWords: 3200, chapterCount: 5, wordsPerChapter: 640 };
+    return { totalTargetWords: 3500, chapterCount: 5, wordsPerChapter: 700 };
   }
 
   /**
@@ -90,10 +90,16 @@ PEDOMAN PERUMUSAN JUDUL (SANGAT PENTING - WAJIB DIPATUHI):
    - Pola judul yang SANGAT DIANJURKAN:
      * "Menepis Sengkarut Infrastruktur Demi Masa Depan Warga Desa"
      * "Mengapa Pemerataan Pembangunan Desa Tak Boleh Lagi Ditunda"
-     * "Membangun Desa Bukan Sekadar Menumpuk Proyek Beton"
-     * "Ikhtiar Nyata Membuka Urat Nadi Ekonomi dari Pelosok"
+     * "Membangun Desa Tanpa Menumpuk Beban Utang Daerah"
+     * "Langkah Taktis Membuka Urat Nadi Ekonomi dari Pelosok"
      * "Menata Ulang Tata Kelola Logistik Pedesaan Menuju Ketahanan Pangan"
-4. Judul bab ("title" pada chapters) juga DILARANG memakai tanda titik dua (":"). Gunakan frasa bab yang substantif dan langsung menyentuh substansi masalah (misal: "Retorika dan Realita Jalan Poros", bukan "Kondisi Lapangan: Potret Nyata").
+4. Judul bab ("title" pada chapters) juga DILARANG memakai tanda titik dua (":") dan em dash ("—"). Gunakan frasa bab yang substantif dan langsung menyentuh substansi masalah (misal: "Retorika dan Realita Jalan Poros", bukan "Kondisi Lapangan: Potret Nyata").
+
+PANTANGAN MASTER EDITORIAL & GARIS PEMISAH:
+- DILARANG KERAS menggunakan kata "sekadar".
+- DILARANG KERAS menggunakan kata "nyata" (misal: "dampak nyata", "langkah nyata", "ikhtiar nyata", "perubahan nyata"). Gunakan penjelasan bukti atau capaian konkret.
+- DILARANG KERAS menggunakan tanda baca em dash (—). Gunakan koma, titik, atau tanda kurung.
+- DILARANG KERAS menyisipkan garis pemisah horizontal ("---", "***", "___", atau deretan tanda hubung) di bawah judul, antar-bab, maupun di sela paragraf. Teks harus mengalir alami tanpa pemisah mekanis.
 
 PEDOMAN VARIASI STRUKTURAL (SANGAT PENTING):
 1. JANGAN memaksakan semua bab memiliki tabel/grafik! Harus organik:
@@ -242,11 +248,21 @@ Sematkan baris penanda slot gambar berikut pada posisi paragraf yang paling rele
 <!-- VISUAL_SLOT: {"type": "INFOGRAPHIC", "caption": "${chapter.visualSlotCaption}", "prompt": "${chapter.visualSlotPrompt || chapter.visualSlotCaption}"} -->`;
     }
 
-    const chapterPrompt = `TUGAS: Tulis naskah lengkap untuk ${chapter.chapterNumber} — "${chapter.title}"
+    const styleMandate = `GAYA PENULISAN: ${params.writingStyle || 'Jurnalistik Eksekutif'}. TONE: ${params.toneOverride || 'Teknokratis, Lugas, Berbasis Fakta & Solutif'}. TARGET AUDIENS: ${params.targetAudience || 'Masyarakat Umum, Pengambil Kebijakan Daerah, dan Media'}.`;
+
+    const chapterPrompt = `TUGAS: Tulis naskah lengkap untuk ${chapter.chapterNumber}. "${chapter.title}"
 DARI ARTIKEL: "${articleTitle}"
 SUBSTANSI BAB INI: ${chapter.substanceFocus}
+${styleMandate}
 
-TARGET KATA NARASI MURNI: Minimal ${chapter.targetWords} kata (HANYA MENGHITUNG TEKS PARAGRAF).
+=== FAKTA RISET, REGULASI DAERAH & TOKEN BUKTI [EV-x] (SUMBER KEBENARAN TUNGGAL) ===
+${params.regionalContextData ? params.regionalContextData.slice(0, 4000) : 'Gunakan penalaran kebijakan faktual tanpa mengarang pasal fiktif.'}
+===================================================================================
+
+TARGET KATA NARASI MURNI: Minimal ${chapter.targetWords} kata narasi murni (HANYA MENGHITUNG TEKS PARAGRAF).
+MANDAT VOLUME & KEDALAMAN PARAGRAF (SANGAT PENTING):
+- Bab ini WAJIB diuraikan secara mendalam dan komprehensif dalam minimal 4-5 paragraf panjang berbobot (setiap paragraf berisi 4-6 kalimat elaboratif).
+- DILARANG MERINGKAS, DILARANG MENYINGKAT, dan DILARANG menghasilkan teks pendek! Kembangkan setiap poin argumen dengan rincian kronologis, data pendukung, telaah hukum/regulasi, serta analisis dampak kebijakan secara menyeluruh.
 PRINSIP DUAL-STREAM BUDGETING: Tabel, grafik, atau matriks adalah BONUS STRUKTURAL, BUKAN pengganti panjang paragraf narasi! Paragraf argumen harus tetap padat, mengalir, dan mendalam.
 
 ${previousChapterSummary ? `KONTEKS BAB SEBELUMNYA (JAGA KONTINUITAS & HINDARI REPETISI):\n"${previousChapterSummary}"` : ''}
@@ -287,11 +303,17 @@ ATURAN TATA BAHASA, EJAAN & MIKROLINGUISTIK (SANGAT PENTING - WAJIB DIPATUHI):
 6. LARANGAN KALIMAT PEMBUKA KLISE:
    - Dilarang membuka bab dengan: "Dalam era globalisasi saat ini...", "Sebagaimana kita ketahui bersama...", "Seiring dengan perkembangan zaman...".
    - Awali langsung dengan proposisi tajam, data lapangan, atau situasi riil warga.
-   - Output diawali dengan heading: ## ${chapter.chapterNumber} — ${chapter.title} (TANPA titik dua).
+   - Output diawali dengan heading: ## ${chapter.chapterNumber}. ${chapter.title} (DILARANG menggunakan titik dua dan em dash).
 
 7. INTEGRASI SITASI BUKTI TERVERIFIKASI (EVIDENCE GROUNDING CITATION):
    - Jika pada konteks data terdapat penanda bukti seperti [EV-1], [EV-2], dst., sematkan rujukan bukti tersebut di akhir klausa atau kalimat argumen yang bersangkutan dengan format: [^EV-1] atau [^EV-2].
    - DILARANG KERAS mengarang ID bukti baru di luar yang tercantum dalam konteks data!
+
+8. PANTANGAN MASTER EDITORIAL & LARANGAN GARIS PEMISAH (ZERO-TOLERANCE):
+   - DILARANG KERAS menggunakan kata "sekadar" dalam konteks apa pun.
+   - DILARANG KERAS menggunakan kata "nyata" sebagai penegas generik (seperti "dampak nyata", "bukti nyata", "langkah nyata", "ikhtiar nyata"). Paparkan fakta, data, atau indikator secara spesifik.
+   - DILARANG KERAS menggunakan tanda baca em dash (—). Gunakan tanda koma, titik dua, titik, atau tanda kurung sesuai kebutuhan sintaksis.
+   - DILARANG KERAS MENYISIPKAN GARIS PEMISAH HORIZONTAL (seperti "---", "***", "___", atau deretan tanda hubung "------") di bawah judul bab, di antara subbab, maupun di sela-sela paragraf narasi. Transisi antar-paragraf dan antar-bab wajib murni mengalir alami melalui spasi paragraf normal tanpa garis pemisah mekanis.
 
 Keluarkan hasil dalam format JSON:
 
@@ -303,6 +325,7 @@ Keluarkan hasil dalam format JSON:
     const completion = await openaiClient.chat.completions.create({
       model: 'gpt-4o',
       temperature: 0.35,
+      max_tokens: 3500,
       response_format: { type: 'json_object' },
       messages: [
         {
@@ -316,7 +339,7 @@ Keluarkan hasil dalam format JSON:
     const parsed = JSON.parse(completion.choices[0]?.message?.content || '{}');
     const tokens = (completion.usage?.prompt_tokens || 0) + (completion.usage?.completion_tokens || 0);
 
-    const rawMarkdown = parsed.chapterMarkdown || `## ${chapter.chapterNumber} — ${chapter.title}\n\n(Konten bab)`;
+    const rawMarkdown = parsed.chapterMarkdown || `## ${chapter.chapterNumber}. ${chapter.title}\n\n(Konten bab)`;
     const sanitizedMarkdown = TwoStageArticleEngine.normalizeFormattingSpaces(
       TwoStageArticleEngine.sanitizeMicroLinguistics(rawMarkdown)
     );
@@ -334,25 +357,35 @@ Keluarkan hasil dalam format JSON:
    * 2. Memperbaiki preposisi "diantaranya" -> "di antaranya"
    * 3. Menghapus koma sebelum "serta" dan "atau" pada perincian
    * 4. Membersihkan sisa titik dua pada heading bab
+   * 5. Memfilter kata terlarang "sekadar" dan "nyata" (Master Editorial Rules)
    */
   public static sanitizeMicroLinguistics(rawMarkdown: string): string {
     if (!rawMarkdown || typeof rawMarkdown !== 'string') return '';
     let text = rawMarkdown;
 
-    // 1. Format heading bab tanpa titik dua
-    text = text.replace(/^(##\s+Bab\s+[IVXLCDM\d]+)\s*:\s*/gim, '$1 — ');
+    // 1. Format heading bab tanpa titik dua dan tanpa em dash (Master Editorial Rules)
+    text = text.replace(/^(##\s+Bab\s+[IVXLCDM\d]+)\s*[:—–-]\s*/gim, '$1. ');
 
-    // 2. Hapus Oxford Comma sebelum "dan", "serta", "atau" pada perincian elemen
+    // 2. Hapus em dash (— atau –) dari narasi dan ganti dengan tanda koma alami
+    text = text.replace(/\s*[—–]\s*/g, ', ');
+
+    // 3. Hapus Oxford Comma sebelum "dan", "serta", "atau" pada perincian elemen
     // Contoh: "kucing, anjing, dan ikan" -> "kucing, anjing dan ikan"
     text = text.replace(/([a-zA-Z0-9\)])\s*,\s+dan\s+([a-zA-Z0-9\(])/g, '$1 dan $2');
     text = text.replace(/([a-zA-Z0-9\)])\s*,\s+serta\s+([a-zA-Z0-9\(])/g, '$1 serta $2');
     text = text.replace(/([a-zA-Z0-9\)])\s*,\s+atau\s+([a-zA-Z0-9\(])/g, '$1 atau $2');
 
-    // 3. Normalisasi ejaan umum yang sering salah sambung
+    // 4. Normalisasi ejaan umum yang sering salah sambung
     text = text.replace(/\bdiantaranya\b/gi, 'di antaranya');
     text = text.replace(/\bdimana\b/gi, 'di mana');
     text = text.replace(/\bkesana\b/gi, 'ke sana');
     text = text.replace(/\bkemana\b/gi, 'ke mana');
+
+    // 5. Normalisasi kata terlarang sesuai Master Editorial Rules (Zero-Tolerance)
+    text = text.replace(/\bbukan\s+sekadar\b/gi, 'tidak hanya');
+    text = text.replace(/\bsekadar\b/gi, 'hanya');
+    text = text.replace(/\b(langkah|dampak|bukti|ikhtiar|solusi|komitmen|kontribusi|perubahan)\s+nyata\b/gi, '$1 konkret');
+    text = text.replace(/\bsecara\s+nyata\b/gi, 'secara konkret');
 
     return text;
   }
@@ -363,7 +396,7 @@ Keluarkan hasil dalam format JSON:
    * 2. Melindungi blok diagram / chart / visual slot (:::chart, :::metric, <!-- VISUAL_SLOT -->)
    * 3. Menghilangkan spasi ganda dan trailing whitespace pada baris teks biasa
    * 4. Merapikan tanda baca pada kalimat narasi tanpa merusak format tabel
-   * 5. Merapikan garis pembatas mandiri (---) tanpa memecah kolom tabel
+   * 5. MENGHILANGKAN garis pembatas mandiri (---, ***, ___, ====) di antara bab atau paragraf (Master Editorial Rules)
    * 6. Membatasi penumpukan baris kosong berlebih (maksimal 2 newline berturut-turut \n\n)
    */
   public static normalizeFormattingSpaces(rawText: string): string {
@@ -403,10 +436,10 @@ Keluarkan hasil dalam format JSON:
         continue;
       }
 
-      // Cek apakah baris ini adalah horizontal rule mandiri (hanya berisi ---, ***, atau ___)
-      if (/^[ \t]*[-*_]{3,}[ \t]*$/.test(line)) {
-        processedLines.push('---');
-        continue;
+      // Cek apakah baris ini adalah horizontal rule / garis pemisah mandiri (---, ***, ___, ====, dsb.)
+      // Master Editorial Rules: buang garis pemisah ini agar transisi bab/paragraf mengalir alami
+      if (/^[ \t]*[-*_=]{3,}[ \t]*$/.test(line)) {
+        continue; // Buang garis pemisah horizontal
       }
 
       // Normalisasi teks narasi / paragraf biasa:
@@ -494,7 +527,6 @@ Keluarkan hasil dalam format JSON:
       const rawCombined = [
         `# ${outline.title}`,
         `> **Ringkasan Eksekutif:** ${outline.excerpt}`,
-        '---',
         ...chapterContents,
       ].join('\n\n');
 

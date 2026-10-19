@@ -13,6 +13,13 @@ import { PromptTemplates } from './prompts.js';
 import { PromptSanitizer } from './guardrails/prompt-sanitizer.js';
 import { AiTelemetryService } from './telemetry/ai-telemetry.service.js';
 import { TwoStageArticleEngine } from './two-stage-article.engine.js';
+import {
+  PosterBlueprintSelector,
+  PosterPromptCompiler,
+  CreativePosterArchetype,
+  PreAnalyzedPosterBlueprint,
+  CompiledPosterPrompt,
+} from './creative-poster/index.js';
 
 export class OpenAIAIEngineAdapter implements ILLMProviderPort {
 
@@ -118,83 +125,150 @@ export class OpenAIAIEngineAdapter implements ILLMProviderPort {
 
   public async generateDalleImage(
     englishPrompt: string,
-    tenantId?: string
+    tenantId?: string,
+    size: '1024x1792' | '1024x1024' | '1792x1024' = '1024x1792'
   ): Promise<{ temporaryImageUrl: string; canonicalTraceId: string }> {
+    const preferredModel = process.env.OPENAI_IMAGE_MODEL || 'chatgpt-image-latest';
+
     const telemetry = AiTelemetryService.startTrace({
       operation: 'dalle-image-generation',
-      model: 'dall-e-3',
+      model: preferredModel,
       tenantId,
-      metadata: { promptLength: englishPrompt.length },
+      metadata: { promptLength: englishPrompt.length, requestedSize: size },
     });
 
-    let activeModel = 'chatgpt-image-latest';
-    try {
-      let temporaryImageUrl: string | undefined;
+    // Urutan model yang dicoba secara adaptif jika model utama tidak tersedia pada API key
+    const candidateModels = [preferredModel];
+    if (preferredModel !== 'chatgpt-image-latest') {
+      candidateModels.push('chatgpt-image-latest');
+    }
+    if (preferredModel !== 'dall-e-3') {
+      candidateModels.push('dall-e-3');
+    }
 
-      // 1. Coba chatgpt-image-latest (model gambar terbaru OpenAI)
+    let lastError: Error | null = null;
+    let activeModel = preferredModel;
+
+    for (const modelToTry of candidateModels) {
       try {
-        const response = await (openaiClient.images as any).generate({
-          model: 'chatgpt-image-latest',
+        activeModel = modelToTry;
+
+        // Pemetaan dimensi yang didukung oleh masing-masing model
+        let resolvedSize: any = size;
+        if (modelToTry === 'chatgpt-image-latest') {
+          if (size === '1024x1792') {
+            resolvedSize = '1024x1536'; // Rasio tegak portrait poster didukung oleh chatgpt-image-latest
+          } else if (size === '1792x1024') {
+            resolvedSize = '1536x1024'; // Rasio lanskap didukung oleh chatgpt-image-latest
+          } else {
+            resolvedSize = '1024x1024';
+          }
+        }
+
+        const requestParams: any = {
+          model: modelToTry,
           prompt: englishPrompt,
+          size: resolvedSize,
           n: 1,
-        });
+        };
+
+        // dall-e-3 mendukung opsi quality, chatgpt-image-latest menentukan kualitas secara dinamis
+        if (modelToTry === 'dall-e-3') {
+          requestParams.quality = 'standard';
+        }
+
+        const response = await openaiClient.images.generate(requestParams);
         const first = response.data?.[0];
+
+        let temporaryImageUrl: string | undefined;
         if (first?.url) {
           temporaryImageUrl = first.url;
         } else if (first?.b64_json) {
           temporaryImageUrl = `data:image/png;base64,${first.b64_json}`;
         }
-      } catch (chatgptErr: any) {
-        console.warn(`[AIEngine] chatgpt-image-latest dialihkan ke DALL-E: ${chatgptErr.message}`);
-        // 2. Fallback ke dall-e-3
-        activeModel = 'dall-e-3';
-        try {
-          const response = await openaiClient.images.generate({
-            model: 'dall-e-3',
-            prompt: englishPrompt,
-            size: '1024x1792',
-            quality: 'standard',
-            n: 1,
-          });
-          temporaryImageUrl = response.data?.[0]?.url;
-        } catch (dalle3Err: any) {
-          // 3. Fallback ke dall-e-2
-          activeModel = 'dall-e-2';
-          const response = await openaiClient.images.generate({
-            model: 'dall-e-2',
-            prompt: englishPrompt,
-            size: '1024x1024',
-            n: 1,
-          });
-          temporaryImageUrl = response.data?.[0]?.url;
+
+        if (!temporaryImageUrl) {
+          throw new Error('AI Generator tidak mengembalikan URL atau data gambar yang valid.');
         }
+
+        await telemetry.endTrace({
+          inputTokens: 1000,
+          outputTokens: 0,
+          status: 'SUCCESS',
+          outputPreview: { temporaryImageUrl: temporaryImageUrl.slice(0, 100), model: activeModel },
+        });
+
+        return {
+          temporaryImageUrl,
+          canonicalTraceId: telemetry.canonicalTraceId,
+        };
+      } catch (err: any) {
+        lastError = err;
+        console.warn(`[AIEngineAdapter] Model gambar '${modelToTry}' gagal: ${err.message}. Mencoba fallback berikutnya...`);
+        // Jika error adalah model does not exist atau izin model, lanjutkan ke model berikutnya di loop
       }
-
-      if (!temporaryImageUrl) {
-        throw new Error('AI Generator tidak mengembalikan URL atau data gambar yang valid.');
-      }
-
-      await telemetry.endTrace({
-        inputTokens: 1000,
-        outputTokens: 0,
-        status: 'SUCCESS',
-        outputPreview: { temporaryImageUrl: temporaryImageUrl.slice(0, 100), model: activeModel },
-      });
-
-      return {
-        temporaryImageUrl,
-        canonicalTraceId: telemetry.canonicalTraceId,
-      };
-    } catch (error: any) {
-      await telemetry.endTrace({
-        inputTokens: 0,
-        outputTokens: 0,
-        status: 'FAILED',
-        errorMessage: error.message,
-      });
-
-      throw new Error(`[AIEngineDalleError] Gagal me-render poster DALL-E: ${error.message}`);
     }
+
+    const finalErrorMessage = lastError ? lastError.message : 'Semua model gambar gagal diinisialisasi.';
+    await telemetry.endTrace({
+      inputTokens: 0,
+      outputTokens: 0,
+      status: 'FAILED',
+      errorMessage: finalErrorMessage,
+    });
+
+    throw new Error(`[AIEngineDalleError] Gagal me-render poster DALL-E: ${finalErrorMessage}`);
+  }
+
+  /**
+   * generateCreativePosterBackground memilih template secara Constrained RNG,
+   * mengompilasi prompt fotografi clean-art tanpa teks, dan menghasilkan background AI.
+   */
+  public async generateCreativePosterBackground(params: {
+    topic: string;
+    groundedContextSummary?: string;
+    compositionMode?: import('./creative-poster/types.js').SubjectCompositionMode;
+    forcedArchetype?: CreativePosterArchetype;
+    excludeBlueprintId?: string;
+    tenantBrandHex?: string;
+    tenantId?: string;
+  }): Promise<{
+    temporaryImageUrl: string;
+    blueprint: PreAnalyzedPosterBlueprint;
+    compiledPrompt: CompiledPosterPrompt;
+    canonicalTraceId: string;
+  }> {
+    const blueprint = PosterBlueprintSelector.selectBestBlueprint({
+      topic: params.topic,
+      forcedArchetype: params.forcedArchetype,
+      excludeBlueprintId: params.excludeBlueprintId,
+    });
+
+    const compiledPrompt = await PosterPromptCompiler.compileScenePrompt({
+      topic: params.topic,
+      groundedContextSummary: params.groundedContextSummary,
+      compositionMode: params.compositionMode,
+      blueprint,
+      tenantBrandHex: params.tenantBrandHex,
+    });
+
+    const targetSize =
+      compiledPrompt.aspectRatio === '9:16' || compiledPrompt.aspectRatio === '4:5'
+        ? '1024x1792'
+        : '1024x1024';
+
+    const imageResult = await this.generateDalleImage(
+      compiledPrompt.englishPrompt,
+      params.tenantId,
+      targetSize
+    );
+
+    return {
+      temporaryImageUrl: imageResult.temporaryImageUrl,
+      blueprint,
+      compiledPrompt,
+      canonicalTraceId: imageResult.canonicalTraceId,
+    };
   }
 
   public async generateCivicAnswer(

@@ -1,0 +1,4463 @@
+================================================================================
+  BLUEPRINT ARSITEKTUR: HEADER, FOOTER & OVERLAY GAMBAR PADA INFOGRAFIS BRIDA
+================================================================================
+Dokumen ini merangkum secara lengkap logika alur bisnis, aturan desain, dan
+arsitektur rekayasa teknik di balik fitur penambahan Header (Kop Resmi), Footer,
+serta Penempatan Gambar Manual ke Atas Gambar Dasar (Image-on-Image Overlay).
+
+--------------------------------------------------------------------------------
+1. LATAR BELAKANG MASALAH & FILOSOFI DESAIN (KENAPA HARUS OVERLAY?)
+--------------------------------------------------------------------------------
+A. Keterbatasan Fundamental AI Image Generator (DALL-E 3 / Diffusion / Flux):
+   - Model generatif AI tidak memiliki kemampuan layout mesin deterministik.
+   - AI sangat rawan mengalami halusinasi teks: salah eja ("PEMERINTAH" menjadi huruf acak),
+     font tidak beraturan, ukuran tidak seragam, dan tata letak tidak simetris.
+   - Logo instansi resmi yang digambar oleh AI hampir pasti terdistorsi, melanggar kaidah
+     lambang daerah resmi, atau menyerupai kartun.
+   - Instansi pemerintah daerah (Pemerintah Kabupaten Mimika & BRIDA) memiliki regulasi
+     ketat terkait tata naskah dinas, lambang garuda/daerah, dan font resmi instansi.
+
+B. Solusi Paradigma Dua Tingkat (Two-Tier Decoupled Architecture):
+   - TINGKAT 1 (Generative Canvas): AI bertugas 100% hanya memproduksi visual data, peta,
+     grafik, dan fotografi jurnalistik di area konten tengah.
+   - TINGKAT 2 (Deterministic Branding Overlay): Sistem BRIDA menempelkan header kop,
+     logo resmi beresolusi tinggi, nama OPD, serta footer sumber data di atas kanvas AI
+     secara pixel-perfect dan deterministik.
+
+--------------------------------------------------------------------------------
+2. KONTRAK SAFE AREA KANVAS (AI CANVAS RESERVATION CONTRACT)
+--------------------------------------------------------------------------------
+Agar header dan footer tidak menabrak atau menutupi judul infografis buatan AI,
+Prompt Art Director menerapkan sistem 3-Tier Canvas Allocation:
+
+A. 3-Tier Sizing System:
+   1. Bar Overlay Percent : Tinggi fisik bar kop/footer resmi yang ditempel.
+   2. Tolerance Buffer    : Ruang napas kosong ekstra antara bar dan konten visual AI.
+   3. Reserved Safe Area  : Total area kosong mutlak yang WAJIB dibiarkan putih bersih
+                            (#FFFFFF solid) oleh model generatif AI.
+
+B. Matriks Alokasi Kanvas per Aspek Rasio:
+   +-------------+--------------+------------------+------------------+----------------+
+   | Aspek Rasio | Header Bar % | Top Reserved %   | Footer Bar %     | Bottom Res. %  |
+   +-------------+--------------+------------------+------------------+----------------+
+   | 9:16 (Story)| 9.5%         | 12.0% (0 - 12%)  | 4.0% (min 5.2%)  | 6.0% (94-100%) |
+   | 3:4 (Poster)| 9.0%         | 11.5% (0 - 11.5%)| 4.0% (min 5.2%)  | 6.0% (94-100%) |
+   | 1:1 (Square)| 9.0%         | 11.5% (0 - 11.5%)| 4.0% (min 5.2%)  | 6.0% (94-100%) |
+   | 4:3 (Tab/PC)| 8.5%         | 10.5% (0 - 10.5%)| 4.0%             | 5.5% (94.5-100%)|
+   | 16:9 (Slide)| 8.0%         | 10.0% (0 - 10%)  | 3.5%             | 5.0% (95-100%) |
+   +-------------+--------------+------------------+------------------+----------------+
+
+C. Instruksi Wajib pada System Prompt AI:
+   - "Top N% of the canvas MUST be a clean solid color band (pure white #FFFFFF).
+      Leave it completely empty as a buffer for the official institutional header."
+   - "Bottom N% of the canvas MUST likewise be a clean solid color band, completely empty."
+   - "NO LOGO DIRECTIVE: Strictly DO NOT generate any government logos, emblems, seals,
+      or watermarks in either the header or the footer."
+
+--------------------------------------------------------------------------------
+3. MEKANISME TEKNIS: BAGAIMANA CARA MENARUH GAMBAR MANUAL KE ATAS GAMBAR?
+--------------------------------------------------------------------------------
+Ada dua tahap eksekusi yang bekerja harmonis:
+
+A. Tahap 1: Client-Side Interactive Preview (Frontend Real-Time)
+   - Digunakan saat pengguna sedang mengedit konfigurasi branding di dashboard.
+   - Menggunakan CSS Absolute Layering:
+     * Container induk memiliki `position: relative`, `overflow: hidden`, dan aspek rasio pas.
+     * Gambar dasar AI (`<img>`) berposisi normal mengisi kontainer (100% width/height).
+     * Komponen `<PosterBrandingOverlay>` memiliki `position: absolute; inset: 0; pointer-events: none; z-index: 10;`.
+   - Header Bar dirender di `top: 0; left: 0; right: 0; height: {calculatedHeight}%;`.
+   - Logo gambar manual (`logoUrl`) dirender di dalam flexbox header:
+     * Format: `<img src={logoUrl} className="max-w-[18%] h-[74%] object-contain" />`
+     * Posisi fleksibel: Kiri (`order-1`), Kanan (`order-2`), atau Tengah (`justify-center`).
+   - Dynamic Drag Guideline (Fitur Interaktif):
+     * Garis bantu dan badge pegangan kursor (`cursor-ns-resize`, `pointer-events-auto`)
+       memungkinkan pengguna menarik kop ke atas/bawah secara bebas (4% s/d 25%).
+     * Perubahan persentase langsung ter-update secara real-time di layar.
+   - Container Query Units (`cqw`) & Math Clamp:
+     * Font judul: `clamp(9px, 2.2cqw, 17px)` agar teks otomatis membesar/mengecil
+       mengikuti skala ukuran monitor tanpa pernah terpotong elipsis.
+
+B. Tahap 2: Server-Side Deterministic Compositing (High-Resolution Rendering)
+   - Digunakan saat pengguna mengunduh gambar hasil akhir beresolusi tinggi.
+   - Menggunakan Engine Puppeteer Chromium Headless (`HtmlPosterRenderer`):
+     1. Menentukan dimensi resolusi authoritative berdasarkan aspek rasio:
+        * 9:16 -> 1080 x 1920 px
+        * 16:9 -> 1920 x 1080 px
+        * 1:1  -> 1200 x 1200 px
+        * 3:4  -> 1200 x 1600 px
+        * 4:3  -> 1600 x 1200 px
+     2. Mengonversi berkas fisik gambar dasar AI dari disk ke Data URI:
+        `data:image/png;base64,{baseBuffer.toString('base64')}`
+     3. Mengonversi berkas fisik logo manual dari disk ke Data URI:
+        `data:image/png;base64,{logoBuffer.toString('base64')}`
+     4. Menyuntikkan seluruh Data URI, teks lembaga, dan style CSS ke dalam template HTML
+        mandiri (`generatePosterBrandingHtml`).
+     5. Puppeteer membuka page headless dengan `setViewport` sesuai resolusi kanvas asli.
+     6. Menjalankan DOM Evaluator Listener:
+        Menunggu seluruh tag `<img>` dalam DOM selesai dimuat (`img.complete == true`).
+     7. Mengambil screenshot kanvas dengan format PNG murni tanpa kompresi pecah.
+     8. Menyimpan berkas komposit akhir ke `/uploads/media/posters/composed_{posterId}_{uuid}.png`.
+
+--------------------------------------------------------------------------------
+4. SIKLUS HIDUP CACHING & INVALIDASI (SHA-256 BRANDING HASH)
+--------------------------------------------------------------------------------
+Proses rendering Puppeteer membutuhkan waktu CPU (500ms - 2.000ms). Untuk menjaga
+performa tinggi, BRIDA menerapkan Content-Addressed Caching:
+
+1. Payload Kalkulasi Hash:
+   Setiap konfigurasi branding membentuk JSON:
+   {
+     imageUrl, headerEnabled, logoUrl, institution, subInstitution,
+     footerEnabled, footerText, layoutConfig
+   }
+   Dihitung digest SHA-256 (`calculateBrandingHash`).
+
+2. Kondisi Cache Hit:
+   - Jika `branding.composedUrl` tercatat di database, DAN
+   - Nilai `branding.brandingHash === currentHash`, DAN
+   - Berkas fisik masih eksis di disk server:
+   -> Server langsung mengembalikan `composedUrl` tanpa memanggil Puppeteer!
+
+3. Kondisi Cache Invalidation (Mutasi):
+   - Jika pengguna mengubah teks, warna, mengunggah logo baru, atau menghapus logo:
+   -> Berkas fisik `composedUrl` lama langsung dihapus dari disk (`unlinkSync`).
+   -> `composedUrl` dan `brandingHash` di database di-reset menjadi `NULL`.
+   -> Saat tombol unduh ditekan, render ulang dipicu secara on-demand.
+
+--------------------------------------------------------------------------------
+5. ATURAN BISNIS & DESAIN (BRIDA DESIGN SYSTEM RULES)
+--------------------------------------------------------------------------------
+1. Sharp Edges Mutlak (`rounded-none`):
+   - Seluruh bar header, footer, logo, container, dan badge wajib memiliki `border-radius: 0px !important`.
+   - Dilarang membuat sudut melengkung.
+
+2. Tipografi Resmi (Font: Roboto):
+   - Mengimpor Google Fonts `'Roboto': 400; 500; 700; 900`.
+   - Nama Lembaga Utama: `font-black` (weight 900), `uppercase`, `tracking-wider`.
+   - Sub-Lembaga: `font-medium` (weight 500), opacity 90%.
+   - Footer: `font-semibold` (weight 600), aksen garis atas teal (`#0D9488`).
+
+3. Kontras Warna Otomatis (`isDarkColor`):
+   - Menghitung Luminansi Relatif: Y = 0.299*R + 0.587*G + 0.114*B.
+   - Jika warna background gelap (Y < 0.5), warna teks otomatis berubah menjadi putih (#FFFFFF).
+   - Jika background terang, warna teks otomatis berubah menjadi navy gelap (#0F1E36).
+
+4. Validasi Magic Bytes Upload Logo:
+   - Format yang diizinkan HANYA PNG (`89 50 4E 47...`) dan JPEG (`FF D8 FF`).
+   - Format SVG dilarang keras karena potensi kerentanan Cross-Site Scripting (XSS).
+   - Ukuran berkas logo dibatasi maksimal 2 MB.
+
+================================================================================
+
+
+
+
+################################################################################
+# BAGIAN: 1. BACKEND CORE: COMPOSITION, TEMPLATE, & HTML RENDERER (PUPPETEER ENGINE) (4 Berkas)
+################################################################################
+
+
+======================================================================
+--- FILE: brida_be\src\modules\infographic\interfaces\poster-renderer.interface.ts ---
+======================================================================
+export const POSTER_RENDERER_TOKEN = 'POSTER_RENDERER_TOKEN';
+
+export interface RenderPosterOptions {
+  baseImageDataUri: string;
+  width: number;
+  height: number;
+  aspectRatio?: string;
+  headerEnabled: boolean;
+  logoDataUri?: string | null;
+  institution?: string | null;
+  subInstitution?: string | null;
+  footerEnabled: boolean;
+  footerText?: string | null;
+  layoutConfig?: {
+    headerBgColor?: string;
+    headerTextColor?: string;
+    headerAlignment?: 'left_with_logo' | 'center';
+    footerBgColor?: string;
+    footerTextColor?: string;
+    footerAlignment?: 'center' | 'left' | 'right';
+    headerFontSize?: 'compact' | 'normal' | 'large';
+    footerFontSize?: 'compact' | 'normal' | 'large';
+    logoPosition?: 'left' | 'right' | 'center';
+    logoSize?: 'compact' | 'normal' | 'large';
+    headerHeight?: 'compact' | 'normal' | 'spacious';
+    headerHeightPercent?: number;
+    footerHeightPercent?: number;
+  };
+}
+
+export interface IPosterRenderer {
+  render(options: RenderPosterOptions): Promise<Buffer>;
+}
+
+
+======================================================================
+--- FILE: brida_be\src\modules\infographic\renderers\html-poster.renderer.ts ---
+======================================================================
+import {
+  Injectable,
+  Logger,
+  OnModuleDestroy,
+  InternalServerErrorException,
+} from '@nestjs/common';
+import * as puppeteer from 'puppeteer-core';
+import { existsSync } from 'fs';
+import { join } from 'path';
+import {
+  IPosterRenderer,
+  RenderPosterOptions,
+} from '../interfaces/poster-renderer.interface';
+import { generatePosterBrandingHtml } from '../templates/poster-branding.template';
+
+@Injectable()
+export class HtmlPosterRenderer implements IPosterRenderer, OnModuleDestroy {
+  private readonly logger = new Logger(HtmlPosterRenderer.name);
+  private browser: puppeteer.Browser | null = null;
+
+  async onModuleDestroy() {
+    if (this.browser) {
+      try {
+        await this.browser.close();
+      } catch (err: any) {
+        this.logger.warn(`Error closing Puppeteer browser: ${err.message}`);
+      }
+      this.browser = null;
+    }
+  }
+
+  private getExecutablePath(): string {
+    let executablePath = '/usr/bin/chromium';
+
+    if (process.platform === 'win32') {
+      const winPaths = [
+        'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe',
+        'C:\\Program Files (x86)\\Google\\Chrome\\Application\\chrome.exe',
+        'C:\\Program Files\\Google\\Chrome Beta\\Application\\chrome.exe',
+        join(process.env.LOCALAPPDATA || '', 'Google\\Chrome\\Application\\chrome.exe'),
+      ];
+      for (const p of winPaths) {
+        if (existsSync(p)) {
+          executablePath = p;
+          break;
+        }
+      }
+    }
+
+    return executablePath;
+  }
+
+  private async getBrowser(): Promise<puppeteer.Browser> {
+    if (this.browser && this.browser.connected) {
+      return this.browser;
+    }
+
+    if (this.browser) {
+      try {
+        await this.browser.close();
+      } catch {}
+      this.browser = null;
+    }
+
+    const executablePath = this.getExecutablePath();
+    this.logger.log(`[HtmlPosterRenderer] Meluncurkan instance Chromium: ${executablePath}`);
+
+    this.browser = await puppeteer.launch({
+      executablePath,
+      headless: true,
+      args: [
+        '--no-sandbox',
+        '--disable-setuid-sandbox',
+        '--disable-dev-shm-usage',
+        '--disable-accelerated-2d-canvas',
+        '--disable-gpu',
+        '--no-first-run',
+        '--no-zygote',
+        '--single-process',
+        '--disable-extensions',
+      ],
+    });
+
+    this.browser.on('disconnected', () => {
+      this.logger.warn('[HtmlPosterRenderer] Koneksi Chromium terputus. Reset instance.');
+      this.browser = null;
+    });
+
+    return this.browser;
+  }
+
+  async render(options: RenderPosterOptions): Promise<Buffer> {
+    try {
+      const browser = await this.getBrowser();
+      const page = await browser.newPage();
+
+      try {
+        await page.setViewport({
+          width: options.width,
+          height: options.height,
+          deviceScaleFactor: 1,
+        });
+
+        const html = generatePosterBrandingHtml(options);
+        await page.setContent(html, { waitUntil: 'domcontentloaded', timeout: 30000 });
+
+        await page.evaluate(() => {
+          return new Promise<void>((resolve) => {
+            const images = Array.from(document.querySelectorAll('img'));
+            if (images.length === 0) return resolve();
+            let loaded = 0;
+            const check = () => {
+              loaded++;
+              if (loaded >= images.length) resolve();
+            };
+            for (const img of images) {
+              if (img.complete) {
+                check();
+              } else {
+                img.addEventListener('load', check);
+                img.addEventListener('error', check);
+              }
+            }
+          });
+        });
+
+        const screenshotBuffer = await page.screenshot({
+          type: 'png',
+          clip: {
+            x: 0,
+            y: 0,
+            width: options.width,
+            height: options.height,
+          },
+        });
+
+        return Buffer.from(screenshotBuffer);
+      } finally {
+        await page.close();
+      }
+    } catch (err: any) {
+      this.logger.error(`[HtmlPosterRenderer] Gagal merender komposisi poster: ${err.message}`);
+      throw new InternalServerErrorException(
+        `Gagal merender poster komposit beresolusi tinggi: ${err.message}`,
+      );
+    }
+  }
+}
+
+
+======================================================================
+--- FILE: brida_be\src\modules\infographic\services\poster-composition.service.ts ---
+======================================================================
+import {
+  Injectable,
+  Inject,
+  Logger,
+  NotFoundException,
+  InternalServerErrorException,
+} from '@nestjs/common';
+import { createHash } from 'crypto';
+import { readFileSync, existsSync } from 'fs';
+import { resolve } from 'path';
+import { PrismaService } from '../../../common/prisma/prisma.service';
+import { PosterStorageService } from './poster-storage.service';
+import {
+  POSTER_RENDERER_TOKEN,
+  IPosterRenderer,
+} from '../interfaces/poster-renderer.interface';
+
+@Injectable()
+export class PosterCompositionService {
+  private readonly logger = new Logger(PosterCompositionService.name);
+
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly posterStorage: PosterStorageService,
+    @Inject(POSTER_RENDERER_TOKEN)
+    private readonly posterRenderer: IPosterRenderer,
+  ) {}
+
+  private getCanvasDimensions(aspectRatio: string): { width: number; height: number } {
+    switch (aspectRatio) {
+      case '9:16':
+        return { width: 1080, height: 1920 };
+      case '16:9':
+        return { width: 1920, height: 1080 };
+      case '3:4':
+        return { width: 1200, height: 1600 };
+      case '4:3':
+        return { width: 1600, height: 1200 };
+      case '1:1':
+      default:
+        return { width: 1200, height: 1200 };
+    }
+  }
+
+  private calculateBrandingHash(
+    imageUrl: string,
+    branding: any,
+  ): string {
+    const payload = JSON.stringify({
+      imageUrl,
+      headerEnabled: branding?.headerEnabled ?? false,
+      logoUrl: branding?.logoUrl ?? null,
+      institution: branding?.institution ?? '',
+      subInstitution: branding?.subInstitution ?? '',
+      footerEnabled: branding?.footerEnabled ?? false,
+      footerText: branding?.footerText ?? '',
+      layoutConfig: branding?.layoutConfig ?? {},
+    });
+
+    return createHash('sha256').update(payload).digest('hex');
+  }
+
+  async composePoster(posterId: string): Promise<string> {
+    const poster = await this.prisma.infographicPoster.findUnique({
+      where: { id: posterId },
+      include: { branding: true },
+    });
+
+    if (!poster) {
+      throw new NotFoundException(`Poster dengan ID '${posterId}' tidak ditemukan.`);
+    }
+
+    const branding = poster.branding;
+
+    if (!branding || (!branding.headerEnabled && !branding.footerEnabled)) {
+      return poster.imageUrl;
+    }
+
+    const currentHash = this.calculateBrandingHash(poster.imageUrl, branding);
+
+    if (branding.composedUrl && branding.brandingHash === currentHash) {
+      const cleanRelPath = branding.composedUrl.startsWith('/')
+        ? branding.composedUrl.substring(1)
+        : branding.composedUrl;
+      const physicalPath = resolve(process.cwd(), cleanRelPath);
+
+      if (existsSync(physicalPath)) {
+        this.logger.log(`[Composition Cache Hit] Memakai berkas yang sudah terkomposisi untuk poster '${posterId}'.`);
+        return branding.composedUrl;
+      }
+    }
+
+    this.logger.log(`[Composition Engine] Memulai render komposisi baru untuk poster '${posterId}'...`);
+
+    const baseRelPath = poster.imageUrl.startsWith('/')
+      ? poster.imageUrl.substring(1)
+      : poster.imageUrl;
+    const baseFullPath = resolve(process.cwd(), baseRelPath);
+
+    if (!existsSync(baseFullPath)) {
+      throw new NotFoundException('Berkas fisik poster dasar tidak ditemukan di server.');
+    }
+
+    const baseBuffer = readFileSync(baseFullPath);
+
+    const baseExt = baseFullPath.toLowerCase();
+    const baseMime = baseExt.endsWith('.jpg') || baseExt.endsWith('.jpeg')
+      ? 'image/jpeg'
+      : 'image/png';
+    const baseImageDataUri = `data:${baseMime};base64,${baseBuffer.toString('base64')}`;
+
+    let logoDataUri: string | undefined = undefined;
+    if (branding.headerEnabled && branding.logoUrl) {
+      const logoRelPath = branding.logoUrl.startsWith('/')
+        ? branding.logoUrl.substring(1)
+        : branding.logoUrl;
+      const logoFullPath = resolve(process.cwd(), logoRelPath);
+
+      if (existsSync(logoFullPath)) {
+        const logoBuffer = readFileSync(logoFullPath);
+        const mime = branding.logoUrl.toLowerCase().endsWith('.jpg') || branding.logoUrl.toLowerCase().endsWith('.jpeg')
+          ? 'image/jpeg'
+          : 'image/png';
+        logoDataUri = `data:${mime};base64,${logoBuffer.toString('base64')}`;
+      }
+    }
+
+    const dimensions = this.getCanvasDimensions(poster.aspectRatio);
+
+    const renderedBuffer = await this.posterRenderer.render({
+      baseImageDataUri,
+      width: dimensions.width,
+      height: dimensions.height,
+      aspectRatio: poster.aspectRatio,
+      headerEnabled: branding.headerEnabled,
+      logoDataUri,
+      institution: branding.institution,
+      subInstitution: branding.subInstitution,
+      footerEnabled: branding.footerEnabled,
+      footerText: branding.footerText,
+      layoutConfig: (branding.layoutConfig as any) || {},
+    });
+
+    const composedUrl = this.posterStorage.saveComposedPosterBuffer(renderedBuffer, posterId);
+
+    await this.prisma.infographicPosterBranding.update({
+      where: { posterId },
+      data: {
+        composedUrl,
+        brandingHash: currentHash,
+      },
+    });
+
+    this.logger.log(`[Composition Success] Komposisi selesai: ${composedUrl}`);
+    return composedUrl;
+  }
+}
+
+
+======================================================================
+--- FILE: brida_be\src\modules\infographic\templates\poster-branding.template.ts ---
+======================================================================
+import { RenderPosterOptions } from '../interfaces/poster-renderer.interface';
+import { SAFE_AREA_CONFIG } from '../constants/infographic-design-system.constant';
+
+export interface PosterBrandingMetricsOptions {
+  headerFontSize?: 'compact' | 'normal' | 'large';
+  footerFontSize?: 'compact' | 'normal' | 'large';
+  logoSize?: 'compact' | 'normal' | 'large';
+  headerHeight?: 'compact' | 'normal' | 'spacious';
+  headerHeightPercent?: number;
+  footerHeightPercent?: number;
+
+  aspectRatio?: string;
+}
+
+function resolveSafeArea(width: number, height: number, aspectRatio?: string) {
+
+  if (aspectRatio && aspectRatio in SAFE_AREA_CONFIG) {
+    return SAFE_AREA_CONFIG[aspectRatio as keyof typeof SAFE_AREA_CONFIG];
+  }
+
+  const ratio = width / height;
+  if (ratio > 1.5) return SAFE_AREA_CONFIG['16:9'];
+  if (ratio > 1.1) return SAFE_AREA_CONFIG['4:3'];
+  if (ratio > 0.85) return SAFE_AREA_CONFIG['1:1'];
+  if (ratio > 0.65) return SAFE_AREA_CONFIG['3:4'];
+  return SAFE_AREA_CONFIG['9:16'];
+}
+
+export function getPosterBrandingMetrics(
+  width: number,
+  height: number,
+  options?: PosterBrandingMetricsOptions,
+) {
+  const safeArea = resolveSafeArea(width, height, options?.aspectRatio);
+
+  const headerPercent = safeArea.headerBarPercent / 100;
+  const footerPercent = safeArea.footerBarPercent / 100;
+
+  let effectiveHeaderPercent: number;
+  if (typeof options?.headerHeightPercent === 'number' && options.headerHeightPercent > 0) {
+    effectiveHeaderPercent = options.headerHeightPercent / 100;
+  } else {
+    const headerHeightMultiplier =
+      options?.headerHeight === 'compact' ? 0.85 : options?.headerHeight === 'spacious' ? 1.2 : 1.0;
+    effectiveHeaderPercent = headerPercent * headerHeightMultiplier;
+  }
+
+  let effectiveFooterPercent: number;
+  if (typeof options?.footerHeightPercent === 'number' && options.footerHeightPercent > 0) {
+    effectiveFooterPercent = options.footerHeightPercent / 100;
+  } else {
+
+    effectiveFooterPercent = Math.max(footerPercent, 0.052);
+  }
+
+  const headerFontMultiplier =
+    options?.headerFontSize === 'compact' ? 0.85 : options?.headerFontSize === 'large' ? 1.18 : 1.0;
+  const footerFontMultiplier =
+    options?.footerFontSize === 'compact' ? 0.85 : options?.footerFontSize === 'large' ? 1.18 : 1.0;
+  const logoSizeMultiplier =
+    options?.logoSize === 'compact' ? 0.58 : options?.logoSize === 'large' ? 0.88 : 0.74;
+
+  const headerHeightPx = Math.round(height * effectiveHeaderPercent);
+  const footerHeightPx = Math.round(height * effectiveFooterPercent);
+
+  return {
+    headerPercent: effectiveHeaderPercent,
+    footerPercent: effectiveFooterPercent,
+    headerHeightPx,
+    footerHeightPx,
+    safeArea,
+
+    titleFontSizePx: Math.min(
+      Math.round(headerHeightPx * 0.35),
+      Math.max(14, Math.round(width * 0.024 * headerFontMultiplier)),
+    ),
+    subTitleFontSizePx: Math.min(
+      Math.round(headerHeightPx * 0.24),
+      Math.max(10, Math.round(width * 0.016 * headerFontMultiplier)),
+    ),
+    footerFontSizePx: Math.min(
+      Math.round(footerHeightPx * 0.42),
+      Math.max(11, Math.round(width * 0.014 * footerFontMultiplier)),
+    ),
+    logoHeightPx: Math.min(
+      Math.round(headerHeightPx * logoSizeMultiplier),
+      Math.round(width * 0.16),
+    ),
+  };
+}
+
+export function generatePosterBrandingHtml(options: RenderPosterOptions): string {
+  const {
+    baseImageDataUri,
+    width,
+    height,
+    headerEnabled,
+    logoDataUri,
+    institution = 'PEMERINTAH KABUPATEN MIMIKA',
+    subInstitution = 'Badan Riset dan Inovasi Daerah',
+    footerEnabled,
+    footerText = 'Sumber: Dokumen Resmi BRIDA Kabupaten Mimika',
+    layoutConfig = {},
+  } = options;
+
+  const headerBgColor = layoutConfig.headerBgColor || '#FFFFFF';
+  const headerTextColor = layoutConfig.headerTextColor || (isDarkColor(headerBgColor) ? '#FFFFFF' : '#0F1E36');
+  const logoPosition = layoutConfig.logoPosition || (layoutConfig.headerAlignment === 'center' ? 'center' : 'left');
+  const headerFontSize = layoutConfig.headerFontSize || 'normal';
+  const footerFontSize = layoutConfig.footerFontSize || 'normal';
+  const logoSize = layoutConfig.logoSize || 'normal';
+  const headerHeight = layoutConfig.headerHeight || 'normal';
+  const headerHeightPercent = layoutConfig.headerHeightPercent;
+  const footerHeightPercent = layoutConfig.footerHeightPercent;
+
+  const footerBgColor = layoutConfig.footerBgColor || '#0F1E36';
+  const footerTextColor = layoutConfig.footerTextColor || (isDarkColor(footerBgColor) ? '#F8FAFC' : '#0F1E36');
+  const footerAlignment = layoutConfig.footerAlignment || 'center';
+
+  const metrics = getPosterBrandingMetrics(width, height, {
+    headerFontSize,
+    footerFontSize,
+    logoSize,
+    headerHeight,
+    headerHeightPercent,
+    footerHeightPercent,
+    aspectRatio: options.aspectRatio,
+  });
+  const {
+    headerHeightPx,
+    footerHeightPx,
+    titleFontSizePx,
+    subTitleFontSizePx,
+    footerFontSizePx,
+    logoHeightPx,
+  } = metrics;
+
+  const headerJustify =
+    logoPosition === 'center'
+      ? 'center'
+      : logoPosition === 'right'
+      ? 'space-between'
+      : 'flex-start';
+  const headerTextAlign = logoPosition === 'center' ? 'center' : 'left';
+  const logoOrder = logoPosition === 'right' ? 2 : 1;
+  const textOrder = logoPosition === 'right' ? 1 : 2;
+  const textFlex = logoPosition === 'center' ? '0 1 auto' : '1';
+  const textAlignItems = logoPosition === 'center' ? 'center' : 'flex-start';
+  const logoMargin =
+    logoPosition === 'right'
+      ? `margin-left: ${Math.round(width * 0.02)}px; margin-right: 0;`
+      : `margin-right: ${Math.round(width * 0.02)}px; margin-left: 0;`;
+
+  return `<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=${width}, height=${height}, initial-scale=1.0" />
+  <title>Composed Poster</title>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700;900&display=swap');
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      border-radius: 0px !important;
+    }
+
+    html, body {
+      width: ${width}px;
+      height: ${height}px;
+      overflow: hidden;
+      background-color: #000000;
+      font-family: 'Roboto', -apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif;
+      -webkit-font-smoothing: antialiased;
+      -moz-osx-font-smoothing: grayscale;
+    }
+
+    .poster-container {
+      position: relative;
+      width: ${width}px;
+      height: ${height}px;
+      overflow: hidden;
+    }
+
+    /* ── BASE AI IMAGE: Mengisi seluruh kanvas (header/footer menempati blank space AI) ── */
+    .base-canvas-image {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      object-fit: fill;
+      z-index: 1;
+    }
+
+    /* ── HEADER RESMI (SAFE AREA: 0 - 8%) ── */
+    .branding-header {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: ${headerHeightPx}px;
+      background-color: ${headerBgColor};
+      color: ${headerTextColor};
+      z-index: 10;
+      display: flex;
+      align-items: center;
+      padding: 0 ${Math.round(width * 0.04)}px;
+      border-bottom: 2px solid ${isDarkColor(headerBgColor) ? 'rgba(255,255,255,0.12)' : 'rgba(0,0,0,0.12)'};
+      justify-content: ${headerJustify};
+      text-align: ${headerTextAlign};
+    }
+
+    .header-logo {
+      height: ${logoHeightPx}px;
+      width: auto;
+      max-width: ${Math.round(width * 0.18)}px;
+      object-fit: contain;
+      order: ${logoOrder};
+      ${logoMargin}
+      flex-shrink: 0;
+    }
+
+    .header-text-block {
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: ${textAlignItems};
+      line-height: 1.15;
+      min-width: 0;
+      flex: ${textFlex};
+      order: ${textOrder};
+      overflow: hidden;
+    }
+
+    .header-institution {
+      font-size: ${titleFontSizePx}px;
+      font-weight: 900;
+      letter-spacing: 0.03em;
+      text-transform: uppercase;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      max-width: 100%;
+    }
+
+    .header-sub-institution {
+      font-size: ${subTitleFontSizePx}px;
+      font-weight: 500;
+      opacity: 0.92;
+      margin-top: ${Math.round(headerHeightPx * 0.04)}px;
+      letter-spacing: 0.01em;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      max-width: 100%;
+    }
+
+    /* ── FOOTER RESMI (SAFE AREA: 94% - 100%) ── */
+    .branding-footer {
+      position: absolute;
+      bottom: 0;
+      left: 0;
+      width: 100%;
+      height: ${footerHeightPx}px;
+      background-color: ${footerBgColor};
+      color: ${footerTextColor};
+      z-index: 10;
+      display: flex;
+      align-items: center;
+      padding: 0 ${Math.round(width * 0.04)}px;
+      border-top: 3px solid ${isDarkColor(footerBgColor) ? '#14B8A6' : '#0D9488'};
+      box-shadow: 0 -4px 15px rgba(0,0,0,0.25);
+      ${footerAlignment === 'center' ? 'justify-content: center; text-align: center;' : footerAlignment === 'right' ? 'justify-content: flex-end; text-align: right;' : 'justify-content: flex-start; text-align: left;'}
+    }
+
+    .footer-text {
+      font-size: ${footerFontSizePx}px;
+      font-weight: 600;
+      letter-spacing: 0.02em;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      max-width: 100%;
+    }
+  </style>
+</head>
+<body>
+  <div class="poster-container">
+    <!-- Gambar Kanvas AI Asli (100% Canvas, Safe Area 8%-94%) -->
+    <img class="base-canvas-image" src="${baseImageDataUri}" alt="Infografis Dasar" />
+
+    <!-- Overlay Header Deterministic (0 - 8%) -->
+    ${
+      headerEnabled
+        ? `<header class="branding-header">
+            ${logoDataUri ? `<img class="header-logo" src="${logoDataUri}" alt="Logo Instansi" />` : ''}
+            <div class="header-text-block">
+              <span class="header-institution">${escapeHtml(institution || '')}</span>
+              ${subInstitution ? `<span class="header-sub-institution">${escapeHtml(subInstitution)}</span>` : ''}
+            </div>
+          </header>`
+        : ''
+    }
+
+    <!-- Overlay Footer Deterministic (94% - 100%) -->
+    ${
+      footerEnabled
+        ? `<footer class="branding-footer">
+            <span class="footer-text">${escapeHtml(footerText || '')}</span>
+          </footer>`
+        : ''
+    }
+  </div>
+</body>
+</html>`;
+}
+
+function isDarkColor(hex: string): boolean {
+  if (!hex || !hex.startsWith('#')) return false;
+  const clean = hex.replace('#', '');
+  if (clean.length !== 6 && clean.length !== 3) return false;
+  const r = clean.length === 6 ? parseInt(clean.substring(0, 2), 16) : parseInt(clean[0] + clean[0], 16);
+  const g = clean.length === 6 ? parseInt(clean.substring(2, 4), 16) : parseInt(clean[1] + clean[1], 16);
+  const b = clean.length === 6 ? parseInt(clean.substring(4, 6), 16) : parseInt(clean[2] + clean[2], 16);
+
+  const luminance = (0.299 * r + 0.587 * g + 0.114 * b) / 255;
+  return luminance < 0.5;
+}
+
+function escapeHtml(text: string): string {
+  return text
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#039;');
+}
+
+
+################################################################################
+# BAGIAN: 2. AI CONTRACT: SAFE AREA RESERVATION & CANVAS MARGIN RULES (2 Berkas)
+################################################################################
+
+
+======================================================================
+--- FILE: brida_be\src\modules\infographic\constants\infographic-design-system.constant.ts ---
+======================================================================
+
+export enum InfographicArchetype {
+  INFRASTRUCTURE = 'INFRASTRUCTURE',
+  POVERTY_SOCIAL = 'POVERTY_SOCIAL',
+  HEALTH = 'HEALTH',
+  EDUCATION = 'EDUCATION',
+  REGIONAL_ECONOMY = 'REGIONAL_ECONOMY',
+  CLIMATE_ENVIRONMENT = 'CLIMATE_ENVIRONMENT',
+  GENERAL_GOVERNANCE = 'GENERAL_GOVERNANCE',
+}
+
+export type VisualDensity = 'balanced' | 'dense' | 'data_dense';
+
+export interface VisualZone {
+  zoneId: string;
+  title: string;
+  heightPercent: number;
+  purpose: string;
+  visualType: string;
+  compositionNote: string;
+}
+
+export interface VisualGrammar {
+  preferredVisuals: string[];
+  avoidVisuals: string[];
+  heroStyle: string;
+  mapPriority: 'high' | 'medium' | 'low';
+  chartPriority: 'high' | 'medium' | 'low';
+  photographyPriority: 'high' | 'medium' | 'low';
+}
+
+export interface ArchetypeDefinition {
+  archetype: InfographicArchetype;
+  keywords: string[];
+  primaryColor: string;
+  secondaryColor: string;
+  accentColor: string;
+  density: VisualDensity;
+  visualGrammar: VisualGrammar;
+  visualZones: VisualZone[];
+}
+
+export const MASTER_DESIGN_SYSTEM = `
+[MASTER VISUAL IDENTITY - PEMERINTAH KABUPATEN MIMIKA]
+
+AESTHETICS & LAYOUT:
+- This is a DATA-DENSE GOVERNMENT INFORMATION INFOGRAPHIC, not a minimalist poster.
+- Layout: Tall vertical modular infographic poster using a dense editorial grid with strong visual hierarchy.
+- Use controlled whitespace only between information groups. The composition must be visually rich and fill the entire vertical canvas.
+- Avoid large empty margins and unused vertical areas.
+
+CANVAS OCCUPANCY REQUIREMENT:
+- The infographic must visually occupy at least 92-97% of the available canvas height.
+- Do NOT leave large unused blank areas above, between, or below visual zones.
+- The composition must feel information-rich, editorially dense, and intentionally filled.
+- Whitespace should only be used as micro-spacing between content elements, not as large empty regions.
+- Every major vertical area of the canvas must contain meaningful visual information.
+- Never place the entire infographic content only in the middle of the canvas.
+- Never create excessive empty margins or make the infographic look like a sparse presentation slide.
+
+COLOR PALETTE:
+- Primary: Deep Navy Blue (#0F1E36 or #1E3A8A) representing governmental authority.
+- Secondary: Blue-Green / Slate Teal (#0D9488 / #0284C7) representing development & public welfare.
+- Accent: Warm Amber / Gold (#F59E0B) strictly for key numerical highlights and warnings.
+- Background: Clean light neutral or pure white with subtle, high-contrast containers.
+
+VISUAL ELEMENTS:
+- Layout Components: Rectangular information cards, thin structural dividers, flat geometric iconography, balanced negative space, Swiss typographic hierarchy.
+- Graphic Constraints: Avoid cartoonish/childish illustrations, 3D floating clutter, or generic stock art. Focus on clarity, data density, and authentic regional context (Papua Tengah / Mimika).
+- Visual Variety: Do NOT render every zone as a rectangular card. Mix full-width photography, metric strips, charts, maps, timelines, diagrams, icons, callout numbers, photographic panels, and compact cards. Avoid repetitive card grids.
+- Absolute Language Rule: All titles, labels, legends, headers, and text printed on the graphic MUST BE 100% IN FORMAL BAHASA INDONESIA. Zero English words on the final graphic.
+- NO LOGO DIRECTIVE: Strictly DO NOT generate any government logos, emblems, seals, or watermarks in either the header or the footer.
+
+DATA INTEGRITY & PROVENANCE:
+- Only visualize numerical values explicitly supplied by the grounded data.
+- Never invent statistics. Never fabricate percentages.
+- Never transform unrelated percentages into a pie chart.
+- Use a pie/donut chart ONLY when the data explicitly represents components of one complete whole totaling 100%.
+- Every numerical visualization must correspond to a verified source fact.
+`;
+
+export const SAFE_AREA_CONFIG = {
+  '9:16': {
+    headerBarPercent: 9.5,
+    headerTolerancePercent: 2.5,
+    topReservedPercent: 12.0,
+    footerBarPercent: 4.0,
+    footerTolerancePercent: 2.0,
+    bottomReservedPercent: 6.0,
+    contentStart: 12.0,
+    contentEnd: 94.0,
+  },
+  '3:4': {
+    headerBarPercent: 9.0,
+    headerTolerancePercent: 2.5,
+    topReservedPercent: 11.5,
+    footerBarPercent: 4.0,
+    footerTolerancePercent: 2.0,
+    bottomReservedPercent: 6.0,
+    contentStart: 11.5,
+    contentEnd: 94.0,
+  },
+  '1:1': {
+    headerBarPercent: 9.0,
+    headerTolerancePercent: 2.5,
+    topReservedPercent: 11.5,
+    footerBarPercent: 4.0,
+    footerTolerancePercent: 2.0,
+    bottomReservedPercent: 6.0,
+    contentStart: 11.5,
+    contentEnd: 94.0,
+  },
+  '16:9': {
+    headerBarPercent: 8.0,
+    headerTolerancePercent: 2.0,
+    topReservedPercent: 10.0,
+    footerBarPercent: 3.5,
+    footerTolerancePercent: 1.5,
+    bottomReservedPercent: 5.0,
+    contentStart: 10.0,
+    contentEnd: 95.0,
+  },
+  '4:3': {
+    headerBarPercent: 8.5,
+    headerTolerancePercent: 2.0,
+    topReservedPercent: 10.5,
+    footerBarPercent: 4.0,
+    footerTolerancePercent: 1.5,
+    bottomReservedPercent: 5.5,
+    contentStart: 10.5,
+    contentEnd: 94.5,
+  },
+} as const;
+
+export const SAFE_AREA = {
+  headerPercent: 9.5,
+  headerTolerancePercent: 2.5,
+  topReservedPercent: 12.0,
+  footerPercent: 4.0,
+  footerTolerancePercent: 2.0,
+  bottomReservedPercent: 6.0,
+} as const;
+
+export const CONTENT_START = SAFE_AREA.topReservedPercent;
+export const CONTENT_END = 100 - SAFE_AREA.bottomReservedPercent;
+
+export const SAFE_AREA_DIRECTIVE = `
+RESERVED SAFE AREAS — MANDATORY:
+- Top 10% of the canvas MUST be a clean solid color band (pure white #FFFFFF or theme solid color). Absolutely NO text, NO headlines, NO imagery, NO icons, NO graphic elements inside this band. Leave it completely empty as a buffer for the official institutional header.
+- Bottom 6% of the canvas (94% to 100%) MUST likewise be a clean solid color band, completely empty without any text, cards, borders, or chart legends.
+- These reserved bands are intentional. They are NOT a violation of the canvas occupancy requirement. The 92-97% occupancy target applies ONLY to the content area between 10% and 94%.
+- NEVER render any title bar, institution name, organization label, source attribution, tagline, date stamp, page number, or footer line anywhere on the canvas. That information is applied afterwards by a separate system.
+`;
+
+export const CANVAS_COMPOSITION_9x16 = `
+=== FULL CANVAS COMPOSITION (9:16 PORTRAIT) ===
+
+${SAFE_AREA_DIRECTIVE}
+
+CONTENT AREA: 10% to 94% of canvas height.
+Target visual occupancy WITHIN the content area: 92-97%.
+
+VERTICAL VISUAL RHYTHM — absolute canvas positions:
+
+0-10%:   RESERVED SAFE AREA — leave completely empty (solid color band).
+         (Header bar occupies 0-7.5%; 7.5-10% is tolerance cushion to prevent clipping).
+
+10-26%:  ZONE 1 — FULL-WIDTH HERO VISUAL
+         Large documentary/environmental photograph or detailed topic-specific visual extending edge-to-edge horizontally, starting safely at 10%. Overlay the title and subtitle over the hero area using strong contrast. Do NOT extend any text or elements above 10%.
+
+26-38%:  ZONE 2 — KEY STATISTICS STRIP
+         4-6 verified statistics displayed as a strong horizontal visual strip or modular statistic blocks. Each statistic must include: large number, unit, short label, and optional directional indicator.
+
+38-54%:  ZONE 3 — PRIMARY DATA STORY
+         Large chart, comparison visualization, trend line, or diagram. Not just a card. Add one concise insight statement below the chart.
+
+54-72%:  ZONE 4 — GEOGRAPHIC / SPATIAL STORY
+         Large map occupying substantial visual area (not a tiny map inside a card). The map itself is a major visual element. Include district labels, legend, and 2-4 callout annotations with key geographic insight.
+
+72-84%:  ZONE 5 — PROGRAM / RESPONSE / FIELD EVIDENCE
+         Use a combination of timeline, feature cards, photographic documentation, or process visualization. Mix visual types.
+
+84-94%:  ZONE 6 — IMPACT / COMMUNITY OUTCOMES
+         4-6 icons, metrics, or visual impact indicators. All cards and graphics must conclude cleanly at or before 94%.
+
+94-100%: RESERVED SAFE AREA — leave completely empty (solid color band).
+         (Footer bar occupies 96-100%; 94-96% is tolerance cushion).
+
+There is no ZONE 7. Do not render a footer.
+VISUAL DENSITY TARGET: HIGH within the 10-94% content area.
+`;
+
+export const CANVAS_COMPOSITION_1x1 = `
+=== FULL CANVAS COMPOSITION (1:1 SQUARE) ===
+
+${SAFE_AREA_DIRECTIVE}
+
+CONTENT AREA: 9.5% to 94% of canvas height.
+Target visual occupancy WITHIN the content area: 90-95%.
+
+LAYOUT — absolute vertical allocation:
+
+0-9.5%:  RESERVED SAFE AREA — leave completely empty (solid color band). Header occupies 0-7.0%; 7.0-9.5% is tolerance buffer.
+9.5-28%: ZONE 1 — HERO (compact title + subtitle + background visual starting safely at 9.5%)
+28-44%:  ZONE 2 — KEY STATISTICS (3-4 metric blocks in a row)
+44-68%:  ZONE 3+4 — DATA STORY + GEOGRAPHIC (side-by-side chart and map)
+68-94%:  ZONE 5+6 — PROGRAM + IMPACT (compact grid concluding cleanly at 94%)
+94-100%: RESERVED SAFE AREA — leave completely empty (solid color band). Footer occupies 96-100%; 94-96% is tolerance buffer.
+
+There is no ZONE 7. Do not render a footer.
+Prioritize data density. Fewer decorative elements, more numbers and charts.
+`;
+
+export const CANVAS_COMPOSITION_16x9 = `
+=== FULL CANVAS COMPOSITION (16:9 LANDSCAPE) ===
+
+RESERVED SAFE AREAS — MANDATORY (16:9 LANDSCAPE):
+- Top 8.0% of the canvas MUST be completely empty (Header bar occupies 0-6.0%; 6.0-8.0% is tolerance buffer).
+- Bottom 5.0% of the canvas MUST be completely empty (Footer bar occupies 96.5-100%; 95.0-96.5% is tolerance buffer).
+- NEVER render any government header, logo, or footer text on the canvas.
+
+CONTENT AREA: 8.0% to 95.0% of canvas height.
+Target visual occupancy WITHIN the content area: 90-95%.
+Use a multi-column layout to maximize horizontal space.
+
+All three columns must begin safely at 8.0% and conclude at 95.0% of canvas height.
+0-8.0%:     RESERVED SAFE AREA — leave completely empty (solid color band across full width).
+
+Left 35%:   ZONE 1+2 — HERO COLUMN (hero visual + key statistics stacked vertically)
+Center 35%: ZONE 3+4 — DATA COLUMN (chart on top, map below)
+Right 30%:  ZONE 5+6 — INSIGHT COLUMN (program cards, impact icons)
+
+95.0-100%:  RESERVED SAFE AREA — leave completely empty (solid color band across full width).
+Do not render a footer.
+`;
+
+export const CANVAS_COMPOSITION_3x4 = `
+=== FULL CANVAS COMPOSITION (3:4 PORTRAIT / EDITORIAL POSTER) ===
+
+${SAFE_AREA_DIRECTIVE}
+
+CONTENT AREA: 9.5% to 94% of canvas height.
+Target visual occupancy WITHIN the content area: 92-96%.
+Slightly wider than 9:16, allowing richer multi-column blocks, prominent maps, and balanced editorial spacing.
+
+VERTICAL VISUAL RHYTHM — absolute canvas positions:
+
+0-9.5%:  RESERVED SAFE AREA — leave completely empty (solid color band). Header occupies 0-7.0%; 7.0-9.5% is tolerance buffer.
+
+9.5-26%: ZONE 1 — FULL-WIDTH HERO VISUAL
+         Large documentary/environmental photograph or topic-specific visual extending edge-to-edge horizontally, starting safely at 9.5%. Overlay the title and subtitle over the hero area using strong contrast.
+
+26-38%:  ZONE 2 — KEY STATISTICS STRIP
+         4-6 verified statistics displayed in a clean 2x2 or 3-column modular statistic block. Each statistic must include: large bold number, unit, and short Indonesian label.
+
+38-56%:  ZONE 3 — PRIMARY DATA STORY
+         Substantial chart, multi-metric comparison, or trend visualization with an insight statement below.
+
+56-74%:  ZONE 4 — GEOGRAPHIC / SPATIAL STORY
+         Large thematic map occupying substantial visual area with district callouts, legend, and regional annotations.
+
+74-94%:  ZONE 5 & 6 — STRATEGIC PROGRAM & IMPACT
+         Balanced combination of initiative cards, field evidence photos, and measurable socio-economic impact metrics concluding cleanly at 94%.
+
+94-100%: RESERVED SAFE AREA — leave completely empty (solid color band). Footer occupies 96-100%; 94-96% is tolerance buffer.
+
+There is no ZONE 7. Do not render a footer.
+VISUAL DENSITY TARGET: HIGH within the 9.5-94% content area.
+`;
+
+export const CANVAS_COMPOSITION_4x3 = `
+=== FULL CANVAS COMPOSITION (4:3 LANDSCAPE / PRESENTATION & TABLET) ===
+
+RESERVED SAFE AREAS — MANDATORY (4:3 LANDSCAPE):
+- Top 8.5% of the canvas MUST be completely empty (Header bar occupies 0-6.5%; 6.5-8.5% is tolerance buffer).
+- Bottom 5.5% of the canvas MUST be completely empty (Footer bar occupies 96.0-100%; 94.5-96.0% is tolerance buffer).
+- NEVER render any government header, logo, or footer text on the canvas.
+
+CONTENT AREA: 8.5% to 94.5% of canvas height.
+Target visual occupancy WITHIN the content area: 90-95%.
+Use a balanced 2-column or 3-column editorial grid to optimize horizontal and vertical real estate.
+
+All columns must begin safely at 8.5% and end at 94.5% of canvas height.
+0-8.5%:     RESERVED SAFE AREA — leave completely empty (solid color band across full width).
+
+Left 40%:   ZONE 1+2 — HERO & STATS (Dominant hero visual with overlaid Indonesian title, accompanied by 3-4 key indicator cards)
+Center 35%: ZONE 3+4 — DATA & SPATIAL STORY (Prominent comparison chart on top, thematic district map or spatial distribution below)
+Right 25%:  ZONE 5+6 — INTERVENTIONS & IMPACT (Compact program cards and measurable community outcome icons)
+
+94.5-100%:  RESERVED SAFE AREA — leave completely empty (solid color band across full width).
+Do not render a footer.
+VISUAL DENSITY TARGET: HIGH within the 8.5-94.5% content area.
+`;
+
+export const ARCHETYPE_REGISTRY: Record<InfographicArchetype, ArchetypeDefinition> = {
+  [InfographicArchetype.INFRASTRUCTURE]: {
+    archetype: InfographicArchetype.INFRASTRUCTURE,
+    keywords: ['jalan', 'jembatan', 'infrastruktur', 'konstruksi', 'pelabuhan', 'bandara', 'listrik', 'air bersih', 'pupr', 'transportasi', 'konektivitas'],
+    primaryColor: '#1e3a8a',
+    secondaryColor: '#0284c7',
+    accentColor: '#f59e0b',
+    density: 'dense',
+    visualGrammar: {
+      preferredVisuals: ['project_hero_photo', 'progress_bar', 'route_map', 'before_after_comparison', 'project_feature_cards', 'construction_field_photos', 'impact_metric_icons'],
+      avoidVisuals: ['generic_pie_chart', 'excessive_empty_cards', '3d_floating_objects', 'decorative_illustrations'],
+      heroStyle: 'documentary_construction_aerial',
+      mapPriority: 'high',
+      chartPriority: 'medium',
+      photographyPriority: 'high',
+    },
+    visualZones: [
+      { zoneId: 'hero', title: 'Hero Proyek Infrastruktur', heightPercent: 20, purpose: 'Judul proyek & visualisasi lanskap pembangunan konektivitas Mimika', visualType: 'full_width_photo_overlay', compositionNote: 'Aerial/documentary photo of road/bridge construction extending edge-to-edge with bold title overlay' },
+      { zoneId: 'key_indicators', title: 'Indikator Capaian Utama', heightPercent: 12, purpose: 'Panjang jalan terbangun (km), pagu APBD (Rp), kemantapan jalan (%)', visualType: 'metric_strip', compositionNote: '4-5 large bold numbers in a horizontal strip with directional indicators' },
+      { zoneId: 'data_story', title: 'Progres Realisasi Fisik', heightPercent: 16, purpose: 'Persentase realisasi vs target tahun berjalan per paket pekerjaan', visualType: 'horizontal_progress_bars', compositionNote: 'Multiple progress bars comparing target vs realization, not a single gauge' },
+      { zoneId: 'geography', title: 'Koridor Logistik & Sebaran Proyek', heightPercent: 18, purpose: 'Peta rute koridor pesisir (Pomako) dan pegunungan (Agimuga, Tembagapura)', visualType: 'large_route_map', compositionNote: 'Large stylized map with route lines, district labels, and project callouts' },
+      { zoneId: 'program', title: 'Daftar Proyek Strategis', heightPercent: 14, purpose: 'Status pekerjaan paket jalan dan jembatan dengan foto dokumentasi', visualType: 'photo_feature_cards', compositionNote: 'Mix of small field photographs with project status cards' },
+      { zoneId: 'impact', title: 'Dampak Sosio-Ekonomi', heightPercent: 12, purpose: 'Waktu tempuh, penurunan biaya logistik, konektivitas warga terhubung', visualType: 'icon_metrics', compositionNote: '4-6 impact indicators with flat icons and verified numbers' },
+    ],
+  },
+
+  [InfographicArchetype.POVERTY_SOCIAL]: {
+    archetype: InfographicArchetype.POVERTY_SOCIAL,
+    keywords: ['kemiskinan', 'sosial', 'bansos', 'pkh', 'kesejahteraan', 'keluarga rentan', 'kemiskinan ekstrem', 'oap'],
+    primaryColor: '#0f172a',
+    secondaryColor: '#0d9488',
+    accentColor: '#ef4444',
+    density: 'dense',
+    visualGrammar: {
+      preferredVisuals: ['humanistic_portrait', 'trend_line_chart', 'district_comparison_bar', 'factor_breakdown_diagram', 'program_cards_with_icons', 'impact_callout_numbers'],
+      avoidVisuals: ['generic_pie_chart', 'celebratory_imagery', '3d_floating_objects', 'corporate_stock_visuals'],
+      heroStyle: 'documentary_humanistic_editorial',
+      mapPriority: 'medium',
+      chartPriority: 'high',
+      photographyPriority: 'high',
+    },
+    visualZones: [
+      { zoneId: 'hero', title: 'Hero Perlindungan Sosial', heightPercent: 20, purpose: 'Penegasan komitmen pengentasan kemiskinan dan perlindungan sosial', visualType: 'full_width_photo_overlay', compositionNote: 'Humanistic editorial portrait of Mimika community with title overlay' },
+      { zoneId: 'key_indicators', title: 'Angka Kemiskinan Makro', heightPercent: 12, purpose: 'Persentase penduduk miskin, garis kemiskinan per kapita, jumlah keluarga rentan', visualType: 'metric_strip', compositionNote: '4-5 large alert-colored numbers with trend arrows' },
+      { zoneId: 'data_story', title: 'Tren Penurunan Kemiskinan', heightPercent: 16, purpose: 'Pergerakan angka kemiskinan 3-5 tahun terakhir', visualType: 'trend_line_chart', compositionNote: 'Multi-year line chart with baseline and target lines' },
+      { zoneId: 'geography', title: 'Sebaran Wilayah Rawan', heightPercent: 18, purpose: 'Komparasi distrik pesisir vs pegunungan', visualType: 'district_bar_chart_or_map', compositionNote: 'Horizontal bar chart comparing districts OR thematic map with risk zones' },
+      { zoneId: 'program', title: 'Faktor & Intervensi', heightPercent: 14, purpose: 'Akar masalah dan paket intervensi bansos/PKH/pemberdayaan OAP', visualType: 'split_panel', compositionNote: 'Left: factor breakdown diagram. Right: program intervention cards with icons' },
+      { zoneId: 'impact', title: 'Target & Dampak Terukur', heightPercent: 12, purpose: 'Target zero poverty, keluarga terangkat, realisasi anggaran sosial', visualType: 'impact_callouts', compositionNote: 'Bold callout numbers with source labels' },
+    ],
+  },
+
+  [InfographicArchetype.HEALTH]: {
+    archetype: InfographicArchetype.HEALTH,
+    keywords: ['stunting', 'gizi', 'kesehatan', 'posyandu', 'puskesmas', 'malaria', 'imunisasi', 'balita', 'dinkes', 'sanitasi'],
+    primaryColor: '#065f46',
+    secondaryColor: '#0d9488',
+    accentColor: '#f97316',
+    density: 'dense',
+    visualGrammar: {
+      preferredVisuals: ['health_field_photography', 'prevalence_gauge', 'trend_comparison_bar', 'vulnerability_risk_map', 'intervention_checklist', 'timeline_roadmap'],
+      avoidVisuals: ['generic_pie_chart', 'cartoonish_medical_icons', '3d_floating_objects', 'stock_hospital_imagery'],
+      heroStyle: 'documentary_healthcare_field',
+      mapPriority: 'high',
+      chartPriority: 'high',
+      photographyPriority: 'high',
+    },
+    visualZones: [
+      { zoneId: 'hero', title: 'Hero Kesehatan Masyarakat', heightPercent: 20, purpose: 'Penyuluhan gizi dan pengentasan stunting terpadu', visualType: 'full_width_photo_overlay', compositionNote: 'Documentary photo of Posyandu activity, mother-child nutrition, or field healthcare' },
+      { zoneId: 'key_indicators', title: 'Indikator Kesehatan Kunci', heightPercent: 12, purpose: 'Prevalensi stunting (%), balita terlayani, puskesmas aktif', visualType: 'metric_strip', compositionNote: 'Color-coded health metric cards (red for critical, green for improving)' },
+      { zoneId: 'data_story', title: 'Tren Capaian Intervensi', heightPercent: 16, purpose: 'Penurunan angka kasus pasca intervensi per triwulan', visualType: 'comparison_bar_chart', compositionNote: 'Grouped bar chart comparing quarters or years' },
+      { zoneId: 'geography', title: 'Peta Kerentanan Distrik', heightPercent: 18, purpose: 'Zona prioritas stunting di distrik pedalaman dan pesisir', visualType: 'risk_zone_map', compositionNote: 'Large thematic map with red/orange/green district zones and callout labels' },
+      { zoneId: 'program', title: 'Intervensi Spesifik & Sensitif', heightPercent: 14, purpose: 'PMT, tablet tambah darah, sanitasi air, dan program konvergensi', visualType: 'intervention_cards', compositionNote: 'Checklist-style cards with icons and field photos' },
+      { zoneId: 'impact', title: 'Roadmap Pencapaian', heightPercent: 12, purpose: 'Target nasional (<14%), timeline intervensi, dan dampak terukur', visualType: 'timeline_roadmap', compositionNote: 'Horizontal timeline with milestone markers' },
+    ],
+  },
+
+  [InfographicArchetype.EDUCATION]: {
+    archetype: InfographicArchetype.EDUCATION,
+    keywords: ['pendidikan', 'sekolah', 'guru', 'siswa', 'beasiswa', 'literasi', 'gedung sekolah', 'disdik', 'apm', 'apk'],
+    primaryColor: '#1e3a8a',
+    secondaryColor: '#3b82f6',
+    accentColor: '#10b981',
+    density: 'dense',
+    visualGrammar: {
+      preferredVisuals: ['classroom_photography', 'education_stat_cards', 'participation_bar_chart', 'facility_distribution_map', 'scholarship_program_cards', 'ipm_progress_indicators'],
+      avoidVisuals: ['cartoonish_school_icons', 'generic_pie_chart', '3d_floating_objects'],
+      heroStyle: 'documentary_classroom_activity',
+      mapPriority: 'medium',
+      chartPriority: 'high',
+      photographyPriority: 'medium',
+    },
+    visualZones: [
+      { zoneId: 'hero', title: 'Hero Pendidikan Mimika', heightPercent: 20, purpose: 'Akselerasi mutu SDM dan pendidikan anak Mimika', visualType: 'full_width_photo_overlay', compositionNote: 'Students in classroom or learning environment' },
+      { zoneId: 'key_indicators', title: 'Statistik Pendidikan Pokok', heightPercent: 12, purpose: 'Jumlah sekolah, rasio guru:siswa, APM/APK', visualType: 'metric_strip', compositionNote: 'Large education numbers with jenjang breakdowns' },
+      { zoneId: 'data_story', title: 'Angka Partisipasi Sekolah', heightPercent: 16, purpose: 'Tingkat keikutsertaan per jenjang (SD/SMP/SMA)', visualType: 'grouped_bar_chart', compositionNote: 'Grouped bars comparing SD, SMP, SMA participation rates' },
+      { zoneId: 'geography', title: 'Sebaran Fasilitas Belajar', heightPercent: 18, purpose: 'Ketersediaan sarana di 18 distrik Mimika', visualType: 'facility_map', compositionNote: 'District map with school density indicators and teacher distribution' },
+      { zoneId: 'program', title: 'Program Afirmasi Daerah', heightPercent: 14, purpose: 'Beasiswa OAP dan distribusi guru ke wilayah perintis', visualType: 'program_feature_cards', compositionNote: 'Feature cards with beneficiary numbers and photos' },
+      { zoneId: 'impact', title: 'Dampak Peningkatan IPM', heightPercent: 12, purpose: 'Kontribusi terhadap Indeks Pembangunan Manusia Mimika', visualType: 'progress_indicators', compositionNote: 'Circular or bar progress indicators with year-over-year comparison' },
+    ],
+  },
+
+  [InfographicArchetype.REGIONAL_ECONOMY]: {
+    archetype: InfographicArchetype.REGIONAL_ECONOMY,
+    keywords: ['pdrb', 'ekonomi', 'pad', 'apbd', 'anggaran', 'inflasi', 'investasi', 'fiskal', 'pertumbuhan', 'umkm'],
+    primaryColor: '#0f172a',
+    secondaryColor: '#1e3a8a',
+    accentColor: '#10b981',
+    density: 'data_dense',
+    visualGrammar: {
+      preferredVisuals: ['pdrb_trend_line', 'sector_horizontal_bar', 'growth_comparison', 'economic_structure_diagram', 'investment_callout', 'employment_indicator'],
+      avoidVisuals: ['generic_pie_chart_without_denominator', 'decorative_illustrations', '3d_floating_objects', 'stock_financial_imagery'],
+      heroStyle: 'economic_commercial_editorial',
+      mapPriority: 'medium',
+      chartPriority: 'high',
+      photographyPriority: 'low',
+    },
+    visualZones: [
+      { zoneId: 'hero', title: 'Hero Ekonomi Daerah', heightPercent: 18, purpose: 'Laporan kinerja makroekonomi & fiskal daerah', visualType: 'gradient_hero_with_title', compositionNote: 'Dark gradient hero with large economic headline and key figure callout' },
+      { zoneId: 'key_indicators', title: 'Angka Kunci Ekonomi', heightPercent: 14, purpose: 'Pertumbuhan PDRB (%), realisasi PAD (Rp), laju inflasi (%)', visualType: 'metric_strip', compositionNote: '5-6 financial metric blocks with green/red trend indicators' },
+      { zoneId: 'data_story', title: 'Pertumbuhan Tahunan', heightPercent: 16, purpose: 'Laju pertumbuhan ekonomi non-tambang vs total PDRB', visualType: 'multi_series_line_chart', compositionNote: 'Dual-line chart comparing mining vs non-mining growth trajectories' },
+      { zoneId: 'geography', title: 'Dekomposisi Sektoral', heightPercent: 16, purpose: 'Kontribusi pertambangan, pertanian, perdagangan, dan jasa', visualType: 'horizontal_stacked_bar', compositionNote: 'Horizontal stacked bar chart showing sector contributions' },
+      { zoneId: 'program', title: 'Realisasi Investasi & UMKM', heightPercent: 14, purpose: 'Serapan modal dan penciptaan lapangan kerja lokal', visualType: 'data_table_with_callouts', compositionNote: 'Compact data table with highlighted key investments' },
+      { zoneId: 'impact', title: 'Rekomendasi Kebijakan', heightPercent: 14, purpose: 'Diversifikasi pendapatan daerah masa depan', visualType: 'numbered_action_steps', compositionNote: 'Numbered strategic recommendations with priority labels' },
+    ],
+  },
+
+  [InfographicArchetype.CLIMATE_ENVIRONMENT]: {
+    archetype: InfographicArchetype.CLIMATE_ENVIRONMENT,
+    keywords: ['el nino', 'iklim', 'cuaca', 'hujan', 'kekeringan', 'lingkungan', 'hutan', 'banjir', 'bencana', 'bpbd', 'bmkg'],
+    primaryColor: '#0c4a6e',
+    secondaryColor: '#0284c7',
+    accentColor: '#ea580c',
+    density: 'dense',
+    visualGrammar: {
+      preferredVisuals: ['climate_trend_chart', 'rainfall_comparison_bar', 'vulnerability_map', 'impact_icons_grid', 'environmental_field_photography', 'response_timeline'],
+      avoidVisuals: ['generic_pie_chart', 'excessive_metric_cards_only', 'decorative_3d_objects', 'cartoon_weather_icons'],
+      heroStyle: 'documentary_environmental_atmospheric',
+      mapPriority: 'high',
+      chartPriority: 'high',
+      photographyPriority: 'high',
+    },
+    visualZones: [
+      { zoneId: 'hero', title: 'Hero Iklim & Kebencanaan', heightPercent: 20, purpose: 'Kesiapsiagaan dampak anomali iklim & cuaca ekstrem', visualType: 'full_width_photo_overlay', compositionNote: 'Atmospheric documentary photo of Mimika landscape affected by climate — drought, low rivers, or storm conditions' },
+      { zoneId: 'key_indicators', title: 'Parameter Iklim Ekstrem', heightPercent: 12, purpose: 'Anomali suhu rata-rata, hari tanpa hujan (HTH), indeks curah hujan', visualType: 'metric_strip', compositionNote: 'Orange/red alert-colored metric blocks with warning indicators' },
+      { zoneId: 'data_story', title: 'Tren Curah Hujan', heightPercent: 16, purpose: 'Fluktuasi bulanan baseline vs kondisi riil El Niño', visualType: 'comparison_bar_chart', compositionNote: 'Side-by-side bar chart: Normal rainfall vs El Niño rainfall by month, with insight statement' },
+      { zoneId: 'geography', title: 'Peta Wilayah Kerentanan', heightPercent: 18, purpose: 'Distrik pesisir dan dataran tinggi rawan pangan/air', visualType: 'vulnerability_zone_map', compositionNote: 'Large thematic map with red/orange/yellow vulnerability zones, district labels, and affected-area callouts' },
+      { zoneId: 'program', title: 'Dampak Riil Lapangan', heightPercent: 14, purpose: 'Ketahanan pangan lokal (sagu/umbi), pasokan air bersih, dan distribusi logistik', visualType: 'impact_grid_with_photos', compositionNote: 'Grid of impact categories with small field photos and verified statistics' },
+      { zoneId: 'impact', title: 'Protokol Respons & Mitigasi', heightPercent: 12, purpose: 'Langkah tanggap darurat Pemda dan penyaluran logistik', visualType: 'response_timeline', compositionNote: 'Horizontal timeline: MONITORING → MITIGASI → INTERVENSI → PEMULIHAN' },
+    ],
+  },
+
+  [InfographicArchetype.GENERAL_GOVERNANCE]: {
+    archetype: InfographicArchetype.GENERAL_GOVERNANCE,
+    keywords: [],
+    primaryColor: '#0f172a',
+    secondaryColor: '#0284c7',
+    accentColor: '#f59e0b',
+    density: 'dense',
+    visualGrammar: {
+      preferredVisuals: ['governance_editorial_photo', 'performance_stat_cards', 'target_vs_actual_bar', 'district_coverage_map', 'initiative_cards', 'strategic_roadmap'],
+      avoidVisuals: ['generic_pie_chart', '3d_floating_objects', 'decorative_illustrations', 'corporate_stock_imagery'],
+      heroStyle: 'editorial_governance_architectural',
+      mapPriority: 'medium',
+      chartPriority: 'high',
+      photographyPriority: 'medium',
+    },
+    visualZones: [
+      { zoneId: 'hero', title: 'Hero Kebijakan Daerah', heightPercent: 20, purpose: 'Fokus isu kebijakan dan pembaruan tata kelola', visualType: 'full_width_photo_overlay', compositionNote: 'Editorial photography of government activities or development outcomes' },
+      { zoneId: 'key_indicators', title: 'Capaian Kinerja Pokok', heightPercent: 12, purpose: 'Indikator keberhasilan regulasi dan kepatuhan', visualType: 'metric_strip', compositionNote: '4-5 governance performance metrics with status indicators' },
+      { zoneId: 'data_story', title: 'Target vs Capaian', heightPercent: 16, purpose: 'Evaluasi kesenjangan performa antar-unit kerja', visualType: 'comparison_bar_chart', compositionNote: 'Horizontal bar chart comparing target vs actual per OPD or program' },
+      { zoneId: 'geography', title: 'Konteks Wilayah Implementasi', heightPercent: 18, purpose: 'Sebaran cakupan kebijakan di tingkat distrik/kampung', visualType: 'coverage_map', compositionNote: 'District map showing policy implementation coverage' },
+      { zoneId: 'program', title: 'Inisiatif Pembaruan', heightPercent: 14, purpose: 'Penyederhanaan birokrasi dan transformasi digital', visualType: 'initiative_feature_cards', compositionNote: 'Feature cards with initiative descriptions and progress indicators' },
+      { zoneId: 'impact', title: 'Arah Kebijakan Strategis', heightPercent: 12, purpose: 'Rencana aksi akselerasi pembangunan Mimika', visualType: 'strategic_roadmap', compositionNote: 'Numbered strategic steps with priority labels and PIC assignments' },
+    ],
+  },
+};
+
+export function resolveCanvasComposition(aspectRatio: string): string {
+  switch (aspectRatio) {
+    case '1:1':
+      return CANVAS_COMPOSITION_1x1;
+    case '16:9':
+      return CANVAS_COMPOSITION_16x9;
+    case '3:4':
+      return CANVAS_COMPOSITION_3x4;
+    case '4:3':
+      return CANVAS_COMPOSITION_4x3;
+    case '9:16':
+    default:
+      return CANVAS_COMPOSITION_9x16;
+  }
+}
+
+export function resolveTopicInformationArchitecture(topic: string): {
+  archetype: ArchetypeDefinition;
+  formattedZones: string;
+  visualGrammarPrompt: string;
+} {
+  const cleanTopic = topic.toLowerCase();
+  let selected = ARCHETYPE_REGISTRY[InfographicArchetype.GENERAL_GOVERNANCE];
+
+  for (const key of Object.keys(ARCHETYPE_REGISTRY) as InfographicArchetype[]) {
+    const def = ARCHETYPE_REGISTRY[key];
+    if (def.keywords.some((kw) => cleanTopic.includes(kw))) {
+      selected = def;
+      break;
+    }
+  }
+
+  const formattedZones = selected.visualZones
+    .map(
+      (z) =>
+        `ZONE ${z.zoneId.toUpperCase()} (~${z.heightPercent}% of canvas) — ${z.title}:
+  * Purpose: ${z.purpose}
+  * Visual Type: ${z.visualType}
+  * Composition: ${z.compositionNote}`,
+    )
+    .join('\n\n');
+
+  const vg = selected.visualGrammar;
+  const visualGrammarPrompt = `VISUAL GRAMMAR FOR ${selected.archetype}:
+- Preferred Visual Elements: ${vg.preferredVisuals.join(', ')}
+- AVOID These Visuals: ${vg.avoidVisuals.join(', ')}
+- Hero Style: ${vg.heroStyle}
+- Map Priority: ${vg.mapPriority} | Chart Priority: ${vg.chartPriority} | Photography Priority: ${vg.photographyPriority}
+- Visual Density Target: ${selected.density.toUpperCase()}`;
+
+  return {
+    archetype: selected,
+    formattedZones,
+    visualGrammarPrompt,
+  };
+}
+
+
+======================================================================
+--- FILE: brida_be\src\modules\infographic\services\art-director.service.ts ---
+======================================================================
+import { Injectable, Logger } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
+import { PrismaService } from '../../../common/prisma/prisma.service';
+import { VendorLlmAdapter } from '../../ai-agent/providers/vendor-llm.adapter';
+import { DocumentRepository } from '../../document-ingestion/repositories/document.repository';
+import {
+  ART_DIRECTOR_OUTPUT_SCHEMA,
+  ArtDirectorOutputDto,
+} from '../schemas/art-director-output.schema';
+import { PosterAspectRatio } from '../interfaces/image-generator.interface';
+import {
+  MASTER_DESIGN_SYSTEM,
+  resolveTopicInformationArchitecture,
+  resolveCanvasComposition,
+  ArchetypeDefinition,
+  SAFE_AREA_CONFIG,
+} from '../constants/infographic-design-system.constant';
+
+function getSafeAreaForAspectRatio(aspectRatio: string) {
+  const key = aspectRatio as keyof typeof SAFE_AREA_CONFIG;
+  return SAFE_AREA_CONFIG[key] ?? SAFE_AREA_CONFIG['9:16'];
+}
+
+export interface InitialPromptCraftOptions {
+  topic: string;
+  documentId?: string;
+  aspectRatio: PosterAspectRatio;
+  customInstructions?: string;
+}
+
+export interface PromptEvolutionOptions {
+  previousPrompt: string;
+  userRevisionQuery: string;
+  topic: string;
+  aspectRatio: PosterAspectRatio;
+}
+
+@Injectable()
+export class ArtDirectorPromptArchitect {
+  private readonly logger = new Logger(ArtDirectorPromptArchitect.name);
+
+  constructor(
+    private readonly llmAdapter: VendorLlmAdapter,
+    private readonly documentRepository: DocumentRepository,
+    private readonly prisma: PrismaService,
+    private readonly configService: ConfigService,
+  ) {}
+
+  public resolveTopicArchetype(topic: string): {
+    archetype: ArchetypeDefinition;
+    formattedZones: string;
+    visualGrammarPrompt: string;
+  } {
+    return resolveTopicInformationArchitecture(topic);
+  }
+
+  async searchDatabaseDocuments(topic: string, priorityDocId?: string): Promise<string> {
+    try {
+      const stopwords = new Set([
+        'buatkan', 'poster', 'infografis', 'resmi', 'tahun', 'di', 'dan', 'yang', 'untuk',
+        'dari', 'pada', 'ke', 'dengan', 'tentang', 'adalah', 'sebagai', 'kabupaten', 'daerah',
+        'tolong', 'bikin', 'gambar', 'visual', 'desain'
+      ]);
+
+      const keywords = topic
+        .toLowerCase()
+        .replace(/[^a-zA-Z0-9\s]/g, ' ')
+        .split(/\s+/)
+        .filter((w) => w.length > 2 && !stopwords.has(w))
+        .slice(0, 6);
+
+      if (keywords.length === 0) {
+        keywords.push('mimika', 'stunting', 'data');
+      }
+
+      this.logger.log(`[DB Grounding] Menelusuri seluruh DB dengan kata kunci: ${keywords.join(', ')}`);
+
+      const chunks = await this.prisma.documentChunk.findMany({
+        where: {
+          OR: keywords.map((kw) => ({
+            rawText: { contains: kw, mode: 'insensitive' },
+          })),
+        },
+        take: 12,
+        include: {
+          document: {
+            select: { id: true, title: true },
+          },
+        },
+      });
+
+      if (chunks.length === 0) {
+        const fallbackChunks = await this.prisma.documentChunk.findMany({
+          take: 4,
+          include: {
+            document: {
+              select: { id: true, title: true },
+            },
+          },
+          orderBy: { createdAt: 'desc' },
+        });
+
+        if (fallbackChunks.length > 0) {
+          return fallbackChunks
+            .map(
+              (c: any) =>
+                `[ARSIP DOKUMEN BRIDA: ${c.document?.title || 'Dokumen Riset Daerah'}]\n${c.rawText.substring(0, 600)}`,
+            )
+            .join('\n---\n');
+        }
+        return '';
+      }
+
+      const scored = chunks.map((chunk: any) => {
+        let score = 0;
+        if (priorityDocId && chunk.documentId === priorityDocId) {
+          score += 15;
+        }
+        const textLower = (chunk.rawText || '').toLowerCase();
+        keywords.forEach((kw) => {
+          if (textLower.includes(kw)) score += 3;
+        });
+        return { chunk, score };
+      });
+
+      scored.sort((a: any, b: any) => b.score - a.score);
+      const topChunks = scored.slice(0, 5).map((s: any) => s.chunk);
+
+      this.logger.log(
+        `[DB Grounding Sukses] Berhasil mengekstrak ${topChunks.length} data chunk dari seluruh database BRIDA.`,
+      );
+
+      return topChunks
+        .map(
+          (c: any) =>
+            `[ARSIP RESMI BRIDA: ${c.document?.title || 'Laporan Riset Mimika'}]\n${c.rawText.substring(0, 700)}`,
+        )
+        .join('\n---\n');
+    } catch (err: any) {
+      this.logger.warn(`[DB Grounding Warning] Gagal mengekstrak data database: ${err.message}`);
+      return '';
+    }
+  }
+
+  async searchInternetWeb(topic: string): Promise<string> {
+    const apiKey = this.configService.get<string>('SERPER_API_KEY');
+    if (!apiKey || apiKey.trim().length === 0) {
+      this.logger.warn('[Web Grounding] SERPER_API_KEY tidak dikonfigurasi.');
+      return '';
+    }
+
+    try {
+      const cleanTopic = topic.replace(/(buatkan|poster|infografis|resmi|tolong|bikin)/gi, '').trim();
+      const query = `${cleanTopic} Kabupaten Mimika BPS data statistik`;
+      this.logger.log(`[Web Grounding] Menelusuri internet live Serper: "${query}"`);
+
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 6000);
+
+      const response = await fetch('https://google.serper.dev/search', {
+        method: 'POST',
+        headers: {
+          'X-API-KEY': apiKey,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          q: query,
+          num: 5,
+          gl: 'id',
+          hl: 'id',
+        }),
+        signal: controller.signal,
+      });
+
+      clearTimeout(timeoutId);
+
+      if (!response.ok) {
+        this.logger.warn(`[Web Grounding HTTP Error]: ${response.status} ${response.statusText}`);
+        return '';
+      }
+
+      const searchJson = await response.json();
+      const organic = searchJson.organic || [];
+
+      if (organic.length === 0) {
+        return '';
+      }
+
+      this.logger.log(`[Web Grounding Sukses] Berhasil mendapatkan ${organic.length} rujukan internet.`);
+
+      return organic
+        .slice(0, 4)
+        .map(
+          (item: any, idx: number) =>
+            `[RUJUKAN WEB #${idx + 1}: ${item.title || 'Informasi Publik'}]\n${item.snippet || ''}\nURL: ${item.link || '-'}`,
+        )
+        .join('\n\n');
+    } catch (err: any) {
+      this.logger.warn(`[Web Grounding Warning] Penelusuran web dilewati: ${err.message}`);
+      return '';
+    }
+  }
+
+  async craftInitialPosterPrompt(
+    options: InitialPromptCraftOptions,
+  ): Promise<ArtDirectorOutputDto> {
+    this.logger.log(
+      `[Art Director] Merumuskan master brief infografis: "${options.topic.substring(0, 50)}..."`,
+    );
+
+    const [databaseContext, internetContext] = await Promise.all([
+      this.searchDatabaseDocuments(options.topic, options.documentId),
+      this.searchInternetWeb(options.topic),
+    ]);
+
+    const { archetype, formattedZones, visualGrammarPrompt } = this.resolveTopicArchetype(options.topic);
+    const canvasComposition = resolveCanvasComposition(options.aspectRatio);
+
+    const safeArea = getSafeAreaForAspectRatio(options.aspectRatio);
+    const headerPct = safeArea.headerBarPercent;
+    const footerPct = safeArea.footerBarPercent;
+    const topReserved = safeArea.topReservedPercent;
+    const bottomReserved = safeArea.bottomReservedPercent;
+
+    const systemPrompt = `Anda adalah Art Director & Information Designer Senior BRIDA Kabupaten Mimika.
+Tugas Anda: Merancang konsep INFOGRAFIS PEMERINTAH BERMUTU TINGGI yang PADAT INFORMASI (Data-Dense Government Policy Infographic) menggunakan Master Design System Kabupaten Mimika, lalu merangkai prompt visual dalam bahasa Inggris untuk DALL-E 3 / Modern Image AI.
+
+PENTING: Ini adalah INFOGRAFIS DATA PEMERINTAH, BUKAN poster minimalis. Prioritaskan kepadatan informasi dan narasi visual, bukan minimalisme.
+
+${MASTER_DESIGN_SYSTEM}
+
+${canvasComposition}
+
+${visualGrammarPrompt}
+
+TOPIC-SPECIFIC VISUAL ZONES (${archetype.archetype}):
+Target Warna: Dominan ${archetype.primaryColor}, Sekunder ${archetype.secondaryColor}, Aksen ${archetype.accentColor}.
+Target Density: ${archetype.density.toUpperCase()}.
+
+${formattedZones}
+
+ATURAN UTAMA EKSEKUSI LANGSUNG (ZERO-CLARIFICATION DIRECTIVE):
+1. DILARANG mengajukan pertanyaan balik atau meminta klarifikasi pada pengguna! Langsung tentukan konsep terbaik dan eksekusi.
+2. Langsung berikan penjelasan singkat (maksimal 2-3 kalimat pada 'aiCommentary') mengenai arsitektur informasi, zone composition, dan angka penting yang disintesis.
+3. Seluruh judul, label diagram, dan teks pada visual WAJIB 100% DALAM BAHASA INDONESIA RESMI.
+4. DILARANG membuat atau mencantumkan logo/lambang/watermark apapun.
+
+SUMBER DATA ACUAN GANDA (DUAL-SOURCE GROUNDING):
+Anda dibekali data riil dari 2 sumber:
+1. ARSIP SELURUH DATABASE BRIDA KABUPATEN MIMIKA
+2. DATA RIIL INTERNET / BPS / BERITA PEMDA TERKINI
+
+DATA PROVENANCE ENFORCEMENT:
+- Setiap angka yang Anda tempatkan pada gambar WAJIB terdaftar di array 'extractedKeyFacts' beserta sumber dan tingkat kepercayaan ('grounded' atau 'estimated').
+- Tandai 'grounded' jika angka diambil langsung dari data yang disediakan.
+- Tandai 'estimated' jika merupakan estimasi wajar karena data eksak tidak tersedia.
+- DILARANG membuat pie/donut chart kecuali data yang disajikan secara eksplisit merepresentasikan komponen dari satu keseluruhan yang berjumlah 100%.
+- DILARANG mengubah persentase-persentase yang tidak saling berhubungan menjadi satu pie chart.
+
+ATURAN STRUKTURAL REKAYASA PROMPT VISUAL ("imagePrompt"):
+1. Susun instruksi visual bahasa Inggris yang sangat presisi untuk model generasi gambar.
+2. Terapkan secara eksplisit 7 VISUAL ZONES sesuai arsitektur di atas, lengkap dengan alokasi persentase tinggi kanvas.
+3. ZONE HERO (${topReserved}%-${topReserved + 20}%) harus berupa foto/visual FULL-WIDTH edge-to-edge. DILARANG menyisakan area putih kosong di bawah area header. Overlay judul dan subjudul di atas hero menggunakan kontras kuat.
+4. PETA/MAP harus berukuran besar dan dominan (~18% kanvas), BUKAN peta kecil di dalam kartu. Sertakan label distrik, legenda, dan 2-4 callout anotasi data.
+5. Tetapkan palet warna tegas: Dominan ${archetype.primaryColor}, Sekunder ${archetype.secondaryColor}, Aksen ${archetype.accentColor} di atas latar belakang putih bersih (#FFFFFF).
+6. SELURUH TEKS, JUDUL, DAN LABEL PADA GAMBAR WAJIB 100% DALAM BAHASA INDONESIA RESMI.
+7. DILARANG memunculkan logo, lambang, cap, atau watermark apapun.
+8. VARIASI VISUAL: Jangan render setiap zone sebagai rectangular card. Campurkan full-width photography, metric strips, charts, maps, timelines, diagrams, icons, callout numbers, dan photographic panels.
+9. WAJIB: Sisakan area KOSONG PUTIH BERSIH selebar ${topReserved}% di bagian PALING ATAS kanvas (0% hingga ${topReserved}% dari atas) — TANPA gambar, grafik, teks, maupun dekorasi apapun. Area ini adalah tempat bar header resmi instansi (tinggi ${headerPct}% dari kanvas + ruang aman).
+10. WAJIB: Sisakan area KOSONG PUTIH BERSIH selebar ${bottomReserved}% di bagian PALING BAWAH kanvas (${100 - bottomReserved}% hingga 100% dari atas) — TANPA gambar, grafik, teks, maupun dekorasi apapun. Area ini adalah tempat bar footer resmi instansi (tinggi ${footerPct}% dari kanvas + ruang aman).
+11. Semua konten infografis (foto, chart, peta, teks) HANYA boleh menempati zona tengah: dari ${topReserved}% hingga ${100 - bottomReserved}% tinggi kanvas.
+12. Tutup prompt DALL-E dengan: "Ultra-sharp 8k resolution, dense editorial grid layout, professional vector typography strictly in Indonesian language, no logos, no watermarks, high information density, official government report style, STRICT ${topReserved}% blank white top margin (0-${topReserved}% of canvas height) reserved for official letterhead overlay, STRICT ${bottomReserved}% blank white bottom margin (${100 - bottomReserved}-100% of canvas height) reserved for official footer overlay, all infographic content strictly between ${topReserved}% and ${100 - bottomReserved}% of canvas height, balanced visual rhythm."`;
+
+    const userMessage = `[TOPIK INFOGRAFIS]: ${options.topic}
+
+[SUMBER DATA 1 - ARSIP SELURUH DATABASE BRIDA MIMIKA]:
+${databaseContext || 'Arsip dokumen BRIDA belum memuat bab khusus topik ini, gunakan data rujukan resmi umum.'}
+
+[SUMBER DATA 2 - PENELUSURAN LIVE INTERNET (BPS / PEMDA / BERITA RESMI)]:
+${internetContext || 'Penelusuran web tidak menemukan artikel spesifik, gunakan estimasi indikator baku.'}
+
+[ASPEK RASIO TARGET]: ${options.aspectRatio}
+${options.customInstructions ? `[INSTRUKSI KHUSUS PENGGUNA]: ${options.customInstructions}` : ''}
+
+Rancang konsep infografis pemerintah PADAT INFORMASI yang memenuhi seluruh kanvas. Integrasikan data riil di atas. Pastikan semua teks dalam Bahasa Indonesia resmi. Setiap angka yang muncul pada gambar wajib terdaftar di extractedKeyFacts beserta sumbernya. Hasilkan output JSON sesuai skema.`;
+
+    const result = await this.llmAdapter.generateStructuredAnalysis<ArtDirectorOutputDto>(
+      [
+        { role: 'system', content: systemPrompt },
+        { role: 'user', content: userMessage },
+      ],
+      ART_DIRECTOR_OUTPUT_SCHEMA,
+      0.3,
+    );
+
+    result.imagePrompt = this.enforceCanvasMargins(result.imagePrompt, options.aspectRatio);
+
+    return result;
+  }
+
+  async evolvePosterPrompt(options: PromptEvolutionOptions): Promise<ArtDirectorOutputDto> {
+    this.logger.log(
+      `[Prompt Evolution] Menganalisis permintaan revisi: "${options.userRevisionQuery}"`,
+    );
+
+    const [databaseContext, internetContext] = await Promise.all([
+      this.searchDatabaseDocuments(`${options.topic} ${options.userRevisionQuery}`),
+      this.searchInternetWeb(`${options.topic} ${options.userRevisionQuery}`),
+    ]);
+
+    const { archetype, visualGrammarPrompt } = this.resolveTopicArchetype(`${options.topic} ${options.userRevisionQuery}`);
+    const canvasComposition = resolveCanvasComposition(options.aspectRatio);
+
+    const safeArea = (options.aspectRatio && options.aspectRatio in SAFE_AREA_CONFIG)
+      ? SAFE_AREA_CONFIG[options.aspectRatio as keyof typeof SAFE_AREA_CONFIG]
+      : SAFE_AREA_CONFIG['9:16'];
+    const headerPct = safeArea.headerBarPercent;
+    const footerPct = safeArea.footerBarPercent;
+
+    const systemPrompt = `Anda adalah Art Director AI BRIDA Kabupaten Mimika yang sedang berdialog dengan pengguna untuk merevisi infografis.
+
+${MASTER_DESIGN_SYSTEM}
+
+${canvasComposition}
+
+${visualGrammarPrompt}
+
+Tugas Anda:
+1. Pahami instruksi revisi pengguna (menambah chart, mengganti warna, mengubah angka, menambah data sektoral, memperbesar peta, dsb).
+2. Perbarui prompt visual DALL-E 3 ("imagePrompt") sebelumnya dengan menerapkan perubahan yang diminta secara konsisten tanpa merusak Canvas Composition dan Visual Grammar induk.
+3. Pertahankan CANVAS OCCUPANCY 85-92% (antara margin atas dan bawah). Jangan membuat poster menjadi lebih kosong di area tengah.
+4. Pertahankan palet warna tematik (Dominan: ${archetype.primaryColor}, Sekunder: ${archetype.secondaryColor}, Aksen: ${archetype.accentColor}) di atas latar belakang bersih (#FFFFFF).
+5. Seluruh teks pada gambar WAJIB 100% BAHASA INDONESIA RESMI.
+6. DILARANG memunculkan logo, lambang, atau watermark apapun.
+7. Setiap angka baru yang ditambahkan WAJIB terdaftar di extractedKeyFacts beserta sumber dan confidence.
+8. WAJIB PERTAHANKAN: Area KOSONG PUTIH BERSIH selebar ${headerPct}% di bagian PALING ATAS kanvas (0%-${headerPct}%) tanpa gambar/teks/dekorasi apapun untuk logo dan nama instansi resmi.
+9. WAJIB PERTAHANKAN: Area KOSONG PUTIH BERSIH selebar ${footerPct}% di bagian PALING BAWAH kanvas (${100 - footerPct}%-100%) tanpa gambar/teks/dekorasi apapun untuk informasi alamat resmi.
+10. Berikan komentar dialog ("aiCommentary") yang menjelaskan revisi apa yang diterapkan. DILARANG bertanya balik.`;
+
+    const userMessage = `[PROMPT DALL-E SEBELUMNYA]:
+${options.previousPrompt}
+
+[TOPIK UTAMA]:
+${options.topic}
+
+[DATA KONTEKS DATABASE & INTERNET TERBARU]:
+${databaseContext.substring(0, 1000)}
+${internetContext.substring(0, 1000)}
+
+[INSTRUKSI REVISI DARI PENGGUNA]:
+"${options.userRevisionQuery}"
+
+[ASPEK RASIO]: ${options.aspectRatio}
+
+Perbarui konsep visual dan hasilkan prompt terevolusi dalam skema JSON. Pastikan seluruh teks dalam Bahasa Indonesia dan canvas occupancy tetap 92-97%.`;
+
+    const result = await this.llmAdapter.generateStructuredAnalysis<ArtDirectorOutputDto>(
+      [
+        { role: 'system', content: systemPrompt },
+        { role: 'user', content: userMessage },
+      ],
+      ART_DIRECTOR_OUTPUT_SCHEMA,
+      0.3,
+    );
+
+    result.imagePrompt = this.enforceCanvasMargins(result.imagePrompt, options.aspectRatio);
+
+    return result;
+  }
+
+  private enforceCanvasMargins(imagePrompt: string, aspectRatio?: string): string {
+    const safeArea = getSafeAreaForAspectRatio(aspectRatio || '9:16');
+    const topPct = safeArea.topReservedPercent;
+    const bottomPct = safeArea.bottomReservedPercent;
+    const headerBarPct = safeArea.headerBarPercent;
+    const footerBarPct = safeArea.footerBarPercent;
+
+    const prefix = `[MANDATORY CANVAS MARGIN RULES - STRICT PRIORITY 1]:
+1. TOP MARGIN: The top ${topPct}% of the image canvas (from y=0% down to y=${topPct}%) MUST BE 100% COMPLETELY BLANK, SOLID PURE UNTEXTURED WHITE (#FFFFFF) with ABSOLUTELY ZERO text, zero titles, zero banners, zero photography, and zero graphics. This clean white space is strictly reserved for official government letterhead overlay (height ${headerBarPct}%).
+2. BOTTOM MARGIN: The bottom ${bottomPct}% of the canvas (from y=${100 - bottomPct}% to y=100%) MUST BE 100% COMPLETELY BLANK, SOLID PURE UNTEXTURED WHITE (#FFFFFF) with zero text, zero sources, and zero graphics (reserved for official footer overlay).
+3. CONTENT BOUNDARIES: ALL infographic elements, hero photography, main titles, charts, maps, and illustrations MUST start strictly below y=${topPct}% and end strictly above y=${100 - bottomPct}%.
+
+`;
+
+    const suffix = `
+
+[FINAL VERIFICATION]: Double check that the top ${topPct}% of the canvas is completely untouched, solid white void with zero visual elements, and the bottom ${bottomPct}% is solid white void. All graphics and text are strictly contained between y=${topPct}% and y=${100 - bottomPct}%.`;
+
+    let cleaned = imagePrompt
+      .replace(/ZONE HERO \(0-20%\)/gi, `ZONE HERO (${topPct}%-${topPct + 20}%)`)
+      .replace(/from the very top/gi, `starting below the top ${topPct}% white margin`)
+      .replace(/at the very top/gi, `below the top ${topPct}% white margin`)
+      .replace(/at the top edge/gi, `below the top ${topPct}% white margin`);
+
+    return `${prefix}${cleaned}${suffix}`;
+  }
+}
+
+
+
+################################################################################
+# BAGIAN: 3. CONTROLLER, DTO & STORAGE PERSISTENCE (REST API & ASSET LIFECYCLE) (6 Berkas)
+################################################################################
+
+
+======================================================================
+--- FILE: brida_be\src\modules\infographic\controllers\infographic-agent.controller.ts ---
+======================================================================
+import {
+  Controller,
+  Get,
+  Post,
+  Delete,
+  Body,
+  Param,
+  Query,
+  Req,
+  Res,
+  UseGuards,
+  HttpCode,
+  HttpStatus,
+  ParseUUIDPipe,
+  NotFoundException,
+} from '@nestjs/common';
+import { Response } from 'express';
+import { join, resolve } from 'path';
+import { existsSync } from 'fs';
+import { JwtAuthGuard } from '../../auth/guards/jwt-auth.guard';
+import { InfographicAgentService } from '../services/infographic-agent.service';
+import { PosterCompositionService } from '../services/poster-composition.service';
+import {
+  CreateInfographicSessionDto,
+  ChatInfographicAgentDto,
+} from '../dtos/infographic-agent.dto';
+
+@Controller('infographic/agent')
+export class InfographicAgentController {
+  constructor(
+    private readonly agentService: InfographicAgentService,
+    private readonly compositionService: PosterCompositionService,
+  ) {}
+
+  @Post('session')
+  @UseGuards(JwtAuthGuard)
+  @HttpCode(HttpStatus.CREATED)
+  async createSession(@Req() req: any, @Body() dto: CreateInfographicSessionDto) {
+    const userId = req.user?.id;
+    const data = await this.agentService.createSession(dto, userId);
+    return {
+      success: true,
+      data,
+    };
+  }
+
+  @Post('chat')
+  @UseGuards(JwtAuthGuard)
+  @HttpCode(HttpStatus.OK)
+  async sendRevisionChat(@Req() req: any, @Body() dto: ChatInfographicAgentDto) {
+    const userId = req.user?.id;
+    const data = await this.agentService.handleChatTurn(dto, userId);
+    return {
+      success: true,
+      data,
+    };
+  }
+
+  @Get('sessions')
+  @UseGuards(JwtAuthGuard)
+  async getSessionsList(@Req() req: any) {
+    const userId = req.user?.id;
+    const data = await this.agentService.getUserSessions(userId);
+    return {
+      success: true,
+      data,
+    };
+  }
+
+  @Get('sessions/:id')
+  @UseGuards(JwtAuthGuard)
+  async getSessionDetail(
+    @Req() req: any,
+    @Param('id', new ParseUUIDPipe({ version: '4' })) id: string,
+  ) {
+    const userId = req.user?.id;
+    const data = await this.agentService.getSessionDetail(id, userId);
+    return {
+      success: true,
+      data,
+    };
+  }
+
+  @Get('posters/:id/download')
+  async downloadPoster(
+    @Param('id', new ParseUUIDPipe({ version: '4' })) id: string,
+    @Query('branded') brandedParam: string,
+    @Res() res: Response,
+  ) {
+    const poster = await this.agentService.getPosterById(id);
+    if (!poster) {
+      throw new NotFoundException('Poster dengan ID tersebut tidak ditemukan.');
+    }
+
+    const cleanTitle = (poster.session?.title || 'Poster')
+      .replace(/[^a-zA-Z0-9\s]/g, '')
+      .trim()
+      .replace(/\s+/g, '_')
+      .substring(0, 50);
+
+    const wantsBranded = brandedParam === 'true';
+    const hasBranding = !!(poster.branding?.headerEnabled || poster.branding?.footerEnabled);
+
+    let finalImageUrl: string;
+
+    if (wantsBranded && hasBranding) {
+
+      finalImageUrl = await this.compositionService.composePoster(id);
+    } else {
+      finalImageUrl = poster.imageUrl;
+    }
+
+    const suffix = wantsBranded && hasBranding ? '_Resmi' : '';
+    const filename = `Infografis_BRIDA_${cleanTitle}_v${poster.versionNumber}${suffix}.png`;
+
+    const relativePath = finalImageUrl.startsWith('/')
+      ? finalImageUrl.substring(1)
+      : finalImageUrl;
+    const fullPath = resolve(process.cwd(), relativePath);
+
+    if (!existsSync(fullPath)) {
+      throw new NotFoundException('Berkas fisik poster tidak ditemukan pada disk server.');
+    }
+
+    const safeAsciiFilename = filename.replace(/[^\x20-\x7E]/g, '_');
+    res.setHeader('Content-Type', 'image/png');
+    res.setHeader('Access-Control-Expose-Headers', 'Content-Disposition, Content-Type');
+    res.setHeader(
+      'Content-Disposition',
+      `attachment; filename="${safeAsciiFilename}"; filename*=UTF-8''${encodeURIComponent(filename)}`,
+    );
+    return res.download(fullPath, safeAsciiFilename);
+  }
+
+  @Delete('sessions/:id')
+  @UseGuards(JwtAuthGuard)
+  async deleteSession(
+    @Req() req: any,
+    @Param('id', new ParseUUIDPipe({ version: '4' })) id: string,
+  ) {
+    const userId = req.user?.id;
+    return this.agentService.deleteSession(id, userId);
+  }
+}
+
+
+======================================================================
+--- FILE: brida_be\src\modules\infographic\controllers\infographic-branding.controller.ts ---
+======================================================================
+import {
+  Controller,
+  Get,
+  Put,
+  Post,
+  Delete,
+  Body,
+  Param,
+  UseGuards,
+  UseInterceptors,
+  UsePipes,
+  ValidationPipe,
+  UploadedFile,
+  ParseUUIDPipe,
+  HttpCode,
+  HttpStatus,
+} from '@nestjs/common';
+import { FileInterceptor } from '@nestjs/platform-express';
+import { JwtAuthGuard } from '../../auth/guards/jwt-auth.guard';
+import { InfographicBrandingService } from '../services/infographic-branding.service';
+import { UpsertPosterBrandingDto } from '../dtos/poster-branding.dto';
+import { ImageSignatureValidationPipe } from '../pipes/image-signature-validation.pipe';
+
+@Controller('infographic/agent/posters/:id/branding')
+@UseGuards(JwtAuthGuard)
+export class InfographicBrandingController {
+  constructor(private readonly brandingService: InfographicBrandingService) {}
+
+  @Get()
+  async getBranding(
+    @Param('id', new ParseUUIDPipe({ version: '4' })) posterId: string,
+  ) {
+    const data = await this.brandingService.getBranding(posterId);
+    return {
+      success: true,
+      data,
+    };
+  }
+
+  @Put()
+  @HttpCode(HttpStatus.OK)
+  @UsePipes(new ValidationPipe({ whitelist: true, forbidNonWhitelisted: false, transform: true }))
+  async updateBranding(
+    @Param('id', new ParseUUIDPipe({ version: '4' })) posterId: string,
+    @Body() dto: UpsertPosterBrandingDto,
+  ) {
+    const data = await this.brandingService.upsertBranding(posterId, dto);
+    return {
+      success: true,
+      data,
+    };
+  }
+
+  @Post('logo')
+  @HttpCode(HttpStatus.CREATED)
+  @UseInterceptors(FileInterceptor('logo'))
+  async uploadLogo(
+    @Param('id', new ParseUUIDPipe({ version: '4' })) posterId: string,
+    @UploadedFile(new ImageSignatureValidationPipe()) file: Express.Multer.File,
+  ) {
+    const data = await this.brandingService.uploadLogo(posterId, file);
+    return {
+      success: true,
+      data,
+    };
+  }
+
+  @Delete('logo')
+  @HttpCode(HttpStatus.OK)
+  async deleteLogo(
+    @Param('id', new ParseUUIDPipe({ version: '4' })) posterId: string,
+  ) {
+    const data = await this.brandingService.deleteLogo(posterId);
+    return {
+      success: true,
+      data,
+    };
+  }
+}
+
+
+======================================================================
+--- FILE: brida_be\src\modules\infographic\dtos\poster-branding.dto.ts ---
+======================================================================
+import {
+  IsBoolean,
+  IsOptional,
+  IsString,
+  MaxLength,
+  ValidateNested,
+  IsObject,
+  IsIn,
+  IsNumber,
+} from 'class-validator';
+import { Type } from 'class-transformer';
+
+export class PosterLayoutConfigDto {
+  @IsOptional()
+  @IsNumber()
+  headerHeightPercent?: number;
+
+  @IsOptional()
+  @IsNumber()
+  footerHeightPercent?: number;
+
+  @IsOptional()
+  @IsString()
+  headerBgColor?: string;
+
+  @IsOptional()
+  @IsString()
+  headerTextColor?: string;
+
+  @IsOptional()
+  @IsString()
+  @IsIn(['left_with_logo', 'center'])
+  headerAlignment?: 'left_with_logo' | 'center';
+
+  @IsOptional()
+  @IsString()
+  footerBgColor?: string;
+
+  @IsOptional()
+  @IsString()
+  footerTextColor?: string;
+
+  @IsOptional()
+  @IsString()
+  @IsIn(['center', 'left', 'right'])
+  footerAlignment?: 'center' | 'left' | 'right';
+
+  @IsOptional()
+  @IsString()
+  @IsIn(['compact', 'normal', 'large'])
+  headerFontSize?: 'compact' | 'normal' | 'large';
+
+  @IsOptional()
+  @IsString()
+  @IsIn(['compact', 'normal', 'spacious'])
+  headerHeight?: 'compact' | 'normal' | 'spacious';
+
+  @IsOptional()
+  @IsString()
+  @IsIn(['compact', 'normal', 'large'])
+  footerFontSize?: 'compact' | 'normal' | 'large';
+
+  @IsOptional()
+  @IsString()
+  @IsIn(['left', 'right', 'center'])
+  logoPosition?: 'left' | 'right' | 'center';
+
+  @IsOptional()
+  @IsString()
+  @IsIn(['compact', 'normal', 'large'])
+  logoSize?: 'compact' | 'normal' | 'large';
+
+  @IsOptional()
+  @IsNumber()
+  watermarkOpacity?: number;
+
+  @IsOptional()
+  @IsBoolean()
+  showDate?: boolean;
+}
+
+export class UpsertPosterBrandingDto {
+  @IsOptional()
+  id?: string;
+
+  @IsOptional()
+  posterId?: string;
+
+  @IsOptional()
+  @IsBoolean()
+  headerEnabled?: boolean;
+
+  @IsOptional()
+  logoUrl?: string | null;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(160)
+  institution?: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(160)
+  subInstitution?: string;
+
+  @IsOptional()
+  @IsBoolean()
+  footerEnabled?: boolean;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(500)
+  footerText?: string;
+
+  @IsOptional()
+  @IsObject()
+  @ValidateNested()
+  @Type(() => PosterLayoutConfigDto)
+  layoutConfig?: PosterLayoutConfigDto;
+
+  @IsOptional()
+  composedUrl?: string | null;
+
+  @IsOptional()
+  brandingHash?: string | null;
+
+  @IsOptional()
+  createdAt?: any;
+
+  @IsOptional()
+  updatedAt?: any;
+
+  @IsOptional()
+  sessionId?: string;
+}
+
+
+======================================================================
+--- FILE: brida_be\src\modules\infographic\pipes\image-signature-validation.pipe.ts ---
+======================================================================
+import {
+  PipeTransform,
+  Injectable,
+  BadRequestException,
+  PayloadTooLargeException,
+  UnsupportedMediaTypeException,
+  Logger,
+} from '@nestjs/common';
+import 'multer';
+
+@Injectable()
+export class ImageSignatureValidationPipe implements PipeTransform {
+  private readonly logger = new Logger(ImageSignatureValidationPipe.name);
+
+  private readonly MAX_FILE_SIZE_BYTES = 2 * 1024 * 1024;
+
+  private readonly PNG_MAGIC = [0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a];
+
+  private readonly JPEG_MAGIC = [0xff, 0xd8, 0xff];
+
+  transform(file: Express.Multer.File): Express.Multer.File {
+    if (!file) {
+      throw new BadRequestException('Berkas logo wajib diunggah (multipart form-data file key: "logo").');
+    }
+
+    if (file.size > this.MAX_FILE_SIZE_BYTES) {
+      const sizeMb = (file.size / (1024 * 1024)).toFixed(2);
+      this.logger.warn(
+        `File logo '${file.originalname}' ditolak: Ukuran (${sizeMb} MB) melebihi batas maksimal 2 MB.`,
+      );
+      throw new PayloadTooLargeException(
+        `Ukuran berkas logo (${sizeMb} MB) melebihi batas maksimum 2 MB yang diizinkan.`,
+      );
+    }
+
+    const buffer = file.buffer;
+    if (!buffer || buffer.length === 0) {
+      throw new BadRequestException('Buffer berkas logo kosong atau tidak valid.');
+    }
+
+    const detectedType = this.detectImageType(buffer);
+
+    if (detectedType === 'UNKNOWN') {
+      this.logger.warn(
+        `File logo '${file.originalname}' (MIME dikirim: '${file.mimetype}') ditolak: Magic byte signature bukan PNG/JPEG.`,
+      );
+      throw new UnsupportedMediaTypeException(
+        `Format berkas logo '${file.originalname}' ditolak. Hanya format PNG dan JPEG/JPG resmi yang diizinkan sistem demi keamanan dokumen. Format SVG tidak diizinkan.`,
+      );
+    }
+
+    file.mimetype = detectedType === 'PNG' ? 'image/png' : 'image/jpeg';
+    return file;
+  }
+
+  private detectImageType(buffer: Buffer): 'PNG' | 'JPEG' | 'UNKNOWN' {
+    if (this.matchesMagic(buffer, this.PNG_MAGIC)) {
+      return 'PNG';
+    }
+
+    if (this.matchesMagic(buffer, this.JPEG_MAGIC)) {
+      return 'JPEG';
+    }
+
+    return 'UNKNOWN';
+  }
+
+  private matchesMagic(buffer: Buffer, magic: number[]): boolean {
+    if (buffer.length < magic.length) {
+      return false;
+    }
+    for (let i = 0; i < magic.length; i++) {
+      if (buffer[i] !== magic[i]) {
+        return false;
+      }
+    }
+    return true;
+  }
+}
+
+
+======================================================================
+--- FILE: brida_be\src\modules\infographic\services\infographic-branding.service.ts ---
+======================================================================
+import {
+  Injectable,
+  Logger,
+  NotFoundException,
+  InternalServerErrorException,
+} from '@nestjs/common';
+import { PrismaService } from '../../../common/prisma/prisma.service';
+import { PosterStorageService } from './poster-storage.service';
+import { UpsertPosterBrandingDto } from '../dtos/poster-branding.dto';
+
+@Injectable()
+export class InfographicBrandingService {
+  private readonly logger = new Logger(InfographicBrandingService.name);
+
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly posterStorage: PosterStorageService,
+  ) {}
+
+  async getBranding(posterId: string) {
+    const poster = await this.prisma.infographicPoster.findUnique({
+      where: { id: posterId },
+      include: { branding: true },
+    });
+
+    if (!poster) {
+      throw new NotFoundException(`Poster dengan ID '${posterId}' tidak ditemukan.`);
+    }
+
+    return (
+      poster.branding || {
+        posterId,
+        headerEnabled: false,
+        logoUrl: null,
+        institution: 'PEMERINTAH KABUPATEN MIMIKA',
+        subInstitution: 'Badan Riset dan Inovasi Daerah',
+        footerEnabled: false,
+        footerText: 'Sumber: Dokumen Resmi BRIDA Kabupaten Mimika',
+        layoutConfig: {
+          headerBgColor: '#FFFFFF',
+          headerTextColor: '#0F1E36',
+          headerAlignment: 'left_with_logo',
+          footerBgColor: '#0F1E36',
+          footerTextColor: '#F8FAFC',
+          footerAlignment: 'center',
+        },
+        composedUrl: null,
+        brandingHash: null,
+      }
+    );
+  }
+
+  async upsertBranding(posterId: string, dto: UpsertPosterBrandingDto) {
+    const poster = await this.prisma.infographicPoster.findUnique({
+      where: { id: posterId },
+      include: { branding: true },
+    });
+
+    if (!poster) {
+      throw new NotFoundException(`Poster dengan ID '${posterId}' tidak ditemukan.`);
+    }
+
+    const currentBranding = poster.branding;
+    const currentConfig = (currentBranding?.layoutConfig as Record<string, any>) || {};
+    const newConfig = {
+      ...currentConfig,
+      ...(dto.layoutConfig || {}),
+    };
+
+    if (currentBranding?.composedUrl) {
+      this.posterStorage.removePosterFile(currentBranding.composedUrl);
+    }
+
+    const updated = await this.prisma.infographicPosterBranding.upsert({
+      where: { posterId },
+      create: {
+        posterId,
+        headerEnabled: dto.headerEnabled ?? false,
+        institution: dto.institution ?? 'PEMERINTAH KABUPATEN MIMIKA',
+        subInstitution: dto.subInstitution ?? 'Badan Riset dan Inovasi Daerah',
+        footerEnabled: dto.footerEnabled ?? false,
+        footerText: dto.footerText ?? 'Sumber: Dokumen Resmi BRIDA Kabupaten Mimika',
+        layoutConfig: newConfig,
+        composedUrl: null,
+        brandingHash: null,
+      },
+      update: {
+        ...(dto.headerEnabled !== undefined ? { headerEnabled: dto.headerEnabled } : {}),
+        ...(dto.institution !== undefined ? { institution: dto.institution } : {}),
+        ...(dto.subInstitution !== undefined ? { subInstitution: dto.subInstitution } : {}),
+        ...(dto.footerEnabled !== undefined ? { footerEnabled: dto.footerEnabled } : {}),
+        ...(dto.footerText !== undefined ? { footerText: dto.footerText } : {}),
+        layoutConfig: newConfig,
+        composedUrl: null,
+        brandingHash: null,
+      },
+    });
+
+    this.logger.log(`[Branding Updated] Konfigurasi branding untuk poster '${posterId}' berhasil diperbarui.`);
+    return updated;
+  }
+
+  async uploadLogo(posterId: string, file: Express.Multer.File) {
+    const poster = await this.prisma.infographicPoster.findUnique({
+      where: { id: posterId },
+      include: { branding: true },
+    });
+
+    if (!poster) {
+      throw new NotFoundException(`Poster dengan ID '${posterId}' tidak ditemukan.`);
+    }
+
+    const ext = file.mimetype === 'image/jpeg' ? 'jpg' : 'png';
+    const newLogoUrl = this.posterStorage.saveBrandingLogoBuffer(file.buffer, posterId, ext);
+
+    if (poster.branding?.logoUrl) {
+      this.posterStorage.removeBrandingLogoFile(poster.branding.logoUrl);
+    }
+
+    if (poster.branding?.composedUrl) {
+      this.posterStorage.removePosterFile(poster.branding.composedUrl);
+    }
+
+    const updated = await this.prisma.infographicPosterBranding.upsert({
+      where: { posterId },
+      create: {
+        posterId,
+        headerEnabled: true,
+        logoUrl: newLogoUrl,
+        institution: 'PEMERINTAH KABUPATEN MIMIKA',
+        subInstitution: 'Badan Riset dan Inovasi Daerah',
+        composedUrl: null,
+        brandingHash: null,
+      },
+      update: {
+        headerEnabled: true,
+        logoUrl: newLogoUrl,
+        composedUrl: null,
+        brandingHash: null,
+      },
+    });
+
+    this.logger.log(`[Logo Uploaded] Logo poster '${posterId}' berhasil disimpan: ${newLogoUrl}`);
+    return updated;
+  }
+
+  async deleteLogo(posterId: string) {
+    const poster = await this.prisma.infographicPoster.findUnique({
+      where: { id: posterId },
+      include: { branding: true },
+    });
+
+    if (!poster) {
+      throw new NotFoundException(`Poster dengan ID '${posterId}' tidak ditemukan.`);
+    }
+
+    if (poster.branding?.logoUrl) {
+      this.posterStorage.removeBrandingLogoFile(poster.branding.logoUrl);
+    }
+    if (poster.branding?.composedUrl) {
+      this.posterStorage.removePosterFile(poster.branding.composedUrl);
+    }
+
+    const updated = await this.prisma.infographicPosterBranding.update({
+      where: { posterId },
+      data: {
+        logoUrl: null,
+        composedUrl: null,
+        brandingHash: null,
+      },
+    });
+
+    return updated;
+  }
+}
+
+
+======================================================================
+--- FILE: brida_be\src\modules\infographic\services\poster-storage.service.ts ---
+======================================================================
+import { Injectable, Logger, InternalServerErrorException } from '@nestjs/common';
+import { join } from 'path';
+import { existsSync, mkdirSync, writeFileSync, unlinkSync } from 'fs';
+import { v4 as uuidv4 } from 'uuid';
+
+@Injectable()
+export class PosterStorageService {
+  private readonly logger = new Logger(PosterStorageService.name);
+  private readonly targetDir = join(process.cwd(), 'uploads', 'media', 'posters');
+  private readonly brandingDir = join(process.cwd(), 'uploads', 'media', 'branding');
+
+  constructor() {
+    this.ensureStorageDirectories();
+  }
+
+  private ensureStorageDirectories(): void {
+    if (!existsSync(this.targetDir)) {
+      mkdirSync(this.targetDir, { recursive: true });
+      this.logger.log(`[Storage Init] Direktori poster lokal dibuat: ${this.targetDir}`);
+    }
+    if (!existsSync(this.brandingDir)) {
+      mkdirSync(this.brandingDir, { recursive: true });
+      this.logger.log(`[Storage Init] Direktori branding lokal dibuat: ${this.brandingDir}`);
+    }
+  }
+
+  savePosterBuffer(buffer: Buffer, sessionId: string, versionNumber: number): string {
+    try {
+      this.ensureStorageDirectories();
+      const uniqueId = uuidv4().substring(0, 8);
+      const filename = `poster_${sessionId}_v${versionNumber}_${uniqueId}.png`;
+      const absolutePath = join(this.targetDir, filename);
+
+      writeFileSync(absolutePath, buffer);
+      this.logger.log(`[Asset Persisted] File poster tersimpan: ${absolutePath}`);
+
+      return `/uploads/media/posters/${filename}`;
+    } catch (err: any) {
+      this.logger.error(`Gagal menyimpan file biner poster ke disk: ${err.message}`);
+      throw new InternalServerErrorException('Gagal melakukan persistensi berkas poster lokal.');
+    }
+  }
+
+  saveBrandingLogoBuffer(buffer: Buffer, posterId: string, extension: string = 'png'): string {
+    try {
+      this.ensureStorageDirectories();
+      const cleanExt = extension.replace('.', '').toLowerCase();
+      const uniqueId = uuidv4().substring(0, 8);
+      const filename = `logo_${posterId}_${uniqueId}.${cleanExt}`;
+      const absolutePath = join(this.brandingDir, filename);
+
+      writeFileSync(absolutePath, buffer);
+      this.logger.log(`[Logo Persisted] File logo tersimpan: ${absolutePath}`);
+
+      return `/uploads/media/branding/${filename}`;
+    } catch (err: any) {
+      this.logger.error(`Gagal menyimpan file biner logo ke disk: ${err.message}`);
+      throw new InternalServerErrorException('Gagal melakukan persistensi berkas logo lokal.');
+    }
+  }
+
+  saveComposedPosterBuffer(buffer: Buffer, posterId: string): string {
+    try {
+      this.ensureStorageDirectories();
+      const uniqueId = uuidv4().substring(0, 8);
+      const filename = `composed_${posterId}_${uniqueId}.png`;
+      const absolutePath = join(this.targetDir, filename);
+
+      writeFileSync(absolutePath, buffer);
+      this.logger.log(`[Composed Persisted] File poster ber-branding tersimpan: ${absolutePath}`);
+
+      return `/uploads/media/posters/${filename}`;
+    } catch (err: any) {
+      this.logger.error(`Gagal menyimpan file biner composed poster ke disk: ${err.message}`);
+      throw new InternalServerErrorException('Gagal melakukan persistensi berkas poster komposit.');
+    }
+  }
+
+  removePosterFile(relativeUrl: string): void {
+    try {
+      const filename = relativeUrl.replace('/uploads/media/posters/', '');
+      const absolutePath = join(this.targetDir, filename);
+      if (existsSync(absolutePath)) {
+        unlinkSync(absolutePath);
+        this.logger.log(`[Asset Purged] File poster dibersihkan: ${absolutePath}`);
+      }
+    } catch (err: any) {
+      this.logger.warn(`Gagal menghapus file poster ${relativeUrl}: ${err.message}`);
+    }
+  }
+
+  removeBrandingLogoFile(relativeUrl: string): void {
+    try {
+      const filename = relativeUrl.replace('/uploads/media/branding/', '');
+      const absolutePath = join(this.brandingDir, filename);
+      if (existsSync(absolutePath)) {
+        unlinkSync(absolutePath);
+        this.logger.log(`[Logo Purged] File logo dibersihkan: ${absolutePath}`);
+      }
+    } catch (err: any) {
+      this.logger.warn(`Gagal menghapus file logo ${relativeUrl}: ${err.message}`);
+    }
+  }
+}
+
+
+################################################################################
+# BAGIAN: 4. PRISMA DATABASE SCHEMA (BRANDING & POSTER ENTITY) (1 Berkas)
+################################################################################
+
+
+======================================================================
+--- FILE: brida_be\prisma\schema.prisma ---
+======================================================================
+model InfographicPoster {
+  id                String                    @id @default(uuid()) @db.Uuid
+  sessionId         String                    @db.Uuid
+  versionNumber     Int                       @default(1)
+  userPrompt        String                    @db.Text
+  revisedPrompt     String?                   @db.Text
+  aiCommentary      String?                   @db.Text
+  imageUrl          String                    @db.VarChar(1024)
+  aspectRatio       String                    @default("9:16")
+  tokenCount        Int                       @default(0)
+  generationProfile PosterGenerationProfile   @default(V1_BAKED_FOOTER)
+  createdAt         DateTime                  @default(now())
+
+  session           InfographicSession        @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  branding          InfographicPosterBranding?
+
+  @@index([sessionId, versionNumber])
+  @@map("infographic_posters")
+}
+
+model InfographicPosterBranding {
+  id             String            @id @default(uuid()) @db.Uuid
+  posterId       String            @unique @db.Uuid
+  headerEnabled  Boolean           @default(false)
+  logoUrl        String?           @db.VarChar(1024)
+  institution    String?           @db.VarChar(160)
+  subInstitution String?           @db.VarChar(160)
+  footerEnabled  Boolean           @default(false)
+  footerText     String?           @db.VarChar(500)
+  layoutConfig   Json              @default("{}")
+  composedUrl    String?           @db.VarChar(1024)
+  brandingHash   String?           @db.VarChar(64)
+  createdAt      DateTime          @default(now())
+  updatedAt      DateTime          @updatedAt
+
+  poster         InfographicPoster @relation(fields: [posterId], references: [id], onDelete: Cascade)
+
+  @@map("infographic_poster_branding")
+}
+
+
+################################################################################
+# BAGIAN: 5. FRONTEND: REAL-TIME INTERACTIVE OVERLAY, DRAG RESIZER & BRANDING BAR (5 Berkas)
+################################################################################
+
+
+======================================================================
+--- FILE: brida_fe\src\modules\infographic\components\poster-branding-bar.component.tsx ---
+======================================================================
+import React, { useRef } from 'react';
+import {
+  Upload,
+  Trash2,
+  Check,
+  RotateCcw,
+  X,
+  Loader2,
+  AlignLeft,
+  AlignCenter,
+  AlignRight,
+  Building2,
+  FileText,
+  Type,
+  Image,
+  Layout,
+  SlidersHorizontal,
+  Minus,
+  Plus,
+} from 'lucide-react';
+import type { PosterBrandingData, PosterAspectRatio } from '../types/poster-branding.types';
+import { BRANDING_COLOR_PRESETS, BRANDING_SAFE_AREA_CONFIG } from '../types/poster-branding.types';
+
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000';
+
+interface PosterBrandingBarProps {
+  branding: PosterBrandingData;
+  aspectRatio?: PosterAspectRatio | string;
+  onChange: (updated: PosterBrandingData) => void;
+  onUploadLogo: (file: File) => Promise<void>;
+  onDeleteLogo: () => Promise<void>;
+  onReset: () => void;
+  onClose?: () => void;
+  isSaving: boolean;
+  isUploadingLogo: boolean;
+}
+
+export const PosterBrandingBar: React.FC<PosterBrandingBarProps> = ({
+  branding,
+  aspectRatio,
+  onChange,
+  onUploadLogo,
+  onDeleteLogo,
+  onReset,
+  onClose,
+  isSaving,
+  isUploadingLogo,
+}) => {
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const handleHeaderToggle = (enabled: boolean) => {
+    onChange({ ...branding, headerEnabled: enabled });
+  };
+
+  const handleFooterToggle = (enabled: boolean) => {
+    onChange({ ...branding, footerEnabled: enabled });
+  };
+
+  const handleInstitutionChange = (val: string) => {
+    onChange({ ...branding, institution: val });
+  };
+
+  const handleSubInstitutionChange = (val: string) => {
+    onChange({ ...branding, subInstitution: val });
+  };
+
+  const handleFooterTextChange = (val: string) => {
+    onChange({ ...branding, footerText: val });
+  };
+
+  const handleHeaderBgColor = (hex: string) => {
+    onChange({
+      ...branding,
+      layoutConfig: {
+        ...(branding.layoutConfig || {}),
+        headerBgColor: hex,
+      },
+    });
+  };
+
+  const handleFooterBgColor = (hex: string) => {
+    onChange({
+      ...branding,
+      layoutConfig: {
+        ...(branding.layoutConfig || {}),
+        footerBgColor: hex,
+      },
+    });
+  };
+
+  const handleLogoPosition = (position: 'left' | 'right' | 'center') => {
+    onChange({
+      ...branding,
+      layoutConfig: {
+        ...(branding.layoutConfig || {}),
+        logoPosition: position,
+        headerAlignment: position === 'center' ? 'center' : 'left_with_logo',
+      },
+    });
+  };
+
+  const handleLogoSize = (size: 'compact' | 'normal' | 'large') => {
+    onChange({
+      ...branding,
+      layoutConfig: {
+        ...(branding.layoutConfig || {}),
+        logoSize: size,
+      },
+    });
+  };
+
+  const handleHeaderFontSize = (size: 'compact' | 'normal' | 'large') => {
+    onChange({
+      ...branding,
+      layoutConfig: {
+        ...(branding.layoutConfig || {}),
+        headerFontSize: size,
+      },
+    });
+  };
+
+  const handleHeaderHeight = (height: 'compact' | 'normal' | 'spacious') => {
+    handleHeaderHeightPreset(height);
+  };
+
+  const handleFooterFontSize = (size: 'compact' | 'normal' | 'large') => {
+    onChange({
+      ...branding,
+      layoutConfig: {
+        ...(branding.layoutConfig || {}),
+        footerFontSize: size,
+      },
+    });
+  };
+
+  const handleFooterAlignment = (alignment: 'center' | 'left' | 'right') => {
+    onChange({
+      ...branding,
+      layoutConfig: {
+        ...(branding.layoutConfig || {}),
+        footerAlignment: alignment,
+      },
+    });
+  };
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      onUploadLogo(file);
+    }
+  };
+
+  const currentHeaderBg = branding.layoutConfig?.headerBgColor || '#FFFFFF';
+  const currentFooterBg = branding.layoutConfig?.footerBgColor || '#0F1E36';
+  const currentLogoPosition = branding.layoutConfig?.logoPosition || (branding.layoutConfig?.headerAlignment === 'center' ? 'center' : 'left');
+  const currentLogoSize = branding.layoutConfig?.logoSize || 'normal';
+  const currentHeaderFontSize = branding.layoutConfig?.headerFontSize || 'normal';
+  const currentHeaderHeight = branding.layoutConfig?.headerHeight || 'normal';
+  const currentFooterFontSize = branding.layoutConfig?.footerFontSize || 'normal';
+  const currentFooterAlignment = branding.layoutConfig?.footerAlignment || 'center';
+
+  const ratioKey = (aspectRatio && aspectRatio in BRANDING_SAFE_AREA_CONFIG)
+    ? (aspectRatio as PosterAspectRatio)
+    : '9:16';
+  const baseRatioPercent = BRANDING_SAFE_AREA_CONFIG[ratioKey]?.headerBarPercent ?? 9.5;
+  const currentHeaderHeightPercent = branding.layoutConfig?.headerHeightPercent;
+  const effectiveHeightPercent = currentHeaderHeightPercent ?? Number(
+    (baseRatioPercent * (currentHeaderHeight === 'compact' ? 0.85 : currentHeaderHeight === 'spacious' ? 1.2 : 1.0)).toFixed(1)
+  );
+
+  const handleHeaderHeightPercentChange = (percent: number) => {
+    const clamped = Math.min(25, Math.max(4, Math.round(percent * 2) / 2));
+    onChange({
+      ...branding,
+      layoutConfig: {
+        ...(branding.layoutConfig || {}),
+        headerHeightPercent: clamped,
+      },
+    });
+  };
+
+  const handleHeaderHeightPreset = (sz: 'compact' | 'normal' | 'spacious') => {
+    const mult = sz === 'compact' ? 0.85 : sz === 'spacious' ? 1.2 : 1.0;
+    const target = Number((baseRatioPercent * mult).toFixed(1));
+    onChange({
+      ...branding,
+      layoutConfig: {
+        ...(branding.layoutConfig || {}),
+        headerHeight: sz,
+        headerHeightPercent: target,
+      },
+    });
+  };
+
+  const handleStepHeight = (delta: number) => {
+    const nextVal = Math.min(25, Math.max(4, Number((effectiveHeightPercent + delta).toFixed(1))));
+    handleHeaderHeightPercentChange(nextVal);
+  };
+
+  const fullLogoUrl = branding.logoUrl
+    ? branding.logoUrl.startsWith('http')
+      ? branding.logoUrl
+      : `${API_BASE_URL}${branding.logoUrl}`
+    : null;
+
+  return (
+    <div className="w-full bg-slate-900/98 backdrop-blur-md border border-slate-700 shadow-2xl text-slate-200 font-roboto rounded-none select-none p-4 sm:p-6 space-y-5">
+      {}
+      <div className="flex items-center justify-between pb-3 border-b border-slate-800">
+        <div className="flex items-center gap-2.5">
+          <div className="w-2.5 h-2.5 bg-teal-500 rounded-none flex-shrink-0" />
+          <h3 className="text-xs font-bold uppercase tracking-wider text-white">
+            Pengaturan Kop & Footer Resmi
+          </h3>
+        </div>
+
+        <div className="flex items-center gap-3">
+          {isSaving ? (
+            <span className="text-[11px] text-teal-400 font-medium inline-flex items-center gap-1.5">
+              <Loader2 size={12} className="animate-spin" />
+              <span className="hidden sm:inline">Menyimpan...</span>
+            </span>
+          ) : (
+            <span className="text-[11px] text-slate-400 font-medium inline-flex items-center gap-1">
+              <Check size={12} className="text-teal-400" />
+              <span className="hidden sm:inline">Tersimpan</span>
+            </span>
+          )}
+
+          <button
+            type="button"
+            onClick={onReset}
+            className="px-2.5 py-1 text-[11px] font-bold uppercase tracking-wider bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white border border-slate-700 rounded-none cursor-pointer transition-colors inline-flex items-center gap-1"
+            title="Reset ke pengaturan default"
+          >
+            <RotateCcw size={11} />
+            <span className="hidden sm:inline">Reset</span>
+          </button>
+
+          {onClose && (
+            <button
+              type="button"
+              onClick={onClose}
+              className="p-1 text-slate-400 hover:text-white hover:bg-slate-800 border border-transparent hover:border-slate-700 rounded-none cursor-pointer transition-colors"
+              title="Tutup Panel"
+            >
+              <X size={15} />
+            </button>
+          )}
+        </div>
+      </div>
+
+      {}
+      <div
+        className={`p-4 sm:p-5 border transition-all rounded-none ${
+          branding.headerEnabled
+            ? 'bg-slate-950/70 border-teal-800/80 shadow-inner'
+            : 'bg-slate-950/30 border-slate-800 opacity-60'
+        }`}
+      >
+        {}
+        <div className="flex flex-wrap items-center justify-between gap-3 pb-3 border-b border-slate-800/80">
+          <label className="flex items-center gap-2.5 cursor-pointer select-none">
+            <input
+              type="checkbox"
+              checked={branding.headerEnabled}
+              onChange={(e) => handleHeaderToggle(e.target.checked)}
+              className="w-4 h-4 accent-teal-600 rounded-none cursor-pointer"
+            />
+            <span className="text-xs font-bold uppercase tracking-wider text-white flex items-center gap-1.5">
+              <Building2 size={13} className="text-teal-400" />
+              <span>Kop / Header Instansi</span>
+            </span>
+            <span
+              className={`text-[10px] font-bold px-1.5 py-0.5 uppercase tracking-wider rounded-none ${
+                branding.headerEnabled
+                  ? 'bg-teal-950 text-teal-300 border border-teal-700'
+                  : 'bg-slate-800 text-slate-400'
+              }`}
+            >
+              {branding.headerEnabled ? 'Aktif' : 'Nonaktif'}
+            </span>
+          </label>
+
+          {}
+          <div className="flex items-center gap-2">
+            <span className="text-[10px] uppercase font-bold tracking-wider text-slate-400">
+              Warna:
+            </span>
+            <div className="flex items-center gap-1">
+              {BRANDING_COLOR_PRESETS.map((preset) => {
+                const isSelected = currentHeaderBg.toLowerCase() === preset.hex.toLowerCase();
+                return (
+                  <button
+                    key={preset.hex}
+                    type="button"
+                    onClick={() => handleHeaderBgColor(preset.hex)}
+                    disabled={!branding.headerEnabled}
+                    style={{ backgroundColor: preset.hex }}
+                    className={`w-5 h-5 border rounded-none cursor-pointer transition-all disabled:opacity-30 ${
+                      isSelected
+                        ? 'border-teal-400 ring-2 ring-teal-400/40 scale-105'
+                        : 'border-slate-700 hover:border-slate-500'
+                    }`}
+                    title={`${preset.label} (${preset.hex})`}
+                  />
+                );
+              })}
+            </div>
+          </div>
+        </div>
+
+        {}
+        <div className="flex flex-wrap items-center justify-between gap-3 pt-3 pb-3 border-b border-slate-800/60">
+          {}
+          <div className="flex items-center gap-2">
+            <span className="text-[10px] uppercase font-bold tracking-wider text-slate-400 flex items-center gap-1">
+              <Layout size={11} className="text-teal-400" />
+              <span>Posisi Logo:</span>
+            </span>
+            <div className="flex items-center border border-slate-700 rounded-none bg-slate-900 p-0.5">
+              {(['left', 'center', 'right'] as const).map((pos) => {
+                const labels = { left: 'Kiri', center: 'Tengah', right: 'Kanan' };
+                const isSelected = currentLogoPosition === pos;
+                return (
+                  <button
+                    key={pos}
+                    type="button"
+                    disabled={!branding.headerEnabled}
+                    onClick={() => handleLogoPosition(pos)}
+                    className={`px-2 py-1 text-[10px] font-bold uppercase cursor-pointer rounded-none transition-colors ${
+                      isSelected
+                        ? 'bg-teal-700 text-white'
+                        : 'text-slate-400 hover:text-white disabled:opacity-40'
+                    }`}
+                  >
+                    {labels[pos]}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+          {}
+          <div className="flex items-center gap-2">
+            <span className="text-[10px] uppercase font-bold tracking-wider text-slate-400 flex items-center gap-1">
+              <Image size={11} className="text-teal-400" />
+              <span>Ukuran Logo:</span>
+            </span>
+            <div className="flex items-center border border-slate-700 rounded-none bg-slate-900 p-0.5">
+              {(['compact', 'normal', 'large'] as const).map((sz) => {
+                const labels = { compact: 'S', normal: 'M', large: 'L' };
+                const isSelected = currentLogoSize === sz;
+                return (
+                  <button
+                    key={sz}
+                    type="button"
+                    disabled={!branding.headerEnabled}
+                    onClick={() => handleLogoSize(sz)}
+                    className={`w-6 py-1 text-[10px] font-bold text-center uppercase cursor-pointer rounded-none transition-colors ${
+                      isSelected
+                        ? 'bg-teal-700 text-white'
+                        : 'text-slate-400 hover:text-white disabled:opacity-40'
+                    }`}
+                    title={`Ukuran Logo ${labels[sz]}`}
+                  >
+                    {labels[sz]}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+          {}
+          <div className="flex items-center gap-2">
+            <span className="text-[10px] uppercase font-bold tracking-wider text-slate-400 flex items-center gap-1">
+              <Type size={11} className="text-teal-400" />
+              <span>Ukuran Teks:</span>
+            </span>
+            <div className="flex items-center border border-slate-700 rounded-none bg-slate-900 p-0.5">
+              {(['compact', 'normal', 'large'] as const).map((sz) => {
+                const labels = { compact: 'Kecil', normal: 'Sedang', large: 'Besar' };
+                const isSelected = currentHeaderFontSize === sz;
+                return (
+                  <button
+                    key={sz}
+                    type="button"
+                    disabled={!branding.headerEnabled}
+                    onClick={() => handleHeaderFontSize(sz)}
+                    className={`px-2 py-1 text-[10px] font-bold uppercase cursor-pointer rounded-none transition-colors ${
+                      isSelected
+                        ? 'bg-teal-700 text-white'
+                        : 'text-slate-400 hover:text-white disabled:opacity-40'
+                    }`}
+                  >
+                    {labels[sz]}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+          {}
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="text-[10px] uppercase font-bold tracking-wider text-slate-400 flex items-center gap-1">
+              <SlidersHorizontal size={11} className="text-teal-400" />
+              <span>Tinggi Kop:</span>
+            </span>
+
+            {}
+            <span className="px-1.5 py-0.5 bg-teal-950/80 border border-teal-500/50 text-teal-300 font-mono text-[10px] font-bold rounded-none">
+              {effectiveHeightPercent.toFixed(1)}%
+            </span>
+
+            {}
+            <div className="flex items-center border border-slate-700 rounded-none bg-slate-900">
+              <button
+                type="button"
+                disabled={!branding.headerEnabled || effectiveHeightPercent <= 4}
+                onClick={() => handleStepHeight(-0.5)}
+                className="px-1.5 py-1 text-slate-400 hover:text-white hover:bg-slate-800 disabled:opacity-30 cursor-pointer rounded-none transition-colors"
+                title="Kurangi tinggi kop (-0.5%)"
+              >
+                <Minus size={11} />
+              </button>
+
+              <div className="px-2 flex items-center">
+                <input
+                  type="range"
+                  min="4"
+                  max="25"
+                  step="0.5"
+                  disabled={!branding.headerEnabled}
+                  value={effectiveHeightPercent}
+                  onChange={(e) => handleHeaderHeightPercentChange(parseFloat(e.target.value))}
+                  className="w-20 sm:w-28 h-1.5 bg-slate-800 accent-teal-400 cursor-pointer rounded-none"
+                  title={`Tinggi Kop: ${effectiveHeightPercent.toFixed(1)}%`}
+                />
+              </div>
+
+              <button
+                type="button"
+                disabled={!branding.headerEnabled || effectiveHeightPercent >= 25}
+                onClick={() => handleStepHeight(0.5)}
+                className="px-1.5 py-1 text-slate-400 hover:text-white hover:bg-slate-800 disabled:opacity-30 cursor-pointer rounded-none transition-colors border-l border-slate-800"
+                title="Tambah tinggi kop (+0.5%)"
+              >
+                <Plus size={11} />
+              </button>
+            </div>
+
+            {}
+            <div className="flex items-center border border-slate-700 rounded-none bg-slate-900 p-0.5">
+              {(['compact', 'normal', 'spacious'] as const).map((sz) => {
+                const labels = { compact: 'Ringkas', normal: 'Standar', spacious: 'Lega' };
+                const mult = sz === 'compact' ? 0.85 : sz === 'spacious' ? 1.2 : 1.0;
+                const presetVal = Number((baseRatioPercent * mult).toFixed(1));
+                const isSelected = Math.abs(effectiveHeightPercent - presetVal) < 0.2;
+                return (
+                  <button
+                    key={sz}
+                    type="button"
+                    disabled={!branding.headerEnabled}
+                    onClick={() => handleHeaderHeightPreset(sz)}
+                    className={`px-2 py-1 text-[10px] font-bold uppercase cursor-pointer rounded-none transition-colors ${
+                      isSelected
+                        ? 'bg-teal-700 text-white'
+                        : 'text-slate-400 hover:text-white disabled:opacity-40'
+                    }`}
+                    title={`Preset ${labels[sz]} (${presetVal}%)`}
+                  >
+                    {labels[sz]}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        </div>
+
+        {}
+        <div className="grid grid-cols-1 md:grid-cols-12 gap-4 pt-3.5 items-start">
+          {}
+          <div className="md:col-span-4">
+            <label className="block text-[10px] uppercase font-bold tracking-wider text-slate-400 mb-1.5">
+              Lambang / Logo Daerah:
+            </label>
+            <input
+              type="file"
+              ref={fileInputRef}
+              onChange={handleFileChange}
+              accept="image/png,image/jpeg"
+              className="hidden"
+            />
+            {fullLogoUrl ? (
+              <div className="flex items-center justify-between bg-slate-900 border border-slate-700 p-2 rounded-none">
+                <div className="flex items-center gap-2.5 min-w-0">
+                  <img
+                    src={fullLogoUrl}
+                    alt="Logo preview"
+                    className="w-7 h-7 object-contain rounded-none flex-shrink-0 bg-black/30 p-0.5"
+                  />
+                  <span className="text-xs text-slate-200 font-medium truncate">
+                    Logo Terpasang
+                  </span>
+                </div>
+                <div className="flex items-center gap-1">
+                  <button
+                    type="button"
+                    onClick={() => fileInputRef.current?.click()}
+                    disabled={!branding.headerEnabled || isUploadingLogo}
+                    className="text-[10px] font-bold text-teal-400 hover:text-teal-300 px-1.5 py-0.5 cursor-pointer uppercase tracking-wider"
+                    title="Ganti Logo"
+                  >
+                    Ubah
+                  </button>
+                  <button
+                    type="button"
+                    onClick={onDeleteLogo}
+                    disabled={!branding.headerEnabled}
+                    className="text-slate-400 hover:text-red-400 p-1 transition-colors cursor-pointer"
+                    title="Hapus Logo"
+                  >
+                    <Trash2 size={13} />
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <button
+                type="button"
+                onClick={() => fileInputRef.current?.click()}
+                disabled={!branding.headerEnabled || isUploadingLogo}
+                className="w-full py-2 bg-slate-900 hover:bg-slate-800 disabled:opacity-40 border border-dashed border-slate-700 text-slate-300 text-xs font-medium inline-flex items-center justify-center gap-2 rounded-none cursor-pointer transition-colors"
+              >
+                {isUploadingLogo ? (
+                  <Loader2 size={13} className="animate-spin text-teal-400" />
+                ) : (
+                  <Upload size={13} className="text-teal-400" />
+                )}
+                <span>Unggah File Logo</span>
+              </button>
+            )}
+          </div>
+
+          {}
+          <div className="md:col-span-8 space-y-2.5">
+            <div>
+              <label className="block text-[10px] uppercase font-bold tracking-wider text-slate-400 mb-1">
+                Instansi / Pemerintah Daerah (Baris 1):
+              </label>
+              <input
+                type="text"
+                value={branding.institution || ''}
+                onChange={(e) => handleInstitutionChange(e.target.value)}
+                disabled={!branding.headerEnabled}
+                placeholder="misal: PEMERINTAH KABUPATEN MIMIKA"
+                className="w-full bg-slate-900 border border-slate-700 disabled:opacity-40 text-white text-xs px-3 py-2 outline-hidden focus:border-teal-500 rounded-none transition-colors"
+              />
+            </div>
+            <div>
+              <label className="block text-[10px] uppercase font-bold tracking-wider text-slate-400 mb-1">
+                Sub-Instansi / OPD / Badan (Baris 2):
+              </label>
+              <input
+                type="text"
+                value={branding.subInstitution || ''}
+                onChange={(e) => handleSubInstitutionChange(e.target.value)}
+                disabled={!branding.headerEnabled}
+                placeholder="misal: Badan Riset dan Inovasi Daerah"
+                className="w-full bg-slate-900 border border-slate-700 disabled:opacity-40 text-white text-xs px-3 py-2 outline-hidden focus:border-teal-500 rounded-none transition-colors"
+              />
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {}
+      <div
+        className={`p-4 sm:p-5 border transition-all rounded-none ${
+          branding.footerEnabled
+            ? 'bg-slate-950/70 border-teal-800/80 shadow-inner'
+            : 'bg-slate-950/30 border-slate-800 opacity-60'
+        }`}
+      >
+        {}
+        <div className="flex flex-wrap items-center justify-between gap-3 pb-3 border-b border-slate-800/80">
+          <label className="flex items-center gap-2.5 cursor-pointer select-none">
+            <input
+              type="checkbox"
+              checked={branding.footerEnabled}
+              onChange={(e) => handleFooterToggle(e.target.checked)}
+              className="w-4 h-4 accent-teal-600 rounded-none cursor-pointer"
+            />
+            <span className="text-xs font-bold uppercase tracking-wider text-white flex items-center gap-1.5">
+              <FileText size={13} className="text-teal-400" />
+              <span>Catatan Kaki / Footer</span>
+            </span>
+            <span
+              className={`text-[10px] font-bold px-1.5 py-0.5 uppercase tracking-wider rounded-none ${
+                branding.footerEnabled
+                  ? 'bg-teal-950 text-teal-300 border border-teal-700'
+                  : 'bg-slate-800 text-slate-400'
+              }`}
+            >
+              {branding.footerEnabled ? 'Aktif' : 'Nonaktif'}
+            </span>
+          </label>
+
+          {}
+          <div className="flex items-center gap-2">
+            <span className="text-[10px] uppercase font-bold tracking-wider text-slate-400">
+              Warna:
+            </span>
+            <div className="flex items-center gap-1">
+              {BRANDING_COLOR_PRESETS.map((preset) => {
+                const isSelected = currentFooterBg.toLowerCase() === preset.hex.toLowerCase();
+                return (
+                  <button
+                    key={preset.hex}
+                    type="button"
+                    onClick={() => handleFooterBgColor(preset.hex)}
+                    disabled={!branding.footerEnabled}
+                    style={{ backgroundColor: preset.hex }}
+                    className={`w-5 h-5 border rounded-none cursor-pointer transition-all disabled:opacity-30 ${
+                      isSelected
+                        ? 'border-teal-400 ring-2 ring-teal-400/40 scale-105'
+                        : 'border-slate-700 hover:border-slate-500'
+                    }`}
+                    title={`${preset.label} (${preset.hex})`}
+                  />
+                );
+              })}
+            </div>
+          </div>
+        </div>
+
+        {}
+        <div className="flex flex-wrap items-center justify-between gap-3 pt-3 pb-3 border-b border-slate-800/60">
+          {}
+          <div className="flex items-center gap-2">
+            <span className="text-[10px] uppercase font-bold tracking-wider text-slate-400 flex items-center gap-1">
+              <AlignLeft size={11} className="text-teal-400" />
+              <span>Perataan Teks:</span>
+            </span>
+            <div className="flex items-center border border-slate-700 rounded-none bg-slate-900 p-0.5">
+              <button
+                type="button"
+                disabled={!branding.footerEnabled}
+                onClick={() => handleFooterAlignment('left')}
+                className={`px-2 py-1 text-[10px] font-bold uppercase cursor-pointer rounded-none transition-colors inline-flex items-center gap-1 ${
+                  currentFooterAlignment === 'left'
+                    ? 'bg-teal-700 text-white'
+                    : 'text-slate-400 hover:text-white disabled:opacity-40'
+                }`}
+                title="Rata Kiri"
+              >
+                <AlignLeft size={11} />
+                <span>Kiri</span>
+              </button>
+              <button
+                type="button"
+                disabled={!branding.footerEnabled}
+                onClick={() => handleFooterAlignment('center')}
+                className={`px-2 py-1 text-[10px] font-bold uppercase cursor-pointer rounded-none transition-colors inline-flex items-center gap-1 ${
+                  currentFooterAlignment === 'center'
+                    ? 'bg-teal-700 text-white'
+                    : 'text-slate-400 hover:text-white disabled:opacity-40'
+                }`}
+                title="Rata Tengah"
+              >
+                <AlignCenter size={11} />
+                <span>Tengah</span>
+              </button>
+              <button
+                type="button"
+                disabled={!branding.footerEnabled}
+                onClick={() => handleFooterAlignment('right')}
+                className={`px-2 py-1 text-[10px] font-bold uppercase cursor-pointer rounded-none transition-colors inline-flex items-center gap-1 ${
+                  currentFooterAlignment === 'right'
+                    ? 'bg-teal-700 text-white'
+                    : 'text-slate-400 hover:text-white disabled:opacity-40'
+                }`}
+                title="Rata Kanan"
+              >
+                <AlignRight size={11} />
+                <span>Kanan</span>
+              </button>
+            </div>
+          </div>
+
+          {}
+          <div className="flex items-center gap-2">
+            <span className="text-[10px] uppercase font-bold tracking-wider text-slate-400 flex items-center gap-1">
+              <Type size={11} className="text-teal-400" />
+              <span>Ukuran Teks:</span>
+            </span>
+            <div className="flex items-center border border-slate-700 rounded-none bg-slate-900 p-0.5">
+              {(['compact', 'normal', 'large'] as const).map((sz) => {
+                const labels = { compact: 'Kecil', normal: 'Sedang', large: 'Besar' };
+                const isSelected = currentFooterFontSize === sz;
+                return (
+                  <button
+                    key={sz}
+                    type="button"
+                    disabled={!branding.footerEnabled}
+                    onClick={() => handleFooterFontSize(sz)}
+                    className={`px-2 py-1 text-[10px] font-bold uppercase cursor-pointer rounded-none transition-colors ${
+                      isSelected
+                        ? 'bg-teal-700 text-white'
+                        : 'text-slate-400 hover:text-white disabled:opacity-40'
+                    }`}
+                  >
+                    {labels[sz]}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        </div>
+
+        {}
+        <div className="pt-3.5">
+          <label className="block text-[10px] uppercase font-bold tracking-wider text-slate-400 mb-1">
+            Teks Catatan Kaki / Atribusi Sumber Data:
+          </label>
+          <input
+            type="text"
+            value={branding.footerText || ''}
+            onChange={(e) => handleFooterTextChange(e.target.value)}
+            disabled={!branding.footerEnabled}
+            placeholder="misal: Sumber: Dokumen Resmi BRIDA Kabupaten Mimika | BPS 2024"
+            className="w-full bg-slate-900 border border-slate-700 disabled:opacity-40 text-white text-xs px-3 py-2 outline-hidden focus:border-teal-500 rounded-none transition-colors"
+          />
+        </div>
+      </div>
+    </div>
+  );
+};
+
+
+======================================================================
+--- FILE: brida_fe\src\modules\infographic\components\poster-branding-overlay.component.tsx ---
+======================================================================
+import React, { useRef, useState, useEffect } from 'react';
+import {
+  BRANDING_SAFE_AREA_CONFIG,
+  type PosterBrandingData,
+  type PosterAspectRatio,
+} from '../types/poster-branding.types';
+
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000';
+
+interface PosterBrandingOverlayProps {
+  branding: PosterBrandingData | null;
+  aspectRatio?: PosterAspectRatio | string;
+  onHeaderHeightPercentChange?: (percent: number) => void;
+}
+
+export function getOverlayDimensions(
+  aspectRatio?: string,
+  headerHeightOption?: 'compact' | 'normal' | 'spacious',
+  customHeaderHeightPercent?: number,
+  customFooterHeightPercent?: number,
+): {
+  headerHeight: string;
+  footerHeight: string;
+  headerHeightNum: number;
+  footerHeightNum: number;
+} {
+  const ratioKey = (aspectRatio && aspectRatio in BRANDING_SAFE_AREA_CONFIG)
+    ? (aspectRatio as PosterAspectRatio)
+    : '9:16';
+  const config = BRANDING_SAFE_AREA_CONFIG[ratioKey];
+
+  let headerNum: number;
+  if (typeof customHeaderHeightPercent === 'number' && customHeaderHeightPercent > 0) {
+    headerNum = customHeaderHeightPercent;
+  } else {
+    const headerMultiplier =
+      headerHeightOption === 'compact' ? 0.85 : headerHeightOption === 'spacious' ? 1.2 : 1.0;
+    headerNum = Number((config.headerBarPercent * headerMultiplier).toFixed(1));
+  }
+
+  let footerNum: number;
+  if (typeof customFooterHeightPercent === 'number' && customFooterHeightPercent > 0) {
+    footerNum = customFooterHeightPercent;
+  } else {
+    footerNum = Math.max(config.footerBarPercent, 5.2);
+  }
+
+  return {
+    headerHeight: `${headerNum}%`,
+    footerHeight: `${footerNum}%`,
+    headerHeightNum: headerNum,
+    footerHeightNum: footerNum,
+  };
+}
+
+function isDarkColor(hex?: string): boolean {
+  if (!hex || !hex.startsWith('#')) return false;
+  const clean = hex.replace('#', '');
+  if (clean.length !== 6 && clean.length !== 3) return false;
+  const r = clean.length === 6 ? parseInt(clean.substring(0, 2), 16) : parseInt(clean[0] + clean[0], 16);
+  const g = clean.length === 6 ? parseInt(clean.substring(2, 4), 16) : parseInt(clean[1] + clean[1], 16);
+  const b = clean.length === 6 ? parseInt(clean.substring(4, 6), 16) : parseInt(clean[2] + clean[2], 16);
+  const luminance = (0.299 * r + 0.587 * g + 0.114 * b) / 255;
+  return luminance < 0.5;
+}
+
+const HEADER_FONT_SCALES = {
+  compact: {
+    title: 'text-[clamp(8px,1.8cqw,14px)]',
+    sub: 'text-[clamp(6.5px,1.35cqw,11px)]',
+  },
+  normal: {
+    title: 'text-[clamp(9px,2.2cqw,17px)]',
+    sub: 'text-[clamp(7.5px,1.6cqw,13px)]',
+  },
+  large: {
+    title: 'text-[clamp(10.5px,2.6cqw,20px)]',
+    sub: 'text-[clamp(8.5px,1.9cqw,15px)]',
+  },
+};
+
+const FOOTER_FONT_SCALES = {
+  compact: 'text-[clamp(7px,1.05cqw,11px)]',
+  normal: 'text-[clamp(8px,1.25cqw,13px)]',
+  large: 'text-[clamp(9.5px,1.5cqw,15.5px)]',
+};
+
+const LOGO_HEIGHT_CLASSES = {
+  compact: 'h-[58%]',
+  normal: 'h-[74%]',
+  large: 'h-[88%]',
+};
+
+export const PosterBrandingOverlay: React.FC<PosterBrandingOverlayProps> = ({
+  branding,
+  aspectRatio,
+  onHeaderHeightPercentChange,
+}) => {
+  const containerRef = useRef<HTMLDivElement>(null);
+  const [isDragging, setIsDragging] = useState(false);
+
+  if (!branding) return null;
+
+  const {
+    headerEnabled,
+    logoUrl,
+    institution = 'PEMERINTAH KABUPATEN MIMIKA',
+    subInstitution = 'Badan Riset dan Inovasi Daerah',
+    footerEnabled,
+    footerText = 'Sumber: Dokumen Resmi BRIDA Kabupaten Mimika',
+    layoutConfig = {},
+  } = branding;
+
+  if (!headerEnabled && !footerEnabled) return null;
+
+  const dims = getOverlayDimensions(
+    aspectRatio,
+    layoutConfig.headerHeight,
+    layoutConfig.headerHeightPercent,
+    layoutConfig.footerHeightPercent,
+  );
+
+  const headerBgColor = layoutConfig.headerBgColor || '#FFFFFF';
+  const headerTextColor = layoutConfig.headerTextColor || (isDarkColor(headerBgColor) ? '#FFFFFF' : '#0F1E36');
+  const logoPosition = layoutConfig.logoPosition || (layoutConfig.headerAlignment === 'center' ? 'center' : 'left');
+  const headerFontSize = layoutConfig.headerFontSize || 'normal';
+  const footerFontSize = layoutConfig.footerFontSize || 'normal';
+  const logoSize = layoutConfig.logoSize || 'normal';
+
+  const fontScales = HEADER_FONT_SCALES[headerFontSize] || HEADER_FONT_SCALES.normal;
+  const footerFontClass = FOOTER_FONT_SCALES[footerFontSize] || FOOTER_FONT_SCALES.normal;
+  const logoHeightClass = LOGO_HEIGHT_CLASSES[logoSize] || LOGO_HEIGHT_CLASSES.normal;
+
+  const footerBgColor = layoutConfig.footerBgColor || '#0F1E36';
+  const footerTextColor = layoutConfig.footerTextColor || (isDarkColor(footerBgColor) ? '#F8FAFC' : '#0F1E36');
+  const footerAlignment = layoutConfig.footerAlignment || 'center';
+
+  const fullLogoUrl = logoUrl
+    ? logoUrl.startsWith('http')
+      ? logoUrl
+      : `${API_BASE_URL}${logoUrl}`
+    : null;
+
+  const headerJustifyClass =
+    logoPosition === 'center'
+      ? 'justify-center text-center'
+      : logoPosition === 'right'
+      ? 'justify-between text-left'
+      : 'justify-start text-left';
+
+  const textAlignmentClass =
+    logoPosition === 'center'
+      ? 'items-center text-center'
+      : 'items-start text-left';
+
+  const handleUpdateHeight = (clientY: number) => {
+    if (!containerRef.current || !onHeaderHeightPercentChange) return;
+    const rect = containerRef.current.getBoundingClientRect();
+    if (rect.height <= 0) return;
+    const offsetY = clientY - rect.top;
+    const rawPercent = (offsetY / rect.height) * 100;
+
+    const clamped = Math.min(25, Math.max(4, Math.round(rawPercent * 2) / 2));
+    onHeaderHeightPercentChange(clamped);
+  };
+
+  const handleDragStart = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragging(true);
+
+    const handleMouseMove = (ev: MouseEvent) => {
+      ev.preventDefault();
+      handleUpdateHeight(ev.clientY);
+    };
+
+    const handleMouseUp = () => {
+      setIsDragging(false);
+      document.body.style.cursor = '';
+      document.body.style.userSelect = '';
+      window.removeEventListener('mousemove', handleMouseMove);
+      window.removeEventListener('mouseup', handleMouseUp);
+    };
+
+    document.body.style.cursor = 'ns-resize';
+    document.body.style.userSelect = 'none';
+    window.addEventListener('mousemove', handleMouseMove);
+    window.addEventListener('mouseup', handleMouseUp);
+  };
+
+  return (
+    <div
+      ref={containerRef}
+      className="absolute inset-0 pointer-events-none z-10 overflow-hidden font-roboto rounded-none select-none"
+    >
+      {}
+      {headerEnabled && (
+        <div
+          style={{
+            backgroundColor: headerBgColor,
+            color: headerTextColor,
+            height: dims.headerHeight,
+          }}
+          className={`absolute top-0 left-0 right-0 flex items-center px-[4%] border-b border-black/10 rounded-none transition-colors duration-150 ${headerJustifyClass}`}
+        >
+          {fullLogoUrl && (
+            <img
+              src={fullLogoUrl}
+              alt="Logo Instansi"
+              className={`${logoHeightClass} max-w-[18%] w-auto object-contain rounded-none flex-shrink-0 drop-shadow-xs ${
+                logoPosition === 'right' ? 'order-2 ml-[2.5%]' : 'order-1 mr-[2.5%]'
+              }`}
+            />
+          )}
+          <div
+            className={`flex flex-col justify-center leading-tight min-w-0 overflow-hidden ${
+              logoPosition === 'right'
+                ? 'order-1 flex-1'
+                : logoPosition === 'center'
+                ? 'order-2 flex-initial'
+                : 'order-2 flex-1'
+            } ${textAlignmentClass}`}
+          >
+            <span className={`${fontScales.title} font-black tracking-wider uppercase whitespace-nowrap truncate leading-normal`}>
+              {institution}
+            </span>
+            {subInstitution && (
+              <span className={`${fontScales.sub} font-medium opacity-90 tracking-normal whitespace-nowrap truncate leading-normal`}>
+                {subInstitution}
+              </span>
+            )}
+          </div>
+
+          {}
+          {onHeaderHeightPercentChange && (
+            <div
+              onMouseDown={handleDragStart}
+              className={`absolute -bottom-3 left-0 right-0 h-6 cursor-ns-resize pointer-events-auto flex items-center justify-center group z-30 select-none ${
+                isDragging ? 'opacity-100' : 'hover:opacity-100'
+              }`}
+              title="Tarik kursor ke atas/bawah untuk mengubah tinggi kop secara dinamis"
+            >
+              {}
+              <div
+                className={`absolute inset-x-0 top-1/2 -translate-y-1/2 h-[2px] transition-all duration-150 ${
+                  isDragging
+                    ? 'bg-teal-400 shadow-[0_0_8px_rgba(45,212,191,0.9)] opacity-100'
+                    : 'bg-teal-500/30 group-hover:bg-teal-400 group-hover:shadow-[0_0_6px_rgba(45,212,191,0.7)] opacity-0 group-hover:opacity-100'
+                }`}
+              />
+
+              {}
+              <div
+                className={`relative px-2.5 py-0.5 border text-[9px] font-mono font-bold uppercase tracking-wider rounded-none shadow-xl flex items-center gap-1.5 transition-all duration-150 ${
+                  isDragging
+                    ? 'bg-slate-900 border-teal-400 text-teal-300 scale-105 shadow-teal-500/20'
+                    : 'bg-slate-900/90 border-slate-600 text-slate-300 group-hover:border-teal-400 group-hover:text-teal-300'
+                }`}
+              >
+                <span className="text-teal-400 text-[11px] leading-none">⇅</span>
+                <span>{dims.headerHeightNum.toFixed(1)}%</span>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+
+      {}
+      {footerEnabled && (
+        <div
+          style={{
+            backgroundColor: footerBgColor,
+            color: footerTextColor,
+            height: dims.footerHeight,
+          }}
+          className={`absolute bottom-0 left-0 right-0 flex items-center px-[4%] border-t-2 border-teal-500 shadow-md rounded-none transition-colors duration-150 ${
+            footerAlignment === 'center'
+              ? 'justify-center text-center'
+              : footerAlignment === 'right'
+              ? 'justify-end text-right'
+              : 'justify-start text-left'
+          }`}
+        >
+          <span className={`${footerFontClass} font-semibold tracking-wide truncate max-w-full`}>
+            {footerText}
+          </span>
+        </div>
+      )}
+    </div>
+  );
+};
+
+
+======================================================================
+--- FILE: brida_fe\src\modules\infographic\components\poster-showcase-stage.component.tsx ---
+======================================================================
+import React, { useState, useEffect, useRef } from 'react';
+import {
+  Download,
+  Maximize2,
+  Layers,
+  X,
+  Loader2,
+  ZoomIn,
+  ZoomOut,
+  SlidersHorizontal,
+  ChevronUp,
+  ChevronDown,
+} from 'lucide-react';
+import { InfographicApi } from '../services/infographic.api';
+import type {
+  InfographicPosterItem,
+  InfographicSessionDetail,
+} from '../services/infographic.api';
+import type { PosterBrandingData } from '../types/poster-branding.types';
+import { PosterBrandingBar } from './poster-branding-bar.component';
+import { PosterBrandingOverlay } from './poster-branding-overlay.component';
+
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000';
+
+interface PosterShowcaseStageProps {
+  session: InfographicSessionDetail | null;
+  activePoster: InfographicPosterItem | null;
+  onSelectVersion: (poster: InfographicPosterItem) => void;
+  isGenerating: boolean;
+}
+
+const DEFAULT_BRANDING: (posterId: string) => PosterBrandingData = (posterId) => ({
+  posterId,
+  headerEnabled: false,
+  logoUrl: null,
+  institution: 'PEMERINTAH KABUPATEN MIMIKA',
+  subInstitution: 'Badan Riset dan Inovasi Daerah',
+  footerEnabled: false,
+  footerText: 'Sumber: Dokumen Resmi BRIDA Kabupaten Mimika',
+  layoutConfig: {
+    headerBgColor: '#FFFFFF',
+    headerTextColor: '#0F1E36',
+    headerAlignment: 'left_with_logo',
+    footerBgColor: '#0F1E36',
+    footerTextColor: '#F8FAFC',
+    footerAlignment: 'center',
+    headerFontSize: 'normal',
+    footerFontSize: 'normal',
+    logoPosition: 'left',
+    logoSize: 'normal',
+  },
+  composedUrl: null,
+  brandingHash: null,
+});
+
+const generateCleanDownloadFilename = (
+  title: string,
+  versionNumber: number,
+  isBranded: boolean,
+): string => {
+  const cleanTitle = (title || 'Infografis')
+    .replace(/[^a-zA-Z0-9\s]/g, '')
+    .trim()
+    .replace(/\s+/g, '_')
+    .substring(0, 50);
+
+  const suffix = isBranded ? '_Resmi' : '';
+  return `Infografis_BRIDA_${cleanTitle}_v${versionNumber}${suffix}.png`;
+};
+
+export const PosterShowcaseStage: React.FC<PosterShowcaseStageProps> = ({
+  session,
+  activePoster,
+  onSelectVersion,
+  isGenerating,
+}) => {
+  const [isLightboxOpen, setIsLightboxOpen] = useState<boolean>(false);
+  const [isDownloading, setIsDownloading] = useState<boolean>(false);
+  const [zoom, setZoom] = useState<number>(100);
+  const [isBrandingOpen, setIsBrandingOpen] = useState<boolean>(false);
+  const [brandingData, setBrandingData] = useState<PosterBrandingData | null>(null);
+  const [isSavingBranding, setIsSavingBranding] = useState<boolean>(false);
+  const [isUploadingLogo, setIsUploadingLogo] = useState<boolean>(false);
+
+  const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+
+  useEffect(() => {
+    if (!activePoster) {
+      setBrandingData(null);
+      return;
+    }
+
+    let isMounted = true;
+    const fetchBranding = async () => {
+      try {
+        const data = await InfographicApi.getBranding(activePoster.id);
+        if (isMounted) {
+          setBrandingData(data || DEFAULT_BRANDING(activePoster.id));
+        }
+      } catch (err) {
+        console.warn('Gagal memuat branding poster, memakai default:', err);
+        if (isMounted) {
+          setBrandingData(DEFAULT_BRANDING(activePoster.id));
+        }
+      }
+    };
+
+    fetchBranding();
+
+    return () => {
+      isMounted = false;
+      if (saveTimeoutRef.current) {
+        clearTimeout(saveTimeoutRef.current);
+      }
+    };
+  }, [activePoster?.id]);
+
+  const handleBrandingChange = (updated: PosterBrandingData) => {
+    setBrandingData(updated);
+
+    if (!activePoster) return;
+
+    if (saveTimeoutRef.current) {
+      clearTimeout(saveTimeoutRef.current);
+    }
+
+    setIsSavingBranding(true);
+    saveTimeoutRef.current = setTimeout(async () => {
+      try {
+        await InfographicApi.saveBranding(activePoster.id, updated);
+      } catch (err) {
+        console.error('Gagal menyimpan branding:', err);
+      } finally {
+        setIsSavingBranding(false);
+      }
+    }, 600);
+  };
+
+  const handleHeaderHeightPercentChange = (percent: number) => {
+    if (!brandingData) return;
+    const updated: PosterBrandingData = {
+      ...brandingData,
+      layoutConfig: {
+        ...(brandingData.layoutConfig || {}),
+        headerHeightPercent: percent,
+      },
+    };
+    handleBrandingChange(updated);
+  };
+
+  const handleUploadLogo = async (file: File) => {
+    if (!activePoster) return;
+    setIsUploadingLogo(true);
+    try {
+      const updated = await InfographicApi.uploadBrandingLogo(activePoster.id, file);
+      setBrandingData(updated);
+    } catch (err: any) {
+      alert(err.message || 'Gagal mengunggah logo');
+    } finally {
+      setIsUploadingLogo(false);
+    }
+  };
+
+  const handleDeleteLogo = async () => {
+    if (!activePoster) return;
+    try {
+      const updated = await InfographicApi.deleteBrandingLogo(activePoster.id);
+      setBrandingData(updated);
+    } catch (err: any) {
+      alert(err.message || 'Gagal menghapus logo');
+    }
+  };
+
+  const handleResetBranding = async () => {
+    if (!activePoster) return;
+    const def = DEFAULT_BRANDING(activePoster.id);
+    setBrandingData(def);
+    try {
+      await InfographicApi.saveBranding(activePoster.id, def);
+    } catch (err) {
+      console.error('Gagal mereset branding:', err);
+    }
+  };
+
+  const handleZoomIn = () => {
+    setZoom((prev) => Math.min(prev + 20, 200));
+  };
+
+  const handleZoomOut = () => {
+    setZoom((prev) => Math.max(prev - 20, 60));
+  };
+
+  const handleResetZoom = () => {
+    setZoom(100);
+  };
+
+  if (!session || !activePoster) {
+    return (
+      <div className="w-full h-full min-h-[500px] lg:min-h-[700px] bg-slate-900 flex flex-col items-center justify-center p-8 text-center select-none rounded-none text-slate-400 font-roboto">
+        <div className="w-14 h-14 bg-slate-800/80 border border-slate-700 text-teal-400 flex items-center justify-center mb-4 rounded-none">
+          <Layers size={26} />
+        </div>
+        <h3 className="text-sm font-bold text-white uppercase tracking-wider">
+          Panggung Kreatif Infografis
+        </h3>
+        <p className="text-xs text-slate-400 max-w-sm mt-2 leading-relaxed">
+          Ketik topik infografis pada panel dialog untuk memulai perancangan visual resmi BRIDA Kabupaten Mimika.
+        </p>
+      </div>
+    );
+  }
+
+  const posters = session.posters || [];
+  const fullImageUrl = activePoster.imageUrl.startsWith('http')
+    ? activePoster.imageUrl
+    : `${API_BASE_URL}${activePoster.imageUrl}`;
+
+  const hasActiveBranding = !!(brandingData?.headerEnabled || brandingData?.footerEnabled);
+
+  const handleDownloadImage = async () => {
+    if (!activePoster || isDownloading) return;
+    setIsDownloading(true);
+
+    try {
+
+      if (saveTimeoutRef.current) {
+        clearTimeout(saveTimeoutRef.current);
+        saveTimeoutRef.current = null;
+      }
+      if (brandingData) {
+        await InfographicApi.saveBranding(activePoster.id, brandingData);
+      }
+
+      const isBranded = !!(brandingData?.headerEnabled || brandingData?.footerEnabled);
+      const downloadFilename = generateCleanDownloadFilename(
+        session?.title || 'Infografis',
+        activePoster.versionNumber,
+        isBranded,
+      );
+
+      await InfographicApi.downloadPosterFile(
+        activePoster.id,
+        downloadFilename,
+        isBranded,
+      );
+    } catch (err: any) {
+      console.error('Pengunduhan berkas poster gagal:', err);
+      alert(err.message || 'Gagal mengunduh berkas poster resmi.');
+    } finally {
+      setIsDownloading(false);
+    }
+  };
+
+  return (
+    <div className="relative w-full h-full min-h-[750px] lg:min-h-[900px] bg-slate-950 flex flex-col items-center justify-center select-none font-roboto rounded-none">
+      {}
+      <div className="absolute top-3 right-3 sm:top-4 sm:right-4 z-20 flex flex-wrap items-center gap-1.5 sm:gap-2">
+        {}
+        {posters.length > 1 && (
+          <div className="flex items-center gap-1">
+            {posters.map((poster) => {
+              const isActive = poster.versionNumber === activePoster.versionNumber;
+              return (
+                <button
+                  key={poster.id}
+                  type="button"
+                  onClick={() => onSelectVersion(poster)}
+                  className={`px-2.5 py-1.5 text-xs font-bold uppercase transition-colors cursor-pointer rounded-none border ${
+                    isActive
+                      ? 'bg-teal-700 border-teal-600 text-white'
+                      : 'bg-slate-900/90 hover:bg-slate-800 border-slate-700 text-slate-300 hover:text-white'
+                  }`}
+                  title={`Versi ${poster.versionNumber}`}
+                >
+                  v{poster.versionNumber}
+                </button>
+              );
+            })}
+          </div>
+        )}
+
+        {}
+        <div className="flex items-center bg-slate-900/90 border border-slate-700 text-slate-300 rounded-none shadow-sm">
+          <button
+            type="button"
+            onClick={handleZoomOut}
+            disabled={zoom <= 60}
+            className="p-1.5 sm:p-2 hover:text-white hover:bg-slate-800 disabled:opacity-35 disabled:hover:bg-transparent cursor-pointer transition-colors"
+            title="Perkecil Gambar (-20%)"
+          >
+            <ZoomOut size={14} />
+          </button>
+          <button
+            type="button"
+            onClick={handleResetZoom}
+            className="px-2 py-1 text-[11px] font-bold font-mono hover:text-teal-300 cursor-pointer"
+            title="Reset Ukuran Standar (100%)"
+          >
+            {zoom}%
+          </button>
+          <button
+            type="button"
+            onClick={handleZoomIn}
+            disabled={zoom >= 200}
+            className="p-1.5 sm:p-2 hover:text-white hover:bg-slate-800 disabled:opacity-35 disabled:hover:bg-transparent cursor-pointer transition-colors"
+            title="Perbesar Gambar (+20%)"
+          >
+            <ZoomIn size={14} />
+          </button>
+        </div>
+
+        {}
+        <button
+          type="button"
+          onClick={() => setIsBrandingOpen((prev) => !prev)}
+          className={`px-3 py-1.5 text-xs font-bold uppercase tracking-wider border rounded-none cursor-pointer transition-colors inline-flex items-center gap-1.5 shadow-sm ${
+            isBrandingOpen
+              ? 'bg-teal-700 border-teal-500 text-white'
+              : 'bg-slate-900/90 hover:bg-slate-800 border-slate-700 text-slate-300 hover:text-white'
+          }`}
+          title="Buka / Tutup Pengaturan Header & Footer"
+        >
+          <SlidersHorizontal size={13} />
+          <span className="hidden sm:inline">Kop & Footer</span>
+          {hasActiveBranding && !isBrandingOpen && (
+            <span className="w-1.5 h-1.5 rounded-none bg-teal-400"></span>
+          )}
+          {isBrandingOpen ? <ChevronUp size={13} /> : <ChevronDown size={13} />}
+        </button>
+
+        {}
+        <button
+          type="button"
+          onClick={() => setIsLightboxOpen(true)}
+          className="p-2 bg-slate-900/90 hover:bg-slate-800 text-slate-300 hover:text-white border border-slate-700 transition-colors cursor-pointer rounded-none shadow-sm"
+          title="Pratinjau Layar Penuh"
+        >
+          <Maximize2 size={15} />
+        </button>
+
+        {}
+        <button
+          type="button"
+          onClick={handleDownloadImage}
+          disabled={isDownloading}
+          className="px-3.5 sm:px-4 py-2 bg-teal-700 hover:bg-teal-600 disabled:bg-teal-900 border border-teal-600 text-white font-bold text-xs uppercase tracking-wider inline-flex items-center gap-1.5 transition-colors cursor-pointer rounded-none shadow-sm"
+          title="Unduh berkas PNG ke komputer"
+        >
+          {isDownloading ? (
+            <>
+              <Loader2 size={13} className="animate-spin text-teal-200" />
+              <span className="hidden sm:inline">Mengunduh...</span>
+            </>
+          ) : (
+            <>
+              <Download size={13} />
+              <span>Unduh PNG</span>
+            </>
+          )}
+        </button>
+      </div>
+
+      {}
+      {isBrandingOpen && brandingData && (
+        <div className="absolute top-14 left-4 right-4 sm:left-auto sm:right-4 z-30 max-w-3xl w-full shadow-2xl max-h-[calc(100vh-90px)] overflow-y-auto">
+          <PosterBrandingBar
+            branding={brandingData}
+            aspectRatio={activePoster?.aspectRatio || session.aspectRatio}
+            onChange={handleBrandingChange}
+            onUploadLogo={handleUploadLogo}
+            onDeleteLogo={handleDeleteLogo}
+            onReset={handleResetBranding}
+            onClose={() => setIsBrandingOpen(false)}
+            isSaving={isSavingBranding}
+            isUploadingLogo={isUploadingLogo}
+          />
+        </div>
+      )}
+
+      {}
+      {isGenerating && (
+        <div className="absolute inset-0 z-40 bg-slate-950/80 backdrop-blur-xs flex flex-col items-center justify-center text-white space-y-3 select-none rounded-none">
+          <div className="w-9 h-9 border-3 border-teal-400 border-t-transparent animate-spin rounded-none" />
+          <span className="text-xs font-bold uppercase tracking-widest text-teal-300">
+            Merender Versi Revisi Berikutnya...
+          </span>
+        </div>
+      )}
+
+      {}
+      <div className="w-full min-h-[750px] lg:min-h-[900px] pt-18 pb-12 px-4 sm:px-8 md:px-12 flex items-center justify-center overflow-x-auto">
+        <div
+          style={{ maxWidth: `${Math.round(860 * (zoom / 100))}px` }}
+          className="@container relative w-full flex items-center justify-center shadow-2xl drop-shadow-2xl rounded-none select-none transition-all duration-200"
+        >
+          <img
+            src={fullImageUrl}
+            alt={session.title || 'Infografis BRIDA Mimika'}
+            className="w-full h-auto object-contain rounded-none select-none block"
+            loading="lazy"
+          />
+
+          {}
+          <PosterBrandingOverlay
+            branding={brandingData}
+            aspectRatio={activePoster?.aspectRatio || session.aspectRatio}
+            onHeaderHeightPercentChange={handleHeaderHeightPercentChange}
+          />
+        </div>
+      </div>
+
+      {}
+      {isLightboxOpen && (
+        <div className="fixed inset-0 z-50 bg-slate-950/95 backdrop-blur-md flex flex-col items-center justify-center p-3 sm:p-6 rounded-none">
+          {}
+          <div className="absolute top-4 right-4 sm:top-6 sm:right-6 flex items-center gap-2 z-20">
+            <button
+              type="button"
+              onClick={handleDownloadImage}
+              disabled={isDownloading}
+              className="px-3 sm:px-4 py-2 bg-teal-600 hover:bg-teal-500 disabled:bg-teal-800 text-white uppercase text-xs font-bold tracking-wider inline-flex items-center gap-1.5 rounded-none cursor-pointer shadow-md"
+            >
+              {isDownloading ? <Loader2 size={13} className="animate-spin text-teal-200" /> : <Download size={13} />}
+              <span>Unduh PNG</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => setIsLightboxOpen(false)}
+              className="p-2 bg-slate-800 hover:bg-slate-700 text-white transition-colors cursor-pointer rounded-none"
+              title="Tutup (Esc)"
+            >
+              <X size={18} />
+            </button>
+          </div>
+
+          <div className="relative w-full h-full flex items-center justify-center p-2 sm:p-6 overflow-hidden">
+            <div className="@container relative max-h-[92vh] max-w-full flex items-center justify-center shadow-2xl rounded-none">
+              <img
+                src={fullImageUrl}
+                alt={session.title}
+                className="max-w-full max-h-[92vh] object-contain rounded-none block"
+              />
+              {}
+              <PosterBrandingOverlay
+                branding={brandingData}
+                aspectRatio={activePoster?.aspectRatio || session.aspectRatio}
+              />
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+};
+
+
+======================================================================
+--- FILE: brida_fe\src\modules\infographic\services\infographic.api.ts ---
+======================================================================
+import type {
+  PosterBrandingData,
+  PosterGenerationProfile,
+} from '../types/poster-branding.types';
+
+export type { PosterBrandingData, PosterGenerationProfile };
+
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000';
+
+export type PosterAspectRatio = '1:1' | '9:16' | '16:9' | '3:4' | '4:3';
+
+export interface InfographicPosterItem {
+  id: string;
+  sessionId: string;
+  versionNumber: number;
+  userPrompt: string;
+  revisedPrompt?: string;
+  aiCommentary?: string;
+  imageUrl: string;
+  aspectRatio: PosterAspectRatio;
+  generationProfile?: PosterGenerationProfile;
+  branding?: PosterBrandingData | null;
+  createdAt: string;
+}
+
+export interface InfographicSessionDetail {
+  id: string;
+  title: string;
+  topic: string;
+  aspectRatio: PosterAspectRatio;
+  document?: {
+    id: string;
+    title: string;
+    metadata?: any;
+  } | null;
+  createdAt: string;
+  updatedAt: string;
+  posters: InfographicPosterItem[];
+}
+
+export interface InfographicSessionListItem {
+  id: string;
+  title: string;
+  topic: string;
+  aspectRatio: PosterAspectRatio;
+  createdAt: string;
+  updatedAt: string;
+  totalVersions: number;
+  latestPoster: InfographicPosterItem | null;
+  document?: { id: string; title: string } | null;
+}
+
+export interface CreateSessionPayload {
+  topic: string;
+  title?: string;
+  documentId?: string;
+  aspectRatio?: PosterAspectRatio;
+  customInstructions?: string;
+}
+
+export interface ChatTurnPayload {
+  sessionId: string;
+  message: string;
+  aspectRatio?: PosterAspectRatio;
+}
+
+function getAuthHeaders(): Record<string, string> {
+  const token = sessionStorage.getItem('brida_auth_token');
+  const headers: Record<string, string> = {
+    'Content-Type': 'application/json',
+  };
+  if (token) {
+    headers['Authorization'] = `Bearer ${token}`;
+  }
+  return headers;
+}
+
+async function safeParseJsonResponse(response: Response, defaultErrorMsg: string): Promise<any> {
+  const text = await response.text();
+  let json: any = null;
+  try {
+    json = JSON.parse(text);
+  } catch {
+
+    if (response.status === 504) {
+      throw new Error(
+        'Proses pembuatan infografis membutuhkan waktu lebih dari batas timeout server (504 Gateway Time-out). Tambahkan "proxy_read_timeout 300s;" pada konfigurasi Nginx reverse proxy Anda.'
+      );
+    }
+    if (response.status === 502) {
+      throw new Error(
+        'Server backend tidak merespons (502 Bad Gateway). Jalankan "docker logs --tail 50 brida-be" pada VPS untuk melihat kendala pada backend.'
+      );
+    }
+    if (response.status === 404) {
+      throw new Error(
+        `Endpoint API tidak ditemukan (404 Not Found): ${response.url}. Pastikan konfigurasi Nginx meneruskan request /api ke container brida-be.`
+      );
+    }
+
+    const titleMatch = text.match(/<title>([^<]+)<\/title>/i);
+    const title = titleMatch ? titleMatch[1].trim() : `HTTP ${response.status} ${response.statusText}`;
+    throw new Error(`${defaultErrorMsg} (${title})`);
+  }
+
+  if (!response.ok || json?.success === false) {
+    throw new Error(json?.message || defaultErrorMsg);
+  }
+
+  return json;
+}
+
+export const InfographicApi = {
+
+  async createSession(payload: CreateSessionPayload): Promise<InfographicSessionDetail> {
+    const response = await fetch(`${API_BASE_URL}/infographic/agent/session`, {
+      method: 'POST',
+      headers: getAuthHeaders(),
+      body: JSON.stringify(payload),
+    });
+
+    const result = await safeParseJsonResponse(response, 'Gagal memulai sesi pembuatan infografis.');
+    return result.data;
+  },
+
+  async sendRevisionChat(
+    payload: ChatTurnPayload,
+  ): Promise<{ session: any; latestPoster: InfographicPosterItem }> {
+    const response = await fetch(`${API_BASE_URL}/infographic/agent/chat`, {
+      method: 'POST',
+      headers: getAuthHeaders(),
+      body: JSON.stringify(payload),
+    });
+
+    const result = await safeParseJsonResponse(response, 'Gagal mengirim instruksi revisi infografis.');
+    return result.data;
+  },
+
+  async getSessionsList(): Promise<InfographicSessionListItem[]> {
+    try {
+      const response = await fetch(`${API_BASE_URL}/infographic/agent/sessions`, {
+        method: 'GET',
+        headers: getAuthHeaders(),
+      });
+      const result = await response.json();
+      if (response.ok && result?.success) {
+        return result.data || [];
+      }
+      return [];
+    } catch {
+      return [];
+    }
+  },
+
+  async getSessionDetail(sessionId: string): Promise<InfographicSessionDetail> {
+    const response = await fetch(`${API_BASE_URL}/infographic/agent/sessions/${sessionId}`, {
+      method: 'GET',
+      headers: getAuthHeaders(),
+    });
+
+    const result = await safeParseJsonResponse(response, 'Gagal memuat detail sesi infografis.');
+    return result.data;
+  },
+
+  async deleteSession(sessionId: string): Promise<void> {
+    const response = await fetch(`${API_BASE_URL}/infographic/agent/sessions/${sessionId}`, {
+      method: 'DELETE',
+      headers: getAuthHeaders(),
+    });
+
+    await safeParseJsonResponse(response, 'Gagal menghapus sesi infografis.');
+  },
+
+  async getBranding(posterId: string): Promise<PosterBrandingData> {
+    const response = await fetch(`${API_BASE_URL}/infographic/agent/posters/${posterId}/branding`, {
+      method: 'GET',
+      headers: getAuthHeaders(),
+    });
+
+    const result = await response.json();
+    if (!response.ok || result?.success === false) {
+      throw new Error(result?.message || 'Gagal memuat konfigurasi branding poster.');
+    }
+    return result.data;
+  },
+
+  async saveBranding(
+    posterId: string,
+    payload: Partial<PosterBrandingData>,
+  ): Promise<PosterBrandingData> {
+
+    const cleanPayload: Record<string, any> = {};
+    if (payload.headerEnabled !== undefined) cleanPayload.headerEnabled = payload.headerEnabled;
+    if (payload.institution !== undefined) cleanPayload.institution = payload.institution;
+    if (payload.subInstitution !== undefined) cleanPayload.subInstitution = payload.subInstitution;
+    if (payload.footerEnabled !== undefined) cleanPayload.footerEnabled = payload.footerEnabled;
+    if (payload.footerText !== undefined) cleanPayload.footerText = payload.footerText;
+    if (payload.layoutConfig !== undefined) cleanPayload.layoutConfig = payload.layoutConfig;
+
+    const response = await fetch(`${API_BASE_URL}/infographic/agent/posters/${posterId}/branding`, {
+      method: 'PUT',
+      headers: getAuthHeaders(),
+      body: JSON.stringify(cleanPayload),
+    });
+
+    const result = await response.json();
+    if (!response.ok || result?.success === false) {
+      throw new Error(result?.message || 'Gagal menyimpan konfigurasi branding poster.');
+    }
+    return result.data;
+  },
+
+  async uploadBrandingLogo(posterId: string, file: File): Promise<PosterBrandingData> {
+    const formData = new FormData();
+    formData.append('logo', file);
+
+    const token = sessionStorage.getItem('brida_auth_token');
+    const headers: Record<string, string> = {};
+    if (token) {
+      headers['Authorization'] = `Bearer ${token}`;
+    }
+
+    const response = await fetch(
+      `${API_BASE_URL}/infographic/agent/posters/${posterId}/branding/logo`,
+      {
+        method: 'POST',
+        headers,
+        body: formData,
+      },
+    );
+
+    const result = await response.json();
+    if (!response.ok || result?.success === false) {
+      throw new Error(result?.message || 'Gagal mengunggah berkas logo instansi.');
+    }
+    return result.data;
+  },
+
+  async deleteBrandingLogo(posterId: string): Promise<PosterBrandingData> {
+    const response = await fetch(
+      `${API_BASE_URL}/infographic/agent/posters/${posterId}/branding/logo`,
+      {
+        method: 'DELETE',
+        headers: getAuthHeaders(),
+      },
+    );
+
+    const result = await response.json();
+    if (!response.ok || result?.success === false) {
+      throw new Error(result?.message || 'Gagal menghapus berkas logo.');
+    }
+    return result.data;
+  },
+
+  async downloadPosterFile(
+    posterId: string,
+    filename: string,
+    branded: boolean = true,
+  ): Promise<void> {
+    const downloadUrl = `${API_BASE_URL}/infographic/agent/posters/${posterId}/download?branded=${branded}`;
+
+    const token = sessionStorage.getItem('brida_auth_token');
+    const headers: Record<string, string> = {};
+    if (token) {
+      headers['Authorization'] = `Bearer ${token}`;
+    }
+
+    const preflightRes = await fetch(downloadUrl, { method: 'GET', headers });
+    if (!preflightRes.ok) {
+      let errMsg = `HTTP ${preflightRes.status}: Gagal mengunduh berkas poster`;
+      try {
+        const errJson = await preflightRes.json();
+        if (errJson?.message) errMsg = errJson.message;
+      } catch {}
+      throw new Error(errMsg);
+    }
+
+    let safeName = (filename || 'Infografis_BRIDA.png').trim();
+    if (!safeName.toLowerCase().endsWith('.png')) {
+      safeName = `${safeName}.png`;
+    }
+
+    const link = document.createElement('a');
+    link.style.position = 'fixed';
+    link.style.top = '-9999px';
+    link.style.left = '-9999px';
+    link.style.width = '1px';
+    link.style.height = '1px';
+    link.style.opacity = '0';
+    link.href = downloadUrl;
+    link.setAttribute('download', safeName);
+    link.download = safeName;
+    document.body.appendChild(link);
+    link.click();
+
+    setTimeout(() => {
+      try {
+        if (link.parentNode) link.parentNode.removeChild(link);
+      } catch {}
+    }, 15000);
+  },
+};
+
+
+======================================================================
+--- FILE: brida_fe\src\modules\infographic\types\poster-branding.types.ts ---
+======================================================================
+export type PosterAspectRatio = '1:1' | '9:16' | '16:9' | '3:4' | '4:3';
+
+export type PosterGenerationProfile = 'V1_BAKED_FOOTER' | 'V2_CLEAN_CANVAS';
+
+export interface PosterLayoutConfig {
+  headerBgColor?: string;
+  headerTextColor?: string;
+  headerAlignment?: 'left_with_logo' | 'center';
+  footerBgColor?: string;
+  footerTextColor?: string;
+  footerAlignment?: 'center' | 'left' | 'right';
+  headerFontSize?: 'compact' | 'normal' | 'large';
+  footerFontSize?: 'compact' | 'normal' | 'large';
+  logoPosition?: 'left' | 'right' | 'center';
+  logoSize?: 'compact' | 'normal' | 'large';
+
+  headerHeight?: 'compact' | 'normal' | 'spacious';
+
+  headerHeightPercent?: number;
+
+  footerHeightPercent?: number;
+}
+
+export const BRANDING_SAFE_AREA_CONFIG: Record<
+  PosterAspectRatio,
+  { headerBarPercent: number; footerBarPercent: number }
+> = {
+  '9:16': { headerBarPercent: 9.5, footerBarPercent: 4.0 },
+  '3:4': { headerBarPercent: 9.0, footerBarPercent: 4.0 },
+  '1:1': { headerBarPercent: 9.0, footerBarPercent: 4.0 },
+  '4:3': { headerBarPercent: 8.5, footerBarPercent: 4.0 },
+  '16:9': { headerBarPercent: 8.0, footerBarPercent: 3.5 },
+};
+
+export interface PosterBrandingData {
+  id?: string;
+  posterId: string;
+  headerEnabled: boolean;
+  logoUrl?: string | null;
+  institution?: string;
+  subInstitution?: string;
+  footerEnabled: boolean;
+  footerText?: string;
+  layoutConfig?: PosterLayoutConfig;
+  composedUrl?: string | null;
+  brandingHash?: string | null;
+}
+
+export const BRANDING_COLOR_PRESETS = [
+  { label: 'Putih Bersih', hex: '#FFFFFF', isDark: false },
+  { label: 'Navy Resmi', hex: '#0F1E36', isDark: true },
+  { label: 'Slate Teal', hex: '#0D9488', isDark: true },
+  { label: 'Dark Slate', hex: '#1E293B', isDark: true },
+];

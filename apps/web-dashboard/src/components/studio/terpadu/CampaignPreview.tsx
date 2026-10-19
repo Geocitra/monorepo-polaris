@@ -92,6 +92,7 @@ export function CampaignPreview({
   const [editedTitle, setEditedTitle] = useState(generatedResult?.publication?.title || '');
   const [editedBody, setEditedBody] = useState(generatedResult?.publication?.bodyContentMarkdown || '');
   const [selectedPosterUrl, setSelectedPosterUrl] = useState(generatedResult?.posterUrl || '');
+  const [regeneratingPoster, setRegeneratingPoster] = useState(false);
   const [visualMode, setVisualMode] = useState<'infographic' | 'raw_poster'>('infographic');
   const [connectedAccount, setConnectedAccount] = useState<any>(null);
   const [connectedThreadsAccount, setConnectedThreadsAccount] = useState<any>(null);
@@ -111,6 +112,55 @@ export function CampaignPreview({
   const [isDraggingFocal, setIsDraggingFocal] = useState(false);
   const [dragStartY, setDragStartY] = useState(0);
   const [dragStartFocal, setDragStartFocal] = useState(50);
+
+  async function handleRegeneratePoster() {
+    const publicationId = generatedResult?.publication?.id;
+    if (!publicationId || regeneratingPoster) return;
+    setRegeneratingPoster(true);
+    toast({
+      type: 'info',
+      title: 'Merender Visual Poster...',
+      description: 'Sistem sedang memproses poster visual baru di antrean background.',
+    });
+    try {
+      const res = await ApiClient.request<any>(`/studio/articles/${publicationId}/poster/regenerate`, {
+        method: 'POST',
+      });
+      const jobId = res?.jobId;
+      if (jobId) {
+        for (let i = 0; i < 45; i++) {
+          await new Promise((r) => setTimeout(r, 1500));
+          const st = await ApiClient.request<any>(`/studio/jobs/${jobId}`);
+          if (st?.status === 'COMPLETED') {
+            const detail = await ApiClient.request<any>(`/studio/articles/${publicationId}`);
+            const newUrl = detail?.asset?.cdnPublicUrl || detail?.asset?.r2StorageUrl;
+            if (newUrl) {
+              setSelectedPosterUrl(newUrl);
+              if (generatedResult) {
+                generatedResult.posterUrl = newUrl;
+              }
+              toast({
+                type: 'success',
+                title: 'Poster Berhasil Dibuat!',
+                description: 'Visual baru telah dimuat ke kanvas.',
+              });
+              break;
+            }
+          } else if (st?.status === 'FAILED') {
+            throw new Error(st?.failedReason || st?.errorDetails || 'Pemrosesan poster gagal.');
+          }
+        }
+      }
+    } catch (err: any) {
+      toast({
+        type: 'error',
+        title: 'Gagal Render Poster',
+        description: err.message || 'Terjadi gangguan saat membuat visual poster.',
+      });
+    } finally {
+      setRegeneratingPoster(false);
+    }
+  }
 
   useEffect(() => {
     ApiClient.request<any>('/social/instagram/account')
@@ -811,15 +861,35 @@ export function CampaignPreview({
                         </a>
                       </div>
                     </>
-                  ) : (
+                  ) : regeneratingPoster ? (
                     <div className="p-8 text-center space-y-3">
                       <Loader2 className="h-9 w-9 text-blue-400 animate-spin mx-auto opacity-90" />
                       <p className="text-xs text-white font-bold">
-                        🎨 AI Sedang Melukis Poster Visual di Latar Belakang...
+                        🎨 AI Sedang Merender Poster Visual Resolusi Tinggi...
                       </p>
                       <p className="text-[11px] text-slate-400 max-w-xs mx-auto">
-                        Naskah artikel Anda sudah siap ditinjau. Gambar akan otomatis muncul di sini seketika tanpa perlu refresh halaman.
+                        Visual sedang diproses dan diharmonisasikan dengan data kebijakan Anda.
                       </p>
+                    </div>
+                  ) : (
+                    <div className="p-8 text-center space-y-3">
+                      <div className="w-12 h-12 rounded-2xl bg-blue-500/10 border border-blue-500/20 text-blue-400 flex items-center justify-center mx-auto mb-1">
+                        <ImageIcon className="h-6 w-6" />
+                      </div>
+                      <p className="text-xs text-white font-bold">
+                        Visual Poster Belum Tersedia
+                      </p>
+                      <p className="text-[11px] text-slate-400 max-w-xs mx-auto">
+                        Naskah artikel Anda telah tersimpan dengan aman. Anda dapat merender materi visual kapan saja.
+                      </p>
+                      <button
+                        type="button"
+                        onClick={handleRegeneratePoster}
+                        className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-black text-xs shadow-md transition-all cursor-pointer mt-1"
+                      >
+                        <RotateCw className="h-3.5 w-3.5" />
+                        <span>Render Visual Poster AI</span>
+                      </button>
                     </div>
                   )}
                 </div>
@@ -866,15 +936,35 @@ export function CampaignPreview({
                       </a>
                     </div>
                   </>
-                ) : (
+                ) : regeneratingPoster ? (
                   <div className="p-8 text-center space-y-3">
                     <Loader2 className="h-9 w-9 text-blue-400 animate-spin mx-auto opacity-90" />
                     <p className="text-xs text-white font-bold">
-                      🎨 AI Sedang Merender Poster Resolusi Penuh...
+                      🎨 Sedang Merender Poster Resolusi Penuh...
                     </p>
                     <p className="text-[11px] text-slate-400 max-w-xs mx-auto">
-                      Gambar akan otomatis muncul begitu proses selesai di latar belakang.
+                      Visual sedang diproses di latar belakang.
                     </p>
+                  </div>
+                ) : (
+                  <div className="p-8 text-center space-y-3">
+                    <div className="w-12 h-12 rounded-2xl bg-blue-500/10 border border-blue-500/20 text-blue-400 flex items-center justify-center mx-auto mb-1">
+                      <ImageIcon className="h-6 w-6" />
+                    </div>
+                    <p className="text-xs text-white font-bold">
+                      Poster Resolusi Tinggi Belum Tersedia
+                    </p>
+                    <p className="text-[11px] text-slate-400 max-w-xs mx-auto">
+                      Klik tombol di bawah untuk membuat poster visual dengan tipografi Satori.
+                    </p>
+                    <button
+                      type="button"
+                      onClick={handleRegeneratePoster}
+                      className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-black text-xs shadow-md transition-all cursor-pointer mt-1"
+                    >
+                      <RotateCw className="h-3.5 w-3.5" />
+                      <span>Buat Poster Visual Sekarang</span>
+                    </button>
                   </div>
                 )}
               </div>

@@ -3,3 +3,5 @@ export * from './image-optimizer.js';
 export * from './storage.adapter.js';
 export * from './instagram-media-formatter.js';
 export * from './threads-media-formatter.js';
+export * from './creative-poster-compositor.js';
+export * from './multi-region-cropper.js';
