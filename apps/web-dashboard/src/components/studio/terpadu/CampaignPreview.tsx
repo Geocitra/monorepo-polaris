@@ -70,6 +70,7 @@ interface CampaignPreviewProps {
   onUpdateArticleContent?: (newTitle: string, newBody: string) => void;
   authorName?: string;
   partyAffiliation?: string;
+  isBackgroundRenderingPoster?: boolean;
 }
 
 export function CampaignPreview({
@@ -83,6 +84,7 @@ export function CampaignPreview({
   onUpdateArticleContent,
   authorName = 'Anggota Dewan',
   partyAffiliation = 'Fraksi Parlemen',
+  isBackgroundRenderingPoster = false,
 }: CampaignPreviewProps) {
   const { toast } = useToast();
   const [copiedAll, setCopiedAll] = useState(false);
@@ -861,14 +863,14 @@ export function CampaignPreview({
                         </a>
                       </div>
                     </>
-                  ) : regeneratingPoster ? (
+                  ) : (regeneratingPoster || isBackgroundRenderingPoster) ? (
                     <div className="p-8 text-center space-y-3">
                       <Loader2 className="h-9 w-9 text-blue-400 animate-spin mx-auto opacity-90" />
                       <p className="text-xs text-white font-bold">
                         🎨 AI Sedang Merender Poster Visual Resolusi Tinggi...
                       </p>
                       <p className="text-[11px] text-slate-400 max-w-xs mx-auto">
-                        Visual sedang diproses dan diharmonisasikan dengan data kebijakan Anda.
+                        Naskah artikel Anda telah siap! Visual sedang diproses dan diharmonisasikan di antrean latar belakang...
                       </p>
                     </div>
                   ) : (
@@ -936,14 +938,14 @@ export function CampaignPreview({
                       </a>
                     </div>
                   </>
-                ) : regeneratingPoster ? (
+                ) : (regeneratingPoster || isBackgroundRenderingPoster) ? (
                   <div className="p-8 text-center space-y-3">
                     <Loader2 className="h-9 w-9 text-blue-400 animate-spin mx-auto opacity-90" />
                     <p className="text-xs text-white font-bold">
                       🎨 Sedang Merender Poster Resolusi Penuh...
                     </p>
                     <p className="text-[11px] text-slate-400 max-w-xs mx-auto">
-                      Visual sedang diproses di latar belakang.
+                      Visual sedang diproses di latar belakang dan akan muncul otomatis begitu selesai.
                     </p>
                   </div>
                 ) : (

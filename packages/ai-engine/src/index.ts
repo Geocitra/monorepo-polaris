@@ -16,3 +16,8 @@ export * from './research/connectors/internal-knowledge.connector.js';
 export * from './research/connectors/web-discovery.connector.js';
 export * from './research/autonomous-research.orchestrator.js';
 export * from './creative-poster/index.js';
+export * from './adapters/google-imagen.adapter.js';
+export * from './config/image-provider.config.js';
+export * from './master-editorial-sanitizer.js';
+
+

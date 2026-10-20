@@ -20,8 +20,13 @@ import {
   PreAnalyzedPosterBlueprint,
   CompiledPosterPrompt,
 } from './creative-poster/index.js';
+import { GoogleImagenAdapter } from './adapters/google-imagen.adapter.js';
+import { getActiveImageProvider } from './config/image-provider.config.js';
+import { MasterEditorialSanitizer } from './master-editorial-sanitizer.js';
 
 export class OpenAIAIEngineAdapter implements ILLMProviderPort {
+  private readonly googleImagenAdapter = new GoogleImagenAdapter();
+
 
   public async generatePublicConcierge(
     params: GeneratePublicConciergeParams
@@ -221,8 +226,20 @@ export class OpenAIAIEngineAdapter implements ILLMProviderPort {
   }
 
   /**
+   * Menghasilkan kanvas dasar menggunakan Google Imagen 3 (native 4:5 + negative prompt)
+   */
+  public async generateGoogleImagen(params: {
+    prompt: string;
+    aspectRatio?: '4:5' | '1:1' | '16:9' | '9:16' | '3:4' | '4:3';
+    tenantId?: string;
+  }): Promise<{ temporaryImageUrl: string; canonicalTraceId: string }> {
+    return await this.googleImagenAdapter.generateImage(params);
+  }
+
+  /**
    * generateCreativePosterBackground memilih template secara Constrained RNG,
-   * mengompilasi prompt fotografi clean-art tanpa teks, dan menghasilkan background AI.
+   * mengompilasi prompt fotografi clean-art tanpa teks, dan menghasilkan background AI
+   * menggunakan provider aktif (Google Imagen 3 atau OpenAI DALL-E) dengan failover otomatis.
    */
   public async generateCreativePosterBackground(params: {
     topic: string;
@@ -242,6 +259,7 @@ export class OpenAIAIEngineAdapter implements ILLMProviderPort {
       topic: params.topic,
       forcedArchetype: params.forcedArchetype,
       excludeBlueprintId: params.excludeBlueprintId,
+      forcedBrandHex: params.tenantBrandHex,
     });
 
     const compiledPrompt = await PosterPromptCompiler.compileScenePrompt({
@@ -257,11 +275,39 @@ export class OpenAIAIEngineAdapter implements ILLMProviderPort {
         ? '1024x1792'
         : '1024x1024';
 
-    const imageResult = await this.generateDalleImage(
-      compiledPrompt.englishPrompt,
-      params.tenantId,
-      targetSize
-    );
+    const activeProvider = getActiveImageProvider();
+    let imageResult: { temporaryImageUrl: string; canonicalTraceId: string };
+
+    if (activeProvider === 'GOOGLE_IMAGEN') {
+      try {
+        console.log(
+          `[AIEngineAdapter] Menghasilkan kanvas seni Layer 1 via Google Imagen 3 (aspek rasio: ${compiledPrompt.aspectRatio || '4:5'})...`
+        );
+        imageResult = await this.generateGoogleImagen({
+          prompt: compiledPrompt.englishPrompt,
+          aspectRatio: (compiledPrompt.aspectRatio as any) || '4:5',
+          tenantId: params.tenantId,
+        });
+      } catch (googleError: any) {
+        console.warn(
+          `[AIEngineAdapter] Google Imagen 3 gagal (${googleError.message}). Mengaktifkan failover otomatis ke OpenAI DALL-E...`
+        );
+        imageResult = await this.generateDalleImage(
+          compiledPrompt.englishPrompt,
+          params.tenantId,
+          targetSize
+        );
+      }
+    } else {
+      console.log(
+        `[AIEngineAdapter] Menghasilkan kanvas seni Layer 1 via OpenAI DALL-E (target size: ${targetSize})...`
+      );
+      imageResult = await this.generateDalleImage(
+        compiledPrompt.englishPrompt,
+        params.tenantId,
+        targetSize
+      );
+    }
 
     return {
       temporaryImageUrl: imageResult.temporaryImageUrl,
@@ -405,7 +451,14 @@ export class OpenAIAIEngineAdapter implements ILLMProviderPort {
       ],
     });
 
-    return JSON.parse(response.choices[0]?.message?.content || '{}');
+    const parsed = JSON.parse(response.choices[0]?.message?.content || '{}') as GeneratedSocialPackResult;
+    return {
+      instagramCaption: MasterEditorialSanitizer.sanitize(parsed.instagramCaption || ''),
+      twitterThreads: (parsed.twitterThreads || []).map((t) =>
+        MasterEditorialSanitizer.sanitize(t || '')
+      ),
+      whatsappBroadcast: MasterEditorialSanitizer.sanitize(parsed.whatsappBroadcast || ''),
+    };
   }
 
   public async performVisionOCR(params: {

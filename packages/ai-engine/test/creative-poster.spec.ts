@@ -7,7 +7,7 @@ import {
 
 describe('POLARIS Creative Poster Engine', () => {
   it('harus memuat katalog blueprint pre-analyzed lengkap dengan slot manifest', () => {
-    expect(POSTER_BLUEPRINT_CATALOG.length).toBeGreaterThanOrEqual(4);
+    expect(POSTER_BLUEPRINT_CATALOG.length).toBe(22);
 
     const streetTemplate = POSTER_BLUEPRINT_CATALOG.find((b) => b.archetype === 'STREET_JOURNALISM');
     expect(streetTemplate).toBeDefined();
@@ -19,12 +19,19 @@ describe('POLARIS Creative Poster Engine', () => {
     expect(heroTemplate?.slotManifest.slots.subjectPhoto.popOutEffect).toBe(true);
   });
 
-  it('harus memilih blueprint STREET_JOURNALISM jika topik berbau kerakyatan dan pasar', () => {
-    const picked = PosterBlueprintSelector.selectBestBlueprint({
+  it('harus memilih blueprint secara acak (RNG) dan mematuhi excludeBlueprintId', () => {
+    const picked1 = PosterBlueprintSelector.selectBestBlueprint({
       topic: 'Kritik kenaikan harga sembako di pasar tradisional pedagang kaki lima',
     });
+    expect(picked1).toBeDefined();
+    expect(POSTER_BLUEPRINT_CATALOG.map((b) => b.id)).toContain(picked1.id);
 
-    expect(picked.archetype).toBe('STREET_JOURNALISM');
+    // Roll kedua dengan exclude template sebelumnya harus menghasilkan template yang berbeda
+    const picked2 = PosterBlueprintSelector.selectBestBlueprint({
+      topic: 'Kritik kenaikan harga sembako di pasar tradisional pedagang kaki lima',
+      excludeBlueprintId: picked1.id,
+    });
+    expect(picked2.id).not.toBe(picked1.id);
   });
 
   it('harus memilih blueprint POP_OUT_HERO jika dipaksa forcedArchetype', () => {

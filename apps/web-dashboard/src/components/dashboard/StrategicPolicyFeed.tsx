@@ -130,7 +130,7 @@ export function StrategicPolicyFeed({
       />
 
       {/* ─── HEADER: TITLE & TOP CONTROLS ─── */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-slate-200/80 dark:border-slate-800/80 pb-5">
+      <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 border-b border-slate-200/80 dark:border-slate-800/80 pb-5">
         <div className="space-y-1">
           <div className="flex items-center gap-2">
             <span className="flex h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
@@ -147,9 +147,9 @@ export function StrategicPolicyFeed({
         </div>
 
         {/* CONTROLS & TAB TOGGLES */}
-        <div className="flex flex-wrap items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2.5 shrink-0">
           {/* View Tab Toggle */}
-          <div className="flex items-center p-1 rounded-xl bg-slate-100 dark:bg-slate-900/90 border border-slate-200 dark:border-slate-800 text-xs">
+          <div className="flex items-center p-1 rounded-xl bg-slate-100 dark:bg-slate-900/90 border border-slate-200 dark:border-slate-800 text-xs shrink-0">
             <button
               type="button"
               onClick={() => setActiveTab('issues')}
@@ -175,10 +175,10 @@ export function StrategicPolicyFeed({
             </button>
           </div>
 
-          <Link href="/studio">
+          <Link href="/studio" className="shrink-0">
             <Button
               size="sm"
-              className="gap-2 text-xs font-bold shadow-md hover:brightness-110 transition-all border border-white/10"
+              className="gap-2 text-xs font-bold shadow-md hover:brightness-110 transition-all border border-white/10 shrink-0"
               style={{ background: colors.primary, color: '#FFFFFF' }}
             >
               <Sparkles className="h-3.5 w-3.5" />
@@ -190,7 +190,7 @@ export function StrategicPolicyFeed({
 
       {/* ─── TAB CONTENT: BERITA & ISU DAERAH ─── */}
       {activeTab === 'issues' && (
-        <div className="space-y-4">
+        <div className="space-y-4 pt-1">
           {/* Sector Filter Chips */}
           <div className="flex items-center gap-2 overflow-x-auto pb-1 scrollbar-none">
             <span className="text-xs text-slate-500 font-bold flex items-center gap-1 shrink-0 mr-1">

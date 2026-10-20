@@ -74,7 +74,7 @@ export default function DashboardHomePage() {
           currentPeriodEnd={billing?.currentPeriodEnd}
         />
 
-        <main className="flex-1 p-4 sm:p-6 md:p-8 space-y-6 max-w-7xl w-full mx-auto transition-all duration-300">
+        <main className="flex-1 p-4 sm:p-5 lg:p-6 space-y-6 max-w-[1440px] w-full mx-auto transition-all duration-300">
           {/* BANNER NOTIFIKASI JIKA BELUM MENYELESAIKAN PEMBAYARAN */}
           {isUnpaid && (
             <div className="p-4 sm:p-5 rounded-2xl bg-gradient-to-r from-amber-600 via-amber-500 to-amber-600 text-white shadow-xl flex flex-col sm:flex-row sm:items-center justify-between gap-3 border border-amber-400/30">
@@ -112,14 +112,14 @@ export default function DashboardHomePage() {
           {/* ═══════════════════════════════════════════════════════════════ */}
           {/* BENTO GRID ROW 1: EXECUTIVE HERO (LEFT) + RADAR & FOCUS (RIGHT) */}
           {/* ═══════════════════════════════════════════════════════════════ */}
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 items-stretch">
-            {/* Left 8 Cols: Executive Representative Presence + Frosted KPI Bar */}
-            <div className="lg:col-span-8 flex flex-col">
+          <div className="grid grid-cols-1 xl:grid-cols-12 gap-5 items-stretch">
+            {/* Left 8 Cols (on wide screens) or Full Width (on laptop with sidebar open) */}
+            <div className="xl:col-span-8 flex flex-col h-full">
               <ExecutiveHeroBanner profile={profile} briefing={briefing} />
             </div>
 
             {/* Right 4 Cols: Sentiment Pulse Radar & Priority Constituents Focus Card */}
-            <div className="lg:col-span-4 flex flex-col gap-4 sm:gap-5">
+            <div className="xl:col-span-4 grid grid-cols-1 md:grid-cols-2 xl:grid-cols-1 gap-4 sm:gap-5 h-full">
               <SentimentPulseRadar metrics={briefing?.metrics} />
               <PriorityFocusCard priorityIssues={briefing?.priorityIssues} />
             </div>

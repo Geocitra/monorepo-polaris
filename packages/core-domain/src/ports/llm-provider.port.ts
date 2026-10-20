@@ -9,6 +9,7 @@ export interface GenerateArticleParams {
   tenantId?: string;
   targetLength?: string;
   writingStyle?: string;
+  framingStance?: string;
   toneOverride?: string;
   onProgress?: (step: string, percent: number) => Promise<void> | void;
 }
@@ -62,6 +63,11 @@ export interface ILLMProviderPort {
   generateInfographicSpec(articleContent: string, tenantId?: string): Promise<InfographicDataSpecDto>;
   generateDallePrompt(infographicSpec: InfographicDataSpecDto): Promise<string>;
   generateDalleImage(englishPrompt: string, tenantId?: string): Promise<{ temporaryImageUrl: string; canonicalTraceId: string }>;
+  generateGoogleImagen?(params: {
+    prompt: string;
+    aspectRatio?: '4:5' | '1:1' | '16:9' | '9:16' | '3:4' | '4:3';
+    tenantId?: string;
+  }): Promise<{ temporaryImageUrl: string; canonicalTraceId: string }>;
   generateSocialSnippets(articleContent: string): Promise<GeneratedSocialPackResult>;
   generatePublicConcierge(params: GeneratePublicConciergeParams): Promise<GeneratedConciergeResult>;
 }

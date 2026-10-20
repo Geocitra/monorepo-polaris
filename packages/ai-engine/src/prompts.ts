@@ -32,15 +32,8 @@ Tugas Anda adalah menulis artikel analisis kebijakan publik yang komprehensif, t
 
 PANDUAN FORMAT KONTEN BERAGAM & DINAMIS (WAJIB):
 Konten TIDAK BOLEH monoton teks saja! Artikel harus memiliki irama visual jurnalistik modern yang kaya dan bervariasi:
-1. Ringkasan Eksekutif (Lead In) & Key Metric Callout:
-   Setelah lead paragraf, sertakan blok indikator kunci dengan format persis:
-   :::metric
-   {
-     "value": "Nilai Angka / Persentase (misal: 87,4% atau Rp 4,5 M)",
-     "label": "Nama Indikator / Capaian",
-     "description": "Penjelasan singkat dampak kebijakan terhadap konstituen daerah."
-   }
-   :::
+1. Ringkasan Eksekutif (Lead In):
+   Setelah lead paragraf, sajikan ringkasan eksekutif bernas yang menggarisbawahi urgensi isu dan arah intervensi kebijakan.
 
 2. Tabel Perbandingan Data Resmi (Markdown Table):
    Di bagian data lapangan / anggaran, WAJIB sertakan minimal satu tabel data komparasi yang rapi (minimal 3-4 baris data):
@@ -62,27 +55,28 @@ Konten TIDAK BOLEH monoton teks saja! Artikel harus memiliki irama visual jurnal
    }
    :::
 
-4. Dokumentasi Foto Kontekstual Lapangan:
-   Sertakan placeholder gambar kegiatan di sela paragraf kajian untuk memberi konteks visual peristiwa:
-   ![Dokumentasi Kunjungan Kerja Lapangan & Penjaringan Aspirasi Konstituen](https://images.unsplash.com/photo-1541872703-74c5e44368f9?auto=format&fit=crop&w=1200&q=80)
+4. Slot Visual Kontekstual Lapangan:
+   Sertakan slot visual infografis di posisi paragraf yang relevan menggunakan penanda:
+   <!-- VISUAL_SLOT: {"type": "INFOGRAPHIC", "caption": "Dokumentasi & Ringkasan Aspirasi Lapangan", "prompt": "Indonesian civic activity related to the topic"} -->
 
 5. Kutipan Komitmen Parlemen (Pull Quote):
    Gunakan kutipan resmi bersimbol '>' untuk menegaskan pernyataan sikap politik dewan.
 
 6. STRUKTUR BAB ARTIKEL:
    - Judul Kebijakan Lugas & Berbobot (DILARANG KERAS MENGGUNAKAN TANDA TITIK DUA ":". Wajib berupa satu kesatuan tajuk jurnalistik mengalir)
-   - Ringkasan Eksekutif & Blok :::metric
+   - Ringkasan Eksekutif
    - Bab 1: Latar Belakang & Aspirasi Konstituen
    - Bab 2: Pembedahan Fakta Data Lapangan (Sertakan Tabel Data & Blok :::chart)
    - Bab 3: Tinjauan Regulasi & Harmonisasi Hukum (Kutip UU/Perda yang relevan)
-   - Bab 4: Analisis Dampak Sosial-Ekonomi & Dokumentasi Foto
+   - Bab 4: Analisis Dampak Sosial-Ekonomi & Rekomendasi Solutif
    - Bab 5: Rekomendasi Solutif & Komitmen Aksi Pengawasan Dewan
 
 7. LANDASAN FAKTA: Anda HANYA boleh mengambil data dan regulasi dari KONTEKS WILAYAH yang disertakan. Jangan pernah mengarang nomor pasal fiktif!
 8. PANTANGAN MASTER EDITORIAL & GARIS PEMISAH (ZERO-TOLERANCE):
-   - DILARANG KERAS menggunakan kata "sekadar".
-   - DILARANG KERAS menggunakan kata "nyata" (seperti "dampak nyata", "langkah nyata", "ikhtiar nyata"). Paparkan fakta dan capaian konkret.
-   - DILARANG KERAS menggunakan tanda baca em dash (—). Gunakan koma, titik dua, titik, atau tanda kurung.
+   - DILARANG KERAS menggunakan kata "sekadar" maupun "bukan sekadar". Gunakan kata "tidak hanya" atau formulasi lugas lainnya.
+   - DILARANG KERAS menggunakan kata "nyata" (seperti "dampak nyata", "langkah nyata", "solusi nyata", "ikhtiar nyata"). Paparkan fakta dan capaian konkret.
+   - DILARANG KERAS menggunakan tanda baca em dash (—) maupun en dash (–). Gunakan koma, titik dua, titik, atau tanda kurung.
+   - DILARANG menggunakan Oxford comma (koma sebelum 'dan', 'serta', 'atau' pada perincian).
    - DILARANG KERAS MENYISIPKAN GARIS PEMISAH HORIZONTAL (seperti "---", "***", "___", atau deretan tanda hubung) di bawah judul bab maupun di sela-sela paragraf. Transisi wajib murni mengalir alami melalui spasi paragraf normal.
 9. Format Output wajib berupa JSON terstruktur murni tanpa markdown pembungkus.`;
   }
@@ -117,6 +111,12 @@ NO random text, NO gibberish characters, NO distorted human hands. Minimalist, d
    - Pokok Masalah & Fakta Kebijakan (dengan penekanan WA *tebal* / _miring_)
    - Rekomendasi Sikap / Opsi Solusi Parlemen (bullet points ringkas)
    - Tautan Baca Lengkap
+
+PANTANGAN MASTER EDITORIAL (ZERO-TOLERANCE):
+- DILARANG KERAS menggunakan kata "sekadar" maupun "bukan sekadar". Gunakan kata "tidak hanya" atau kalimat lugas.
+- DILARANG KERAS menggunakan kata "nyata" (seperti "langkah nyata", "dampak nyata", "solusi nyata", "bantuan nyata", "ikhtiar nyata"). Gunakan istilah terukur, konkret, langsung, atau substansial.
+- DILARANG KERAS menggunakan tanda baca em dash (—) maupun en dash (–). Gunakan tanda koma atau tanda titik.
+- DILARANG menggunakan Oxford comma (koma sebelum 'dan', 'serta', 'atau' pada perincian).
 
 Format Output wajib berupa JSON murni:
 {

@@ -294,10 +294,11 @@ export function ThemeForm({
         )}
       </div>
 
-      {/* ─── SECTION 2: PRESET PARTAI POLITIK ─── */}
+      {/* ─── SECTION 2: PRESET PARTAI POLITIK (DISEMBUNYIKAN SEMENTARA) ─── */}
+      {/* Disembunyikan sementara atas arahan user
       <div className="space-y-2.5">
         <label className="text-xs font-bold text-slate-700 dark:text-white uppercase tracking-wide block">
-          🏛️ Preset Resmi Partai Politik
+          Preset Resmi Partai Politik
         </label>
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
           {PARTY_PRESETS.map((p) => {
@@ -340,6 +341,7 @@ export function ThemeForm({
           })}
         </div>
       </div>
+      */}
 
       {/* ─── SECTION 4: FOTO BALIHO & TAGLINE PROFIL ─── */}
       <div className="space-y-4 pt-4 border-t border-slate-100 dark:border-slate-800">

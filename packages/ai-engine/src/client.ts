@@ -1,4 +1,5 @@
 import OpenAI from 'openai';
+import { GoogleGenAI } from '@google/genai';
 import { Langfuse } from 'langfuse';
 import * as dotenv from 'dotenv';
 import * as path from 'path';
@@ -14,6 +15,12 @@ export const openaiClient = new OpenAI({
   apiKey,
 });
 
+const geminiApiKey = process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY || '';
+
+export const googleGenAiClient = geminiApiKey
+  ? new GoogleGenAI({ apiKey: geminiApiKey })
+  : null;
+
 export const langfuseClient = new Langfuse({
   publicKey: process.env.LANGFUSE_PUBLIC_KEY || '',
   secretKey: process.env.LANGFUSE_SECRET_KEY || '',
@@ -21,3 +28,4 @@ export const langfuseClient = new Langfuse({
   flushAt: 1, // Kirim telemetry langsung tanpa menunggu batching
   flushInterval: 500,
 });
+

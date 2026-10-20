@@ -1,7 +1,7 @@
 'use client';
 
 import { useTheme } from '@/contexts/ThemeContext';
-import { TrendingUp, Radio } from 'lucide-react';
+import { TrendingUp, Radio, Sparkles } from 'lucide-react';
 
 interface SentimentPulseRadarProps {
   metrics?: {
@@ -25,25 +25,40 @@ export function SentimentPulseRadar({ metrics }: SentimentPulseRadarProps) {
   const secondaryWavePath = 'M 10,90 C 50,70 100,85 150,75 C 200,65 240,25 290,85';
 
   return (
-    <div className="relative rounded-3xl overflow-hidden border border-slate-200/90 dark:border-slate-800/80 bg-white dark:bg-gradient-to-br dark:from-[#121622] dark:via-[#0E121B] dark:to-[#0A0D14] shadow-lg dark:shadow-2xl p-5 sm:p-6 flex flex-col justify-between flex-1 min-h-[210px] group transition-all duration-300">
+    <div className="relative rounded-3xl overflow-hidden border border-slate-200/90 dark:border-slate-800/80 bg-white dark:bg-gradient-to-br dark:from-[#121622] dark:via-[#0E121B] dark:to-[#0A0D14] shadow-lg dark:shadow-2xl p-5 sm:p-6 flex flex-col justify-between flex-1 min-h-[220px] group transition-all duration-300">
       {/* ─── AMBIENT GLOW ACCENT ─── */}
       <div
         className="absolute top-0 right-0 w-44 h-44 rounded-full pointer-events-none opacity-10 dark:opacity-20 blur-2xl"
         style={{ background: colors.primary }}
       />
 
-      {/* ─── HEADER ─── */}
+      {/* ─── HEADER & LIVE PULSE ─── */}
       <div className="flex items-center justify-between relative z-10">
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-1.5">
           <span className="text-xs font-bold text-slate-800 dark:text-slate-200">
             Pantauan Opini Publik Hari Ini
           </span>
-          <span className="text-amber-500 dark:text-amber-400 text-sm">💡</span>
+          <Sparkles className="h-3.5 w-3.5 text-amber-500 shrink-0" />
         </div>
 
-        <div className="flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-emerald-50 dark:bg-emerald-500/15 border border-emerald-200 dark:border-emerald-500/30 text-[10px] font-bold text-emerald-700 dark:text-emerald-400">
-          <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 dark:bg-emerald-400 animate-pulse" />
-          <span>Live Pulse</span>
+        <div className="flex items-center gap-1.5 text-[11px] font-semibold text-emerald-600 dark:text-emerald-400">
+          <span className="relative flex h-2 w-2">
+            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
+            <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500" />
+          </span>
+          <span className="tracking-wide">Live Pulse</span>
+        </div>
+      </div>
+
+      {/* ─── KETERANGAN GARIS (LEGEND) ─── */}
+      <div className="flex items-center gap-3.5 pt-1 text-[10px] text-slate-500 dark:text-slate-400 font-medium relative z-10">
+        <div className="flex items-center gap-1.5">
+          <span className="h-1.5 w-3 rounded-full" style={{ backgroundColor: colors.primary }} />
+          <span>Sentimen Positif (Dukungan)</span>
+        </div>
+        <div className="flex items-center gap-1.5">
+          <span className="h-1.5 w-3 rounded-full bg-amber-500" />
+          <span>Isu Kritis (Perhatian)</span>
         </div>
       </div>
 

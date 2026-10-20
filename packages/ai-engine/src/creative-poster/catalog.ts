@@ -1,717 +1,700 @@
 import { PreAnalyzedPosterBlueprint } from './types.js';
 
 /**
- * POLARIS Pre-Analyzed Poster Blueprint Catalog
- * Ekstraksi terstruktur dari koleksi referensi di uploads/references/poster.
- * Menyimpan palet warna, rasio grid, instruksi negative space, dan prompt hint.
+ * POLARIS Pre-Analyzed Poster Blueprint Catalog (22 Variasi Lengkap)
+ * Seluruh 22 file referensi dari uploads/references/poster/ dipetakan ke dalam
+ * cetak biru desain struktural dengan rasio 4:5 (1080x1350px), slot tipografi adaptif,
+ * dan panduan ruang negatif (negative space) untuk komposisi AI.
  */
 export const POSTER_BLUEPRINT_CATALOG: PreAnalyzedPosterBlueprint[] = [
   // ---------------------------------------------------------------------------
-  // 1. POP-OUT HERO (THE EDGE / CINEMATIC OVERLAY)
+  // 1. THE CINEMATIC POP-OUT HERO
   // ---------------------------------------------------------------------------
   {
-    id: 'TPL-POP-OUT-HERO-01',
+    id: 'TPL-01-POP-OUT-HERO',
     name: 'The Cinematic Pop-Out Hero',
     archetype: 'POP_OUT_HERO',
     referenceFile: 'Minimal Poster Design with Bold Typography _ Cinematic Layout & Editorial Style.jpg',
     description: 'Bingkai framed cream vintage dengan subjek menerobos kotak foto dan memotong judul condensed tebal di belakangnya.',
-    tags: ['visi', 'kepemimpinan', 'modern', 'pemuda', 'outdoor', 'inovasi', 'keberanian', 'editorial'],
+    tags: ['sinematik', 'bold', 'hero', 'pop-out', 'modern', 'editorial'],
     aspectRatio: '4:5',
     colorPalette: {
-      primaryAccent: '#EA580C', // Bright Safety Orange
-      backgroundBase: '#F6F3EB', // Warm Vintage Cream
-      textColor: '#111827',     // Dark Charcoal
-      subTextColor: '#4B5563',  // Slate Gray
+      primaryAccent: '#EA580C',
+      secondaryAccent: '#FB923C',
+      backgroundBase: '#F6F3EB',
+      textColor: '#111827',
+      subTextColor: '#4B5563',
     },
-    scenePromptHint: 'Dramatic cinematic aerial/landscape shot with authentic 35mm film grain. Soft atmospheric daylight. High-end editorial magazine art direction, National Geographic outdoor aesthetic. Natural organic textures.',
+    scenePromptHint: 'Dramatic cinematic aerial or environmental documentary shot with authentic 35mm film grain, soft atmospheric daylight, high-end editorial magazine art direction.',
     negativeSpaceZone: 'The top 35% of the frame MUST be uncluttered, clean, or soft-focus background for large typography overlay. The central lower section houses the environment.',
     slotManifest: {
       canvas: { width: 1080, height: 1350, aspectRatio: '4:5' },
       slots: {
-        subjectPhoto: {
-          x: 0.28,
-          y: 0.22,
-          w: 0.44,
-          h: 0.65,
-          anchor: 'center',
-          popOutEffect: true,
-          popOutOverflowTopPx: 75,
-          shadowOpacity: 0.45,
-          shadowBlur: 25,
-        },
-        headlineBlock: {
-          x: 0.08,
-          y: 0.08,
-          w: 0.84,
-          maxLines: 1,
-          fontFamily: 'Bebas Neue',
-          fontSizePx: 140,
-          textColor: '#EA580C',
-          isUppercase: true,
-          interlockingWithSubject: true,
-        },
-        quoteStatement: {
-          x: 0.15,
-          y: 0.38,
-          w: 0.70,
-          fontFamily: 'Plus Jakarta Sans',
-          fontSizePx: 16,
-          textColor: '#374151',
-        },
-        memberIdentity: {
-          x: 0.10,
-          y: 0.88,
-          w: 0.45,
-          nameFontSizePx: 20,
-          titleFontSizePx: 13,
-          nameColor: '#111827',
-          titleColor: '#6B7280',
-          badgeStyle: 'minimal',
-        },
-        officialEmblem: {
-          x: 0.08,
-          y: 0.03,
-          w: 0.12,
-          maxHeightPx: 42,
-          placement: 'top-left',
-          showInstitutionBadge: true,
-        },
-        editorialAccents: {
-          showBarcode: true,
-          barcodeCoordinate: { x: 0.42, y: 0.92, w: 0.16 },
-          editionTag: 'POLARIS FIELD NOTES // EDITION 2026',
-          editionCoordinate: { x: 0.60, y: 0.035, w: 0.32 },
-        },
+        subjectPhoto: { x: 0.28, y: 0.22, w: 0.44, h: 0.65, anchor: 'center', popOutEffect: true, popOutOverflowTopPx: 75, shadowOpacity: 0.45, shadowBlur: 25 },
+        headlineBlock: { x: 0.08, y: 0.08, w: 0.84, maxLines: 1, fontFamily: 'Bebas Neue', fontSizePx: 96, textColor: '#EA580C', isUppercase: true, interlockingWithSubject: true },
+        quoteStatement: { x: 0.15, y: 0.38, w: 0.70, fontFamily: 'Plus Jakarta Sans', fontSizePx: 16, textColor: '#374151' },
+        memberIdentity: { x: 0.10, y: 0.88, w: 0.45, nameFontSizePx: 20, titleFontSizePx: 13, nameColor: '#111827', titleColor: '#6B7280', badgeStyle: 'minimal' },
+        officialEmblem: { x: 0.08, y: 0.03, w: 0.12, maxHeightPx: 42, placement: 'top-left', showInstitutionBadge: true },
+        editorialAccents: { showBarcode: true, barcodeCoordinate: { x: 0.42, y: 0.92, w: 0.16 }, editionTag: 'POLARIS FIELD NOTES // EDITION 2026', editionCoordinate: { x: 0.60, y: 0.035, w: 0.32 } },
       },
     },
   },
 
   // ---------------------------------------------------------------------------
-  // 2. STREET JOURNALISM / RISOGRAPH (POSTER PKL & OKE GAS)
+  // 2. STREET JOURNALISM RISOGRAPH
   // ---------------------------------------------------------------------------
   {
-    id: 'TPL-STREET-JOURNALISM-01',
+    id: 'TPL-02-STREET-JOURNALISM',
     name: 'Street Journalism Risograph',
     archetype: 'STREET_JOURNALISM',
     referenceFile: 'POSTER PKL.jpg',
-    description: 'Grid jurnalisme investigatif dengan montase foto jalanan/pasar, kontras duotone merah-hitam, dan kotak judul solid block.',
-    tags: ['ekonomi', 'pasar', 'rakyat', 'umkm', 'sosial', 'kritik', 'lapangan', 'reses', 'kesejahteraan'],
+    description: 'Grid jurnalisme investigatif dengan montase foto lapangan, kontras duotone merah-hitam, dan kotak judul solid block.',
+    tags: ['investigatif', 'duotone', 'risograph', 'kolase', 'brutalis'],
     aspectRatio: '4:5',
     colorPalette: {
-      primaryAccent: '#DC2626', // Crimson Red
-      backgroundBase: '#F5F5F0', // Newsprint Off-White
-      textColor: '#0A0A0A',     // Pitch Black
+      primaryAccent: '#DC2626',
+      secondaryAccent: '#F87171',
+      backgroundBase: '#F5F5F0',
+      textColor: '#0A0A0A',
       subTextColor: '#333333',
     },
-    scenePromptHint: 'Raw, gritty Indonesian street scene documentary photography. Authentic street stalls, wet market life, public transportation, or daily civilian perseverance. Black and white high-contrast reportage with subtle risograph halftone dot texture.',
+    scenePromptHint: 'Raw, gritty documentary photography with authentic atmospheric contrast. High-contrast reportage with subtle risograph halftone dot texture.',
     negativeSpaceZone: 'The left 50% and bottom 25% should have structured architecture or dark shadow zones suitable for solid text banners.',
     slotManifest: {
       canvas: { width: 1080, height: 1350, aspectRatio: '4:5' },
       editorialBlocks: [
-        {
-          slotId: 'left_positive',
-          role: 'COLUMN_SECTION',
-          coordinate: { x: 0.05, y: 0.08, w: 0.32 },
-          typography: {
-            headerFont: 'Anton',
-            headerSizePx: 36,
-            headerColor: '#9E0B0F',
-            bodyFont: 'Plus Jakarta Sans',
-            bodySizePx: 12,
-            bodyColor: '#18181B',
-            textAlign: 'justify',
-          },
-          constraints: { headerMaxChars: 18, bodyMinChars: 160, bodyMaxChars: 230 },
-          defaultReferenceHeader: 'DAMPAK POSITIF',
-        },
-        {
-          slotId: 'left_negative_box',
-          role: 'SOLID_COLOR_BOX',
-          coordinate: { x: 0.05, y: 0.22, w: 0.32 },
-          typography: {
-            headerFont: 'Anton',
-            headerSizePx: 32,
-            headerColor: '#FFFFFF',
-            bodyFont: 'Plus Jakarta Sans',
-            bodySizePx: 12,
-            bodyColor: '#FFFFFF',
-            boxBgColor: '#9E0B0F',
-            textAlign: 'justify',
-          },
-          constraints: { headerMaxChars: 20, bodyMinChars: 180, bodyMaxChars: 250 },
-          defaultReferenceHeader: 'DAMPAK NEGATIF',
-        },
-        {
-          slotId: 'center_giant_title',
-          role: 'GIANT_STACKED_TITLE',
-          coordinate: { x: 0.40, y: 0.06, w: 0.22 },
-          typography: {
-            headerFont: 'Bebas Neue',
-            headerSizePx: 92,
-            headerColor: '#9E0B0F',
-            bodyFont: 'Plus Jakarta Sans',
-            bodySizePx: 12,
-            bodyColor: '#18181B',
-            textAlign: 'justify',
-          },
-          constraints: { headerMaxChars: 14, bodyMinChars: 190, bodyMaxChars: 260 },
-          defaultReferenceHeader: 'ASAL USUL',
-        },
-        {
-          slotId: 'right_cause',
-          role: 'COLUMN_SECTION',
-          coordinate: { x: 0.64, y: 0.28, w: 0.31 },
-          typography: {
-            headerFont: 'Anton',
-            headerSizePx: 42,
-            headerColor: '#9E0B0F',
-            bodyFont: 'Plus Jakarta Sans',
-            bodySizePx: 12,
-            bodyColor: '#18181B',
-            textAlign: 'justify',
-          },
-          constraints: { headerMaxChars: 22, bodyMinChars: 180, bodyMaxChars: 250 },
-          defaultReferenceHeader: 'PENYEBAB KEMUNCULAN',
-        },
-      ],
-      visualCutoutSlots: [
-        {
-          slotId: 'upper_right_cutout',
-          spatialZonePrompt: 'Upper-right quadrant cutout overlapping a red geometric shape',
-          originalReferenceSubject: 'Indonesian street vendor with traditional food cart (gerobak)',
-          photoTreatment: 'BW_HALFTONE_CUTOUT',
-        },
-        {
-          slotId: 'mid_left_hero_cutout',
-          spatialZonePrompt: 'Middle-left foreground standing over a crimson red brush splash',
-          originalReferenceSubject: 'Indonesian street vendor carrying goods looking forward',
-          photoTreatment: 'BW_HALFTONE_CUTOUT',
-        },
-        {
-          slotId: 'bottom_street_scene',
-          spatialZonePrompt: 'Lower-middle full-bleed urban street level architecture',
-          originalReferenceSubject: 'Indonesian Chinatown/street shophouses with street stalls and cars',
-          photoTreatment: 'BW_HALFTONE_CUTOUT',
-        },
+        { slotId: 'left_positive', role: 'COLUMN_SECTION', coordinate: { x: 0.05, y: 0.08, w: 0.32 }, typography: { headerFont: 'Anton', headerSizePx: 36, headerColor: '#9E0B0F', bodyFont: 'Plus Jakarta Sans', bodySizePx: 12, bodyColor: '#18181B', textAlign: 'justify' }, constraints: { headerMaxChars: 20, bodyMinChars: 180, bodyMaxChars: 250 }, defaultReferenceHeader: 'TINJAUAN POSITIF' },
+        { slotId: 'left_negative_box', role: 'SOLID_COLOR_BOX', coordinate: { x: 0.05, y: 0.22, w: 0.32 }, typography: { headerFont: 'Anton', headerSizePx: 32, headerColor: '#FFFFFF', bodyFont: 'Plus Jakarta Sans', bodySizePx: 12, bodyColor: '#FFFFFF', boxBgColor: '#9E0B0F', textAlign: 'justify' }, constraints: { headerMaxChars: 20, bodyMinChars: 180, bodyMaxChars: 250 }, defaultReferenceHeader: 'TINJAUAN TANTANGAN' },
+        { slotId: 'center_giant_title', role: 'GIANT_STACKED_TITLE', coordinate: { x: 0.40, y: 0.08, w: 0.22 }, typography: { headerFont: 'Bebas Neue', headerSizePx: 88, headerColor: '#9E0B0F', bodyFont: 'Plus Jakarta Sans', bodySizePx: 12, bodyColor: '#18181B', textAlign: 'justify' }, constraints: { headerMaxChars: 14, bodyMinChars: 120, bodyMaxChars: 180 }, defaultReferenceHeader: 'SOLUSI KONKRET' },
+        { slotId: 'right_cause', role: 'COLUMN_SECTION', coordinate: { x: 0.65, y: 0.32, w: 0.30 }, typography: { headerFont: 'Anton', headerSizePx: 42, headerColor: '#9E0B0F', bodyFont: 'Plus Jakarta Sans', bodySizePx: 12, bodyColor: '#18181B', textAlign: 'justify' }, constraints: { headerMaxChars: 20, bodyMinChars: 150, bodyMaxChars: 220 }, defaultReferenceHeader: 'AKSI BERSAMA' },
       ],
       slots: {
-        subjectPhoto: {
-          x: 0.58,
-          y: 0.20,
-          w: 0.38,
-          h: 0.58,
-          anchor: 'bottom-right',
-          popOutEffect: false,
-          shadowOpacity: 0.35,
-          shadowBlur: 15,
-        },
-        headlineBlock: {
-          x: 0.06,
-          y: 0.12,
-          w: 0.52,
-          maxLines: 2,
-          fontFamily: 'Anton',
-          fontSizePx: 72,
-          textColor: '#FFFFFF',
-          bgColor: '#DC2626',
-          isUppercase: true,
-        },
-        quoteStatement: {
-          x: 0.06,
-          y: 0.32,
-          w: 0.48,
-          fontFamily: 'Plus Jakarta Sans',
-          fontSizePx: 18,
-          textColor: '#1F2937',
-        },
-        memberIdentity: {
-          x: 0.06,
-          y: 0.82,
-          w: 0.50,
-          nameFontSizePx: 22,
-          titleFontSizePx: 14,
-          nameColor: '#FFFFFF',
-          titleColor: '#E5E7EB',
-          badgeStyle: 'solid-ribbon',
-        },
-        officialEmblem: {
-          x: 0.06,
-          y: 0.03,
-          w: 0.14,
-          maxHeightPx: 45,
-          placement: 'top-left',
-          showInstitutionBadge: true,
-        },
-        editorialAccents: {
-          showBarcode: true,
-          barcodeCoordinate: { x: 0.78, y: 0.92, w: 0.16 },
-          editionTag: 'LAPORAN ADVOKASI ASPIRASI // POLARIS',
-          editionCoordinate: { x: 0.40, y: 0.035, w: 0.50 },
-        },
+        subjectPhoto: { x: 0.58, y: 0.20, w: 0.38, h: 0.58, anchor: 'bottom-right', popOutEffect: false, shadowOpacity: 0.35, shadowBlur: 15 },
+        headlineBlock: { x: 0.06, y: 0.12, w: 0.52, maxLines: 2, fontFamily: 'Anton', fontSizePx: 72, textColor: '#FFFFFF', bgColor: '#DC2626', isUppercase: true },
+        quoteStatement: { x: 0.06, y: 0.88, w: 0.88, fontFamily: 'Plus Jakarta Sans', fontSizePx: 14, textColor: '#FFFFFF' },
+        memberIdentity: { x: 0.06, y: 0.94, w: 0.45, nameFontSizePx: 18, titleFontSizePx: 12, nameColor: '#FFFFFF', titleColor: '#DC2626' },
+        officialEmblem: { x: 0.82, y: 0.04, w: 0.12, maxHeightPx: 38, placement: 'top-right' },
       },
     },
   },
 
   // ---------------------------------------------------------------------------
-  // 3. THE STATEMENT PROFILE (STEVE JOBS / TIME MAGAZINE)
+  // 3. THE STATEMENT PROFILE & LEGACY
   // ---------------------------------------------------------------------------
   {
-    id: 'TPL-STATEMENT-PROFILE-01',
+    id: 'TPL-03-STATEMENT-PROFILE',
     name: 'The Statement Profile & Legacy',
     archetype: 'STATEMENT_PROFILE',
     referenceFile: 'Biografi Singkat Steve Jobs.jpg',
-    description: 'Potret karismatik dominan di tengah dengan nama tokoh besar di kiri-kanan kepala, kartu kaca glassmorphism, dan kutipan visi.',
-    tags: ['profil', 'tokoh', 'statement', 'opini', 'wibawa', 'gagasan', 'kebijakan', 'integritas', 'biografi'],
+    description: 'Potret tokoh karismatik berwibawa dengan kutipan tegas, tipografi elegan berbobot tinggi, dan kartu identitas kepemimpinan.',
+    tags: ['tokoh', 'profil', 'kutipan', 'integritas', 'kepemimpinan', 'wawancara'],
     aspectRatio: '4:5',
     colorPalette: {
-      primaryAccent: '#2563EB', // Royal Blue
-      backgroundBase: '#0F172A', // Slate Deep Navy
+      primaryAccent: '#4F46E5',
+      secondaryAccent: '#818CF8',
+      backgroundBase: '#111827',
       textColor: '#FFFFFF',
-      subTextColor: '#94A3B8',
+      subTextColor: '#9CA3AF',
     },
-    scenePromptHint: 'Subtle atmospheric architectural studio background with soft directional rim-lighting. Deep elegant shadows, cinematic bokeh, minimalist clean luxury environment. 85mm portrait lens depth of field.',
-    negativeSpaceZone: 'Clean gradient and subtle textures behind the center subject to accommodate surrounding typographic blocks and frosted glass cards.',
+    scenePromptHint: 'Studio portrait setting with dramatic low-key rim lighting, clean dark background, authentic 35mm film grain, high-end editorial magazine cover style.',
+    negativeSpaceZone: 'The left 55% of the frame should be clean deep shadows or soft gradient for typography overlay.',
     slotManifest: {
       canvas: { width: 1080, height: 1350, aspectRatio: '4:5' },
       slots: {
-        subjectPhoto: {
-          x: 0.22,
-          y: 0.14,
-          w: 0.56,
-          h: 0.76,
-          anchor: 'center',
-          popOutEffect: false,
-          shadowOpacity: 0.50,
-          shadowBlur: 30,
-        },
-        headlineBlock: {
-          x: 0.08,
-          y: 0.10,
-          w: 0.84,
-          maxLines: 2,
-          fontFamily: 'Bebas Neue',
-          fontSizePx: 88,
-          textColor: '#FFFFFF',
-          isUppercase: true,
-          interlockingWithSubject: true,
-        },
-        quoteStatement: {
-          x: 0.10,
-          y: 0.72,
-          w: 0.80,
-          fontFamily: 'Plus Jakarta Sans',
-          fontSizePx: 20,
-          textColor: '#F8FAFC',
-        },
-        memberIdentity: {
-          x: 0.10,
-          y: 0.86,
-          w: 0.50,
-          nameFontSizePx: 22,
-          titleFontSizePx: 14,
-          nameColor: '#FFFFFF',
-          titleColor: '#38BDF8',
-          badgeStyle: 'glassmorphic',
-        },
-        officialEmblem: {
-          x: 0.82,
-          y: 0.03,
-          w: 0.14,
-          maxHeightPx: 45,
-          placement: 'top-right',
-          showInstitutionBadge: false,
-        },
-        editorialAccents: {
-          showBarcode: false,
-          editionTag: 'POLARIS EXECUTIVE LEADERSHIP BRIEF',
-          editionCoordinate: { x: 0.08, y: 0.035, w: 0.45 },
-        },
+        subjectPhoto: { x: 0.50, y: 0.15, w: 0.48, h: 0.75, anchor: 'center', popOutEffect: false, shadowOpacity: 0.5, shadowBlur: 30 },
+        headlineBlock: { x: 0.08, y: 0.18, w: 0.55, maxLines: 2, fontFamily: 'Anton', fontSizePx: 80, textColor: '#FFFFFF', isUppercase: true },
+        quoteStatement: { x: 0.08, y: 0.48, w: 0.50, fontFamily: 'Plus Jakarta Sans', fontSizePx: 16, textColor: '#E5E7EB' },
+        memberIdentity: { x: 0.08, y: 0.85, w: 0.45, nameFontSizePx: 22, titleFontSizePx: 13, nameColor: '#FFFFFF', titleColor: '#818CF8', badgeStyle: 'glassmorphic' },
+        officialEmblem: { x: 0.82, y: 0.05, w: 0.12, maxHeightPx: 40, placement: 'top-right' },
       },
     },
   },
 
   // ---------------------------------------------------------------------------
-  // 4. RETRO PUBLIC CAMPAIGN (EARTHQUAKE RETRO / POSTER ACARA)
+  // 4. RETRO PUBLIC INFORMATION CAMPAIGN
   // ---------------------------------------------------------------------------
   {
-    id: 'TPL-RETRO-CAMPAIGN-01',
+    id: 'TPL-04-RETRO-CAMPAIGN',
     name: 'Retro Public Information Campaign',
     archetype: 'RETRO_CAMPAIGN',
-    referenceFile: 'EARTHQUAKE INFOGRAFIS RETRO STYLE.jpg',
-    description: 'Format edukasi publik vintage 70s-80s dengan badge judul retro, kartu info bertingkat, dan ilustrasi kontekstual.',
-    tags: ['edukasi', 'bencana', 'peringatan', 'kampanye', 'lingkungan', 'kesehatan', 'masyarakat', 'retro'],
+    referenceFile: 'Poster Acara.jpg',
+    description: 'Desain poster edukasi publik klasik 70s-80s dengan pita vintage, border berbingkai, dan kotak ganda isu & solusi.',
+    tags: ['vintage', 'retro', 'kampanye', 'edukasi', '70s', '80s'],
     aspectRatio: '4:5',
     colorPalette: {
-      primaryAccent: '#0D9488', // Vintage Teal
-      backgroundBase: '#EDE8D5', // Aged Paper Yellow/Beige
-      textColor: '#1C1917',     // Warm Black
-      subTextColor: '#44403C',
+      primaryAccent: '#D97706',
+      secondaryAccent: '#FBBF24',
+      backgroundBase: '#FFFBEB',
+      textColor: '#18181B',
+      subTextColor: '#52525B',
     },
-    scenePromptHint: '1970s warm retro documentary setting with vintage color grading (kodachrome warmth, warm greens, muted earth tones). Subtle paper crease lines and archival print textures.',
-    negativeSpaceZone: 'Top 25% reserved for arched retro badge. Lower 60% contains partitioned informative visual planes.',
+    scenePromptHint: 'Vintage 1970s public educational lithograph illustration with muted retro color grading, tactile paper grain, and authentic nostalgic atmosphere.',
+    negativeSpaceZone: 'Central graphic area accommodates dual structured info cards.',
     slotManifest: {
       canvas: { width: 1080, height: 1350, aspectRatio: '4:5' },
       slots: {
-        subjectPhoto: {
-          x: 0.55,
-          y: 0.35,
-          w: 0.40,
-          h: 0.55,
-          anchor: 'bottom-right',
-          popOutEffect: false,
-          shadowOpacity: 0.30,
-          shadowBlur: 10,
-        },
-        headlineBlock: {
-          x: 0.10,
-          y: 0.06,
-          w: 0.80,
-          maxLines: 2,
-          fontFamily: 'Anton',
-          fontSizePx: 64,
-          textColor: '#1C1917',
-          bgColor: '#F59E0B',
-          isUppercase: true,
-        },
-        quoteStatement: {
-          x: 0.08,
-          y: 0.32,
-          w: 0.45,
-          fontFamily: 'Plus Jakarta Sans',
-          fontSizePx: 17,
-          textColor: '#292524',
-        },
-        memberIdentity: {
-          x: 0.08,
-          y: 0.85,
-          w: 0.45,
-          nameFontSizePx: 19,
-          titleFontSizePx: 13,
-          nameColor: '#1C1917',
-          titleColor: '#0D9488',
-          badgeStyle: 'minimal',
-        },
-        officialEmblem: {
-          x: 0.08,
-          y: 0.02,
-          w: 0.12,
-          maxHeightPx: 40,
-          placement: 'top-left',
-          showInstitutionBadge: true,
-        },
-        editorialAccents: {
-          showBarcode: true,
-          barcodeCoordinate: { x: 0.76, y: 0.92, w: 0.16 },
-          editionTag: 'PANDUAN INFORMASI PUBLIK // PARLEMEN',
-          editionCoordinate: { x: 0.35, y: 0.025, w: 0.50 },
-        },
+        subjectPhoto: { x: 0.50, y: 0.35, w: 0.45, h: 0.45, anchor: 'center' },
+        headlineBlock: { x: 0.08, y: 0.08, w: 0.84, maxLines: 2, fontFamily: 'Anton', fontSizePx: 84, textColor: '#18181B', isUppercase: true },
+        memberIdentity: { x: 0.08, y: 0.90, w: 0.50, nameFontSizePx: 20, titleFontSizePx: 12, nameColor: '#FFFFFF', titleColor: '#FEF08A' },
+        officialEmblem: { x: 0.82, y: 0.04, w: 0.12, maxHeightPx: 36, placement: 'top-right' },
       },
     },
   },
 
   // ---------------------------------------------------------------------------
-  // 5. TORN PAPER VERITAS (TECHNO VERITAS / NIGHT OF TREMORS)
+  // 5. TECHNO VERITAS BROADSHEET (TORN PAPER)
   // ---------------------------------------------------------------------------
   {
-    id: 'TPL-TORN-PAPER-VERITAS-01',
+    id: 'TPL-05-TORN-PAPER-NEWS',
     name: 'Techno Veritas Broadsheet (Torn Paper)',
     archetype: 'TORN_PAPER_NEWS',
     referenceFile: 'Techno Veritas Volume 1 Issue 1.jpg',
-    description: '3-kolom broadsheet zine dengan bukaan robekan kertas vertikal di tengah, cincin konsentris di langit malam, 3 lingkaran data statistik, dan blok headline merah tebal.',
-    tags: ['bencana', 'investigasi', 'darurat', 'koran', 'data', 'advokasi', 'humanis', 'kebijakan', 'zine', 'kebakaran'],
+    description: 'Koran investigatif antik dengan robekan kertas melintang (torn paper centerfold), lencana statistik bulat, dan kode QR.',
+    tags: ['koran', 'broadsheet', 'torn-paper', 'arsip', 'investigasi', 'editorial'],
     aspectRatio: '4:5',
     colorPalette: {
-      primaryAccent: '#DC2626', // Crimson Red
-      backgroundBase: '#FCFAF6', // Warm Newsprint
-      textColor: '#111827',     // Deep Ink Charcoal
-      subTextColor: '#4B5563',  // Slate
+      primaryAccent: '#9E0B0F',
+      secondaryAccent: '#F87171',
+      backgroundBase: '#F4F1EA',
+      textColor: '#18181B',
+      subTextColor: '#52525B',
     },
-    scenePromptHint: 'Dramatic high-impact photojournalistic documentary photograph in the style of Time Magazine / Reuters. Concentric glowing heatwave ripple rings radiating in upper sky.',
-    negativeSpaceZone: 'Center 50% framed by torn paper edges, lower section contains deep black gradient for headline overlay.',
+    scenePromptHint: 'High-impact photojournalistic documentary photograph in the style of Time Magazine / Reuters, atmospheric background, 35mm film documentary texture.',
+    negativeSpaceZone: 'The center horizontal 40% band features ripped paper wings framing supporting graphic inserts.',
     slotManifest: {
       canvas: { width: 1080, height: 1350, aspectRatio: '4:5' },
       slots: {
-        subjectPhoto: {
-          x: 0.28,
-          y: 0.25,
-          w: 0.44,
-          h: 0.50,
-          anchor: 'center',
-          popOutEffect: false,
-          shadowOpacity: 0.4,
-          shadowBlur: 20,
-        },
-        headlineBlock: {
-          x: 0.26,
-          y: 0.68,
-          w: 0.48,
-          maxLines: 2,
-          fontFamily: 'Bebas Neue',
-          fontSizePx: 72,
-          textColor: '#EF4444',
-          isUppercase: true,
-        },
-        quoteStatement: {
-          x: 0.27,
-          y: 0.78,
-          w: 0.46,
-          fontFamily: 'DejaVu Serif',
-          fontSizePx: 14,
-          textColor: '#FFFFFF',
-        },
-        memberIdentity: {
-          x: 0.05,
-          y: 0.90,
-          w: 0.22,
-          nameFontSizePx: 14,
-          titleFontSizePx: 10,
-          nameColor: '#111827',
-          titleColor: '#6B7280',
-          badgeStyle: 'minimal',
-        },
-        officialEmblem: {
-          x: 0.46,
-          y: 0.02,
-          w: 0.08,
-          maxHeightPx: 38,
-          placement: 'top-left',
-          showInstitutionBadge: false,
-        },
-        editorialAccents: {
-          showBarcode: true,
-          barcodeCoordinate: { x: 0.80, y: 0.03, w: 0.15 },
-          editionTag: 'POLARIS VERITAS // EDISI ADVOKASI',
-          editionCoordinate: { x: 0.35, y: 0.08, w: 0.30 },
-        },
+        subjectPhoto: { x: 0.50, y: 0.30, w: 0.50, h: 0.45, anchor: 'center' },
+        headlineBlock: { x: 0.06, y: 0.08, w: 0.88, maxLines: 2, fontFamily: 'Anton', fontSizePx: 82, textColor: '#18181B', isUppercase: true },
+        memberIdentity: { x: 0.06, y: 0.90, w: 0.45, nameFontSizePx: 18, titleFontSizePx: 12, nameColor: '#18181B', titleColor: '#9E0B0F' },
+        officialEmblem: { x: 0.82, y: 0.02, w: 0.10, maxHeightPx: 38, placement: 'top-right' },
       },
     },
   },
 
   // ---------------------------------------------------------------------------
-  // 6. RETRO PUBLIC SAFETY & MITIGATION (GET TO KNOW EARTHQUAKE)
+  // 6. RETRO SAFETY & MITIGATION GUIDE
   // ---------------------------------------------------------------------------
   {
-    id: 'TPL-RETRO-MITIGATION-01',
-    name: 'Retro Public Safety & Mitigation Guide',
+    id: 'TPL-06-RETRO-MITIGATION',
+    name: 'Retro Safety & Mitigation Guide',
     archetype: 'RETRO_SPLIT_MITIGATION',
     referenceFile: 'EARTHQUAKE INFOGRAFIS RETRO STYLE.jpg',
-    description: 'Format infografis edukasi keselamatan dan mitigasi publik: Banner atas kapsul, 2 kartu horizontal di tengah dengan circular inset image, dan split 2 kolom bawah (Mitigasi 4 poin & Langkah Aksi).',
-    tags: ['mitigasi', 'edukasi', 'bencana', 'panduan', 'keselamatan', 'lingkungan', 'tataruang', 'retro'],
+    description: 'Format infografis edukasi keselamatan publik: Banner atas kapsul, 2 kartu horizontal di tengah dengan circular inset image, dan split 2 kolom bawah.',
+    tags: ['edukasi', 'panduan', 'infografis', 'keselamatan', 'split', 'retro'],
     aspectRatio: '4:5',
     colorPalette: {
-      primaryAccent: '#0D9488', // Vintage Teal
-      backgroundBase: '#F5EFEB', // Aged Paper
-      textColor: '#1E293B',     // Deep Slate
+      primaryAccent: '#0D9488',
+      secondaryAccent: '#2DD4BF',
+      backgroundBase: '#F5EFEB',
+      textColor: '#1E293B',
       subTextColor: '#475569',
     },
-    scenePromptHint: 'Vintage 1970s public safety educational risograph illustration with aged paper grain, muted teal and warm ochre tones.',
-    negativeSpaceZone: 'Central graphic area accommodates circular magnifying glass inset and segmented informational bands.',
+    scenePromptHint: 'Vintage 1970s public educational risograph illustration with aged paper grain, muted teal and warm ochre tones, clean spatial layout.',
+    negativeSpaceZone: 'Central graphic area accommodates circular inset magnifying callout.',
     slotManifest: {
       canvas: { width: 1080, height: 1350, aspectRatio: '4:5' },
       slots: {
-        subjectPhoto: {
-          x: 0.58,
-          y: 0.28,
-          w: 0.36,
-          h: 0.38,
-          anchor: 'center',
-          popOutEffect: false,
-        },
-        headlineBlock: {
-          x: 0.08,
-          y: 0.04,
-          w: 0.84,
-          maxLines: 2,
-          fontFamily: 'Anton',
-          fontSizePx: 64,
-          textColor: '#FFFFFF',
-          bgColor: '#0D9488',
-          isUppercase: true,
-        },
-        quoteStatement: {
-          x: 0.08,
-          y: 0.24,
-          w: 0.44,
-          fontFamily: 'Plus Jakarta Sans',
-          fontSizePx: 15,
-          textColor: '#1E293B',
-        },
-        memberIdentity: {
-          x: 0.08,
-          y: 0.90,
-          w: 0.40,
-          nameFontSizePx: 18,
-          titleFontSizePx: 12,
-          nameColor: '#1E293B',
-          titleColor: '#0D9488',
-          badgeStyle: 'minimal',
-        },
-        officialEmblem: {
-          x: 0.08,
-          y: 0.02,
-          w: 0.12,
-          maxHeightPx: 36,
-          placement: 'top-left',
-          showInstitutionBadge: true,
-        },
-        editorialAccents: {
-          showBarcode: true,
-          barcodeCoordinate: { x: 0.78, y: 0.92, w: 0.16 },
-          editionTag: 'PANDUAN KESELAMATAN WARGA // POLARIS',
-          editionCoordinate: { x: 0.40, y: 0.02, w: 0.40 },
-        },
+        subjectPhoto: { x: 0.58, y: 0.28, w: 0.36, h: 0.38, anchor: 'center' },
+        headlineBlock: { x: 0.08, y: 0.04, w: 0.84, maxLines: 2, fontFamily: 'Anton', fontSizePx: 64, textColor: '#FFFFFF', bgColor: '#0D9488', isUppercase: true },
+        memberIdentity: { x: 0.08, y: 0.90, w: 0.40, nameFontSizePx: 18, titleFontSizePx: 12, nameColor: '#1E293B', titleColor: '#0D9488' },
+        officialEmblem: { x: 0.08, y: 0.02, w: 0.12, maxHeightPx: 36, placement: 'top-left' },
       },
     },
   },
 
   // ---------------------------------------------------------------------------
-  // 7. 5 MODERN MODULAR FRAMEWORK CARDS (5 MODERN FONT PAIRINGS)
+  // 7. 5 MODERN MODULAR FRAMEWORK CARDS
   // ---------------------------------------------------------------------------
   {
-    id: 'TPL-MODULAR-CARDS-01',
+    id: 'TPL-07-MODULAR-CARDS',
     name: '5 Modern Modular Framework Cards',
     archetype: 'MODULAR_GRID_CARDS',
     referenceFile: '5 Modern Font Pairings for Graphic Designers.jpg',
-    description: 'Judul besar di atas ("5 POKOK REKOMENDASI"), diikuti grid 5 kartu bernomor 01-05 dengan foto monokrom multi-crop, aksen blok merah tebal, dan tipografi modern presisi.',
-    tags: ['rekomendasi', 'kebijakan', 'framework', 'poin', 'modern', 'inovasi', 'regulasi', 'minimalis'],
+    description: 'Judul besar di atas ("5 POKOK REKOMENDASI"), diikuti grid 5 kartu bernomor 01-05 dengan foto monokrom multi-crop dan aksen warna tebal.',
+    tags: ['rekomendasi', 'framework', '5-kartu', 'modular', 'modern', 'minimalis'],
     aspectRatio: '4:5',
     colorPalette: {
-      primaryAccent: '#DC2626', // Crimson Red
-      backgroundBase: '#FFFFFF', // Pure Clean White
-      textColor: '#18181B',     // Matte Charcoal
-      subTextColor: '#52525B',  // Zinc Gray
+      primaryAccent: '#DC2626',
+      secondaryAccent: '#F87171',
+      backgroundBase: '#FFFFFF',
+      textColor: '#18181B',
+      subTextColor: '#52525B',
     },
-    scenePromptHint: 'Minimalist high-contrast black and white architectural and infrastructure photo contact sheet.',
-    negativeSpaceZone: 'Modular grid structure cleanly dividing the 5 analytical points.',
+    scenePromptHint: 'Minimalist high-contrast architectural and infrastructure panoramic photographic backdrop with ample negative space.',
+    negativeSpaceZone: 'Modular grid structure cleanly dividing the 5 analytical card zones.',
     slotManifest: {
       canvas: { width: 1080, height: 1350, aspectRatio: '4:5' },
       slots: {
-        subjectPhoto: {
-          x: 0.60,
-          y: 0.05,
-          w: 0.35,
-          h: 0.20,
-          anchor: 'top-right',
-        },
-        headlineBlock: {
-          x: 0.06,
-          y: 0.05,
-          w: 0.60,
-          maxLines: 2,
-          fontFamily: 'Anton',
-          fontSizePx: 68,
-          textColor: '#18181B',
-          isUppercase: true,
-        },
-        quoteStatement: {
-          x: 0.06,
-          y: 0.16,
-          w: 0.55,
-          fontFamily: 'Plus Jakarta Sans',
-          fontSizePx: 14,
-          textColor: '#52525B',
-        },
-        memberIdentity: {
-          x: 0.06,
-          y: 0.92,
-          w: 0.40,
-          nameFontSizePx: 16,
-          titleFontSizePx: 12,
-          nameColor: '#18181B',
-          titleColor: '#DC2626',
-          badgeStyle: 'minimal',
-        },
-        officialEmblem: {
-          x: 0.85,
-          y: 0.92,
-          w: 0.10,
-          maxHeightPx: 36,
-          placement: 'bottom-right',
-          showInstitutionBadge: false,
-        },
-        editorialAccents: {
-          showBarcode: false,
-          editionTag: 'FRAMEWORK KEBIJAKAN STRATEGIS // POLARIS',
-          editionCoordinate: { x: 0.06, y: 0.02, w: 0.50 },
-        },
+        subjectPhoto: { x: 0.60, y: 0.05, w: 0.35, h: 0.20, anchor: 'top-right' },
+        headlineBlock: { x: 0.06, y: 0.05, w: 0.60, maxLines: 2, fontFamily: 'Anton', fontSizePx: 68, textColor: '#18181B', isUppercase: true },
+        memberIdentity: { x: 0.06, y: 0.92, w: 0.40, nameFontSizePx: 16, titleFontSizePx: 12, nameColor: '#18181B', titleColor: '#DC2626' },
+        officialEmblem: { x: 0.85, y: 0.92, w: 0.10, maxHeightPx: 36, placement: 'bottom-right' },
       },
     },
   },
 
   // ---------------------------------------------------------------------------
-  // 8. VINTAGE PERSONA GAZETTE (THE S NEWS / BIOGRAFI TOKOH)
+  // 8. AVANT-GARDE EDITORIAL MANIFESTO (DESIGN TRENDS 2026)
   // ---------------------------------------------------------------------------
   {
-    id: 'TPL-VINTAGE-GAZETTE-01',
-    name: 'Vintage Persona Gazette',
-    archetype: 'VINTAGE_PERSONA_GAZETTE',
-    referenceFile: 'Biografi Singkat Steve Jobs.jpg',
-    description: 'Koran broadsheet klasik dengan judul tabloid besar di atas, potret tokoh dominan di tengah, dan kolom narasi kebijakan diapit foto pendukung.',
-    tags: ['tokoh', 'profil', 'biografi', 'opini', 'integritas', 'wawancara', 'gagasan', 'gazette'],
+    id: 'TPL-08-AVANT-GARDE-MANIFESTO',
+    name: 'Avant-Garde Editorial Manifesto',
+    archetype: 'STATEMENT_PROFILE',
+    referenceFile: 'Design Trends 2026! Imperfection, Rebellion, and the Return of Human Work.jpg',
+    description: 'Tipografi manifesto berani yang menantang kemapanan dengan tekstur kertas kasar, aksen stiker tebal, dan tipografi ekspresif.',
+    tags: ['manifesto', 'avant-garde', 'human-work', 'rebellion', 'bold', 'modern'],
     aspectRatio: '4:5',
     colorPalette: {
-      primaryAccent: '#1E3A8A', // Vintage Navy
-      backgroundBase: '#F4F0E8', // Aged Newsprint
-      textColor: '#111827',     // Classic Charcoal
-      subTextColor: '#4B5563',
+      primaryAccent: '#84CC16',
+      secondaryAccent: '#A3E635',
+      backgroundBase: '#18181B',
+      textColor: '#FFFFFF',
+      subTextColor: '#A1A1AA',
     },
-    scenePromptHint: 'Archival broadsheet newspaper portrait setting with vintage sepia-toned darkroom lighting.',
-    negativeSpaceZone: 'Central subject portrait area framed by structured editorial narrative columns.',
+    scenePromptHint: 'Raw tactile craft and industrial workshop background, experimental studio lighting, rich analog textures, imperfections and grain.',
+    negativeSpaceZone: 'Upper 45% of canvas reserved for giant manifesto headline.',
     slotManifest: {
       canvas: { width: 1080, height: 1350, aspectRatio: '4:5' },
       slots: {
-        subjectPhoto: {
-          x: 0.28,
-          y: 0.20,
-          w: 0.44,
-          h: 0.60,
-          anchor: 'center',
-          popOutEffect: false,
-          shadowOpacity: 0.35,
-          shadowBlur: 18,
-        },
-        headlineBlock: {
-          x: 0.06,
-          y: 0.05,
-          w: 0.88,
-          maxLines: 2,
-          fontFamily: 'Bebas Neue',
-          fontSizePx: 96,
-          textColor: '#111827',
-          isUppercase: true,
-        },
-        quoteStatement: {
-          x: 0.10,
-          y: 0.76,
-          w: 0.80,
-          fontFamily: 'DejaVu Serif',
-          fontSizePx: 16,
-          textColor: '#1F2937',
-        },
-        memberIdentity: {
-          x: 0.06,
-          y: 0.88,
-          w: 0.45,
-          nameFontSizePx: 20,
-          titleFontSizePx: 13,
-          nameColor: '#111827',
-          titleColor: '#1E3A8A',
-          badgeStyle: 'minimal',
-        },
-        officialEmblem: {
-          x: 0.82,
-          y: 0.02,
-          w: 0.12,
-          maxHeightPx: 40,
-          placement: 'top-right',
-          showInstitutionBadge: true,
-        },
-        editorialAccents: {
-          showBarcode: true,
-          barcodeCoordinate: { x: 0.78, y: 0.90, w: 0.16 },
-          editionTag: 'POLARIS HISTORICAL GAZETTE',
-          editionCoordinate: { x: 0.06, y: 0.02, w: 0.40 },
-        },
+        subjectPhoto: { x: 0.50, y: 0.55, w: 0.60, h: 0.40, anchor: 'center' },
+        headlineBlock: { x: 0.06, y: 0.08, w: 0.88, maxLines: 2, fontFamily: 'Anton', fontSizePx: 86, textColor: '#FFFFFF', isUppercase: true },
+        memberIdentity: { x: 0.06, y: 0.92, w: 0.50, nameFontSizePx: 18, titleFontSizePx: 12, nameColor: '#FFFFFF', titleColor: '#84CC16' },
+        officialEmblem: { x: 0.82, y: 0.04, w: 0.12, maxHeightPx: 38, placement: 'top-right' },
+      },
+    },
+  },
+
+  // ---------------------------------------------------------------------------
+  // 9. HIGH-THRESHOLD NOIR GRAPHICS
+  // ---------------------------------------------------------------------------
+  {
+    id: 'TPL-09-THRESHOLD-NOIR',
+    name: 'High-Threshold Monochromatic Noir',
+    archetype: 'STREET_JOURNALISM',
+    referenceFile: 'Design poster (treshold).jpg',
+    description: 'Gaya threshold hitam-putih kontras tinggi yang tajam (stark b&w silhouette) dengan aksen merah minimalis dan framing geometris.',
+    tags: ['noir', 'threshold', 'siluet', 'monokrom', 'kontras-tinggi'],
+    aspectRatio: '4:5',
+    colorPalette: {
+      primaryAccent: '#EF4444',
+      secondaryAccent: '#F87171',
+      backgroundBase: '#09090B',
+      textColor: '#FFFFFF',
+      subTextColor: '#71717A',
+    },
+    scenePromptHint: 'Stark high-contrast black and white threshold silhouette photograph, dramatic graphic shadow silhouettes, zero grays, pure pitch black and bright white.',
+    negativeSpaceZone: 'Top 30% and bottom 20% reserved for sharp minimalist typography.',
+    slotManifest: {
+      canvas: { width: 1080, height: 1350, aspectRatio: '4:5' },
+      slots: {
+        subjectPhoto: { x: 0.50, y: 0.50, w: 0.55, h: 0.55, anchor: 'center' },
+        headlineBlock: { x: 0.08, y: 0.08, w: 0.84, maxLines: 2, fontFamily: 'Anton', fontSizePx: 80, textColor: '#FFFFFF', isUppercase: true },
+        memberIdentity: { x: 0.08, y: 0.90, w: 0.45, nameFontSizePx: 18, titleFontSizePx: 12, nameColor: '#FFFFFF', titleColor: '#EF4444' },
+        officialEmblem: { x: 0.82, y: 0.04, w: 0.10, maxHeightPx: 36, placement: 'top-right' },
+      },
+    },
+  },
+
+  // ---------------------------------------------------------------------------
+  // 10. SWISS KINETIC GRID & MODERN TYPOGRAPHY
+  // ---------------------------------------------------------------------------
+  {
+    id: 'TPL-10-SWISS-KINETIC-GRID',
+    name: 'Swiss Kinetic Grid & Modern Typography',
+    archetype: 'MODULAR_GRID_CARDS',
+    referenceFile: 'Modern Typography Poster Design _ Creative Black and White Poster.jpg',
+    description: 'Sistem grid presisi ala Swiss Style dengan tipografi tegas, garis pemisah halus (hairline rules), dan tata letak geometris asimetris.',
+    tags: ['swiss-style', 'minimalis', 'grid', 'modern', 'hitam-putih', 'presisi'],
+    aspectRatio: '4:5',
+    colorPalette: {
+      primaryAccent: '#0284C7',
+      secondaryAccent: '#38BDF8',
+      backgroundBase: '#F8FAFC',
+      textColor: '#0F172A',
+      subTextColor: '#475569',
+    },
+    scenePromptHint: 'Clean architectural perspective and structural lines, soft daylight shadows, modern minimalist textures, authentic documentary framing.',
+    negativeSpaceZone: 'Right 45% column and top horizontal zone reserved for structured typographic elements.',
+    slotManifest: {
+      canvas: { width: 1080, height: 1350, aspectRatio: '4:5' },
+      slots: {
+        subjectPhoto: { x: 0.25, y: 0.35, w: 0.40, h: 0.50, anchor: 'center' },
+        headlineBlock: { x: 0.08, y: 0.08, w: 0.84, maxLines: 2, fontFamily: 'Anton', fontSizePx: 78, textColor: '#0F172A', isUppercase: true },
+        memberIdentity: { x: 0.08, y: 0.92, w: 0.45, nameFontSizePx: 18, titleFontSizePx: 12, nameColor: '#0F172A', titleColor: '#0284C7' },
+        officialEmblem: { x: 0.82, y: 0.04, w: 0.12, maxHeightPx: 38, placement: 'top-right' },
+      },
+    },
+  },
+
+  // ---------------------------------------------------------------------------
+  // 11. CREATIVE POP VIBRANT COLLAGE
+  // ---------------------------------------------------------------------------
+  {
+    id: 'TPL-11-CREATIVE-POP-COLLAGE',
+    name: 'Creative Pop Vibrant Collage',
+    archetype: 'POP_OUT_HERO',
+    referenceFile: 'creative Poster😇.jpg',
+    description: 'Komposisi pop modern dengan lapisan bingkai foto geometris, stiker aksen, dan gradasi warna yang ceria namun tetap profesional.',
+    tags: ['pop', 'vibrant', 'ceria', 'kreatif', 'kolase-modern'],
+    aspectRatio: '4:5',
+    colorPalette: {
+      primaryAccent: '#8B5CF6',
+      secondaryAccent: '#A78BFA',
+      backgroundBase: '#F5F3FF',
+      textColor: '#1E1B4B',
+      subTextColor: '#4338CA',
+    },
+    scenePromptHint: 'Vibrant modern creative scene with rich playful lighting, colorful ambient accents, clean pop editorial styling, 35mm crisp photography.',
+    negativeSpaceZone: 'Top 30% and bottom-left quadrant reserved for bold title overlay.',
+    slotManifest: {
+      canvas: { width: 1080, height: 1350, aspectRatio: '4:5' },
+      slots: {
+        subjectPhoto: { x: 0.50, y: 0.40, w: 0.50, h: 0.55, anchor: 'center', popOutEffect: true },
+        headlineBlock: { x: 0.08, y: 0.08, w: 0.84, maxLines: 2, fontFamily: 'Bebas Neue', fontSizePx: 92, textColor: '#8B5CF6', isUppercase: true },
+        memberIdentity: { x: 0.08, y: 0.88, w: 0.45, nameFontSizePx: 20, titleFontSizePx: 13, nameColor: '#1E1B4B', titleColor: '#8B5CF6' },
+        officialEmblem: { x: 0.82, y: 0.04, w: 0.12, maxHeightPx: 40, placement: 'top-right' },
+      },
+    },
+  },
+
+  // ---------------------------------------------------------------------------
+  // 12. OUTDOOR WILDLIFE & ECOLOGY GAZETTE (FISHING POSTER)
+  // ---------------------------------------------------------------------------
+  {
+    id: 'TPL-12-ECOLOGY-WILDLIFE-GAZETTE',
+    name: 'Outdoor Wildlife & Ecology Gazette',
+    archetype: 'VINTAGE_PERSONA_GAZETTE',
+    referenceFile: 'Fishing poster.jpg',
+    description: 'Estetika jurnal petualangan alam & ekologi dengan bingkai sketsa organik, tipografi serif vintage, dan nuansa pelestarian lingkungan.',
+    tags: ['ekologi', 'lingkungan', 'alam', 'outdoor', 'konservasi', 'vintage'],
+    aspectRatio: '4:5',
+    colorPalette: {
+      primaryAccent: '#15803D',
+      secondaryAccent: '#4ADE80',
+      backgroundBase: '#F0FDF4',
+      textColor: '#14532D',
+      subTextColor: '#166534',
+    },
+    scenePromptHint: 'Breathtaking natural landscape or ecological environment, organic textures, soft morning fog, National Geographic field expedition style.',
+    negativeSpaceZone: 'Top 35% features open sky providing generous negative space for organic serif headline.',
+    slotManifest: {
+      canvas: { width: 1080, height: 1350, aspectRatio: '4:5' },
+      slots: {
+        subjectPhoto: { x: 0.50, y: 0.35, w: 0.50, h: 0.50, anchor: 'center' },
+        headlineBlock: { x: 0.08, y: 0.08, w: 0.84, maxLines: 2, fontFamily: 'Anton', fontSizePx: 78, textColor: '#15803D', isUppercase: true },
+        memberIdentity: { x: 0.08, y: 0.90, w: 0.45, nameFontSizePx: 18, titleFontSizePx: 12, nameColor: '#14532D', titleColor: '#15803D' },
+        officialEmblem: { x: 0.82, y: 0.04, w: 0.12, maxHeightPx: 38, placement: 'top-right' },
+      },
+    },
+  },
+
+  // ---------------------------------------------------------------------------
+  // 13. MINIMALIST MONOLINE FRAMING (POSTER 1)
+  // ---------------------------------------------------------------------------
+  {
+    id: 'TPL-13-MINIMAL-MONOLINE',
+    name: 'Minimalist Monoline Framing',
+    archetype: 'POP_OUT_HERO',
+    referenceFile: 'poster (1).jpg',
+    description: 'Garis batas tunggal (monoline border) yang elegan mengelilingi visual tengah dengan judul ramping dan ruang nafas luas.',
+    tags: ['monoline', 'minimalis', 'elegan', 'frame-tipis', 'modern'],
+    aspectRatio: '4:5',
+    colorPalette: {
+      primaryAccent: '#0369A1',
+      secondaryAccent: '#38BDF8',
+      backgroundBase: '#F8FAFC',
+      textColor: '#0F172A',
+      subTextColor: '#64748B',
+    },
+    scenePromptHint: 'Ultra-clean modern civic architectural composition, balanced soft shadows, pristine clarity, high editorial elegance.',
+    negativeSpaceZone: 'Perimeter 10% margins completely clear for subtle border lines, top 30% clear for typography.',
+    slotManifest: {
+      canvas: { width: 1080, height: 1350, aspectRatio: '4:5' },
+      slots: {
+        subjectPhoto: { x: 0.50, y: 0.40, w: 0.50, h: 0.55, anchor: 'center', popOutEffect: false },
+        headlineBlock: { x: 0.10, y: 0.10, w: 0.80, maxLines: 2, fontFamily: 'Anton', fontSizePx: 76, textColor: '#0F172A', isUppercase: true },
+        memberIdentity: { x: 0.10, y: 0.88, w: 0.45, nameFontSizePx: 18, titleFontSizePx: 12, nameColor: '#0F172A', titleColor: '#0369A1' },
+        officialEmblem: { x: 0.80, y: 0.05, w: 0.10, maxHeightPx: 36, placement: 'top-right' },
+      },
+    },
+  },
+
+  // ---------------------------------------------------------------------------
+  // 14. MODERN URBAN STREET NARRATIVE (POSTER.JPG)
+  // ---------------------------------------------------------------------------
+  {
+    id: 'TPL-14-URBAN-STREET-NARRATIVE',
+    name: 'Modern Urban Street Narrative',
+    archetype: 'STREET_JOURNALISM',
+    referenceFile: 'poster.jpg',
+    description: 'Komposisi dokumenter perkotaan modern dengan pita judul hitam tebal di bawah dan kontras foto jalanan yang sinematik.',
+    tags: ['urban', 'tata-kota', 'jalanan', 'jurnalisme', 'dokumenter'],
+    aspectRatio: '4:5',
+    colorPalette: {
+      primaryAccent: '#EA580C',
+      secondaryAccent: '#FB923C',
+      backgroundBase: '#0F172A',
+      textColor: '#FFFFFF',
+      subTextColor: '#94A3B8',
+    },
+    scenePromptHint: 'Atmospheric Indonesian street-level perspective, authentic public transport or community development setting, 35mm street documentary texture.',
+    negativeSpaceZone: 'Bottom 25% reserved for solid black typography banner block.',
+    slotManifest: {
+      canvas: { width: 1080, height: 1350, aspectRatio: '4:5' },
+      slots: {
+        subjectPhoto: { x: 0.50, y: 0.35, w: 0.60, h: 0.50, anchor: 'center' },
+        headlineBlock: { x: 0.06, y: 0.10, w: 0.88, maxLines: 2, fontFamily: 'Anton', fontSizePx: 82, textColor: '#FFFFFF', isUppercase: true },
+        memberIdentity: { x: 0.06, y: 0.90, w: 0.45, nameFontSizePx: 18, titleFontSizePx: 12, nameColor: '#FFFFFF', titleColor: '#EA580C' },
+        officialEmblem: { x: 0.82, y: 0.04, w: 0.12, maxHeightPx: 38, placement: 'top-right' },
+      },
+    },
+  },
+
+  // ---------------------------------------------------------------------------
+  // 15. DYNAMIC DIAGONAL MOTION (DOWNLOAD 3)
+  // ---------------------------------------------------------------------------
+  {
+    id: 'TPL-15-DYNAMIC-DIAGONAL-MOTION',
+    name: 'Dynamic Diagonal Motion',
+    archetype: 'POP_OUT_HERO',
+    referenceFile: 'download (3).jpg',
+    description: 'Potongan diagonal berenergi tinggi yang membelah kanvas secara dinamis, mengarahkan mata pada aksi kebijakan yang bergerak cepat.',
+    tags: ['diagonal', 'dinamis', 'aksi', 'gerakan-cepat', 'enerjik'],
+    aspectRatio: '4:5',
+    colorPalette: {
+      primaryAccent: '#2563EB',
+      secondaryAccent: '#60A5FA',
+      backgroundBase: '#EFF6FF',
+      textColor: '#1E3A8A',
+      subTextColor: '#3B82F6',
+    },
+    scenePromptHint: 'Dynamic forward-moving action scene, diagonal perspective lines, energetic atmospheric lighting, modern crisp documentary photo.',
+    negativeSpaceZone: 'Top-left and bottom-right triangles provide clear negative space zones for typography.',
+    slotManifest: {
+      canvas: { width: 1080, height: 1350, aspectRatio: '4:5' },
+      slots: {
+        subjectPhoto: { x: 0.50, y: 0.40, w: 0.50, h: 0.55, anchor: 'center', popOutEffect: true },
+        headlineBlock: { x: 0.08, y: 0.08, w: 0.84, maxLines: 2, fontFamily: 'Bebas Neue', fontSizePx: 94, textColor: '#2563EB', isUppercase: true },
+        memberIdentity: { x: 0.08, y: 0.88, w: 0.45, nameFontSizePx: 20, titleFontSizePx: 13, nameColor: '#1E3A8A', titleColor: '#2563EB' },
+        officialEmblem: { x: 0.82, y: 0.04, w: 0.12, maxHeightPx: 40, placement: 'top-right' },
+      },
+    },
+  },
+
+  // ---------------------------------------------------------------------------
+  // 16. MINIMALIST DUOTONE PORTRAITURE (DOWNLOAD 4)
+  // ---------------------------------------------------------------------------
+  {
+    id: 'TPL-16-DUOTONE-PORTRAITURE',
+    name: 'Minimalist Duotone Portraiture',
+    archetype: 'STATEMENT_PROFILE',
+    referenceFile: 'download (4).jpg',
+    description: 'Potret subjek hitam-putih di atas latar belakang blok warna solid cerah, menghasilkan identitas visual yang ikonik dan kontemporer.',
+    tags: ['duotone', 'portrait', 'solid-color', 'ikonik', 'bold'],
+    aspectRatio: '4:5',
+    colorPalette: {
+      primaryAccent: '#7C3AED',
+      secondaryAccent: '#A78BFA',
+      backgroundBase: '#1E1B4B',
+      textColor: '#FFFFFF',
+      subTextColor: '#DDD6FE',
+    },
+    scenePromptHint: 'Studio portrait with clean solid duotone color background, high contrast lighting, pure silhouette edge definition, editorial polish.',
+    negativeSpaceZone: 'Side 40% area clear solid color backdrop for bold vertical headline alignment.',
+    slotManifest: {
+      canvas: { width: 1080, height: 1350, aspectRatio: '4:5' },
+      slots: {
+        subjectPhoto: { x: 0.50, y: 0.35, w: 0.50, h: 0.65, anchor: 'center' },
+        headlineBlock: { x: 0.08, y: 0.15, w: 0.84, maxLines: 2, fontFamily: 'Anton', fontSizePx: 82, textColor: '#FFFFFF', isUppercase: true },
+        memberIdentity: { x: 0.08, y: 0.88, w: 0.45, nameFontSizePx: 20, titleFontSizePx: 12, nameColor: '#FFFFFF', titleColor: '#A78BFA' },
+        officialEmblem: { x: 0.82, y: 0.04, w: 0.12, maxHeightPx: 38, placement: 'top-right' },
+      },
+    },
+  },
+
+  // ---------------------------------------------------------------------------
+  // 17. RETRO HALFTONE RISOPRINT (DOWNLOAD 5)
+  // ---------------------------------------------------------------------------
+  {
+    id: 'TPL-17-RETRO-HALFTONE-RISO',
+    name: 'Retro Halftone Risoprint',
+    archetype: 'RETRO_CAMPAIGN',
+    referenceFile: 'download (5).jpg',
+    description: 'Cetak risograph vintage dengan tekstur titik halftone kentara, warna tinta berlapis (overprint), dan nuansa advokasi akar rumput.',
+    tags: ['risograph', 'halftone', 'retro', 'akar-rumput', 'advokasi'],
+    aspectRatio: '4:5',
+    colorPalette: {
+      primaryAccent: '#C026D3',
+      secondaryAccent: '#E879F9',
+      backgroundBase: '#FDF4FF',
+      textColor: '#701A75',
+      subTextColor: '#86198F',
+    },
+    scenePromptHint: 'Vintage risograph two-color print with authentic visible halftone dots, ink bleed along edges, tactile aged paper grain.',
+    negativeSpaceZone: 'Top 35% features warm paper background ready for bold risograph headline.',
+    slotManifest: {
+      canvas: { width: 1080, height: 1350, aspectRatio: '4:5' },
+      slots: {
+        subjectPhoto: { x: 0.50, y: 0.45, w: 0.50, h: 0.45, anchor: 'center' },
+        headlineBlock: { x: 0.08, y: 0.08, w: 0.84, maxLines: 2, fontFamily: 'Anton', fontSizePx: 80, textColor: '#701A75', isUppercase: true },
+        memberIdentity: { x: 0.08, y: 0.90, w: 0.45, nameFontSizePx: 18, titleFontSizePx: 12, nameColor: '#701A75', titleColor: '#C026D3' },
+        officialEmblem: { x: 0.82, y: 0.04, w: 0.12, maxHeightPx: 36, placement: 'top-right' },
+      },
+    },
+  },
+
+  // ---------------------------------------------------------------------------
+  // 18. COMPACT INFORMATIONAL BULLETIN (DOWNLOAD 6)
+  // ---------------------------------------------------------------------------
+  {
+    id: 'TPL-18-COMPACT-BULLETIN',
+    name: 'Compact Informational Bulletin',
+    archetype: 'RETRO_SPLIT_MITIGATION',
+    referenceFile: 'download (6).jpg',
+    description: 'Tata letak buletin 3-tingkat yang padat dan informatif, menyajikan poin kebijakan penting secara terstruktur dalam kartu kompak.',
+    tags: ['buletin', 'kompak', 'informasi-publik', '3-tingkat', 'resmi'],
+    aspectRatio: '4:5',
+    colorPalette: {
+      primaryAccent: '#059669',
+      secondaryAccent: '#34D399',
+      backgroundBase: '#F0FDF4',
+      textColor: '#064E3B',
+      subTextColor: '#047857',
+    },
+    scenePromptHint: 'Organized civic environment, clear architecture, soft neutral daylight, documentary credibility.',
+    negativeSpaceZone: 'Divided cleanly into 3 vertical tiers for bulletin card overlays.',
+    slotManifest: {
+      canvas: { width: 1080, height: 1350, aspectRatio: '4:5' },
+      slots: {
+        subjectPhoto: { x: 0.50, y: 0.30, w: 0.40, h: 0.35, anchor: 'center' },
+        headlineBlock: { x: 0.08, y: 0.06, w: 0.84, maxLines: 2, fontFamily: 'Anton', fontSizePx: 72, textColor: '#FFFFFF', bgColor: '#059669', isUppercase: true },
+        memberIdentity: { x: 0.08, y: 0.90, w: 0.45, nameFontSizePx: 18, titleFontSizePx: 12, nameColor: '#064E3B', titleColor: '#059669' },
+        officialEmblem: { x: 0.08, y: 0.02, w: 0.12, maxHeightPx: 34, placement: 'top-left' },
+      },
+    },
+  },
+
+  // ---------------------------------------------------------------------------
+  // 19. CINEMATIC PANORAMIC VISTA (DOWNLOAD 7)
+  // ---------------------------------------------------------------------------
+  {
+    id: 'TPL-19-CINEMATIC-VISTA',
+    name: 'Cinematic Panoramic Vista',
+    archetype: 'POP_OUT_HERO',
+    referenceFile: 'download (7).jpg',
+    description: 'Pemandangan alam/wilayah yang luas dengan bingkai letterbox sinematik di atas dan bawah, menonjolkan skala kemajuan pembangunan.',
+    tags: ['vista', 'panorama', 'letterbox', 'skala-besar', 'sinematik'],
+    aspectRatio: '4:5',
+    colorPalette: {
+      primaryAccent: '#E11D48',
+      secondaryAccent: '#FB7185',
+      backgroundBase: '#FFF1F2',
+      textColor: '#881337',
+      subTextColor: '#9F1239',
+    },
+    scenePromptHint: 'Epic panoramic landscape or major public infrastructure vista, dramatic wide-angle perspective, cinematic letterbox framing, rich sunset or golden hour lighting.',
+    negativeSpaceZone: 'Top 30% sky area and bottom letterbox band clear for bold typography.',
+    slotManifest: {
+      canvas: { width: 1080, height: 1350, aspectRatio: '4:5' },
+      slots: {
+        subjectPhoto: { x: 0.50, y: 0.45, w: 0.55, h: 0.50, anchor: 'center', popOutEffect: true },
+        headlineBlock: { x: 0.08, y: 0.08, w: 0.84, maxLines: 2, fontFamily: 'Bebas Neue', fontSizePx: 96, textColor: '#E11D48', isUppercase: true },
+        memberIdentity: { x: 0.08, y: 0.90, w: 0.45, nameFontSizePx: 18, titleFontSizePx: 12, nameColor: '#881337', titleColor: '#E11D48' },
+        officialEmblem: { x: 0.82, y: 0.04, w: 0.12, maxHeightPx: 38, placement: 'top-right' },
+      },
+    },
+  },
+
+  // ---------------------------------------------------------------------------
+  // 20. CONTEMPORARY EDITORIAL LOOKBOOK (DOWNLOAD 8)
+  // ---------------------------------------------------------------------------
+  {
+    id: 'TPL-20-CONTEMPORARY-LOOKBOOK',
+    name: 'Contemporary Editorial Lookbook',
+    archetype: 'STATEMENT_PROFILE',
+    referenceFile: 'download (8).jpg',
+    description: 'Tata letak majalah seni kontemporer dengan ruang putih (white space) yang lapang, tipografi sans modern, dan komposisi asimetris bernilai seni tinggi.',
+    tags: ['lookbook', 'editorial-seni', 'white-space', 'asimetris', 'kontemporer'],
+    aspectRatio: '4:5',
+    colorPalette: {
+      primaryAccent: '#0D9488',
+      secondaryAccent: '#2DD4BF',
+      backgroundBase: '#FAFAFA',
+      textColor: '#18181B',
+      subTextColor: '#71717A',
+    },
+    scenePromptHint: 'Museum gallery aesthetic, pristine white spaces, subtle architectural daylight, clean minimalist sophistication, high fashion editorial tone.',
+    negativeSpaceZone: 'Generous white margins surrounding the central artwork.',
+    slotManifest: {
+      canvas: { width: 1080, height: 1350, aspectRatio: '4:5' },
+      slots: {
+        subjectPhoto: { x: 0.50, y: 0.38, w: 0.45, h: 0.55, anchor: 'center' },
+        headlineBlock: { x: 0.08, y: 0.10, w: 0.84, maxLines: 2, fontFamily: 'Anton', fontSizePx: 76, textColor: '#18181B', isUppercase: true },
+        memberIdentity: { x: 0.08, y: 0.88, w: 0.45, nameFontSizePx: 18, titleFontSizePx: 12, nameColor: '#18181B', titleColor: '#0D9488' },
+        officialEmblem: { x: 0.82, y: 0.04, w: 0.12, maxHeightPx: 36, placement: 'top-right' },
+      },
+    },
+  },
+
+  // ---------------------------------------------------------------------------
+  // 21. VERTICAL SKYSCRAPER INFOGRAPHIC (DOWNLOAD 9)
+  // ---------------------------------------------------------------------------
+  {
+    id: 'TPL-21-SKYSCRAPER-INFOGRAPHIC',
+    name: 'Vertical Skyscraper Infographic',
+    archetype: 'MODULAR_GRID_CARDS',
+    referenceFile: 'download (9).jpg',
+    description: 'Format narasi bertingkat ke bawah (vertical timeline) dengan 4 blok tahapan capaian kebijakan yang terstruktur runut dan mudah dipahami.',
+    tags: ['timeline', 'bertingkat', 'tahapan', 'alur-kebijakan', 'infografis-panjang'],
+    aspectRatio: '4:5',
+    colorPalette: {
+      primaryAccent: '#0284C7',
+      secondaryAccent: '#38BDF8',
+      backgroundBase: '#F0F9FF',
+      textColor: '#0C4A6E',
+      subTextColor: '#0369A1',
+    },
+    scenePromptHint: 'Vertical upward perspective of civic progress, clean structural lines, bright blue sky background, progressive momentum.',
+    negativeSpaceZone: 'Structured 4 vertical segments clear for sequential timeline cards.',
+    slotManifest: {
+      canvas: { width: 1080, height: 1350, aspectRatio: '4:5' },
+      slots: {
+        subjectPhoto: { x: 0.50, y: 0.25, w: 0.40, h: 0.30, anchor: 'center' },
+        headlineBlock: { x: 0.06, y: 0.06, w: 0.88, maxLines: 2, fontFamily: 'Anton', fontSizePx: 70, textColor: '#0C4A6E', isUppercase: true },
+        memberIdentity: { x: 0.06, y: 0.92, w: 0.45, nameFontSizePx: 16, titleFontSizePx: 12, nameColor: '#0C4A6E', titleColor: '#0284C7' },
+        officialEmblem: { x: 0.85, y: 0.92, w: 0.10, maxHeightPx: 36, placement: 'bottom-right' },
+      },
+    },
+  },
+
+  // ---------------------------------------------------------------------------
+  // 22. POP CULTURE & VIRAL DISCOURSE
+  // ---------------------------------------------------------------------------
+  {
+    id: 'TPL-22-POP-CULTURE-COMMENTARY',
+    name: 'Pop Culture & Viral Discourse',
+    archetype: 'RETRO_CAMPAIGN',
+    referenceFile: '“Yeh marketing nahi chhoti cheez hai babu bhaiya… digital hai digital!”.jpg',
+    description: 'Gaya visual pop komunikatif yang berani dengan kutipan viral santai namun mengena, warna-warna pop kontras, dan pesan lugas untuk anak muda.',
+    tags: ['pop-culture', 'viral', 'anak-muda', 'komunikatif', 'santai', 'bold'],
+    aspectRatio: '4:5',
+    colorPalette: {
+      primaryAccent: '#EAB308',
+      secondaryAccent: '#FACC15',
+      backgroundBase: '#18181B',
+      textColor: '#FFFFFF',
+      subTextColor: '#FEF08A',
+    },
+    scenePromptHint: 'Modern viral pop culture setting, bold dynamic lighting, expressive energetic atmosphere, cinematic pop art colors.',
+    negativeSpaceZone: 'Top 40% and lower third reserved for high-impact conversational headline banner.',
+    slotManifest: {
+      canvas: { width: 1080, height: 1350, aspectRatio: '4:5' },
+      slots: {
+        subjectPhoto: { x: 0.50, y: 0.45, w: 0.50, h: 0.45, anchor: 'center' },
+        headlineBlock: { x: 0.08, y: 0.08, w: 0.84, maxLines: 2, fontFamily: 'Anton', fontSizePx: 82, textColor: '#EAB308', isUppercase: true },
+        memberIdentity: { x: 0.08, y: 0.90, w: 0.45, nameFontSizePx: 18, titleFontSizePx: 12, nameColor: '#FFFFFF', titleColor: '#EAB308' },
+        officialEmblem: { x: 0.82, y: 0.04, w: 0.12, maxHeightPx: 38, placement: 'top-right' },
       },
     },
   },

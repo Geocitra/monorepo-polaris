@@ -90,7 +90,7 @@ export default function StudioHubPage() {
 
           {/* 3 KARTU ALAT UTAMA (HERO LAUNCHPAD) */}
           <section className="grid gap-6 md:grid-cols-3">
-            {/* KARTU 1: KAMPANYE ISU TERPADU */}
+            {/* KARTU 1: PUBLIKASI ISU TERPADU */}
             <div className="rounded-2xl border-2 border-primary bg-gradient-to-b from-primary/10 via-white to-white dark:via-[#0E131F] dark:to-[#0E131F] p-6 shadow-sm hover:shadow-md transition-all flex flex-col justify-between relative">
               <span className="absolute -top-3 right-5 px-3 py-0.5 rounded-full bg-primary text-primary-foreground text-[10px] font-black uppercase tracking-wider shadow-sm">
                 Paket Lengkap
@@ -103,29 +103,29 @@ export default function StudioHubPage() {
 
                 <div>
                   <h3 className="font-extrabold text-slate-900 dark:text-white text-lg">
-                    Kampanye Isu Terpadu
+                    Publikasi Isu Terpadu
                   </h3>
                   <span className="text-xs font-bold text-primary dark:text-blue-400">
-                    Website Resmi + Sebaran Medsos
+                    Naskah Narasi + Visual Kreatif + Medsos
                   </span>
                 </div>
 
                 <p className="text-xs text-slate-500 dark:text-slate-200 leading-relaxed">
-                  Cukup masukkan 1 isu daerah. Mesin otomatis menyusun naskah kajian website 3.000 kata, poster DALL-E, dan teks sebaran WA/IG yang membawa link ke web Anda.
+                  Satu input gagasan atau isu daerah untuk merumuskan naskah narasi lengkap, visual pendukung (poster/infografis), dan pesan sebaran multi-kanal.
                 </p>
 
                 <ul className="text-xs text-slate-600 dark:text-slate-100 space-y-2 pt-2 border-t border-slate-100 dark:border-slate-800">
                   <li className="flex items-center gap-2">
                     <CheckCircle2 className="h-4 w-4 text-emerald-600 dark:text-emerald-400 shrink-0" />
-                    <span>Naskah Artikel 3.000 Kata</span>
+                    <span>Naskah Narasi & Kajian Mendalam</span>
                   </li>
                   <li className="flex items-center gap-2">
                     <CheckCircle2 className="h-4 w-4 text-emerald-600 dark:text-emerald-400 shrink-0" />
-                    <span>Poster Visual DALL-E 3</span>
+                    <span>Visual Pendukung (Poster / Infografis)</span>
                   </li>
                   <li className="flex items-center gap-2">
                     <CheckCircle2 className="h-4 w-4 text-emerald-600 dark:text-emerald-400 shrink-0" />
-                    <span>Format WhatsApp & Instagram</span>
+                    <span>Format Sebaran WhatsApp & Instagram</span>
                   </li>
                 </ul>
               </div>
@@ -140,7 +140,7 @@ export default function StudioHubPage() {
               </div>
             </div>
 
-            {/* KARTU 2: TULIS ARTIKEL SAJA */}
+            {/* KARTU 2: PENYUSUNAN NASKAH & NARASI */}
             <div className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-[#0E131F] p-6 shadow-sm hover:shadow-md hover:border-slate-300 dark:hover:border-slate-700 transition-all flex flex-col justify-between">
               <div className="space-y-4">
                 <div className="h-12 w-12 rounded-xl bg-teal-600 dark:bg-slate-800 border border-teal-500/30 dark:border-slate-800 text-white flex items-center justify-center shadow-sm">
@@ -149,25 +149,25 @@ export default function StudioHubPage() {
 
                 <div>
                   <h3 className="font-extrabold text-slate-900 dark:text-white text-lg">
-                    Tulis Artikel Saja
+                    Penyusunan Naskah & Narasi
                   </h3>
                   <span className="text-xs font-bold text-slate-500 dark:text-slate-300">
-                    Dokumen Naskah & Cetak PDF
+                    Kajian Kebijakan, Rilis Pers & PDF
                   </span>
                 </div>
 
                 <p className="text-xs text-slate-500 dark:text-slate-200 leading-relaxed">
-                  Editor teks untuk menyusun rilis pers wartawan, draf pandangan umum fraksi, atau opini kebijakan tanpa perlu repot memikirkan poster dan medsos.
+                  Editor terfokus untuk merumuskan rilis pers wartawan, naskah opini, telaah kebijakan, materi pidato, maupun draf pandangan umum fraksi tanpa materi visual.
                 </p>
 
                 <ul className="text-xs text-slate-600 dark:text-slate-100 space-y-2 pt-2 border-t border-slate-100 dark:border-slate-800">
                   <li className="flex items-center gap-2">
                     <CheckCircle2 className="h-4 w-4 text-emerald-600 dark:text-emerald-400 shrink-0" />
-                    <span>Editor Naskah Bebas Distraksi</span>
+                    <span>Editor Naskah Fokus & Bebas Distraksi</span>
                   </li>
                   <li className="flex items-center gap-2">
                     <CheckCircle2 className="h-4 w-4 text-emerald-600 dark:text-emerald-400 shrink-0" />
-                    <span>Kutipan Pasal Regulasi UU & Perda</span>
+                    <span>Rujukan Regulasi UU & Konteks Kebijakan</span>
                   </li>
                   <li className="flex items-center gap-2">
                     <CheckCircle2 className="h-4 w-4 text-emerald-600 dark:text-emerald-400 shrink-0" />
@@ -179,14 +179,14 @@ export default function StudioHubPage() {
               <div className="pt-6 mt-4 border-t border-slate-100 dark:border-slate-800">
                 <Link href="/studio/artikel" className="block w-full">
                   <Button variant="outline" size="md" className="w-full font-bold text-xs gap-2 border-slate-200 text-slate-800 hover:bg-slate-50 dark:bg-slate-800 dark:border-slate-700 dark:text-white dark:hover:bg-slate-700 cursor-pointer">
-                    <span>Buka Editor Naskah</span>
+                    <span>Buka Studio Naskah</span>
                     <ArrowRight className="h-4 w-4" />
                   </Button>
                 </Link>
               </div>
             </div>
 
-            {/* KARTU 3: DESAIN INFOGRAFIS */}
+            {/* KARTU 3: KREATIF VISUAL & DESAIN */}
             <div className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-[#0E131F] p-6 shadow-sm hover:shadow-md hover:border-slate-300 dark:hover:border-slate-700 transition-all flex flex-col justify-between">
               <div className="space-y-4">
                 <div className="h-12 w-12 rounded-xl bg-amber-500 text-white flex items-center justify-center shadow-sm">
@@ -195,29 +195,29 @@ export default function StudioHubPage() {
 
                 <div>
                   <h3 className="font-extrabold text-slate-900 dark:text-white text-lg">
-                    Desain Infografis Saja
+                    Kreatif Visual & Desain
                   </h3>
                   <span className="text-xs font-bold text-slate-500 dark:text-slate-300">
-                    Flyer Visual & Feed Instagram
+                    Poster Publik, Flyer & Infografis
                   </span>
                 </div>
 
                 <p className="text-xs text-slate-500 dark:text-slate-200 leading-relaxed">
-                  Canvas grafis instan untuk membuat poster ucapan hari besar, flyer jadwal silaturahmi reses, atau kartu data statistik APBD satu slide siap unduh.
+                  Kanvas grafis instan untuk merancang poster advokasi aspirasi, infografis data daerah/APBD, flyer silaturahmi reses, hingga kartu ucapan publik siap siar.
                 </p>
 
                 <ul className="text-xs text-slate-600 dark:text-slate-100 space-y-2 pt-2 border-t border-slate-100 dark:border-slate-800">
                   <li className="flex items-center gap-2">
                     <CheckCircle2 className="h-4 w-4 text-emerald-600 dark:text-emerald-400 shrink-0" />
-                    <span>Template Visual Khas Parlemen</span>
+                    <span>Poster Publik & Flyer Silaturahmi</span>
                   </li>
                   <li className="flex items-center gap-2">
                     <CheckCircle2 className="h-4 w-4 text-emerald-600 dark:text-emerald-400 shrink-0" />
-                    <span>Kartu Statistik Data Daerah</span>
+                    <span>Infografis Data & Kartu Statistik APBD</span>
                   </li>
                   <li className="flex items-center gap-2">
                     <CheckCircle2 className="h-4 w-4 text-emerald-600 dark:text-emerald-400 shrink-0" />
-                    <span>Unduh Gambar PNG Resolusi Tinggi</span>
+                    <span>Unduh Gambar Resolusi Tinggi (PNG / WebP)</span>
                   </li>
                 </ul>
               </div>
@@ -225,7 +225,7 @@ export default function StudioHubPage() {
               <div className="pt-6 mt-4 border-t border-slate-100 dark:border-slate-800">
                 <Link href="/studio/infografis" className="block w-full">
                   <Button variant="outline" size="md" className="w-full font-bold text-xs gap-2 border-slate-200 text-slate-800 hover:bg-slate-50 dark:bg-slate-800 dark:border-slate-700 dark:text-white dark:hover:bg-slate-700 cursor-pointer">
-                    <span>Buka Studio Grafis</span>
+                    <span>Buka Studio Visual</span>
                     <ArrowRight className="h-4 w-4" />
                   </Button>
                 </Link>

@@ -54,7 +54,7 @@ export function Sidebar({ subdomain }: { subdomain?: string }) {
     <aside
       className={cn(
         'sticky top-0 h-screen flex flex-col justify-between hidden md:flex shrink-0 transition-all duration-300 z-30 theme-transition',
-        collapsed ? 'w-20' : 'w-64'
+        collapsed ? 'w-20' : 'w-60'
       )}
       style={{
         backgroundColor: 'var(--sidebar-bg)',

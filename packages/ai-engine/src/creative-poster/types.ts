@@ -63,6 +63,10 @@ export interface VisualCutoutSlotSpec {
   photoTreatment: 'BW_HALFTONE_CUTOUT' | 'DUOTONE_RED_BLACK' | 'VINTAGE_WARM';
 }
 
+export type PosterLayoutVariant = 'TOP_BANNER' | 'BOTTOM_ANCHOR' | 'EDITORIAL_SPLIT' | 'CENTERED_HERO';
+export type PosterHeaderPlacement = 'top' | 'bottom' | 'center';
+export type PosterCardArrangement = 'stacked' | 'horizontal_split' | 'single_hero_card' | 'grid_compact';
+
 export interface SynthesizedEditorialCopy {
   mainBannerTitle: string;
   mainBannerSubheader: string;
@@ -78,6 +82,16 @@ export interface SynthesizedEditorialCopy {
   // Field pendukung arketipe infografis & statistik dinamis:
   statCircles?: Array<{ topLabel: string; value: string; description: string }>;
   numberedItems?: Array<{ number: string; title: string; subtitle?: string; summary: string }>;
+
+  // Modifikasi Dinamis Layout & Warna Aktif oleh AI:
+  layoutVariant?: PosterLayoutVariant;
+  headerPlacement?: PosterHeaderPlacement;
+  cardArrangement?: PosterCardArrangement;
+  colorMood?: string;
+  primaryAccent?: string;
+  secondaryAccent?: string;
+  cardBackground?: string;
+  cardBorder?: string;
 }
 
 export interface PosterSlotManifest {
@@ -148,9 +162,12 @@ export interface PreAnalyzedPosterBlueprint {
   aspectRatio: PosterAspectRatio;
   colorPalette: {
     primaryAccent: string;   // Warna sorotan utama (e.g., Crimson Red, Safety Orange, Gold)
+    secondaryAccent?: string;// Warna aksen sekunder senada
     backgroundBase: string;  // Warna latar (e.g., Warm Cream #F5F2EB, Pure Black #111111)
     textColor: string;       // Warna teks utama (#FFFFFF atau #111111)
     subTextColor: string;    // Warna teks sekunder
+    cardBackground?: string; // Warna latar kartu teks kontras
+    cardBorder?: string;     // Warna border kartu teks
   };
   scenePromptHint: string;   // Instruksi gaya visual untuk AI (Grain, lighting, shot perspective)
   negativeSpaceZone: string; // Instruksi ruang kosong agar tidak menabrak teks

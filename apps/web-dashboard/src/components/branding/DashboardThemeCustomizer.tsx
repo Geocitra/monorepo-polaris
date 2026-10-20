@@ -301,9 +301,10 @@ export function DashboardThemeCustomizer() {
           </div>
         </div>
 
-        {/* ═══════ SECTION 3: PARTY PRESETS ═══════ */}
+        {/* ═══════ SECTION 3: PARTY PRESETS (DISEMBUNYIKAN SEMENTARA) ═══════ */}
+        {/* Disembunyikan sementara atas arahan user
         <div className="space-y-3">
-          <h3 className="text-xs font-bold text-slate-700 dark:text-white uppercase tracking-wide">🏛️ Preset Partai Politik</h3>
+          <h3 className="text-xs font-bold text-slate-700 dark:text-white uppercase tracking-wide">Preset Partai Politik</h3>
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
             {PARTY_PRESETS.map((p) => {
               const active = isActive(p);
@@ -330,6 +331,7 @@ export function DashboardThemeCustomizer() {
             })}
           </div>
         </div>
+        */}
 
         {/* ═══════ SECTION 4: CUSTOM COLOR PICKER (Expandable) ═══════ */}
         <div className="space-y-3">

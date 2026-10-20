@@ -1,6 +1,7 @@
 import type { NextConfig } from 'next';
 
 const nextConfig: NextConfig = {
+  devIndicators: false,
   output: 'standalone', // Memangkas dependensi monorepo ke ukuran minimal
   reactStrictMode: true,
   images: {

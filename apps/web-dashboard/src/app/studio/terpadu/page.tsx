@@ -45,6 +45,7 @@ function KampanyeTerpaduContent() {
   const [generatedResult, setGeneratedResult] = useState<any>(null);
   const [publishedUrl, setPublishedUrl] = useState<string | null>(null);
   const [generationStep, setGenerationStep] = useState<number>(0);
+  const [isBackgroundRenderingPoster, setIsBackgroundRenderingPoster] = useState(false);
 
   // Riwayat Sesi AI Studio Terpadu (Lapis 1 - Utas/Topik)
   const [historyDrawerOpen, setHistoryDrawerOpen] = useState(false);
@@ -537,6 +538,7 @@ function KampanyeTerpaduContent() {
     }
 
     setLoading(true);
+    setIsBackgroundRenderingPoster(true);
     setPublishedUrl(null);
     setGeneratedResult(null);
     setGenerationStep(1);
@@ -590,12 +592,16 @@ function KampanyeTerpaduContent() {
               try {
                 const partialDetail = await ApiClient.request<any>(`/studio/articles/${publicationId}`);
                 if (partialDetail?.article) {
+                  const partialPosterUrl = partialDetail.asset?.cdnPublicUrl || partialDetail.asset?.r2StorageUrl || '';
                   const partialResult = {
                     publication: partialDetail.article,
-                    posterUrl: partialDetail.asset?.cdnPublicUrl || partialDetail.asset?.r2StorageUrl || '',
+                    posterUrl: partialPosterUrl,
                     socialPack: partialDetail.socialPack,
                     infographicData: partialDetail.infographicData,
                   };
+                  if (partialPosterUrl) {
+                    setIsBackgroundRenderingPoster(false);
+                  }
                   setGeneratedResult(partialResult);
                   setActiveTab('article');
                   setActiveSessionId(publicationId);
@@ -612,6 +618,19 @@ function KampanyeTerpaduContent() {
               } catch (partialErr) {
                 console.warn('Gagal memuat naskah parsial progresif:', partialErr);
               }
+            } else if (textHydrated) {
+              // Cek progresif apakah poster visual sudah terbit di database
+              try {
+                const checkDetail = await ApiClient.request<any>(`/studio/articles/${publicationId}`);
+                const foundPoster = checkDetail?.asset?.cdnPublicUrl || checkDetail?.asset?.r2StorageUrl;
+                if (foundPoster) {
+                  setGeneratedResult((prev: any) => {
+                    if (!prev || prev.posterUrl === foundPoster) return prev;
+                    return { ...prev, posterUrl: foundPoster };
+                  });
+                  setIsBackgroundRenderingPoster(false);
+                }
+              } catch {}
             }
 
             if (statusRes?.status === 'COMPLETED' || (statusRes?.percent && statusRes.percent >= 100)) {
@@ -629,12 +648,14 @@ function KampanyeTerpaduContent() {
 
         // Ambil hasil lengkap artikel, poster DALL-E, dan paket media sosial
         const detail = await ApiClient.request<any>(`/studio/articles/${publicationId}`);
+        const resolvedPosterUrl = detail.asset?.cdnPublicUrl || detail.asset?.r2StorageUrl || '';
         finalResult = {
           publication: detail.article,
-          posterUrl: detail.asset?.cdnPublicUrl || detail.asset?.r2StorageUrl || '',
+          posterUrl: resolvedPosterUrl,
           socialPack: detail.socialPack,
           infographicData: detail.infographicData,
         };
+        setIsBackgroundRenderingPoster(false);
       }
 
       if (finalResult) {
@@ -874,6 +895,7 @@ function KampanyeTerpaduContent() {
               publishing={publishing}
               onPublish={handlePublish}
               onUpdateArticleContent={handleUpdateArticleContent}
+              isBackgroundRenderingPoster={isBackgroundRenderingPoster}
             />
           </div>
 
