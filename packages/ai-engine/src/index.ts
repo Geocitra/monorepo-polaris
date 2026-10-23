@@ -19,5 +19,7 @@ export * from './creative-poster/index.js';
 export * from './adapters/google-imagen.adapter.js';
 export * from './config/image-provider.config.js';
 export * from './master-editorial-sanitizer.js';
+export * from './refiners/prompt-refiner.service.js';
+export * from './datahub/index.js';
 
 

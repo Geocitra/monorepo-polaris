@@ -1,5 +1,5 @@
-import { pgTable, uuid, varchar, timestamp, text, boolean, integer, jsonb } from 'drizzle-orm/pg-core';
-import { legislativeLevelEnum } from './enums.js';
+import { pgTable, uuid, varchar, timestamp, text, boolean, integer, jsonb, unique } from 'drizzle-orm/pg-core';
+import { legislativeLevelEnum, operatorAssignmentStatusEnum } from './enums.js';
 
 export const electoralDistricts = pgTable('electoral_districts', {
   id: uuid('id').defaultRandom().primaryKey(),
@@ -100,3 +100,31 @@ export const tenantActivityLogs = pgTable('tenant_activity_logs', {
   metadata: jsonb('metadata'),
   createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
 });
+
+export const operatorTenantAssignments = pgTable('operator_tenant_assignments', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  operatorId: uuid('operator_id').notNull().references(() => systemAdmins.id, { onDelete: 'cascade' }),
+  tenantId: uuid('tenant_id').notNull().references(() => tenantMembers.id, { onDelete: 'cascade' }),
+  canDirectPublish: boolean('can_direct_publish').default(false).notNull(),
+  status: operatorAssignmentStatusEnum('status').default('ACTIVE').notNull(),
+  notes: text('notes'),
+  assignedByAdminId: uuid('assigned_by_admin_id').references(() => systemAdmins.id, { onDelete: 'set null' }),
+  createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
+}, (t) => ({
+  unqOperatorTenant: unique().on(t.operatorId, t.tenantId),
+}));
+
+export const operatorAuditLogs = pgTable('operator_audit_logs', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  operatorId: uuid('operator_id').notNull().references(() => systemAdmins.id, { onDelete: 'cascade' }),
+  tenantId: uuid('tenant_id').references(() => tenantMembers.id, { onDelete: 'set null' }),
+  action: varchar('action', { length: 100 }).notNull(),
+  targetEntity: varchar('target_entity', { length: 50 }).notNull(),
+  targetEntityId: uuid('target_entity_id'),
+  details: jsonb('details'),
+  ipAddress: varchar('ip_address', { length: 50 }),
+  userAgent: text('user_agent'),
+  createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+});
+

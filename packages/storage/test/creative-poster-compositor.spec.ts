@@ -98,9 +98,9 @@ describe('CreativePosterCompositor', () => {
         },
         mappedVisualCutouts: {},
         statCircles: [
-          { topLabel: 'Setidaknya', value: '120+', description: 'rumah terbakar.' },
-          { topLabel: 'Armada Siaga', value: '28', description: 'unit damkar dikerahkan.' },
-          { topLabel: 'Lebih dari', value: '1.450', description: 'jiwa mengungsi.' },
+          { topLabel: 'TERDAMPAK', value: '120+', description: 'rumah terbakar.' },
+          { topLabel: 'ARMADA', value: '28 Unit', description: 'unit damkar dikerahkan.' },
+          { topLabel: 'PENGUNGSI', value: '1.450', description: 'jiwa mengungsi.' },
         ],
       },
     });

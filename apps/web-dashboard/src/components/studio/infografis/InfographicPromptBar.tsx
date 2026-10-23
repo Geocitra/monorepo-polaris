@@ -11,6 +11,8 @@ import {
   Lightbulb,
   Ratio,
   Maximize2,
+  Check,
+  User,
 } from 'lucide-react';
 import { VisualStyle, AspectRatio } from './InfographicTypes';
 import { Button } from '@/components/ui/button';
@@ -26,6 +28,10 @@ interface InfographicPromptBarProps {
   loading: boolean;
   isUnpaid: boolean;
   hasExistingIteration: boolean;
+  includeUserPhoto?: boolean;
+  onIncludeUserPhotoChange?: (val: boolean) => void;
+  onRefinePrompt?: () => void;
+  refiningPrompt?: boolean;
 }
 
 const STYLE_OPTIONS = [
@@ -41,16 +47,15 @@ const STYLE_OPTIONS = [
     name: 'Poster Kebijakan',
     icon: Palette,
     desc: 'Desain poster editorial, headline advokasi publik & tata letak resmi',
-    defaultRatio: '3:4' as AspectRatio,
+    defaultRatio: '4:5' as AspectRatio,
   },
 ];
 
 const ASPECT_RATIOS: { id: AspectRatio; label: string; desc: string; iconShape: string }[] = [
-  { id: '16:9', label: '16:9', desc: 'Landscape / Banner Web', iconShape: 'w-5 h-3' },
-  { id: '1:1', label: '1:1', desc: 'Feed Instagram / Persegi', iconShape: 'w-4 h-4' },
-  { id: '9:16', label: '9:16', desc: 'Story / Reels / TikTok', iconShape: 'w-3 h-5' },
-  { id: '4:3', label: '4:3', desc: 'Presentasi Standar', iconShape: 'w-4 h-3' },
-  { id: '3:4', label: '3:4', desc: 'Poster Cetak / Vertikal', iconShape: 'w-3 h-4' },
+  { id: '4:5', label: '4:5', desc: 'Feed Instagram / Poster Resmi (1080x1350)', iconShape: 'w-3.5 h-4.5' },
+  { id: '1:1', label: '1:1', desc: 'Feed Persegi / Carousel (1080x1080)', iconShape: 'w-4 h-4' },
+  { id: '9:16', label: '9:16', desc: 'Story / Reels / TikTok (1080x1920)', iconShape: 'w-3 h-5' },
+  { id: '16:9', label: '16:9', desc: 'Landscape / Banner Web (1920x1080)', iconShape: 'w-5 h-3' },
 ];
 
 const SUGGESTIONS = [
@@ -78,12 +83,16 @@ export function InfographicPromptBar({
   loading,
   isUnpaid,
   hasExistingIteration,
+  includeUserPhoto = false,
+  onIncludeUserPhotoChange,
+  onRefinePrompt,
+  refiningPrompt = false,
 }: InfographicPromptBarProps) {
   const handleSelectStyle = (opt: (typeof STYLE_OPTIONS)[number]) => {
     onStyleChange(opt.id);
     if (opt.id === 'poster' && (selectedAspectRatio === '16:9' || selectedAspectRatio === '4:3')) {
-      onAspectRatioChange('3:4');
-    } else if (opt.id === 'infographic' && (selectedAspectRatio === '3:4' || selectedAspectRatio === '9:16')) {
+      onAspectRatioChange('4:5');
+    } else if (opt.id === 'infographic' && (selectedAspectRatio === '4:5' || selectedAspectRatio === '3:4' || selectedAspectRatio === '9:16')) {
       onAspectRatioChange('16:9');
     }
   };
@@ -141,7 +150,7 @@ export function InfographicPromptBar({
                   key={r.id}
                   type="button"
                   onClick={() => onAspectRatioChange(r.id)}
-                  className={`inline-flex items-center gap-1 px-2 py-1 rounded-lg text-[11px] font-mono font-bold transition-all cursor-pointer ${
+                  className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-[11px] font-mono font-bold transition-all cursor-pointer ${
                     isSelected
                       ? 'bg-blue-600 text-white shadow-2xs'
                       : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
@@ -155,6 +164,63 @@ export function InfographicPromptBar({
           </div>
         </div>
       </div>
+
+      {/* CHECKBOX SEDERHANA & INTUITIF: PASANG FOTO SAYA DI POSTER */}
+      {isPoster && onIncludeUserPhotoChange && (
+        <div
+          role="button"
+          tabIndex={0}
+          onClick={() => onIncludeUserPhotoChange(!includeUserPhoto)}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter' || e.key === ' ') {
+              e.preventDefault();
+              onIncludeUserPhotoChange(!includeUserPhoto);
+            }
+          }}
+          className={`flex items-center justify-between p-3.5 px-4 rounded-2xl border transition-all cursor-pointer select-none ${
+            includeUserPhoto
+              ? 'bg-blue-50/70 dark:bg-blue-950/30 border-blue-400 dark:border-blue-600 shadow-2xs'
+              : 'bg-slate-50/80 dark:bg-slate-800/40 border-slate-200 dark:border-slate-800 hover:border-slate-300 dark:hover:border-slate-700'
+          }`}
+        >
+          <div className="flex items-center gap-3.5">
+            {/* CHECKBOX KOTAK REAL CHECKMARK */}
+            <div
+              className={`w-5 h-5 rounded-md flex items-center justify-center transition-all shrink-0 ${
+                includeUserPhoto
+                  ? 'bg-blue-600 text-white ring-2 ring-blue-600/30 shadow-2xs'
+                  : 'border-2 border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900'
+              }`}
+            >
+              {includeUserPhoto && <Check className="w-3.5 h-3.5 stroke-[3]" />}
+            </div>
+
+            <div>
+              <div className="text-xs font-bold text-slate-900 dark:text-slate-100 flex items-center gap-2">
+                <span>Pasang foto saya di poster</span>
+                {includeUserPhoto ? (
+                  <span className="text-[10px] bg-blue-100 dark:bg-blue-900/60 text-blue-700 dark:text-blue-300 px-2 py-0.5 rounded-full font-bold">
+                    ✓ Aktif
+                  </span>
+                ) : (
+                  <span className="text-[10px] bg-slate-200 dark:bg-slate-800 text-slate-600 dark:text-slate-400 px-2 py-0.5 rounded-full font-medium">
+                    Tidak
+                  </span>
+                )}
+              </div>
+              <div className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">
+                {includeUserPhoto
+                  ? 'Foto profil resmi Anda akan dipotong rapi dan dipasang di sudut kanan bawah.'
+                  : 'Centang bila ingin menyertakan foto wajah. Bila tidak, poster hanya menampilkan latar visual kebijakan.'}
+              </div>
+            </div>
+          </div>
+
+          <div className="text-[11px] font-semibold text-slate-400 dark:text-slate-500 hidden sm:block">
+            {includeUserPhoto ? 'Wajah Asli Aktif' : 'Tanpa Wajah'}
+          </div>
+        </div>
+      )}
 
       {/* INPUT FORM */}
       <form onSubmit={(e) => onSubmit(e)} className="space-y-3">
@@ -173,7 +239,7 @@ export function InfographicPromptBar({
             className="w-full p-4 rounded-2xl border border-slate-200 dark:border-slate-700 bg-slate-50/70 dark:bg-slate-800/60 text-xs sm:text-sm text-slate-900 dark:text-slate-100 placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none focus:border-blue-600 dark:focus:border-blue-500 focus:bg-white dark:focus:bg-slate-800 transition-all resize-none"
           />
 
-          <div className="flex items-center justify-between pt-2">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 pt-2">
             <span className="text-[11px] text-slate-400 dark:text-slate-500 hidden sm:inline">
               {hasExistingIteration
                 ? `Setiap revisi akan otomatis menciptakan iterasi/versi baru dalam format ${selectedAspectRatio}.`
@@ -182,29 +248,55 @@ export function InfographicPromptBar({
                 : `AI akan menyusun infografis data kebijakan terstruktur sesuai arahan dan rasio ${selectedAspectRatio}.`}
             </span>
 
-            <Button
-              type="submit"
-              disabled={loading || !prompt.trim()}
-              className="ml-auto bg-blue-600 hover:bg-blue-700 text-white font-extrabold text-xs shadow-md gap-2 px-5 py-2.5 rounded-xl cursor-pointer"
-            >
-              {loading ? (
-                <>
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                  <span>Sedang Merancang Visual...</span>
-                </>
-              ) : (
-                <>
-                  <Send className="h-3.5 w-3.5" />
-                  <span>
-                    {hasExistingIteration
-                      ? 'Buat Versi Baru'
-                      : isPoster
-                      ? 'Rancang Poster'
-                      : 'Rancang Infografis'}
-                  </span>
-                </>
+            <div className="flex items-center gap-2 ml-auto">
+              {/* TOMBOL BANTUAN AI: PARAFRASE / PERTAJAM PROMPT */}
+              {onRefinePrompt && (
+                <Button
+                  type="button"
+                  variant="outline"
+                  disabled={loading || refiningPrompt || !prompt.trim()}
+                  onClick={onRefinePrompt}
+                  className="border-amber-300 dark:border-amber-700/60 bg-amber-50/70 dark:bg-amber-950/20 hover:bg-amber-100 text-amber-900 dark:text-amber-300 font-bold text-xs gap-1.5 px-3.5 py-2.5 rounded-xl cursor-pointer transition-all shadow-2xs"
+                  title="Parafrase ide kasar menjadi prompt kebijakan editorial berbobot menggunakan Gemini Flash Lite (< Rp 1)"
+                >
+                  {refiningPrompt ? (
+                    <>
+                      <Loader2 className="h-3.5 w-3.5 animate-spin text-amber-600" />
+                      <span>Merapikan...</span>
+                    </>
+                  ) : (
+                    <>
+                      <Sparkles className="h-3.5 w-3.5 text-amber-600 dark:text-amber-400" />
+                      <span>✨ Pertajam dengan AI</span>
+                    </>
+                  )}
+                </Button>
               )}
-            </Button>
+
+              <Button
+                type="submit"
+                disabled={loading || !prompt.trim()}
+                className="bg-blue-600 hover:bg-blue-700 text-white font-extrabold text-xs shadow-md gap-2 px-5 py-2.5 rounded-xl cursor-pointer"
+              >
+                {loading ? (
+                  <>
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                    <span>Sedang Merancang Visual...</span>
+                  </>
+                ) : (
+                  <>
+                    <Send className="h-3.5 w-3.5" />
+                    <span>
+                      {hasExistingIteration
+                        ? 'Buat Versi Baru'
+                        : isPoster
+                        ? 'Rancang Poster'
+                        : 'Rancang Infografis'}
+                    </span>
+                  </>
+                )}
+              </Button>
+            </div>
           </div>
         </div>
 

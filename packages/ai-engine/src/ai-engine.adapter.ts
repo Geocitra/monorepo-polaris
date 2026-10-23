@@ -19,6 +19,8 @@ import {
   CreativePosterArchetype,
   PreAnalyzedPosterBlueprint,
   CompiledPosterPrompt,
+  ArtCollagePosterPipeline,
+  ArtCollagePosterResult,
 } from './creative-poster/index.js';
 import { GoogleImagenAdapter } from './adapters/google-imagen.adapter.js';
 import { getActiveImageProvider } from './config/image-provider.config.js';
@@ -232,6 +234,8 @@ export class OpenAIAIEngineAdapter implements ILLMProviderPort {
     prompt: string;
     aspectRatio?: '4:5' | '1:1' | '16:9' | '9:16' | '3:4' | '4:3';
     tenantId?: string;
+    stylePromptSuffix?: string;
+    imageNegativeAllow?: string[];
   }): Promise<{ temporaryImageUrl: string; canonicalTraceId: string }> {
     return await this.googleImagenAdapter.generateImage(params);
   }
@@ -287,6 +291,8 @@ export class OpenAIAIEngineAdapter implements ILLMProviderPort {
           prompt: compiledPrompt.englishPrompt,
           aspectRatio: (compiledPrompt.aspectRatio as any) || '4:5',
           tenantId: params.tenantId,
+          stylePromptSuffix: blueprint.scenePromptHint,
+          imageNegativeAllow: blueprint.fixedConstraints?.imageNegativeAllow,
         });
       } catch (googleError: any) {
         console.warn(
@@ -315,6 +321,23 @@ export class OpenAIAIEngineAdapter implements ILLMProviderPort {
       compiledPrompt,
       canonicalTraceId: imageResult.canonicalTraceId,
     };
+  }
+
+  /**
+   * Pipeline Baru: ART-COLLAGE POSTER GENERATION
+   * Alur: AI Copywriter (teks) + AI Image (kolase seni utuh) -> AI Vision Layout Locator
+   *       -> Satori Zero-Box (transparan, tanpa kotak) -> Sharp Ink-Blend.
+   */
+  public async generateArtCollagePoster(params: {
+    topic: string;
+    groundedContextSummary?: string;
+    forcedArchetype?: CreativePosterArchetype;
+    excludeBlueprintId?: string;
+    tenantBrandHex?: string;
+    tenantId?: string;
+    variationKey?: string;
+  }): Promise<ArtCollagePosterResult> {
+    return ArtCollagePosterPipeline.generate(params);
   }
 
   public async generateCivicAnswer(

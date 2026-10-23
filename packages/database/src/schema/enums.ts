@@ -15,8 +15,22 @@ export const legislativeLevelEnum = pgEnum('legislative_level_enum', [
 export const superadminRoleEnum = pgEnum('superadmin_role_enum', [
   'SUPERADMIN',
   'SUPPORT_OPERATOR',
+  'CONTENT_OPERATOR',
   'FINANCE_ADMIN',
 ]);
+
+export const operatorAssignmentStatusEnum = pgEnum('operator_assignment_status_enum', [
+  'ACTIVE',
+  'PAUSED',
+  'REVOKED',
+]);
+
+export const contentCreationContextEnum = pgEnum('content_creation_context_enum', [
+  'MEMBER',
+  'OPERATOR',
+  'SYSTEM_AI',
+]);
+
 
 export const subscriptionStatusEnum = pgEnum('subscription_status_enum', [
   'INACTIVE',

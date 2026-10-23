@@ -9,6 +9,7 @@ import {
   constituentFeedbacks,
 } from '@polaris/database';
 import { PolicySector } from '@polaris/shared-types';
+import { PromptRefinerService } from '@polaris/ai-engine';
 
 function normalizeRegionAlias(region: string): string {
   return region
@@ -246,6 +247,77 @@ export class StudioRadarService {
       recommendation: topIssue
         ? `Tinjau isu ${topIssue.title.toLowerCase()} di ${topIssue.location}; ${topIssue.frequency} aspirasi masuk dalam 7 hari terakhir.`
         : 'Belum ada aspirasi terbaru yang perlu diprioritaskan. Periksa kembali setelah data aspirasi masuk.',
+    };
+  }
+
+  /**
+   * Menghasilkan rekomendasi topik isu hangat daerah secara dinamis berbasis AI (Gemini Flash Lite)
+   * disesuaikan dengan dapil, komisi, partai, dan berita daerah terkini anggota dewan.
+   */
+  async getTrendingDapilTopics(tenantId: string) {
+    const [member] = await db
+      .select({
+        fullName: tenantMembers.fullName,
+        party: tenantMembers.partyAffiliation,
+        level: tenantMembers.legislativeLevel,
+        dapilId: tenantMembers.electoralDistrictId,
+        customDapil: tenantMembers.customDapilName,
+        personalCoverage: tenantMembers.personalCoverage,
+        commissionName: tenantMembers.commissionName,
+      })
+      .from(tenantMembers)
+      .where(eq(tenantMembers.id, tenantId))
+      .limit(1);
+
+    if (!member) {
+      throw new NotFoundException('Data anggota dewan tidak ditemukan.');
+    }
+
+    const [dapil] = member.dapilId
+      ? await db
+          .select()
+          .from(electoralDistricts)
+          .where(eq(electoralDistricts.id, member.dapilId))
+          .limit(1)
+      : [null];
+
+    const dapilName = member.customDapil || dapil?.dapilName || 'Dapil';
+    const provinceName = dapil?.provinceName || undefined;
+    const regencyCoverage = member.personalCoverage?.length
+      ? member.personalCoverage
+      : dapil?.regencyCoverage || [];
+
+    // Ambil berita daerah terkini sebagai sinyal
+    let recentHeadlines: string[] = [];
+    try {
+      const scopeConditions = [
+        eq(mediaDiscourses.regionScope, dapilName),
+        ...(provinceName ? [eq(mediaDiscourses.regionScope, provinceName)] : []),
+      ];
+      const newsRows = await db
+        .select({ title: mediaDiscourses.articleTitle })
+        .from(mediaDiscourses)
+        .where(or(...scopeConditions))
+        .orderBy(desc(mediaDiscourses.publishedAt))
+        .limit(3);
+      recentHeadlines = newsRows.map((n) => n.title);
+    } catch {}
+
+    const topics = await PromptRefinerService.generateTrendingTopics({
+      memberName: member.fullName,
+      dapilName,
+      provinceName,
+      regencyCoverage,
+      partyAffiliation: member.party || undefined,
+      legislativeLevel: member.level || undefined,
+      commissionName: member.commissionName || undefined,
+      recentNewsHeadlines: recentHeadlines,
+    });
+
+    return {
+      dapilName,
+      memberName: member.fullName,
+      topics,
     };
   }
 }

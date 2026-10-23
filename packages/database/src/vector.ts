@@ -52,3 +52,92 @@ export async function findSimilarKnowledgeChunks(
 
   return (results as unknown as SimilarChunkResult[]) || [];
 }
+
+export interface DatahubSimilarChunkResult {
+  id: string;
+  fileId: string;
+  chunkIndex: number;
+  sectionTitle: string | null;
+  chunkContent: string;
+  contextualHeader: string | null;
+  similarityScore: number;
+}
+
+export interface FindDatahubChunksParams {
+  queryEmbedding: number[];
+  tenantId: string;
+  dapilCode?: string | null;
+  partyAffiliation?: string | null;
+  legislativeLevel?: string | null;
+  branchType?: string | null;
+  limit?: number;
+  minSimilarityScore?: number;
+}
+
+/**
+ * Mencari potongan dokumen DataHub yang relevan dengan isolasi multi-tenant ketat
+ * (Hanya mengambil dokumen milik tenant, dapil yang sama, partai yang sama, serta tingkat lembaga yang sama).
+ */
+export async function findSimilarDatahubChunks(
+  params: FindDatahubChunksParams
+): Promise<DatahubSimilarChunkResult[]> {
+  const {
+    queryEmbedding,
+    tenantId,
+    dapilCode,
+    partyAffiliation,
+    legislativeLevel,
+    branchType,
+    limit = 5,
+    minSimilarityScore = 0.65,
+  } = params;
+
+  if (!Array.isArray(queryEmbedding) || queryEmbedding.length !== 1536) {
+    throw new Error(`[VectorQueryError] Dimensi embedding tidak valid. Diterima: ${queryEmbedding?.length}, Diperlukan: 1536.`);
+  }
+
+  const sanitizedVectorString = `[${queryEmbedding.map((n) => (isNaN(n) ? 0 : n)).join(',')}]`;
+
+  const results = await db.execute(sql`
+    WITH filtered_files AS (
+      SELECT DISTINCT ref.file_id
+      FROM datahub_document_refs ref
+      WHERE
+        -- 1. Private to this tenant
+        (ref.privacy_scope = 'PRIVATE_TENANT' AND ref.uploaded_by_tenant_id = ${tenantId}::uuid)
+        -- 2. Shared in same Dapil and same Branch (Eksekutif vs Legislatif)
+        ${dapilCode ? sql`OR (
+          ref.privacy_scope = 'DAPIL_SHARED' 
+          AND ref.dapil_code = ${dapilCode}
+          ${branchType ? sql`AND (ref.branch_type IS NULL OR ref.branch_type = ${branchType})` : sql``}
+        )` : sql``}
+        -- 3. Party confidential for same party AND same legislative level (DPRD tidak bisa intip DPR RI)
+        ${partyAffiliation ? sql`OR (
+          ref.privacy_scope = 'PARTY_CONFIDENTIAL' 
+          AND ref.party_affiliation = ${partyAffiliation}
+          ${legislativeLevel ? sql`AND (ref.legislative_level IS NULL OR ref.legislative_level = ${legislativeLevel}::legislative_level_enum)` : sql``}
+        )` : sql``}
+        -- 4. Public system
+        OR (ref.privacy_scope = 'PUBLIC_SYSTEM')
+    ),
+    vector_matches AS (
+      SELECT
+        c.id,
+        c.file_id AS "fileId",
+        c.chunk_index AS "chunkIndex",
+        c.section_title AS "sectionTitle",
+        c.chunk_content AS "chunkContent",
+        c.contextual_header AS "contextualHeader",
+        (1 - (c.vector_embedding <=> ${sanitizedVectorString}::vector)) AS "similarityScore"
+      FROM datahub_document_chunks c
+      JOIN filtered_files ff ON c.file_id = ff.file_id
+    )
+    SELECT *
+    FROM vector_matches
+    WHERE "similarityScore" >= ${minSimilarityScore}
+    ORDER BY "similarityScore" DESC
+    LIMIT ${limit};
+  `);
+
+  return (results as unknown as DatahubSimilarChunkResult[]) || [];
+}

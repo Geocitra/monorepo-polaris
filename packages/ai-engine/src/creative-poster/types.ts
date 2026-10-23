@@ -4,21 +4,47 @@
  * slot koordinat deterministik, multi-block editorial grid, dan prompt compiler.
  */
 
-export type CreativePosterArchetype =
-  | 'STREET_JOURNALISM'       // Inspirasi: "POSTER PKL", "OKE GAS" (Duotone, Risograph, Isu Kerakyatan)
-  | 'POP_OUT_HERO'            // Inspirasi: "THE EDGE", "Fly High", "Polaroid" (Subjek Menembus Frame, Modern Bold)
-  | 'STATEMENT_PROFILE'       // Inspirasi: "Steve Jobs", "Modern Typography" (Potret Karismatik, Glassmorphic, Kutipan Tegas)
-  | 'RETRO_CAMPAIGN'          // Inspirasi: "Poster Acara" (Vintage 70s-80s, Badge, Edukasi Publik)
-  | 'TORN_PAPER_NEWS'         // Inspirasi: "Techno Veritas" / "Night of Tremors" / "Malam Jago Merah" (Broadsheet, Torn Centerfold, Circular Badges)
-  | 'RETRO_SPLIT_MITIGATION'  // Inspirasi: "EARTHQUAKE INFOGRAFIS RETRO STYLE" / Get To Know Earthquake (Split 2-kolom, Kaca Pembesar, Ikon Mitigasi)
-  | 'MODULAR_GRID_CARDS'      // Inspirasi: "5 Modern Font Pairings" (5 Kartu Bernomor 01-05, Aksen Kotak Merah, Multi-Crop)
-  | 'VINTAGE_PERSONA_GAZETTE'; // Inspirasi: "The S News" / "Biografi Singkat Steve Jobs" (Koran Antik, Multi-Photo Subjek, Narasi Panjang)
+import type {
+  CreativePosterArchetype,
+  PosterAspectRatio,
+  SubjectCompositionMode,
+  PosterLayoutVariant,
+  PosterHeaderPlacement,
+  PosterCardArrangement,
+  ZoneRect,
+  SurfaceMode,
+  CompositionZone,
+  CompositionPlan,
+  BlueprintFixedConstraints,
+  BlueprintVariationRules,
+  ResolvedColorTokens,
+  LayoutBlockSpec,
+} from '@polaris/shared-types';
+import {
+  resolveColorAuthority,
+  LAYOUT_BLOCK_SCHEMA,
+} from '@polaris/shared-types';
 
-export type PosterAspectRatio = '4:5' | '9:16' | '1:1' | '3:4' | '16:9';
-
-export type SubjectCompositionMode =
-  | 'PUBLIC_ADVOCACY'      // Seperti Poster PKL/Sampah: Semua subjek foto adalah ilustrasi masyarakat, nama Dewan di Header/Footer
-  | 'FIGURE_CENTERPIECE';  // Foto PNG asli Anggota Dewan masuk ke dalam kolase (di-filter sesuai tema)
+export type {
+  CreativePosterArchetype,
+  PosterAspectRatio,
+  SubjectCompositionMode,
+  PosterLayoutVariant,
+  PosterHeaderPlacement,
+  PosterCardArrangement,
+  ZoneRect,
+  SurfaceMode,
+  CompositionZone,
+  CompositionPlan,
+  BlueprintFixedConstraints,
+  BlueprintVariationRules,
+  ResolvedColorTokens,
+  LayoutBlockSpec,
+};
+export {
+  resolveColorAuthority,
+  LAYOUT_BLOCK_SCHEMA,
+};
 
 export interface PosterSlotCoordinate {
   x: number; // 0.0 s/d 1.0 (Persentase dari lebar kanvas)
@@ -62,10 +88,6 @@ export interface VisualCutoutSlotSpec {
   originalReferenceSubject: string;
   photoTreatment: 'BW_HALFTONE_CUTOUT' | 'DUOTONE_RED_BLACK' | 'VINTAGE_WARM';
 }
-
-export type PosterLayoutVariant = 'TOP_BANNER' | 'BOTTOM_ANCHOR' | 'EDITORIAL_SPLIT' | 'CENTERED_HERO';
-export type PosterHeaderPlacement = 'top' | 'bottom' | 'center';
-export type PosterCardArrangement = 'stacked' | 'horizontal_split' | 'single_hero_card' | 'grid_compact';
 
 export interface SynthesizedEditorialCopy {
   mainBannerTitle: string;
@@ -172,6 +194,8 @@ export interface PreAnalyzedPosterBlueprint {
   scenePromptHint: string;   // Instruksi gaya visual untuk AI (Grain, lighting, shot perspective)
   negativeSpaceZone: string; // Instruksi ruang kosong agar tidak menabrak teks
   slotManifest: PosterSlotManifest;
+  fixedConstraints?: BlueprintFixedConstraints;
+  variationRules?: BlueprintVariationRules;
 }
 
 export interface GenerateCreativePosterParams {
@@ -197,4 +221,5 @@ export interface CompiledPosterPrompt {
   aspectRatio: PosterAspectRatio;
   canvasDimensions: { width: number; height: number };
   synthesizedCopy: SynthesizedEditorialCopy;
+  compositionPlan?: CompositionPlan;
 }

@@ -19,7 +19,9 @@ export interface StudioGenerationJobPayload {
   generateDallePoster: boolean;
   style?: string;
   aspectRatio?: string;
+  includeUserPhoto?: boolean;
   compositionMode?: 'PUBLIC_ADVOCACY' | 'FIGURE_CENTERPIECE';
+  customPhotoUrl?: string;
   targetLength?: string;
   writingStyle?: string;
   externalUrls?: string[];

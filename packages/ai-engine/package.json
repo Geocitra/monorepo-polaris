@@ -22,10 +22,13 @@
     "dotenv": "^16.4.7",
     "drizzle-orm": "^0.39.3",
     "langfuse": "^3.35.0",
-    "openai": "^4.85.4"
+    "mammoth": "^1.13.0",
+    "openai": "^4.85.4",
+    "pdf-parse": "^2.4.5"
   },
   "devDependencies": {
     "@types/node": "^22.0.0",
+    "@types/pdf-parse": "^1.1.5",
     "rimraf": "^6.0.1",
     "tsup": "^8.3.0",
     "typescript": "^5.7.0",

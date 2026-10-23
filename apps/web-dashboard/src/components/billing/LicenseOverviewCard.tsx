@@ -81,7 +81,7 @@ export function LicenseOverviewCard({
         <div className="flex flex-wrap items-center gap-2 pt-1 text-xs font-semibold text-slate-700 dark:text-slate-300">
           <div className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200/70 dark:border-emerald-800 text-emerald-800 dark:text-emerald-400">
             <Sparkles className="h-3.5 w-3.5 text-emerald-600" />
-            <span>AI Artikel & Poster: <strong>Unlimited</strong></span>
+            <span>AI Artikel & Poster: <strong>Aktif</strong></span>
           </div>
           <div className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-primary/10 border border-primary/20 text-primary">
             <span>🌐 Portal Publik Resmi: <strong>Aktif</strong></span>

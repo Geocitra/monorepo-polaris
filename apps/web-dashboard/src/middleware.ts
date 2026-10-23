@@ -27,17 +27,16 @@ export default function middleware(req: NextRequest) {
     return NextResponse.next();
   }
 
-  // Penanganan rute Superadmin Console
-  if (pathname.startsWith('/superadmin')) {
+  // Penanganan rute Superadmin & Operator Console
+  if (pathname.startsWith('/superadmin') || pathname.startsWith('/operator')) {
     const isSuperadminLogin = pathname === '/superadmin/login';
     const adminToken = req.cookies.get('polaris_admin_session')?.value;
 
     if (!adminToken && !isSuperadminLogin) {
       return NextResponse.redirect(new URL('/superadmin/login', req.url));
     }
-    if (adminToken && isSuperadminLogin) {
-      return NextResponse.redirect(new URL('/superadmin', req.url));
-    }
+    // Jangan redirect paksa di middleware saat di /superadmin/login
+    // agar pengguna tidak terjebak redirect loop dan bisa ganti akun / login operator
     return NextResponse.next();
   }
 

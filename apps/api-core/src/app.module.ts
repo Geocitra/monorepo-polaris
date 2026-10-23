@@ -20,6 +20,8 @@ import { ThreadsModule } from './modules/threads/threads.module.js';
 
 import { RedisModule } from './modules/redis/redis.module.js';
 import { RealtimeModule } from './modules/realtime/realtime.module.js';
+import { DatahubModule } from './modules/datahub/datahub.module.js';
+import { OperatorModule } from './modules/operator/operator.module.js';
 
 @Module({
   imports: [
@@ -41,10 +43,12 @@ import { RealtimeModule } from './modules/realtime/realtime.module.js';
     ConstituentModule, // 4.6: Layanan Konstituen & Enkripsi UU PDP
     CommentsModule,    // 4.7: Komentar Publik Warga (Google OAuth) & Moderasi Dewan
     SuperadminModule,  // Superadmin Control Tower & Master Data Governance
+    OperatorModule,    // Polaris Operator Cockpit & Managed Content Operations
     PublicChatModule,
     InquiryModule,     // Inbound Lead Consultation & Google Meet Demo Triage
     InstagramModule,   // Sub-Fase F.2: Integrasi Meta Instagram Graph API
     ThreadsModule,     // Integrasi Meta Threads API (Cuitan Opini Dewan)
+    DatahubModule,     // Modul DataHub & Blind Ingestion Engine (Deduplikasi & RAG)
   ],
   providers: [
     {

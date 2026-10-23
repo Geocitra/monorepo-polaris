@@ -118,6 +118,8 @@ export default function InfografisStudioPage() {
   const [promptInput, setPromptInput] = useState('');
   const [selectedStyle, setSelectedStyle] = useState<VisualStyle>('infographic');
   const [selectedAspectRatio, setSelectedAspectRatio] = useState<AspectRatio>('16:9');
+  const [includeUserPhoto, setIncludeUserPhoto] = useState(false);
+  const [refiningPrompt, setRefiningPrompt] = useState(false);
 
   // Load sessions from localStorage
   useEffect(() => {
@@ -262,6 +264,41 @@ export default function InfografisStudioPage() {
     });
   }
 
+  // Parafrase & Penyempurnaan Prompt Cerdas AI (Gemini Flash Lite < Rp 1)
+  async function handleRefinePrompt() {
+    const raw = promptInput.trim();
+    if (!raw || refiningPrompt) return;
+    setRefiningPrompt(true);
+    try {
+      const res = await ApiClient.request<any>('/studio/refine-prompt', {
+        method: 'POST',
+        body: JSON.stringify({
+          prompt: raw,
+          style: selectedStyle,
+          dapilName: profile?.electoralDistrict?.dapilName,
+          memberName: profile?.fullName,
+        }),
+      });
+
+      if (res?.refinedPrompt) {
+        setPromptInput(res.refinedPrompt);
+        toast({
+          type: 'success',
+          title: '✨ Prompt Disempurnakan',
+          description: 'Ide Anda telah diperjelas menjadi prompt kebijakan editorial yang tajam dan berwibawa.',
+        });
+      }
+    } catch (err: any) {
+      toast({
+        type: 'error',
+        title: 'Gagal Menyempurnakan Prompt',
+        description: err.message || 'Silakan coba beberapa saat lagi.',
+      });
+    } finally {
+      setRefiningPrompt(false);
+    }
+  }
+
   // Eksekusi Prompting / Refine
   async function handleAIPromptSubmit(e?: React.FormEvent, customSuggestion?: string) {
     if (e) e.preventDefault();
@@ -289,6 +326,9 @@ export default function InfografisStudioPage() {
           generateDallePoster: true,
           aspectRatio: submittedAspectRatio,
           style: submittedStyle,
+          includeUserPhoto,
+          compositionMode: includeUserPhoto ? 'FIGURE_CENTERPIECE' : 'PUBLIC_ADVOCACY',
+          customPhotoUrl: profile?.photoUrl || (Array.isArray(profile?.photoGallery) && profile.photoGallery[0]) || undefined,
         }),
       });
 
@@ -658,6 +698,10 @@ export default function InfografisStudioPage() {
             loading={loading}
             isUnpaid={isUnpaid}
             hasExistingIteration={Boolean(currentIteration)}
+            includeUserPhoto={includeUserPhoto}
+            onIncludeUserPhotoChange={setIncludeUserPhoto}
+            onRefinePrompt={handleRefinePrompt}
+            refiningPrompt={refiningPrompt}
           />
         </main>
       </div>

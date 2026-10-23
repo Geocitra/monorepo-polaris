@@ -1,4 +1,9 @@
 import { SynthesizedEditorialCopy } from '../types.js';
+import {
+  getAdaptiveFontSize,
+  wordSafeHeadlineTruncate,
+  smartSentenceClamp,
+} from '../core/adaptive-typography.js';
 
 export interface VintageGazetteLayoutParams {
   width: number;
@@ -14,26 +19,42 @@ export interface VintageGazetteLayoutParams {
 }
 
 /**
- * Layout 4: VINTAGE_PERSONA_GAZETTE (Inspirasi: Biografi Steve Jobs / The S News)
+ * Layout 4: VINTAGE_PERSONA_GAZETTE (Inspirasi: Biografi Steve Jobs / The S News / Classic Broadsheet)
+ * Structural Family: EDITORIAL_MAGAZINE
+ * Ciri khas:
+ * - Masthead koran vintage dengan double rule
+ * - Area tengah terbuka untuk visual hero
+ * - Bagian bawah: 2 kolom artikel berdampingan (flexDirection: 'row', 50% kiri & 50% kanan) dipisahkan garis vertikal tipis
+ * - Bebas dari lingkaran/kotak statistik palsu
  */
 export function buildVintageGazetteLayout(params: VintageGazetteLayoutParams): any {
   const { width, height, headline, quote, copy, memberName, memberTitle, editionTag, primaryAccent } = params;
 
-  const stats = copy.statCircles && copy.statCircles.length >= 3
-    ? copy.statCircles.slice(0, 3)
-    : [
-        { topLabel: 'ALOKASI PRIORITAS', value: '20%', description: 'Mandat anggaran pendidikan & fasilitas publik daerah.' },
-        { topLabel: 'TARGET PENERIMA', value: '1.450+', description: 'Keluarga dan siswa terdata menerima manfaat langsung.' },
-        { topLabel: 'AUDIT EVALUASI', value: '100%', description: 'Pengawasan berkala untuk cegah kebocoran birokrasi.' },
-      ];
+  const rawTitle = copy.mainBannerTitle || headline || 'DEDIKASI UNTUK RAKYAT';
+  const displayTitle = wordSafeHeadlineTruncate(rawTitle, 32).toUpperCase();
+  const titleFontSize = getAdaptiveFontSize(displayTitle, 64, 42, 18);
 
-  const actionSteps = copy.numberedItems && copy.numberedItems.length >= 3
-    ? copy.numberedItems.slice(0, 3)
-    : [
-        { number: '01', title: 'Audit Kebijakan', summary: 'Evaluasi menyeluruh regulasi dan pengalokasian pos anggaran.' },
-        { number: '02', title: 'Aksi Lapangan', summary: 'Peninjauan langsung ke titik prioritas bersama warga masyarakat.' },
-        { number: '03', title: 'Advokasi Parlemen', summary: 'Pengawalan legislasi dan penyaluran bantuan tepat sasaran.' },
-      ];
+  const rawSubheader = copy.mainBannerSubheader || 'Tinjauan Strategis & Pengawalan Hak-Hak Konstitusional Warga';
+  const displaySubheader = smartSentenceClamp(rawSubheader, 72).toUpperCase();
+
+  const leadQuote = smartSentenceClamp(
+    quote || copy.mainBannerDefinitionBody || 'Amanah publik adalah tanggung jawab moral tertinggi yang diwujudkan melalui kerja konkret.',
+    110
+  );
+
+  const leftBody = smartSentenceClamp(
+    copy.blocks?.['left_positive']?.body ||
+      copy.blocks?.['overview']?.body ||
+      'Melalui pengawasan intensif dan advokasi berkelanjutan, program kerja daerah difokuskan untuk menjawab kebutuhan riil masyarakat di seluruh pelosok wilayah.',
+    140
+  );
+
+  const rightBody = smartSentenceClamp(
+    copy.blocks?.['right_cause']?.body ||
+      copy.blocks?.['impact']?.body ||
+      'Setiap alokasi kebijakan diarahkan secara terukur demi mewujudkan transparansi tata kelola serta peningkatan kesejahteraan masyarakat secara konkret dan merata.',
+    140
+  );
 
   return {
     type: 'div',
@@ -44,12 +65,13 @@ export function buildVintageGazetteLayout(params: VintageGazetteLayoutParams): a
         display: 'flex',
         flexDirection: 'column',
         justifyContent: 'space-between',
-        padding: '34px 40px',
+        padding: '36px 42px',
         boxSizing: 'border-box',
         fontFamily: 'DejaVu Serif',
+        position: 'relative',
       },
       children: [
-        // 1. Top Gazette Masthead
+        // 1. Top Gazette Masthead (Classic Double Rule)
         {
           type: 'div',
           props: {
@@ -60,14 +82,15 @@ export function buildVintageGazetteLayout(params: VintageGazetteLayoutParams): a
               borderTop: '3px solid #111827',
               borderBottom: '1.5px solid #111827',
               padding: '8px 0',
+              backgroundColor: 'rgba(253, 251, 247, 0.92)',
             },
             children: [
               {
                 type: 'div',
                 props: {
-                  style: { display: 'flex', width: '100%', justifyContent: 'space-between', alignItems: 'center' },
+                  style: { display: 'flex', width: '100%', justifyContent: 'space-between', alignItems: 'center', padding: '0 8px' },
                   children: [
-                    { type: 'span', props: { style: { fontSize: '9.5px', fontWeight: 700, color: '#4B5563', letterSpacing: '0.06em' }, children: 'VOL. XXIV • EDISI KHUSUS' } },
+                    { type: 'span', props: { style: { fontSize: '10px', fontWeight: 700, color: '#4B5563', letterSpacing: '0.06em' }, children: 'VOL. XXIV • EDISI KHUSUS' } },
                     {
                       type: 'span',
                       props: {
@@ -75,14 +98,14 @@ export function buildVintageGazetteLayout(params: VintageGazetteLayoutParams): a
                         children: (editionTag || 'POLARIS HISTORICAL GAZETTE').toUpperCase(),
                       },
                     },
-                    { type: 'span', props: { style: { fontSize: '9.5px', fontWeight: 700, color: primaryAccent, letterSpacing: '0.06em' }, children: 'PUBLIKASI RESMI' } },
+                    { type: 'span', props: { style: { fontSize: '10px', fontWeight: 700, color: primaryAccent || '#B45309', letterSpacing: '0.06em' }, children: 'PUBLIKASI RESMI' } },
                   ],
                 },
               },
               {
                 type: 'span',
                 props: {
-                  style: { fontSize: '9.5px', fontStyle: 'italic', color: '#6B7280', marginTop: '2px' },
+                  style: { fontSize: '10px', fontStyle: 'italic', color: '#6B7280', marginTop: '3px' },
                   children: 'Edisi Khusus Tinjauan Strategis, Refleksi Kebijakan Publik & Pengawalan Hak Rakyat',
                 },
               },
@@ -90,7 +113,7 @@ export function buildVintageGazetteLayout(params: VintageGazetteLayoutParams): a
           },
         },
 
-        // 2. Giant Headline & Subheader (Protective container)
+        // 2. Headline & Subheader (Protective Gazette Container)
         {
           type: 'div',
           props: {
@@ -98,157 +121,186 @@ export function buildVintageGazetteLayout(params: VintageGazetteLayoutParams): a
               display: 'flex',
               flexDirection: 'column',
               alignItems: 'center',
-              backgroundColor: 'rgba(255, 255, 255, 0.96)',
+              backgroundColor: 'rgba(253, 251, 247, 0.95)',
               border: '1.5px solid #111827',
-              borderRadius: '6px',
-              padding: '14px 20px',
+              borderRadius: '4px',
+              padding: '12px 20px',
               margin: '8px 0',
               textAlign: 'center',
-              boxShadow: '0 4px 12px rgba(0, 0, 0, 0.06)',
+              boxShadow: '0 4px 12px rgba(0, 0, 0, 0.08)',
             },
             children: [
               {
                 type: 'span',
                 props: {
-                  style: { fontWeight: 700, fontSize: '12px', color: primaryAccent, letterSpacing: '0.06em', marginBottom: '4px' },
-                  children: (copy.mainBannerSubheader || 'Gagasan Besar dan Perjalanan Mengawal Hak-Hak Konstitusional Warga').slice(0, 70).toUpperCase(),
+                  style: { fontWeight: 700, fontSize: '11px', color: primaryAccent || '#B45309', letterSpacing: '0.06em', marginBottom: '4px' },
+                  children: displaySubheader,
                 },
               },
               {
                 type: 'span',
                 props: {
-                  style: { fontFamily: 'Bebas Neue', fontSize: '64px', lineHeight: 0.95, color: '#111827', letterSpacing: '0.02em' },
-                  children: (copy.mainBannerTitle || headline || 'DEDIKASI UNTUK RAKYAT').slice(0, 32).toUpperCase(),
+                  style: { fontFamily: 'Bebas Neue', fontSize: `${titleFontSize}px`, lineHeight: 0.95, color: '#111827', letterSpacing: '0.02em' },
+                  children: displayTitle,
                 },
               },
             ],
           },
         },
 
-        // 3. Hero Metrics Row (3 High-Impact Stat Boxes)
+        // 3. Middle Open Canvas Spacer (Hero Window for background photography / art)
         {
           type: 'div',
           props: {
-            style: { display: 'flex', flexDirection: 'row', gap: '10px', margin: '6px 0' },
-            children: stats.map((st) => ({
-              type: 'div',
-              props: {
-                style: {
-                  flex: 1,
-                  backgroundColor: '#FFFFFF',
-                  border: '1.5px solid #111827',
-                  borderRadius: '4px',
-                  padding: '10px 12px',
-                  display: 'flex',
-                  flexDirection: 'column',
-                  boxShadow: '0 2px 6px rgba(0, 0, 0, 0.04)',
-                },
-                children: [
-                  { type: 'span', props: { style: { fontSize: '9px', fontWeight: 700, color: '#4B5563', letterSpacing: '0.04em' }, children: (st.topLabel || 'INDIKATOR').toUpperCase().slice(0, 18) } },
-                  { type: 'span', props: { style: { fontFamily: 'Anton', fontSize: '26px', color: primaryAccent, lineHeight: 1.1, margin: '2px 0' }, children: (st.value || '100%').slice(0, 14) } },
-                  { type: 'span', props: { style: { fontSize: '9px', color: '#1F2937', lineHeight: 1.35 }, children: (st.description || '').slice(0, 55) } },
-                ],
-              },
-            })),
+            style: {
+              flex: 1,
+              minHeight: '120px',
+            },
           },
         },
 
-        // 4. Middle Split: Action Steps (Left) + Editorial Quote Box (Right)
+        // 4. Magazine Columns: 2 Kolom Artikel Berdampingan Secara Horizontal (50% kiri & 50% kanan)
         {
           type: 'div',
           props: {
-            style: { display: 'flex', flexDirection: 'row', gap: '14px', flex: 1, margin: '6px 0' },
+            style: {
+              display: 'flex',
+              flexDirection: 'column',
+              backgroundColor: 'rgba(253, 251, 247, 0.97)',
+              border: '2px solid #111827',
+              borderRadius: '4px',
+              padding: '16px 20px',
+              boxShadow: '0 8px 24px rgba(0, 0, 0, 0.12)',
+              margin: '8px 0',
+            },
             children: [
-              // Left Column: 3 Numbered Action Steps
               {
                 type: 'div',
                 props: {
-                  style: { flex: 1.15, display: 'flex', flexDirection: 'column', gap: '7px' },
-                  children: actionSteps.map((step) => ({
-                    type: 'div',
-                    props: {
-                      style: {
-                        backgroundColor: 'rgba(255, 255, 255, 0.96)',
-                        border: '1px solid #D1D5DB',
-                        borderRadius: '4px',
-                        padding: '8px 12px',
-                        display: 'flex',
-                        flexDirection: 'row',
-                        alignItems: 'center',
-                        gap: '10px',
-                        boxShadow: '0 2px 5px rgba(0, 0, 0, 0.03)',
-                      },
-                      children: [
-                        {
-                          type: 'div',
-                          props: {
-                            style: {
-                              backgroundColor: '#111827',
-                              color: '#FFFFFF',
-                              fontFamily: 'Anton',
-                              fontSize: '14px',
-                              padding: '4px 8px',
-                              borderRadius: '3px',
-                              display: 'flex',
-                              alignItems: 'center',
-                              justifyContent: 'center',
-                            },
-                            children: (step.number || '01').slice(0, 3),
-                          },
-                        },
-                        {
-                          type: 'div',
-                          props: {
-                            style: { display: 'flex', flexDirection: 'column', flex: 1 },
-                            children: [
-                              { type: 'span', props: { style: { fontWeight: 700, fontSize: '11px', color: '#111827' }, children: (step.title || '').slice(0, 30) } },
-                              { type: 'span', props: { style: { fontSize: '9.5px', color: '#4B5563', lineHeight: 1.3 }, children: (step.summary || '').slice(0, 65) } },
-                            ],
-                          },
-                        },
-                      ],
-                    },
-                  })),
-                },
-              },
-
-              // Right Column with Quote Box + Analytical Summary
-              {
-                type: 'div',
-                props: {
-                  style: { flex: 1, display: 'flex', flexDirection: 'column', gap: '7px', justifyContent: 'space-between' },
+                  style: {
+                    display: 'flex',
+                    flexDirection: 'row',
+                    gap: '20px',
+                  },
                   children: [
+                    // Kolom Kiri: Lead Story & Quote
                     {
                       type: 'div',
                       props: {
-                        style: { backgroundColor: '#FEF3C7', borderLeft: `4px solid ${primaryAccent}`, border: '1px solid #FDE68A', padding: '12px 14px', borderRadius: '4px' },
+                        style: {
+                          flex: 1,
+                          display: 'flex',
+                          flexDirection: 'column',
+                          gap: '8px',
+                        },
                         children: [
                           {
                             type: 'span',
                             props: {
-                              style: { fontStyle: 'italic', fontSize: '11px', lineHeight: 1.4, color: '#78350F' },
-                              children: `"${(quote || copy.mainBannerDefinitionBody || 'Amanah rakyat tidak boleh diperjualbelikan demi kenyamanan kekuasaan.').slice(0, 110)}"`,
+                              style: {
+                                fontSize: '10px',
+                                fontWeight: 700,
+                                color: primaryAccent || '#B45309',
+                                letterSpacing: '0.08em',
+                                borderBottom: '1px solid #111827',
+                                paddingBottom: '3px',
+                              },
+                              children: 'LAPORAN UTAMA & KOMITMEN',
+                            },
+                          },
+                          {
+                            type: 'div',
+                            props: {
+                              style: {
+                                borderLeft: `3px solid ${primaryAccent || '#B45309'}`,
+                                paddingLeft: '8px',
+                                fontStyle: 'italic',
+                                fontSize: '11px',
+                                lineHeight: 1.4,
+                                color: '#374151',
+                              },
+                              children: `"${leadQuote}"`,
+                            },
+                          },
+                          {
+                            type: 'p',
+                            props: {
+                              style: {
+                                fontSize: '10px',
+                                lineHeight: 1.45,
+                                color: '#1F2937',
+                                margin: 0,
+                                textAlign: 'justify',
+                              },
+                              children: leftBody,
                             },
                           },
                         ],
                       },
                     },
+
+                    // Hairline Divider Vertikal
                     {
                       type: 'div',
                       props: {
                         style: {
-                          backgroundColor: 'rgba(255, 255, 255, 0.96)',
-                          border: '1px solid #D1D5DB',
-                          borderRadius: '4px',
-                          padding: '10px 14px',
-                          boxShadow: '0 2px 5px rgba(0, 0, 0, 0.03)',
+                          width: '1px',
+                          backgroundColor: '#9CA3AF',
+                          alignSelf: 'stretch',
+                        },
+                      },
+                    },
+
+                    // Kolom Kanan: Analisis & Catatan Kebijakan
+                    {
+                      type: 'div',
+                      props: {
+                        style: {
+                          flex: 1,
+                          display: 'flex',
+                          flexDirection: 'column',
+                          gap: '8px',
                         },
                         children: [
                           {
+                            type: 'span',
+                            props: {
+                              style: {
+                                fontSize: '10px',
+                                fontWeight: 700,
+                                color: '#111827',
+                                letterSpacing: '0.08em',
+                                borderBottom: '1px solid #111827',
+                                paddingBottom: '3px',
+                              },
+                              children: 'TELAAH KEBIJAKAN PUBLIK',
+                            },
+                          },
+                          {
                             type: 'p',
                             props: {
-                              style: { fontSize: '9.5px', lineHeight: 1.4, color: '#1F2937', textAlign: 'justify', margin: 0 },
-                              children: (copy.blocks?.['right_cause']?.body || copy.blocks?.['left_positive']?.body || 'Melalui pengawasan ketat dan transparansi kebijakan, setiap rupiah alokasi anggaran daerah harus kembali menjadi kesejahteraan konkret bagi masyarakat.').slice(0, 150),
+                              style: {
+                                fontSize: '10px',
+                                lineHeight: 1.45,
+                                color: '#1F2937',
+                                margin: 0,
+                                textAlign: 'justify',
+                              },
+                              children: rightBody,
+                            },
+                          },
+                          {
+                            type: 'div',
+                            props: {
+                              style: {
+                                backgroundColor: '#F3F4F6',
+                                border: '1px dashed #9CA3AF',
+                                padding: '6px 10px',
+                                borderRadius: '2px',
+                                fontSize: '9px',
+                                color: '#4B5563',
+                              },
+                              children: 'Transparansi anggaran & pengawasan publik berkala.',
                             },
                           },
                         ],
@@ -261,7 +313,7 @@ export function buildVintageGazetteLayout(params: VintageGazetteLayoutParams): a
           },
         },
 
-        // 5. Member Footer Signature (Protective solid white container)
+        // 5. Member Footer Signature (Classic Gazette Signature Strip)
         {
           type: 'div',
           props: {
@@ -269,12 +321,11 @@ export function buildVintageGazetteLayout(params: VintageGazetteLayoutParams): a
               display: 'flex',
               justifyContent: 'space-between',
               alignItems: 'center',
-              backgroundColor: 'rgba(255, 255, 255, 0.96)',
+              backgroundColor: 'rgba(253, 251, 247, 0.98)',
               border: '2px solid #111827',
-              borderRadius: '6px',
+              borderRadius: '4px',
               padding: '10px 18px',
-              marginTop: '6px',
-              boxShadow: '0 4px 12px rgba(0, 0, 0, 0.06)',
+              boxShadow: '0 4px 12px rgba(0, 0, 0, 0.08)',
             },
             children: [
               {
@@ -282,12 +333,12 @@ export function buildVintageGazetteLayout(params: VintageGazetteLayoutParams): a
                 props: {
                   style: { display: 'flex', flexDirection: 'column' },
                   children: [
-                    { type: 'span', props: { style: { fontWeight: 700, fontSize: '17px', color: '#111827' }, children: memberName.slice(0, 35).toUpperCase() } },
-                    { type: 'span', props: { style: { fontSize: '10.5px', color: '#4B5563' }, children: memberTitle.slice(0, 45).toUpperCase() } },
+                    { type: 'span', props: { style: { fontWeight: 700, fontSize: '16px', color: '#111827' }, children: memberName.slice(0, 35).toUpperCase() } },
+                    { type: 'span', props: { style: { fontSize: '10px', color: '#4B5563' }, children: memberTitle.slice(0, 45).toUpperCase() } },
                   ],
                 },
               },
-              { type: 'span', props: { style: { fontSize: '10.5px', fontWeight: 700, color: primaryAccent }, children: 'DOKUMEN RESMI PARLEMEN' } },
+              { type: 'span', props: { style: { fontSize: '10.5px', fontWeight: 700, color: primaryAccent || '#B45309' }, children: 'DOKUMEN RESMI PARLEMEN' } },
             ],
           },
         },

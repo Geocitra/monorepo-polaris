@@ -1,6 +1,50 @@
-export type PosterLayoutVariant = 'TOP_BANNER' | 'BOTTOM_ANCHOR' | 'EDITORIAL_SPLIT' | 'CENTERED_HERO';
-export type PosterHeaderPlacement = 'top' | 'bottom' | 'center';
-export type PosterCardArrangement = 'stacked' | 'horizontal_split' | 'single_hero_card' | 'grid_compact';
+import type {
+  CreativePosterArchetype,
+  PosterAspectRatio,
+  SubjectCompositionMode,
+  PosterLayoutVariant,
+  PosterHeaderPlacement,
+  PosterCardArrangement,
+  ZoneRect,
+  SurfaceMode,
+  CompositionZone,
+  CompositionPlan,
+  BlueprintFixedConstraints,
+  BlueprintVariationRules,
+  ResolvedColorTokens,
+  LayoutBlockSpec,
+  PosterQAMetrics,
+  PosterQARecommendation,
+  PosterQAReport,
+} from '@polaris/shared-types';
+import {
+  resolveColorAuthority,
+  LAYOUT_BLOCK_SCHEMA,
+} from '@polaris/shared-types';
+
+export type {
+  CreativePosterArchetype,
+  PosterAspectRatio,
+  SubjectCompositionMode,
+  PosterLayoutVariant,
+  PosterHeaderPlacement,
+  PosterCardArrangement,
+  ZoneRect,
+  SurfaceMode,
+  CompositionZone,
+  CompositionPlan,
+  BlueprintFixedConstraints,
+  BlueprintVariationRules,
+  ResolvedColorTokens,
+  LayoutBlockSpec,
+  PosterQAMetrics,
+  PosterQARecommendation,
+  PosterQAReport,
+};
+export {
+  resolveColorAuthority,
+  LAYOUT_BLOCK_SCHEMA,
+};
 
 export interface SynthesizedEditorialCopy {
   mainBannerTitle: string;
@@ -28,12 +72,6 @@ export interface SynthesizedEditorialCopy {
   cardBorder?: string;
 }
 
-export type SubjectCompositionMode =
-  | 'PUBLIC_ADVOCACY'
-  | 'FIGURE_CENTERPIECE'
-  | 'FIGURE_SIDE_PROFILE'
-  | 'TEXT_ACCENT_ONLY';
-
 export interface ComposeCreativePosterOptions {
   backgroundBuffer: Buffer;
   subjectPhotoBuffer?: Buffer;
@@ -42,17 +80,11 @@ export interface ComposeCreativePosterOptions {
   quote?: string;
   memberName: string;
   memberTitle?: string;
-  archetype?:
-    | 'STREET_JOURNALISM'
-    | 'POP_OUT_HERO'
-    | 'STATEMENT_PROFILE'
-    | 'RETRO_CAMPAIGN'
-    | 'TORN_PAPER_NEWS'
-    | 'RETRO_SPLIT_MITIGATION'
-    | 'MODULAR_GRID_CARDS'
-    | 'VINTAGE_PERSONA_GAZETTE';
+  archetype?: CreativePosterArchetype;
   compositionMode?: SubjectCompositionMode;
   synthesizedCopy?: SynthesizedEditorialCopy;
+  compositionPlan?: CompositionPlan;
+  resolvedColors?: ResolvedColorTokens;
   primaryAccentColor?: string;
   secondaryAccentColor?: string;
   canvasWidth?: number;
@@ -61,6 +93,8 @@ export interface ComposeCreativePosterOptions {
   outputFormat?: 'webp' | 'png' | 'jpeg';
   galleryPhotos?: string[];
   qrCodeUrl?: string;
+  enableVisualQA?: boolean;
+  autoHealContrast?: boolean;
 }
 
 export interface ComposedPosterResult {
@@ -69,4 +103,5 @@ export interface ComposedPosterResult {
   width: number;
   height: number;
   sizeBytes: number;
+  qaReport?: PosterQAReport;
 }

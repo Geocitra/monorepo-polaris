@@ -1,4 +1,9 @@
 import { SynthesizedEditorialCopy } from '../types.js';
+import {
+  cleanCircleLabel,
+  wordSafeHeadlineTruncate,
+  smartSentenceClamp,
+} from '../core/adaptive-typography.js';
 
 export interface TornPaperVeritasLayoutParams {
   width: number;
@@ -129,29 +134,75 @@ export function buildTornPaperVeritasLayout(params: TornPaperVeritasLayoutParams
   const centerColW = Math.round(width * 0.50);
   const rightColW = width - leftColW - centerColW;
 
-  const displayTitle = (copy.mainBannerTitle || headline || 'MALAM JAGO MERAH').toUpperCase();
-  const displaySub = copy.mainBannerSubheader || 'Kebakaran Landa Pemukiman Padat; Ribuan Jiwa Kehilangan Tempat Tinggal';
-  const displayBody =
+  const rawTitle = copy.mainBannerTitle || headline || 'LAPORAN ADVOKASI PUBLIK';
+  const displayTitle = wordSafeHeadlineTruncate(rawTitle, 32).toUpperCase();
+  const displaySub = smartSentenceClamp(
+    copy.mainBannerSubheader || 'Tinjauan Kebijakan Strategis & Pengawalan Aspirasi Konstituen',
+    80
+  );
+  const displayBody = smartSentenceClamp(
     copy.mainBannerDefinitionBody ||
-    'Kobaran api dahsyat melahap permukiman padat warga pada Selasa malam. Sebanyak 28 unit armada pemadam dikerahkan menembus lorong gang sempit untuk menyelamatkan ratusan keluarga yang terperangkap.';
+      'Melalui pengawasan intensif dan advokasi berkelanjutan di parlemen, setiap kebijakan publik diarahkan untuk menjawab kebutuhan riil masyarakat secara konkret dan berkeadilan.',
+    180
+  );
 
   const stats = copy.statCircles && copy.statCircles.length >= 3
     ? copy.statCircles
     : [
-        { topLabel: 'Setidaknya', value: '120+', description: 'rumah hangus terbakar dalam waktu 3 jam.' },
-        { topLabel: 'Armada Siaga', value: '28', description: 'Data Posko Lapangan: 28 unit armada pemadam dikerahkan.' },
-        { topLabel: 'Lebih dari', value: '1.450', description: 'jiwa warga kini berada di posko darurat.' },
+        { topLabel: 'PRIORITAS', value: 'Utama', description: 'Pengawalan aspirasi dan kebijakan terpadu di lapangan.' },
+        { topLabel: 'SASARAN', value: '100%', description: 'Transparansi pelaksanaan program tepat sasaran.' },
+        { topLabel: 'KOMITMEN', value: 'Tegas', description: 'Pengawasan berkelanjutan demi kesejahteraan warga.' },
       ];
 
-  const leftNews = copy.blocks?.['left_positive'] || {
-    header: 'BPBD dan Dinsos Dirikan Posko Terpadu serta Dapur Umum 24 Jam',
-    body: 'Pemerintah daerah bersama Badan Penanggulangan Bencana Daerah (BPBD) bergerak cepat mendirikan posko pengungsian terpadu dan posko logistik mandiri menyusul musibah kebakaran besar yang melanda kawasan permukiman padat.',
+  const leftNews = {
+    header: wordSafeHeadlineTruncate(
+      copy.blocks?.['left_positive']?.header || 'Pemerintah Daerah Bergerak Cepat Realisasikan Aspirasi Warga',
+      55
+    ),
+    body: smartSentenceClamp(
+      copy.blocks?.['left_positive']?.body ||
+        'Melalui pengawasan ketat dan pendampingan lapangan berkala, program prioritas diarahkan untuk memastikan hak masyarakat terpenuhi secara konkret dan transparan.',
+      160
+    ),
   };
 
-  const rightPolicy = copy.blocks?.['right_cause'] || {
-    header: 'Kaji Ulang Proteksi Api dan Jalur Hidran di Pemukiman Padat',
-    body: 'Inspeksi menemukan 70% hidran terdekat tidak memiliki debit air memadai. Pemerintah daerah didesak mempercepat pengadaan pompa air mandiri bertekanan tinggi di tiap RW serta membuka koridor steril evakuasi darurat.',
+  const rightPolicy = {
+    header: wordSafeHeadlineTruncate(
+      copy.blocks?.['right_cause']?.header || 'Kaji Ulang Regulasi Daerah Demi Kesejahteraan Warga',
+      55
+    ),
+    body: smartSentenceClamp(
+      copy.blocks?.['right_cause']?.body ||
+        'Evaluasi menyeluruh terhadap regulasi teknis menunjukkan perlunya percepatan koordinasi lintas sektor demi mewujudkan tata kelola yang transparan dan akuntabel bagi seluruh warga.',
+      160
+    ),
   };
+
+  const teaser1Title = wordSafeHeadlineTruncate(
+    copy.numberedItems?.[0]?.title ||
+      copy.blocks?.['teaser_1']?.header ||
+      'Pengawalan Dokumen & Hak Warga',
+    34
+  );
+  const teaser1Summary = smartSentenceClamp(
+    copy.numberedItems?.[0]?.summary ||
+      copy.blocks?.['teaser_1']?.body ||
+      'Pendampingan intensif bagi masyarakat guna menjamin pemenuhan hak administrasi dan layanan publik cepat.',
+    85
+  );
+
+  const teaser2Title = wordSafeHeadlineTruncate(
+    copy.numberedItems?.[1]?.title ||
+      copy.blocks?.['teaser_2']?.header ||
+      'Audit Transparansi Kebijakan',
+    34
+  );
+  const teaser2Summary = smartSentenceClamp(
+    copy.numberedItems?.[1]?.summary ||
+      copy.blocks?.['teaser_2']?.body ||
+      'Evaluasi regulasi dan pengawasan alokasi pos anggaran daerah demi peningkatan kesejahteraan masyarakat.',
+    85
+  );
 
   return {
     type: 'div',
@@ -213,7 +264,7 @@ export function buildTornPaperVeritasLayout(params: TornPaperVeritasLayoutParams
                           letterSpacing: '0.05em',
                           marginBottom: '4px',
                         },
-                        children: 'TANGGAP DARURAT BENCANA',
+                        children: ((copy as any).editionTag || editionTag || 'LAPORAN UTAMA DAERAH').toUpperCase(),
                       },
                     },
                     {
@@ -305,7 +356,7 @@ export function buildTornPaperVeritasLayout(params: TornPaperVeritasLayoutParams
                                   props: {
                                     fontFamily: 'DejaVu Serif',
                                     style: { fontWeight: 700, fontSize: '10px', color: '#111827', lineHeight: 1.2 },
-                                    children: 'Pemulihan Dokumen Warga Terdampak',
+                                    children: teaser1Title,
                                   },
                                 },
                               ],
@@ -332,7 +383,7 @@ export function buildTornPaperVeritasLayout(params: TornPaperVeritasLayoutParams
                                   props: {
                                     fontFamily: 'DejaVu Serif',
                                     style: { fontSize: '8.5px', lineHeight: 1.35, color: '#4B5563' },
-                                    children: 'Layanan jemput bola Dukcapil cetak ulang KTP, KK, dan ijazah sekolah gratis.',
+                                    children: teaser1Summary,
                                   },
                                 },
                               ],
@@ -362,7 +413,7 @@ export function buildTornPaperVeritasLayout(params: TornPaperVeritasLayoutParams
                                   props: {
                                     fontFamily: 'DejaVu Serif',
                                     style: { fontWeight: 700, fontSize: '10px', color: '#111827', lineHeight: 1.2 },
-                                    children: 'Audit Instalasi Hidran & Gang Sempit',
+                                    children: teaser2Title,
                                   },
                                 },
                               ],
@@ -389,7 +440,7 @@ export function buildTornPaperVeritasLayout(params: TornPaperVeritasLayoutParams
                                   props: {
                                     fontFamily: 'DejaVu Serif',
                                     style: { fontSize: '8.5px', lineHeight: 1.35, color: '#4B5563' },
-                                    children: 'Evaluasi kesiapan hidran pemukiman dan pengadaan pompa portabel di setiap RW.',
+                                    children: teaser2Summary,
                                   },
                                 },
                               ],
@@ -668,9 +719,9 @@ export function buildTornPaperVeritasLayout(params: TornPaperVeritasLayoutParams
                           boxSizing: 'border-box',
                         },
                         children: [
-                          { type: 'span', props: { style: { fontSize: '8.5px', color: primaryAccent, fontWeight: 700 }, children: stats[0]?.topLabel || 'Setidaknya' } },
-                          { type: 'span', props: { style: { fontFamily: 'Bebas Neue', fontSize: '36px', lineHeight: 0.9, color: primaryAccent }, children: stats[0]?.value || '120+' } },
-                          { type: 'span', props: { style: { fontSize: '7px', color: '#4B5563', textAlign: 'center', lineHeight: 1.15 }, children: stats[0]?.description || 'titik terdampak.' } },
+                          { type: 'span', props: { style: { fontSize: '8.5px', color: primaryAccent, fontWeight: 700 }, children: cleanCircleLabel(stats[0]?.topLabel || 'PRIORITAS', 11) } },
+                          { type: 'span', props: { style: { fontFamily: 'Bebas Neue', fontSize: '36px', lineHeight: 0.9, color: primaryAccent }, children: stats[0]?.value || 'Utama' } },
+                          { type: 'span', props: { style: { fontSize: '7px', color: '#4B5563', textAlign: 'center', lineHeight: 1.15 }, children: stats[0]?.description || 'titik fokus intervensi.' } },
                         ],
                       },
                     },
@@ -697,8 +748,8 @@ export function buildTornPaperVeritasLayout(params: TornPaperVeritasLayoutParams
                                 flexShrink: 0,
                               },
                               children: [
-                                { type: 'span', props: { style: { fontFamily: 'Bebas Neue', fontSize: '24px', lineHeight: 0.9 }, children: stats[1]?.value || '28' } },
-                                { type: 'span', props: { style: { fontSize: '7px', fontWeight: 700, letterSpacing: '0.04em' }, children: stats[1]?.topLabel || 'UNIT DAMKAR' } },
+                                { type: 'span', props: { style: { fontFamily: 'Bebas Neue', fontSize: '24px', lineHeight: 0.9 }, children: stats[1]?.value || '100%' } },
+                                { type: 'span', props: { style: { fontSize: '7px', fontWeight: 700, letterSpacing: '0.04em' }, children: cleanCircleLabel(stats[1]?.topLabel || 'SASARAN', 11) } },
                               ],
                             },
                           },
@@ -708,7 +759,7 @@ export function buildTornPaperVeritasLayout(params: TornPaperVeritasLayoutParams
                               style: { display: 'flex', flexDirection: 'column', flex: 1 },
                               children: [
                                 { type: 'span', props: { style: { fontSize: '7.5px', fontWeight: 700, color: primaryAccent, letterSpacing: '0.08em', marginBottom: '2px' }, children: 'DALAM ANGKA' } },
-                                { type: 'span', props: { style: { fontFamily: 'DejaVu Serif', fontSize: '8.5px', lineHeight: 1.3, color: '#1F2937' }, children: stats[1]?.description || 'personel siaga.' } },
+                                { type: 'span', props: { style: { fontFamily: 'DejaVu Serif', fontSize: '8.5px', lineHeight: 1.3, color: '#1F2937' }, children: stats[1]?.description || 'realisasi program terpadu.' } },
                               ],
                             },
                           },
@@ -734,9 +785,9 @@ export function buildTornPaperVeritasLayout(params: TornPaperVeritasLayoutParams
                           boxSizing: 'border-box',
                         },
                         children: [
-                          { type: 'span', props: { style: { fontSize: '8.5px', color: primaryAccent, fontWeight: 700 }, children: stats[2]?.topLabel || 'Lebih dari' } },
-                          { type: 'span', props: { style: { fontFamily: 'Bebas Neue', fontSize: '32px', lineHeight: 0.9, color: primaryAccent }, children: stats[2]?.value || '1.450' } },
-                          { type: 'span', props: { style: { fontSize: '7px', color: '#4B5563', textAlign: 'center', lineHeight: 1.15 }, children: stats[2]?.description || 'warga di posko.' } },
+                          { type: 'span', props: { style: { fontSize: '8.5px', color: primaryAccent, fontWeight: 700 }, children: cleanCircleLabel(stats[2]?.topLabel || 'KOMITMEN', 11) } },
+                          { type: 'span', props: { style: { fontFamily: 'Bebas Neue', fontSize: '32px', lineHeight: 0.9, color: primaryAccent }, children: stats[2]?.value || 'Tegas' } },
+                          { type: 'span', props: { style: { fontSize: '7px', color: '#4B5563', textAlign: 'center', lineHeight: 1.15 }, children: stats[2]?.description || 'pengawasan berkelanjutan.' } },
                         ],
                       },
                     },

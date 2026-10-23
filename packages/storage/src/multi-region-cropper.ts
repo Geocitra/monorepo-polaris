@@ -17,6 +17,7 @@ export interface CropRegionSpec {
  * Mengimplementasikan "Single-Pass Multi-Crop Strategy" di mana 1 panggilan AI Image
  * (atau 1 aset kanvas luas) dipotong menjadi beberapa sub-zona visual secara lokal di server (Rp 0 & < 50ms),
  * tanpa perlu memanggil API DALL-E berkali-kali.
+ * Dilengkapi "Variance-Aware Cropping (Anti-Langit Kosong)" untuk mendeteksi area polos/hampa.
  */
 export class MultiRegionCropper {
   public static async extractSubRegions(
@@ -60,11 +61,30 @@ export class MultiRegionCropper {
           }
         }
 
-        // 2. Hitung koordinat piksel aman (Clamped)
-        const left = Math.max(0, Math.min(imgWidth - 10, Math.round(spec.leftRatio * imgWidth)));
-        const top = Math.max(0, Math.min(imgHeight - 10, Math.round(spec.topRatio * imgHeight)));
-        const width = Math.max(10, Math.min(imgWidth - left, Math.round(spec.widthRatio * imgWidth)));
-        const height = Math.max(10, Math.min(imgHeight - top, Math.round(spec.heightRatio * imgHeight)));
+        // 2. Hitung koordinat piksel awal (Clamped)
+        let left = Math.max(0, Math.min(imgWidth - 10, Math.round(spec.leftRatio * imgWidth)));
+        let top = Math.max(0, Math.min(imgHeight - 10, Math.round(spec.topRatio * imgHeight)));
+        let width = Math.max(10, Math.min(imgWidth - left, Math.round(spec.widthRatio * imgWidth)));
+        let height = Math.max(10, Math.min(imgHeight - top, Math.round(spec.heightRatio * imgHeight)));
+
+        // 3. Variance-Aware Cropping (Anti-Langit Kosong)
+        // Periksa statistik piksel potongan awal untuk mencegah thumbnail putih polos
+        try {
+          const rawExtracted = await sharp(imageBuffer).extract({ left, top, width, height }).toBuffer();
+          const cropStats = await sharp(rawExtracted).stats();
+          const numChannels = Math.min(3, cropStats.channels.length);
+          const sumStdev = cropStats.channels.slice(0, numChannels).reduce((acc, c) => acc + c.stdev, 0);
+          const avgStdev = numChannels > 0 ? sumStdev / numChannels : 0;
+
+          // Deteksi Area Polos / Langit Kosong (stdev < 18)
+          if (avgStdev < 18) {
+            const fallbackTopRatio = Math.min(0.65, 0.38 + i * 0.08);
+            top = Math.max(0, Math.min(imgHeight - 10, Math.round(fallbackTopRatio * imgHeight)));
+            height = Math.max(10, Math.min(imgHeight - top, Math.round(spec.heightRatio * imgHeight)));
+          }
+        } catch {
+          // Jika analisis stats gagal, lanjutkan dengan koordinat awal
+        }
 
         let pipeline = sharp(imageBuffer).extract({ left, top, width, height });
 

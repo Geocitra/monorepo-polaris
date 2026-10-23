@@ -27,7 +27,7 @@ export function QuotaBadge({
           {isActive ? (
             <>
               <Sparkles className="h-3.5 w-3.5 text-emerald-600 shrink-0" />
-              <span className="font-extrabold text-[11px] tracking-wide">Unlimited AI Enterprise</span>
+              <span className="font-extrabold text-[11px] tracking-wide">Lisensi Aktif</span>
             </>
           ) : (
             <>

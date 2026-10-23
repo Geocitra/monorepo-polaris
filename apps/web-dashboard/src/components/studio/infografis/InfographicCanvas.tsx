@@ -49,7 +49,9 @@ export function InfographicCanvas({
 
   // Menentukan aspek rasio container agar proporsional dan tidak terpotong
   const aspectClass =
-    iteration.aspectRatio === '1:1'
+    iteration.aspectRatio === '4:5'
+      ? 'aspect-[4/5] max-w-[480px]'
+      : iteration.aspectRatio === '1:1'
       ? 'aspect-square max-w-[560px]'
       : iteration.aspectRatio === '9:16'
       ? 'aspect-[9/16] max-w-[380px]'
@@ -115,7 +117,7 @@ export function InfographicCanvas({
             fill
             unoptimized
             priority
-            className="object-contain sm:object-cover"
+            className="object-contain"
           />
 
           {/* SUBTLE BRANDING WATERMARK (MINIMALIS DI POJOK TANPA MENUTUPI TEKS) */}

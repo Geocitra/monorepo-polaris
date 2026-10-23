@@ -3,4 +3,7 @@ export * from './catalog.js';
 export * from './selector.js';
 export * from './prompt-compiler.js';
 export * from './palettes.js';
-
+export * from './composition-planner.js';
+export * from './blueprint-repository.js';
+export * from './reference-vision-analyzer.js';
+export * from './art-collage/index.js';

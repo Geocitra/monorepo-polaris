@@ -1,4 +1,5 @@
 import { Injectable, Logger } from '@nestjs/common';
+import { PromptRefinerService } from '@polaris/ai-engine';
 import { GenerateArticleRequestDto, UpdateDraftArticleDto, UploadArticleImageDto } from './dto/studio.dto.js';
 import {
   StudioRadarService,
@@ -30,6 +31,10 @@ export class StudioService {
   // --- Domain: Radar & Morning Briefing ---
   async getMorningBriefing(tenantId: string) {
     return await this.radarService.getMorningBriefing(tenantId);
+  }
+
+  async getTrendingDapilTopics(tenantId: string) {
+    return await this.radarService.getTrendingDapilTopics(tenantId);
   }
 
   // --- Domain: Generasi Konten Asinkron & Antrean ---
@@ -89,5 +94,27 @@ export class StudioService {
 
   async deleteResearchSource(tenantId: string, articleId: string, sourceId: string) {
     return await this.researchService.deleteResearchSource(tenantId, articleId, sourceId);
+  }
+
+  // --- Domain: Parafrase & Penyempurnaan Prompt Cerdas (Ultra-Hemat) ---
+  async refinePrompt(
+    tenantId: string,
+    dto: {
+      prompt: string;
+      style?: 'poster' | 'infographic' | 'article_agenda';
+      dapilName?: string;
+      memberName?: string;
+      partyAffiliation?: string;
+      commissionName?: string;
+    }
+  ) {
+    return await PromptRefinerService.refinePrompt({
+      rawPrompt: dto.prompt,
+      style: dto.style,
+      dapilName: dto.dapilName,
+      memberName: dto.memberName,
+      partyAffiliation: dto.partyAffiliation,
+      commissionName: dto.commissionName,
+    });
   }
 }

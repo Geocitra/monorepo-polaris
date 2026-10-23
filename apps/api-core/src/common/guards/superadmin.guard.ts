@@ -6,8 +6,16 @@ export class SuperadminGuard implements CanActivate {
     const request = context.switchToHttp().getRequest();
     const user = request.user;
 
-    if (!user || !user.isSuperadmin) {
-      throw new ForbiddenException('Akses ditolak: Hanya Superadmin POLARIS yang diizinkan mengakses endpoint ini.');
+    // Hanya pengguna dengan role SUPERADMIN murni yang boleh mengakses
+    if (
+      !user ||
+      !user.isSuperadmin ||
+      user.role !== 'SUPERADMIN' ||
+      user.isOperator === true ||
+      user.role === 'CONTENT_OPERATOR' ||
+      user.role === 'SUPPORT_OPERATOR'
+    ) {
+      throw new ForbiddenException('Akses ditolak: Hanya Superadmin POLARIS yang diizinkan mengakses kontrol ini.');
     }
 
     return true;

@@ -28,6 +28,14 @@ export class StudioController {
     return await this.studioService.getMorningBriefing(user.tenantId);
   }
 
+  // Rekomendasi Isu Hangat Dapil Dinamis berbasis AI (Gemini Flash Lite)
+  @Get('trending-topics')
+  @SkipRlsContext()
+  @HttpCode(HttpStatus.OK)
+  async getTrendingTopics(@CurrentTenant() user: AuthenticatedTenantPayload) {
+    return await this.studioService.getTrendingDapilTopics(user.tenantId);
+  }
+
   // Generate konten AI WAJIB memiliki status langganan ACTIVE (Bebas Kuota Unlimited)
   @Post('generate')
   @SkipRlsContext()
@@ -38,6 +46,25 @@ export class StudioController {
     @Body() dto: GenerateArticleRequestDto
   ) {
     return await this.studioService.generateNewContentPackage(user.tenantId, dto);
+  }
+
+  // Parafrase & Penyempurnaan Prompt Cerdas menggunakan Gemini Flash Lite (Ultra-Cepat & Hemat)
+  @Post('refine-prompt')
+  @SkipRlsContext()
+  @HttpCode(HttpStatus.OK)
+  async refinePrompt(
+    @CurrentTenant() user: AuthenticatedTenantPayload,
+    @Body()
+    dto: {
+      prompt: string;
+      style?: 'poster' | 'infographic' | 'article_agenda';
+      dapilName?: string;
+      memberName?: string;
+      partyAffiliation?: string;
+      commissionName?: string;
+    }
+  ) {
+    return await this.studioService.refinePrompt(user.tenantId, dto);
   }
 
   @Get('jobs/:jobId')

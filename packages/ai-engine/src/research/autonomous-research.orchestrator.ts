@@ -399,6 +399,54 @@ export class AutonomousResearchOrchestrator {
       });
     }
 
+    // Proses E: Registrasi Dokumen Lampiran Pengguna (User Attached Documents / Reses / Dokumen Lapangan)
+    if (input.attachedDocuments && input.attachedDocuments.length > 0) {
+      for (const doc of input.attachedDocuments) {
+        if (!doc.extractedContent || doc.extractedContent.trim().length === 0) continue;
+
+        const [s] = await db
+          .insert(sources)
+          .values({
+            url: `attachment://${encodeURIComponent(doc.name)}`,
+            canonicalUrl: `attachment://${encodeURIComponent(doc.name)}`,
+            sourceType: SourceType.INTERNAL_REGULATION,
+            publisherName: `Lampiran Lapangan / Dokumen (${doc.name})`,
+            publisherType: PublisherType.GOVERNMENT,
+            publisherCredibilityScore: 0.98,
+            lifecycleStatus: SourceLifecycle.VERIFIED,
+          })
+          .returning();
+
+        const [sv] = await db
+          .insert(sourceVersions)
+          .values({
+            sourceId: s.id,
+            contentHash: WebDiscoveryConnector.hashContent(doc.extractedContent),
+            title: doc.name,
+            extractedText: doc.extractedContent,
+            httpStatus: 200,
+          })
+          .returning();
+
+        await db.insert(researchJobSources).values({
+          researchJobId: jobId,
+          sourceId: s.id,
+          relevanceScore: 0.98,
+          queryUsed: 'User Attachment Ingestion',
+        });
+
+        evaluatedSources.push({
+          sourceId: s.id,
+          versionId: sv.id,
+          title: doc.name,
+          url: s.url,
+          publisherName: `Lampiran Lapangan / Dokumen (${doc.name})`,
+          extractedText: doc.extractedContent,
+          isAccepted: true,
+        });
+      }
+    }
+
     // 5. TAHAP 4: Claim & Evidence Extraction
     await db
       .update(researchJobs)

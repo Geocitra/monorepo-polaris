@@ -1,6 +1,5 @@
 import { POSTER_BLUEPRINT_CATALOG } from './catalog.js';
 import { CreativePosterArchetype, PreAnalyzedPosterBlueprint } from './types.js';
-import { getRandomHarmoniousPalette } from './palettes.js';
 
 export interface SelectBlueprintOptions {
   topic?: string;
@@ -13,26 +12,44 @@ export interface SelectBlueprintOptions {
 
 export class PosterBlueprintSelector {
   /**
-   * Pemilihan Template MURNI PAKE ID & TRUE RNG (Random Number Generator).
-   * - TIDAK ADA analisa kalimat/topik/kata kunci sama sekali.
-   * - Template diundi murni dari kumpulan ID template yang tersedia.
-   * - Palet warna senada (Harmonious Palette) dipilih dinamis agar tidak monoton.
-   * - AI tidak diberikan informasi konteks kegunaan referensi asli gambar tersebut.
+   * 3-Step Filtered Roulette RNG Selection Engine:
+   * 1. Negative Filtering (Tone Guard): Menjaga isu krisis/duka dari template pop/komedi.
+   * 2. Broad Candidate Pool: Mengambil Top 8-10 relevan + 2-3 Wildcard (Candidate Pool 8-12).
+   * 3. Random Draw di dalam Pool: Menjamin variasi luas tanpa kebosanan Max-Score.
    */
-  public static selectBestBlueprint(options: SelectBlueprintOptions = {}): PreAnalyzedPosterBlueprint {
-    const { forcedBlueprintId, forcedArchetype, excludeBlueprintId, forcedBrandHex, strictlyEnforceBrandColor } = options;
+  public static async selectBestBlueprintAsync(
+    options: SelectBlueprintOptions = {}
+  ): Promise<PreAnalyzedPosterBlueprint> {
+    const { PosterBlueprintRepository } = await import('./blueprint-repository.js');
+    const catalog = await PosterBlueprintRepository.getActiveCatalog();
+    return this.selectBestBlueprint(options, catalog);
+  }
+
+  public static selectBestBlueprint(
+    options: SelectBlueprintOptions = {},
+    catalog: PreAnalyzedPosterBlueprint[] = POSTER_BLUEPRINT_CATALOG
+  ): PreAnalyzedPosterBlueprint {
+    const {
+      topic = '',
+      forcedBlueprintId,
+      forcedArchetype,
+      excludeBlueprintId,
+      forcedBrandHex,
+      strictlyEnforceBrandColor,
+    } = options;
 
     // 1. Jika pemanggil memaksakan ID template tertentu secara eksplisit
     if (forcedBlueprintId) {
-      const explicitMatch = POSTER_BLUEPRINT_CATALOG.find((b) => b.id === forcedBlueprintId);
+      const explicitMatch = catalog.find((b) => b.id === forcedBlueprintId);
       if (explicitMatch) {
-        console.log(`[PosterBlueprintSelector] Memilih template eksplisit by ID: '${explicitMatch.id}' (${explicitMatch.name})`);
-        return explicitMatch;
+        return this.applyBrandColor(explicitMatch, forcedBrandHex, strictlyEnforceBrandColor);
       }
     }
 
-    // 2. Kumpulan template yang tersedia (exclude template sebelumnya jika reroll)
-    let pool = POSTER_BLUEPRINT_CATALOG;
+    // 2. Kumpulan awal seluruh katalog
+    let pool = [...catalog];
+
+    // Exclude template sebelumnya (Anti-Repeat / Cooldown Memory)
     if (excludeBlueprintId && pool.length > 1) {
       const filtered = pool.filter((b) => b.id !== excludeBlueprintId);
       if (filtered.length > 0) {
@@ -40,7 +57,7 @@ export class PosterBlueprintSelector {
       }
     }
 
-    // 3. Jika ada batasan arketipe visual tertentu
+    // Jika dipaksakan arketipe tertentu
     if (forcedArchetype) {
       const archetypePool = pool.filter((b) => b.archetype === forcedArchetype);
       if (archetypePool.length > 0) {
@@ -48,36 +65,96 @@ export class PosterBlueprintSelector {
       }
     }
 
-    // 4. MURNI RANDOM NUMBER GENERATOR (RNG) BY ID / INDEX
-    // Sama sekali tidak membaca kalimat topik, hanya melempar dadu index ID
-    const randomIndex = Math.floor(Math.random() * pool.length);
-    const chosen = pool[randomIndex];
+    // -------------------------------------------------------------------------
+    // STEP 1: TONE GUARD / NEGATIVE FILTERING
+    // -------------------------------------------------------------------------
+    const normalizedTopic = topic.toLowerCase();
+    const isCrisisOrGrave =
+      /bencana|banjir|gempa|kebakaran|korupsi|meninggal|duka|darurat|krisis|evakuasi|wafat|longsor|tragedi/i.test(
+        normalizedTopic
+      );
 
-    // 5. VARIASI WARNA SENADA (HARMONIOUS COLOR PALETTES):
-    // Memilih palet warna senada secara acak (Emerald, Indigo, Terracotta, Sapphire, Teal, Amber, dsb.)
-    // agar visual tidak monoton pada satu warna merah/oranye.
-    const dynamicPalette = getRandomHarmoniousPalette();
-    const primaryAccent = strictlyEnforceBrandColor && forcedBrandHex ? forcedBrandHex : dynamicPalette.primaryAccent;
+    if (isCrisisOrGrave && pool.length > 4) {
+      // Buang template pop/komedi yang tidak pantas untuk isu berduka/kritis
+      const popTemplateIds = [
+        'TPL-11-CREATIVE-POP-COLLAGE',
+        'TPL-18-POP-ZINE-COLLAGE',
+        'TPL-22-POP-CULTURE-COMMENTARY',
+      ];
+      const safePool = pool.filter((b) => !popTemplateIds.includes(b.id));
+      if (safePool.length > 0) {
+        pool = safePool;
+      }
+    }
 
-    const variedBlueprint: PreAnalyzedPosterBlueprint = {
-      ...chosen,
-      colorPalette: {
-        ...chosen.colorPalette,
-        primaryAccent,
-        secondaryAccent: dynamicPalette.secondaryAccent,
-        backgroundBase: dynamicPalette.backgroundBase,
-        textColor: dynamicPalette.textColor,
-        subTextColor: dynamicPalette.subTextColor,
-        cardBackground: dynamicPalette.cardBackground,
-        cardBorder: dynamicPalette.cardBorder,
-      },
-    };
+    // -------------------------------------------------------------------------
+    // STEP 2: BROAD RELEVANCE POOL (Top 8-10) + WILDCARD (2-3)
+    // -------------------------------------------------------------------------
+    const scoredPool = pool.map((blueprint) => {
+      let score = 0;
+      const textToMatch = `${blueprint.name} ${blueprint.description} ${blueprint.tags.join(' ')}`.toLowerCase();
+      const topicWords = normalizedTopic.split(/\s+/).filter((w) => w.length > 3);
 
-    console.log(
-      `[PosterBlueprintSelector] RNG Murni (By Template ID): Terpilih '${chosen.id}' (${chosen.name}) dengan Palet Warna Senada '${dynamicPalette.name}' (${primaryAccent}). (Tanpa analisa kalimat/topik).`
-    );
+      for (const word of topicWords) {
+        if (textToMatch.includes(word)) score += 3;
+      }
 
-    return variedBlueprint;
+      // Skor kecocokan tag tematik
+      if (/jalan|jembatan|infrastruktur|bangunan|gedung/i.test(normalizedTopic)) {
+        if (blueprint.tags.some((t) => /infrastruktur|sinematik|modern|arsitektur/i.test(t))) score += 4;
+      }
+      if (/pasar|pedagang|sembako|umkm|tani|pupuk|nelayan/i.test(normalizedTopic)) {
+        if (blueprint.tags.some((t) => /kolase|investigatif|risograph|vintage/i.test(t))) score += 4;
+      }
+      if (/anggaran|apbd|apbn|audit|keuangan|dana/i.test(normalizedTopic)) {
+        if (blueprint.tags.some((t) => /infografis|data|grid|broadsheet/i.test(t))) score += 4;
+      }
+
+      return { blueprint, score };
+    });
+
+    // Urutkan berdasarkan skor relevansi
+    scoredPool.sort((a, b) => b.score - a.score);
+
+    // Ambil kandidat relevan teratas (Top 8 - 10)
+    const topCandidates = scoredPool.slice(0, Math.min(8, scoredPool.length)).map((s) => s.blueprint);
+
+    // Ambil 2 - 3 Wildcard dari sisa pool yang belum masuk untuk menjaga keanekaragaman
+    const remaining = scoredPool.slice(topCandidates.length).map((s) => s.blueprint);
+    const wildcards: PreAnalyzedPosterBlueprint[] = [];
+    if (remaining.length > 0) {
+      const shuffledRemaining = [...remaining].sort(() => 0.5 - Math.random());
+      wildcards.push(...shuffledRemaining.slice(0, Math.min(3, shuffledRemaining.length)));
+    }
+
+    const candidatePool = [...topCandidates, ...wildcards];
+
+    // -------------------------------------------------------------------------
+    // STEP 3: TRUE RANDOM DRAW DI DALAM CANDIDATE POOL (8-12 Variasi)
+    // -------------------------------------------------------------------------
+    const randomIndex = Math.floor(Math.random() * candidatePool.length);
+    const chosen = candidatePool[randomIndex] || pool[0];
+
+    return this.applyBrandColor(chosen, forcedBrandHex, strictlyEnforceBrandColor);
+  }
+
+  /**
+   * Menjaga identitas warna asli blueprint, hanya menimpa primaryAccent jika brand diwajibkan
+   */
+  private static applyBrandColor(
+    blueprint: PreAnalyzedPosterBlueprint,
+    forcedBrandHex?: string,
+    strictlyEnforceBrandColor?: boolean
+  ): PreAnalyzedPosterBlueprint {
+    if (strictlyEnforceBrandColor && forcedBrandHex) {
+      return {
+        ...blueprint,
+        colorPalette: {
+          ...blueprint.colorPalette,
+          primaryAccent: forcedBrandHex,
+        },
+      };
+    }
+    return blueprint;
   }
 }
-

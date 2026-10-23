@@ -1,4 +1,9 @@
 import { SynthesizedEditorialCopy } from '../types.js';
+import {
+  getAdaptiveFontSize,
+  wordSafeHeadlineTruncate,
+  smartSentenceClamp,
+} from '../core/adaptive-typography.js';
 
 export interface RetroMitigationLayoutParams {
   width: number;
@@ -19,7 +24,14 @@ export interface RetroMitigationLayoutParams {
 export function buildRetroMitigationLayout(params: RetroMitigationLayoutParams): any {
   const { width, height, headline, copy, memberName, memberTitle, editionTag, primaryAccent, croppedThumbnails = {}, logoDataUri } = params;
 
-  const items = copy.numberedItems && copy.numberedItems.length >= 4
+  const rawTitle = copy.mainBannerTitle || headline || 'PANDUAN KESELAMATAN BENCANA';
+  const displayTitle = wordSafeHeadlineTruncate(rawTitle, 32).toUpperCase();
+  const titleFontSize = getAdaptiveFontSize(displayTitle, 64, 40, 18);
+
+  const displaySubheader = smartSentenceClamp(copy.mainBannerSubheader || 'TANGGAP DARURAT & MITIGASI RISIKO LINGKUNGAN', 70).toUpperCase();
+  const displayDefinition = smartSentenceClamp(copy.mainBannerDefinitionBody || 'Edukasi dan kesiapsiagaan warga adalah garda terdepan penyelamatan jiwa saat musibah terjadi.', 140);
+
+  const sourceItems = copy.numberedItems && copy.numberedItems.length >= 4
     ? copy.numberedItems
     : [
         { number: '01', title: 'Perlindungan Diri', summary: 'Cari tempat berlindung kokoh dan jauhi instalasi kaca atau kabel terbuka.' },
@@ -27,6 +39,12 @@ export function buildRetroMitigationLayout(params: RetroMitigationLayoutParams):
         { number: '03', title: 'Jalur Evakuasi Terbuka', summary: 'Gunakan tangga darurat dan jangan gunakan lift selama status bahaya.' },
         { number: '04', title: 'Titik Kumpul Lapangan', summary: 'Menuju ruang terbuka dan koordinasi dengan posko tanggap darurat RT/RW.' },
       ];
+
+  const items = sourceItems.map((it) => ({
+    number: it.number,
+    title: wordSafeHeadlineTruncate(it.title, 26),
+    summary: smartSentenceClamp(it.summary, 75),
+  }));
 
   return {
     type: 'div',
@@ -78,15 +96,15 @@ export function buildRetroMitigationLayout(params: RetroMitigationLayoutParams):
               {
                 type: 'span',
                 props: {
-                  style: { fontFamily: 'Anton', fontSize: '64px', lineHeight: 0.95, color: '#1C1917', letterSpacing: '0.02em' },
-                  children: (copy.mainBannerTitle || headline || 'PANDUAN KESELAMATAN BENCANA').toUpperCase(),
+                  style: { fontFamily: 'Anton', fontSize: `${titleFontSize}px`, lineHeight: 0.95, color: '#1C1917', letterSpacing: '0.02em' },
+                  children: displayTitle,
                 },
               },
               {
                 type: 'span',
                 props: {
                   style: { fontSize: '15px', fontWeight: 700, color: primaryAccent },
-                  children: copy.mainBannerSubheader || 'TANGGAP DARURAT & MITIGASI RISIKO LINGKUNGAN',
+                  children: displaySubheader,
                 },
               },
             ],
@@ -114,7 +132,7 @@ export function buildRetroMitigationLayout(params: RetroMitigationLayoutParams):
                       type: 'span',
                       props: {
                         style: { fontFamily: 'DejaVu Serif', fontSize: '13px', lineHeight: 1.45, color: '#292524' },
-                        children: copy.mainBannerDefinitionBody || 'Edukasi dan kesiapsiagaan warga adalah garda terdepan penyelamatan jiwa saat musibah terjadi.',
+                        children: displayDefinition,
                       },
                     },
                   ],

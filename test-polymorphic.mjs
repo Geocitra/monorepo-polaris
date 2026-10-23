@@ -2,7 +2,7 @@ import { CreativePosterCompositor } from './packages/storage/dist/index.mjs';
 import fs from 'node:fs/promises';
 
 async function testPolymorphic() {
-  const bg = await fs.readFile('./uploads/poster_kelangkaan_air_bersih.png');
+  const bg = await fs.readFile('./uploads/fire_disaster_raw_ai.png');
   let subject;
   try {
     subject = await fs.readFile('./apps/web-dashboard/public/images/avatar-dewan-cutout.webp');
@@ -33,8 +33,30 @@ async function testPolymorphic() {
   });
 
   await fs.writeFile('./uploads/poster_statement_profile_test.png', resultProfile.buffer);
-  await fs.writeFile('/mnt/c/Users/PC/.gemini/antigravity-ide/brain/20183ae9-093f-4958-af8d-9d39f692ed3c/poster_statement_profile_test.png', resultProfile.buffer);
   console.log('SUCCESS: Rendered Statement Profile', resultProfile.width, 'x', resultProfile.height, 'size:', resultProfile.sizeBytes);
+
+  // Test POP_OUT_HERO without face / subject (Clean Editorial Aesthetic)
+  const resultHero = await CreativePosterCompositor.composePoster({
+    backgroundBuffer: bg,
+    headline: 'OPTIMISME EKONOMI JAWA BARAT',
+    quote: 'Transparansi Kebijakan dan Pembangunan Berkeadilan untuk Seluruh Rakyat Jawa Barat.',
+    memberName: 'RENO S. NUGRAHA',
+    memberTitle: 'ANGGOTA KOMISI II // JAWA BARAT I',
+    archetype: 'POP_OUT_HERO',
+    compositionMode: 'PUBLIC_ADVOCACY',
+    primaryAccentColor: '#F5B800',
+    editionTag: 'POLARIS // JAWA BARAT I',
+    synthesizedCopy: {
+      mainBannerTitle: 'OPTIMISME EKONOMI',
+      mainBannerSubheader: 'MENYONGSONG PERTUMBUHAN EKONOMI 2026',
+      mainBannerDefinitionBody: 'Transparansi Kebijakan dan Pembangunan Berkeadilan untuk Seluruh Rakyat Jawa Barat.',
+      blocks: {},
+      mappedVisualCutouts: {}
+    },
+    outputFormat: 'png'
+  });
+  await fs.writeFile('./uploads/poster_pop_out_hero_test.png', resultHero.buffer);
+  console.log('SUCCESS: Rendered Pop-Out Hero Clean', resultHero.width, 'x', resultHero.height, 'size:', resultHero.sizeBytes);
 }
 
 testPolymorphic().catch(console.error);

@@ -257,7 +257,7 @@ export default function BillingPage() {
                   <span className="text-slate-300 dark:text-slate-600">•</span>
                   <span className="text-emerald-700 dark:text-emerald-400 font-semibold flex items-center gap-1">
                     <Sparkles className="h-3 w-3 text-emerald-600 dark:text-emerald-400" />
-                    AI Unlimited
+                    Studio AI Aktif
                   </span>
                 </p>
               </div>

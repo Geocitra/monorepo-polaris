@@ -1,5 +1,9 @@
 import { SynthesizedEditorialCopy } from '../types.js';
-import { getAdaptiveFontSize, smartTruncate } from '../core/adaptive-typography.js';
+import {
+  getAdaptiveFontSize,
+  wordSafeHeadlineTruncate,
+  smartSentenceClamp,
+} from '../core/adaptive-typography.js';
 
 export interface RetroCampaignLayoutParams {
   width: number;
@@ -37,9 +41,12 @@ export function buildRetroCampaignLayout(params: RetroCampaignLayoutParams): any
   } = params;
 
   const rawTitle = copy.mainBannerTitle || headline || 'KAMPANYE KEBIJAKAN';
-  const displayTitle = rawTitle.toUpperCase();
-  const displaySubheader = copy.mainBannerSubheader || 'GERAKAN SOSIAL & ADVOKASI WARGA';
-  const displayQuote = quote || copy.mainBannerDefinitionBody || 'Bersama membangun lingkungan dan pelayanan publik yang aman, tertib, dan berkelanjutan.';
+  const displayTitle = wordSafeHeadlineTruncate(rawTitle, 36).toUpperCase();
+  const displaySubheader = smartSentenceClamp(copy.mainBannerSubheader || 'GERAKAN SOSIAL & ADVOKASI WARGA', 70).toUpperCase();
+  const displayQuote = smartSentenceClamp(
+    quote || copy.mainBannerDefinitionBody || 'Bersama membangun lingkungan dan pelayanan publik yang aman, tertib, dan berkelanjutan.',
+    130
+  );
 
   const secAccent = secondaryAccent || copy.secondaryAccent || '#F59E0B';
   const cardBg = copy.cardBackground || 'rgba(255, 251, 235, 0.94)';
@@ -158,7 +165,7 @@ export function buildRetroCampaignLayout(params: RetroCampaignLayoutParams): any
                           color: primaryAccent,
                           letterSpacing: '0.08em',
                         },
-                        children: smartTruncate(displaySubheader, 70).toUpperCase(),
+                        children: displaySubheader,
                       },
                     },
                     {
@@ -171,7 +178,7 @@ export function buildRetroCampaignLayout(params: RetroCampaignLayoutParams): any
                           lineHeight: 1.02,
                           letterSpacing: '0.02em',
                         },
-                        children: smartTruncate(displayTitle, 40),
+                        children: displayTitle,
                       },
                     },
                   ],
@@ -228,7 +235,7 @@ export function buildRetroCampaignLayout(params: RetroCampaignLayoutParams): any
                           color: '#27272A',
                           lineHeight: 1.4,
                         },
-                        children: smartTruncate(displayQuote, 130),
+                        children: displayQuote,
                       },
                     },
                   ],
@@ -269,7 +276,12 @@ export function buildRetroCampaignLayout(params: RetroCampaignLayoutParams): any
                           color: '#27272A',
                           lineHeight: 1.4,
                         },
-                        children: 'Mendorong regulasi perlindungan hak warga dan pengawasan realisasi anggaran publik di lapangan.',
+                        children: smartSentenceClamp(
+                          copy.blocks?.['solution']?.body ||
+                            copy.blocks?.['action']?.body ||
+                            'Mendorong regulasi perlindungan hak warga dan pengawasan realisasi anggaran publik di lapangan.',
+                          130
+                        ),
                       },
                     },
                   ],

@@ -205,7 +205,7 @@ export function PricingPlanGrid({
 
                   <div className="flex items-start gap-2">
                     <Check className="h-4 w-4 text-emerald-600 shrink-0 mt-0.5 stroke-[2.5]" />
-                    <span>AI Unlimited (Naskah Legislasi & Poster Dapil)</span>
+                    <span>Akses Penuh Studio AI (Naskah Legislasi & Poster Dapil)</span>
                   </div>
 
                   {/* TEMPLATE LAYOUT THEME PERK */}

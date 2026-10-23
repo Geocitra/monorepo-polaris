@@ -1,5 +1,9 @@
-import { SynthesizedEditorialCopy } from '../types.js';
-import { getAdaptiveFontSize, smartTruncate } from '../core/adaptive-typography.js';
+import { SynthesizedEditorialCopy, CompositionPlan, ResolvedColorTokens } from '../types.js';
+import {
+  getAdaptiveFontSize,
+  wordSafeHeadlineTruncate,
+  smartSentenceClamp,
+} from '../core/adaptive-typography.js';
 
 export interface StreetJournalismLayoutParams {
   width: number;
@@ -11,6 +15,8 @@ export interface StreetJournalismLayoutParams {
   primaryAccent: string;
   secondaryAccent?: string;
   logoDataUri?: string;
+  compositionPlan?: CompositionPlan;
+  resolvedColors?: ResolvedColorTokens;
 }
 
 /**
@@ -18,18 +24,32 @@ export interface StreetJournalismLayoutParams {
  * dengan dukungan tata letak dinamis (TOP_BANNER, BOTTOM_ANCHOR, dsb.) dan palet warna senada.
  */
 export function buildStreetJournalismLayout(params: StreetJournalismLayoutParams): any {
-  const { width, height, copy, memberName, memberTitle, editionTag, primaryAccent, secondaryAccent, logoDataUri } = params;
+  const {
+    width,
+    height,
+    copy,
+    memberName,
+    memberTitle,
+    editionTag,
+    primaryAccent,
+    secondaryAccent,
+    logoDataUri,
+    compositionPlan,
+    resolvedColors,
+  } = params;
 
   const leftPos = copy.blocks['left_positive'] || { header: 'DAMPAK BURUK', body: '' };
   const leftNeg = copy.blocks['left_negative_box'] || { header: 'MANFAAT PENGELOLAAN', body: '' };
-  const centerStory = copy.blocks['center_giant_title'] || { header: 'SOLUSI NYATA', body: '' };
+  const centerStory = copy.blocks['center_giant_title'] || { header: 'SOLUSI KONKRET', body: '' };
   const rightCause = copy.blocks['right_cause'] || { header: 'AKSI BERSAMA', body: '' };
 
-  const bannerTitle = (copy.mainBannerTitle || 'POLARIS').toUpperCase();
+  const rawBannerTitle = copy.mainBannerTitle || 'POLARIS';
+  const bannerTitle = wordSafeHeadlineTruncate(rawBannerTitle, 30).toUpperCase();
   const bannerTitleFontSize = getAdaptiveFontSize(bannerTitle, 108, 58, 16);
-  const giantWords = (centerStory.header || 'SOLUSI NYATA').trim().split(/\s+/);
+  const giantWords = (centerStory.header || 'SOLUSI KONKRET').trim().split(/\s+/);
   const giantWordFontSize = giantWords.some((w: string) => w.length > 7) ? 68 : 88;
-  const accentSecondary = secondaryAccent || copy.secondaryAccent || primaryAccent;
+  const accentPrimary = resolvedColors?.primaryAccent || primaryAccent;
+  const accentSecondary = resolvedColors?.secondaryAccent || secondaryAccent || copy.secondaryAccent || primaryAccent;
 
 
   return {
@@ -150,7 +170,15 @@ export function buildStreetJournalismLayout(params: StreetJournalismLayoutParams
                     {
                       type: 'div',
                       props: {
-                        style: { display: 'flex', flexDirection: 'column', gap: '6px' },
+                        style: {
+                          display: 'flex',
+                          flexDirection: 'column',
+                          gap: '6px',
+                          backgroundColor: 'rgba(247, 245, 240, 0.95)',
+                          padding: '12px 14px',
+                          borderRadius: '6px',
+                          border: '1px solid rgba(24, 24, 27, 0.15)',
+                        },
                         children: [
                           {
                             type: 'div',
@@ -173,7 +201,7 @@ export function buildStreetJournalismLayout(params: StreetJournalismLayoutParams
                                 lineHeight: 1.38,
                                 textAlign: 'justify',
                               },
-                              children: leftPos.body.toUpperCase(),
+                              children: smartSentenceClamp(leftPos.body, 140).toUpperCase(),
                             },
                           },
                         ],
@@ -188,7 +216,9 @@ export function buildStreetJournalismLayout(params: StreetJournalismLayoutParams
                           flexDirection: 'column',
                           backgroundColor: primaryAccent,
                           padding: '16px 18px',
+                          borderRadius: '6px',
                           gap: '8px',
+                          boxShadow: '0 4px 12px rgba(0, 0, 0, 0.15)',
                         },
                         children: [
                           {
@@ -211,9 +241,9 @@ export function buildStreetJournalismLayout(params: StreetJournalismLayoutParams
                                 color: '#FFFFFF',
                                 lineHeight: 1.38,
                                 textAlign: 'justify',
-                                paddingRight: '55px', // Memberi ruang bagi bahu foto cutout di kanan bawah kotak
+                                paddingRight: '15px',
                               },
-                              children: leftNeg.body.toUpperCase(),
+                              children: smartSentenceClamp(leftNeg.body, 140).toUpperCase(),
                             },
                           },
                         ],
@@ -223,7 +253,7 @@ export function buildStreetJournalismLayout(params: StreetJournalismLayoutParams
                 },
               },
 
-              // --- KOLOM TENGAH (Judul Raksasa Bersusun "SOLUSI NYATA" + Paragraf) ---
+              // --- KOLOM TENGAH (Judul Raksasa Bersusun "SOLUSI KONKRET" + Paragraf) ---
               {
                 type: 'div',
                 props: {
@@ -231,13 +261,14 @@ export function buildStreetJournalismLayout(params: StreetJournalismLayoutParams
                     width: '235px',
                     display: 'flex',
                     flexDirection: 'column',
-                    borderLeft: '1.5px solid #27272A',
-                    borderRight: '1.5px solid #27272A',
-                    paddingLeft: '18px',
-                    paddingRight: '18px',
+                    backgroundColor: 'rgba(247, 245, 240, 0.95)',
+                    border: '1.5px solid #27272A',
+                    borderRadius: '6px',
+                    padding: '16px 18px',
                     gap: '14px',
                     flex: 1,
                     minHeight: '0px',
+                    boxShadow: '0 4px 14px rgba(0, 0, 0, 0.12)',
                   },
                   children: [
                     {
@@ -269,7 +300,7 @@ export function buildStreetJournalismLayout(params: StreetJournalismLayoutParams
                           lineHeight: 1.4,
                           textAlign: 'justify',
                         },
-                        children: centerStory.body.toUpperCase(),
+                        children: smartSentenceClamp(centerStory.body, 140).toUpperCase(),
                       },
                     },
                   ],
@@ -284,7 +315,7 @@ export function buildStreetJournalismLayout(params: StreetJournalismLayoutParams
                     flex: 1,
                     display: 'flex',
                     flexDirection: 'column',
-                    paddingTop: '275px', // Area y: 0-275px dibiarkan transparan agar foto Cutout Kanan Atas terlihat utuh!
+                    paddingTop: '250px',
                     gap: '8px',
                   },
                   children: [
@@ -292,24 +323,41 @@ export function buildStreetJournalismLayout(params: StreetJournalismLayoutParams
                       type: 'div',
                       props: {
                         style: {
-                          fontFamily: 'Anton',
-                          fontSize: '42px',
-                          color: primaryAccent,
-                          lineHeight: 1.05,
+                          display: 'flex',
+                          flexDirection: 'column',
+                          backgroundColor: 'rgba(247, 245, 240, 0.95)',
+                          border: '1.5px solid #27272A',
+                          borderRadius: '6px',
+                          padding: '16px 18px',
+                          gap: '8px',
+                          boxShadow: '0 4px 14px rgba(0, 0, 0, 0.12)',
                         },
-                        children: rightCause.header.toUpperCase(),
-                      },
-                    },
-                    {
-                      type: 'div',
-                      props: {
-                        style: {
-                          fontSize: '12.5px',
-                          color: '#18181B',
-                          lineHeight: 1.38,
-                          textAlign: 'justify',
-                        },
-                        children: rightCause.body.toUpperCase(),
+                        children: [
+                          {
+                            type: 'div',
+                            props: {
+                              style: {
+                                fontFamily: 'Anton',
+                                fontSize: '40px',
+                                color: primaryAccent,
+                                lineHeight: 1.05,
+                              },
+                              children: rightCause.header.toUpperCase(),
+                            },
+                          },
+                          {
+                            type: 'div',
+                            props: {
+                              style: {
+                                fontSize: '12.5px',
+                                color: '#18181B',
+                                lineHeight: 1.38,
+                                textAlign: 'justify',
+                              },
+                              children: smartSentenceClamp(rightCause.body, 140).toUpperCase(),
+                            },
+                          },
+                        ],
                       },
                     },
                   ],
@@ -344,7 +392,7 @@ export function buildStreetJournalismLayout(params: StreetJournalismLayoutParams
                     color: '#E4E4E7',
                     letterSpacing: '0.04em',
                   },
-                  children: copy.mainBannerSubheader,
+                  children: smartSentenceClamp(copy.mainBannerSubheader || '', 75),
                 },
               },
               {
@@ -370,7 +418,7 @@ export function buildStreetJournalismLayout(params: StreetJournalismLayoutParams
                     textAlign: 'justify',
                     marginTop: '4px',
                   },
-                  children: smartTruncate(copy.mainBannerDefinitionBody || '', 280).toUpperCase(),
+                  children: smartSentenceClamp(copy.mainBannerDefinitionBody || '', 220).toUpperCase(),
                 },
               },
               {

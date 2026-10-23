@@ -26,7 +26,7 @@ export const POSTER_BLUEPRINT_CATALOG: PreAnalyzedPosterBlueprint[] = [
       subTextColor: '#4B5563',
     },
     scenePromptHint: 'Dramatic cinematic aerial or environmental documentary shot with authentic 35mm film grain, soft atmospheric daylight, high-end editorial magazine art direction.',
-    negativeSpaceZone: 'The top 35% of the frame MUST be uncluttered, clean, or soft-focus background for large typography overlay. The central lower section houses the environment.',
+    negativeSpaceZone: 'The top 35% of the frame MUST be an uncluttered, soft-focus atmospheric open sky with low detail. The central lower section houses the authentic environmental scenery.',
     slotManifest: {
       canvas: { width: 1080, height: 1350, aspectRatio: '4:5' },
       slots: {
@@ -37,6 +37,22 @@ export const POSTER_BLUEPRINT_CATALOG: PreAnalyzedPosterBlueprint[] = [
         officialEmblem: { x: 0.08, y: 0.03, w: 0.12, maxHeightPx: 42, placement: 'top-left', showInstitutionBadge: true },
         editorialAccents: { showBarcode: true, barcodeCoordinate: { x: 0.42, y: 0.92, w: 0.16 }, editionTag: 'POLARIS FIELD NOTES // EDITION 2026', editionCoordinate: { x: 0.60, y: 0.035, w: 0.32 } },
       },
+    },
+
+    fixedConstraints: {
+      baseBackgroundTone: 'WARM_PAPER',
+      requiredFontFamilies: {
+        headline: 'Bebas Neue',
+        body: 'Plus Jakarta Sans',
+      },
+      imageNegativeAllow: ['banner', 'frame', 'border'],
+      toneSafety: 'ALL_TOPICS',
+    },
+    variationRules: {
+      allowedLayoutVariants: ['TOP_BANNER', 'BOTTOM_ANCHOR', 'EDITORIAL_SPLIT', 'CENTERED_HERO'],
+      allowedHeaderPlacements: ['top', 'bottom', 'center'],
+      allowedCardArrangements: ['stacked', 'horizontal_split', 'single_hero_card', 'grid_compact'],
+      canMutatePalette: true,
     },
   },
 
@@ -59,7 +75,7 @@ export const POSTER_BLUEPRINT_CATALOG: PreAnalyzedPosterBlueprint[] = [
       subTextColor: '#333333',
     },
     scenePromptHint: 'Raw, gritty documentary photography with authentic atmospheric contrast. High-contrast reportage with subtle risograph halftone dot texture.',
-    negativeSpaceZone: 'The left 50% and bottom 25% should have structured architecture or dark shadow zones suitable for solid text banners.',
+    negativeSpaceZone: 'The left 50% and bottom 25% feature quiet architectural depth and deep shadow zones with smooth, low-contrast surfaces.',
     slotManifest: {
       canvas: { width: 1080, height: 1350, aspectRatio: '4:5' },
       editorialBlocks: [
@@ -75,6 +91,22 @@ export const POSTER_BLUEPRINT_CATALOG: PreAnalyzedPosterBlueprint[] = [
         memberIdentity: { x: 0.06, y: 0.94, w: 0.45, nameFontSizePx: 18, titleFontSizePx: 12, nameColor: '#FFFFFF', titleColor: '#DC2626' },
         officialEmblem: { x: 0.82, y: 0.04, w: 0.12, maxHeightPx: 38, placement: 'top-right' },
       },
+    },
+
+    fixedConstraints: {
+      baseBackgroundTone: 'WARM_PAPER',
+      requiredFontFamilies: {
+        headline: 'Anton',
+        body: 'Plus Jakarta Sans',
+      },
+      imageNegativeAllow: ['banner', 'frame', 'border'],
+      toneSafety: 'ALL_TOPICS',
+    },
+    variationRules: {
+      allowedLayoutVariants: ['TOP_BANNER', 'BOTTOM_ANCHOR', 'EDITORIAL_SPLIT', 'CENTERED_HERO'],
+      allowedHeaderPlacements: ['top', 'bottom', 'center'],
+      allowedCardArrangements: ['stacked', 'horizontal_split', 'single_hero_card', 'grid_compact'],
+      canMutatePalette: false,
     },
   },
 
@@ -97,7 +129,7 @@ export const POSTER_BLUEPRINT_CATALOG: PreAnalyzedPosterBlueprint[] = [
       subTextColor: '#9CA3AF',
     },
     scenePromptHint: 'Studio portrait setting with dramatic low-key rim lighting, clean dark background, authentic 35mm film grain, high-end editorial magazine cover style.',
-    negativeSpaceZone: 'The left 55% of the frame should be clean deep shadows or soft gradient for typography overlay.',
+    negativeSpaceZone: 'The left 55% of the frame consists of calm, clean deep shadows and a soft ambient gradient with minimal noise.',
     slotManifest: {
       canvas: { width: 1080, height: 1350, aspectRatio: '4:5' },
       slots: {
@@ -107,6 +139,22 @@ export const POSTER_BLUEPRINT_CATALOG: PreAnalyzedPosterBlueprint[] = [
         memberIdentity: { x: 0.08, y: 0.85, w: 0.45, nameFontSizePx: 22, titleFontSizePx: 13, nameColor: '#FFFFFF', titleColor: '#818CF8', badgeStyle: 'glassmorphic' },
         officialEmblem: { x: 0.82, y: 0.05, w: 0.12, maxHeightPx: 40, placement: 'top-right' },
       },
+    },
+
+    fixedConstraints: {
+      baseBackgroundTone: 'DARK',
+      requiredFontFamilies: {
+        headline: 'Anton',
+        body: 'Plus Jakarta Sans',
+      },
+      imageNegativeAllow: ['banner', 'frame', 'border'],
+      toneSafety: 'ALL_TOPICS',
+    },
+    variationRules: {
+      allowedLayoutVariants: ['TOP_BANNER', 'BOTTOM_ANCHOR', 'EDITORIAL_SPLIT', 'CENTERED_HERO'],
+      allowedHeaderPlacements: ['top', 'bottom', 'center'],
+      allowedCardArrangements: ['stacked', 'horizontal_split', 'single_hero_card', 'grid_compact'],
+      canMutatePalette: true,
     },
   },
 
@@ -129,7 +177,7 @@ export const POSTER_BLUEPRINT_CATALOG: PreAnalyzedPosterBlueprint[] = [
       subTextColor: '#52525B',
     },
     scenePromptHint: 'Vintage 1970s public educational lithograph illustration with muted retro color grading, tactile paper grain, and authentic nostalgic atmosphere.',
-    negativeSpaceZone: 'Central graphic area accommodates dual structured info cards.',
+    negativeSpaceZone: 'The central visual field maintains a tranquil, warm aged paper texture with ample breathing room.',
     slotManifest: {
       canvas: { width: 1080, height: 1350, aspectRatio: '4:5' },
       slots: {
@@ -138,6 +186,22 @@ export const POSTER_BLUEPRINT_CATALOG: PreAnalyzedPosterBlueprint[] = [
         memberIdentity: { x: 0.08, y: 0.90, w: 0.50, nameFontSizePx: 20, titleFontSizePx: 12, nameColor: '#FFFFFF', titleColor: '#FEF08A' },
         officialEmblem: { x: 0.82, y: 0.04, w: 0.12, maxHeightPx: 36, placement: 'top-right' },
       },
+    },
+
+    fixedConstraints: {
+      baseBackgroundTone: 'WARM_PAPER',
+      requiredFontFamilies: {
+        headline: 'Anton',
+        body: 'Plus Jakarta Sans',
+      },
+      imageNegativeAllow: ['banner', 'frame', 'border'],
+      toneSafety: 'ALL_TOPICS',
+    },
+    variationRules: {
+      allowedLayoutVariants: ['TOP_BANNER', 'BOTTOM_ANCHOR', 'EDITORIAL_SPLIT', 'CENTERED_HERO'],
+      allowedHeaderPlacements: ['top', 'bottom', 'center'],
+      allowedCardArrangements: ['stacked', 'horizontal_split', 'single_hero_card', 'grid_compact'],
+      canMutatePalette: true,
     },
   },
 
@@ -160,7 +224,7 @@ export const POSTER_BLUEPRINT_CATALOG: PreAnalyzedPosterBlueprint[] = [
       subTextColor: '#52525B',
     },
     scenePromptHint: 'High-impact photojournalistic documentary photograph in the style of Time Magazine / Reuters, atmospheric background, 35mm film documentary texture.',
-    negativeSpaceZone: 'The center horizontal 40% band features ripped paper wings framing supporting graphic inserts.',
+    negativeSpaceZone: 'The upper and lower margins remain quiet, soft-focus atmospheric space with low visual clutter.',
     slotManifest: {
       canvas: { width: 1080, height: 1350, aspectRatio: '4:5' },
       slots: {
@@ -169,6 +233,22 @@ export const POSTER_BLUEPRINT_CATALOG: PreAnalyzedPosterBlueprint[] = [
         memberIdentity: { x: 0.06, y: 0.90, w: 0.45, nameFontSizePx: 18, titleFontSizePx: 12, nameColor: '#18181B', titleColor: '#9E0B0F' },
         officialEmblem: { x: 0.82, y: 0.02, w: 0.10, maxHeightPx: 38, placement: 'top-right' },
       },
+    },
+
+    fixedConstraints: {
+      baseBackgroundTone: 'WARM_PAPER',
+      requiredFontFamilies: {
+        headline: 'Anton',
+        body: 'Plus Jakarta Sans',
+      },
+      imageNegativeAllow: ['banner', 'frame', 'border'],
+      toneSafety: 'ALL_TOPICS',
+    },
+    variationRules: {
+      allowedLayoutVariants: ['TOP_BANNER', 'BOTTOM_ANCHOR', 'EDITORIAL_SPLIT', 'CENTERED_HERO'],
+      allowedHeaderPlacements: ['top', 'bottom', 'center'],
+      allowedCardArrangements: ['stacked', 'horizontal_split', 'single_hero_card', 'grid_compact'],
+      canMutatePalette: true,
     },
   },
 
@@ -191,7 +271,7 @@ export const POSTER_BLUEPRINT_CATALOG: PreAnalyzedPosterBlueprint[] = [
       subTextColor: '#475569',
     },
     scenePromptHint: 'Vintage 1970s public educational risograph illustration with aged paper grain, muted teal and warm ochre tones, clean spatial layout.',
-    negativeSpaceZone: 'Central graphic area accommodates circular inset magnifying callout.',
+    negativeSpaceZone: 'The central and lower composition preserves an open, tranquil plane with minimal visual distraction.',
     slotManifest: {
       canvas: { width: 1080, height: 1350, aspectRatio: '4:5' },
       slots: {
@@ -200,6 +280,22 @@ export const POSTER_BLUEPRINT_CATALOG: PreAnalyzedPosterBlueprint[] = [
         memberIdentity: { x: 0.08, y: 0.90, w: 0.40, nameFontSizePx: 18, titleFontSizePx: 12, nameColor: '#1E293B', titleColor: '#0D9488' },
         officialEmblem: { x: 0.08, y: 0.02, w: 0.12, maxHeightPx: 36, placement: 'top-left' },
       },
+    },
+
+    fixedConstraints: {
+      baseBackgroundTone: 'WARM_PAPER',
+      requiredFontFamilies: {
+        headline: 'Anton',
+        body: 'Plus Jakarta Sans',
+      },
+      imageNegativeAllow: ['banner', 'frame', 'border'],
+      toneSafety: 'SERIOUS_ONLY',
+    },
+    variationRules: {
+      allowedLayoutVariants: ['TOP_BANNER', 'BOTTOM_ANCHOR', 'EDITORIAL_SPLIT', 'CENTERED_HERO'],
+      allowedHeaderPlacements: ['top', 'bottom', 'center'],
+      allowedCardArrangements: ['stacked', 'horizontal_split', 'single_hero_card', 'grid_compact'],
+      canMutatePalette: true,
     },
   },
 
@@ -222,7 +318,7 @@ export const POSTER_BLUEPRINT_CATALOG: PreAnalyzedPosterBlueprint[] = [
       subTextColor: '#52525B',
     },
     scenePromptHint: 'Minimalist high-contrast architectural and infrastructure panoramic photographic backdrop with ample negative space.',
-    negativeSpaceZone: 'Modular grid structure cleanly dividing the 5 analytical card zones.',
+    negativeSpaceZone: 'Balanced panoramic composition with generous, uncluttered negative space across the central and lower zones.',
     slotManifest: {
       canvas: { width: 1080, height: 1350, aspectRatio: '4:5' },
       slots: {
@@ -232,6 +328,22 @@ export const POSTER_BLUEPRINT_CATALOG: PreAnalyzedPosterBlueprint[] = [
         officialEmblem: { x: 0.85, y: 0.92, w: 0.10, maxHeightPx: 36, placement: 'bottom-right' },
       },
     },
+
+    fixedConstraints: {
+      baseBackgroundTone: 'WARM_PAPER',
+      requiredFontFamilies: {
+        headline: 'Anton',
+        body: 'Plus Jakarta Sans',
+      },
+      imageNegativeAllow: ['banner', 'frame', 'border'],
+      toneSafety: 'ALL_TOPICS',
+    },
+    variationRules: {
+      allowedLayoutVariants: ['TOP_BANNER', 'BOTTOM_ANCHOR', 'EDITORIAL_SPLIT', 'CENTERED_HERO'],
+      allowedHeaderPlacements: ['top', 'bottom', 'center'],
+      allowedCardArrangements: ['stacked', 'horizontal_split', 'single_hero_card', 'grid_compact'],
+      canMutatePalette: true,
+    },
   },
 
   // ---------------------------------------------------------------------------
@@ -240,7 +352,7 @@ export const POSTER_BLUEPRINT_CATALOG: PreAnalyzedPosterBlueprint[] = [
   {
     id: 'TPL-08-AVANT-GARDE-MANIFESTO',
     name: 'Avant-Garde Editorial Manifesto',
-    archetype: 'STATEMENT_PROFILE',
+    archetype: 'CONSTRUCTIVIST_BAUHAUS',
     referenceFile: 'Design Trends 2026! Imperfection, Rebellion, and the Return of Human Work.jpg',
     description: 'Tipografi manifesto berani yang menantang kemapanan dengan tekstur kertas kasar, aksen stiker tebal, dan tipografi ekspresif.',
     tags: ['manifesto', 'avant-garde', 'human-work', 'rebellion', 'bold', 'modern'],
@@ -253,7 +365,7 @@ export const POSTER_BLUEPRINT_CATALOG: PreAnalyzedPosterBlueprint[] = [
       subTextColor: '#A1A1AA',
     },
     scenePromptHint: 'Raw tactile craft and industrial workshop background, experimental studio lighting, rich analog textures, imperfections and grain.',
-    negativeSpaceZone: 'Upper 45% of canvas reserved for giant manifesto headline.',
+    negativeSpaceZone: 'The upper 45% of the frame consists of an uncluttered, smooth surface with directional studio lighting and minimal detail.',
     slotManifest: {
       canvas: { width: 1080, height: 1350, aspectRatio: '4:5' },
       slots: {
@@ -263,6 +375,22 @@ export const POSTER_BLUEPRINT_CATALOG: PreAnalyzedPosterBlueprint[] = [
         officialEmblem: { x: 0.82, y: 0.04, w: 0.12, maxHeightPx: 38, placement: 'top-right' },
       },
     },
+
+    fixedConstraints: {
+      baseBackgroundTone: 'DARK',
+      requiredFontFamilies: {
+        headline: 'Anton',
+        body: 'Plus Jakarta Sans',
+      },
+      imageNegativeAllow: ['banner', 'frame', 'border'],
+      toneSafety: 'ALL_TOPICS',
+    },
+    variationRules: {
+      allowedLayoutVariants: ['TOP_BANNER', 'BOTTOM_ANCHOR', 'EDITORIAL_SPLIT', 'CENTERED_HERO'],
+      allowedHeaderPlacements: ['top', 'bottom', 'center'],
+      allowedCardArrangements: ['stacked', 'horizontal_split', 'single_hero_card', 'grid_compact'],
+      canMutatePalette: true,
+    },
   },
 
   // ---------------------------------------------------------------------------
@@ -271,7 +399,7 @@ export const POSTER_BLUEPRINT_CATALOG: PreAnalyzedPosterBlueprint[] = [
   {
     id: 'TPL-09-THRESHOLD-NOIR',
     name: 'High-Threshold Monochromatic Noir',
-    archetype: 'STREET_JOURNALISM',
+    archetype: 'THRESHOLD_RISOGRAPH',
     referenceFile: 'Design poster (treshold).jpg',
     description: 'Gaya threshold hitam-putih kontras tinggi yang tajam (stark b&w silhouette) dengan aksen merah minimalis dan framing geometris.',
     tags: ['noir', 'threshold', 'siluet', 'monokrom', 'kontras-tinggi'],
@@ -284,7 +412,7 @@ export const POSTER_BLUEPRINT_CATALOG: PreAnalyzedPosterBlueprint[] = [
       subTextColor: '#71717A',
     },
     scenePromptHint: 'Stark high-contrast black and white threshold silhouette photograph, dramatic graphic shadow silhouettes, zero grays, pure pitch black and bright white.',
-    negativeSpaceZone: 'Top 30% and bottom 20% reserved for sharp minimalist typography.',
+    negativeSpaceZone: 'The top 30% and bottom 20% feature calm, flat, high-contrast monochrome space free of clutter.',
     slotManifest: {
       canvas: { width: 1080, height: 1350, aspectRatio: '4:5' },
       slots: {
@@ -294,6 +422,22 @@ export const POSTER_BLUEPRINT_CATALOG: PreAnalyzedPosterBlueprint[] = [
         officialEmblem: { x: 0.82, y: 0.04, w: 0.10, maxHeightPx: 36, placement: 'top-right' },
       },
     },
+
+    fixedConstraints: {
+      baseBackgroundTone: 'DARK',
+      requiredFontFamilies: {
+        headline: 'Anton',
+        body: 'Plus Jakarta Sans',
+      },
+      imageNegativeAllow: ['banner', 'frame', 'border'],
+      toneSafety: 'ALL_TOPICS',
+    },
+    variationRules: {
+      allowedLayoutVariants: ['TOP_BANNER', 'BOTTOM_ANCHOR', 'EDITORIAL_SPLIT', 'CENTERED_HERO'],
+      allowedHeaderPlacements: ['top', 'bottom', 'center'],
+      allowedCardArrangements: ['stacked', 'horizontal_split', 'single_hero_card', 'grid_compact'],
+      canMutatePalette: false,
+    },
   },
 
   // ---------------------------------------------------------------------------
@@ -302,7 +446,7 @@ export const POSTER_BLUEPRINT_CATALOG: PreAnalyzedPosterBlueprint[] = [
   {
     id: 'TPL-10-SWISS-KINETIC-GRID',
     name: 'Swiss Kinetic Grid & Modern Typography',
-    archetype: 'MODULAR_GRID_CARDS',
+    archetype: 'SWISS_DUOTONE_EDITORIAL',
     referenceFile: 'Modern Typography Poster Design _ Creative Black and White Poster.jpg',
     description: 'Sistem grid presisi ala Swiss Style dengan tipografi tegas, garis pemisah halus (hairline rules), dan tata letak geometris asimetris.',
     tags: ['swiss-style', 'minimalis', 'grid', 'modern', 'hitam-putih', 'presisi'],
@@ -315,15 +459,31 @@ export const POSTER_BLUEPRINT_CATALOG: PreAnalyzedPosterBlueprint[] = [
       subTextColor: '#475569',
     },
     scenePromptHint: 'Clean architectural perspective and structural lines, soft daylight shadows, modern minimalist textures, authentic documentary framing.',
-    negativeSpaceZone: 'Right 45% column and top horizontal zone reserved for structured typographic elements.',
+    negativeSpaceZone: 'The right 45% area and top horizontal margin remain an uncluttered, serene plane in soft uniform daylight.',
     slotManifest: {
       canvas: { width: 1080, height: 1350, aspectRatio: '4:5' },
       slots: {
-        subjectPhoto: { x: 0.25, y: 0.35, w: 0.40, h: 0.50, anchor: 'center' },
-        headlineBlock: { x: 0.08, y: 0.08, w: 0.84, maxLines: 2, fontFamily: 'Anton', fontSizePx: 78, textColor: '#0F172A', isUppercase: true },
-        memberIdentity: { x: 0.08, y: 0.92, w: 0.45, nameFontSizePx: 18, titleFontSizePx: 12, nameColor: '#0F172A', titleColor: '#0284C7' },
+        subjectPhoto: { x: 0.50, y: 0.35, w: 0.50, h: 0.50, anchor: 'center' },
+        headlineBlock: { x: 0.08, y: 0.08, w: 0.84, maxLines: 2, fontFamily: 'Anton', fontSizePx: 82, textColor: '#0F172A', isUppercase: true },
+        memberIdentity: { x: 0.08, y: 0.90, w: 0.45, nameFontSizePx: 18, titleFontSizePx: 12, nameColor: '#0F172A', titleColor: '#0284C7' },
         officialEmblem: { x: 0.82, y: 0.04, w: 0.12, maxHeightPx: 38, placement: 'top-right' },
       },
+    },
+
+    fixedConstraints: {
+      baseBackgroundTone: 'WARM_PAPER',
+      requiredFontFamilies: {
+        headline: 'Anton',
+        body: 'Plus Jakarta Sans',
+      },
+      imageNegativeAllow: ['banner', 'frame', 'border'],
+      toneSafety: 'ALL_TOPICS',
+    },
+    variationRules: {
+      allowedLayoutVariants: ['TOP_BANNER', 'BOTTOM_ANCHOR', 'EDITORIAL_SPLIT', 'CENTERED_HERO'],
+      allowedHeaderPlacements: ['top', 'bottom', 'center'],
+      allowedCardArrangements: ['stacked', 'horizontal_split', 'single_hero_card', 'grid_compact'],
+      canMutatePalette: false,
     },
   },
 
@@ -333,7 +493,7 @@ export const POSTER_BLUEPRINT_CATALOG: PreAnalyzedPosterBlueprint[] = [
   {
     id: 'TPL-11-CREATIVE-POP-COLLAGE',
     name: 'Creative Pop Vibrant Collage',
-    archetype: 'POP_OUT_HERO',
+    archetype: 'ISOMETRIC_CREATIVE_COLLAGE',
     referenceFile: 'creative Poster😇.jpg',
     description: 'Komposisi pop modern dengan lapisan bingkai foto geometris, stiker aksen, dan gradasi warna yang ceria namun tetap profesional.',
     tags: ['pop', 'vibrant', 'ceria', 'kreatif', 'kolase-modern'],
@@ -346,7 +506,7 @@ export const POSTER_BLUEPRINT_CATALOG: PreAnalyzedPosterBlueprint[] = [
       subTextColor: '#4338CA',
     },
     scenePromptHint: 'Vibrant modern creative scene with rich playful lighting, colorful ambient accents, clean pop editorial styling, 35mm crisp photography.',
-    negativeSpaceZone: 'Top 30% and bottom-left quadrant reserved for bold title overlay.',
+    negativeSpaceZone: 'The top 30% and lower-left quadrant feature a tranquil, open atmospheric background with minimal visual distraction.',
     slotManifest: {
       canvas: { width: 1080, height: 1350, aspectRatio: '4:5' },
       slots: {
@@ -356,6 +516,22 @@ export const POSTER_BLUEPRINT_CATALOG: PreAnalyzedPosterBlueprint[] = [
         officialEmblem: { x: 0.82, y: 0.04, w: 0.12, maxHeightPx: 40, placement: 'top-right' },
       },
     },
+
+    fixedConstraints: {
+      baseBackgroundTone: 'WARM_PAPER',
+      requiredFontFamilies: {
+        headline: 'Bebas Neue',
+        body: 'Plus Jakarta Sans',
+      },
+      imageNegativeAllow: ['banner', 'frame', 'border'],
+      toneSafety: 'VIRAL_ONLY',
+    },
+    variationRules: {
+      allowedLayoutVariants: ['TOP_BANNER', 'BOTTOM_ANCHOR', 'EDITORIAL_SPLIT', 'CENTERED_HERO'],
+      allowedHeaderPlacements: ['top', 'bottom', 'center'],
+      allowedCardArrangements: ['stacked', 'horizontal_split', 'single_hero_card', 'grid_compact'],
+      canMutatePalette: true,
+    },
   },
 
   // ---------------------------------------------------------------------------
@@ -364,7 +540,7 @@ export const POSTER_BLUEPRINT_CATALOG: PreAnalyzedPosterBlueprint[] = [
   {
     id: 'TPL-12-ECOLOGY-WILDLIFE-GAZETTE',
     name: 'Outdoor Wildlife & Ecology Gazette',
-    archetype: 'VINTAGE_PERSONA_GAZETTE',
+    archetype: 'STORYBOOK_ILLUSTRATED',
     referenceFile: 'Fishing poster.jpg',
     description: 'Estetika jurnal petualangan alam & ekologi dengan bingkai sketsa organik, tipografi serif vintage, dan nuansa pelestarian lingkungan.',
     tags: ['ekologi', 'lingkungan', 'alam', 'outdoor', 'konservasi', 'vintage'],
@@ -377,7 +553,7 @@ export const POSTER_BLUEPRINT_CATALOG: PreAnalyzedPosterBlueprint[] = [
       subTextColor: '#166534',
     },
     scenePromptHint: 'Breathtaking natural landscape or ecological environment, organic textures, soft morning fog, National Geographic field expedition style.',
-    negativeSpaceZone: 'Top 35% features open sky providing generous negative space for organic serif headline.',
+    negativeSpaceZone: 'The top 35% features expansive, soft-focus open sky with morning mist and low visual detail.',
     slotManifest: {
       canvas: { width: 1080, height: 1350, aspectRatio: '4:5' },
       slots: {
@@ -387,6 +563,22 @@ export const POSTER_BLUEPRINT_CATALOG: PreAnalyzedPosterBlueprint[] = [
         officialEmblem: { x: 0.82, y: 0.04, w: 0.12, maxHeightPx: 38, placement: 'top-right' },
       },
     },
+
+    fixedConstraints: {
+      baseBackgroundTone: 'WARM_PAPER',
+      requiredFontFamilies: {
+        headline: 'Anton',
+        body: 'Plus Jakarta Sans',
+      },
+      imageNegativeAllow: ['banner', 'frame', 'border'],
+      toneSafety: 'ALL_TOPICS',
+    },
+    variationRules: {
+      allowedLayoutVariants: ['TOP_BANNER', 'BOTTOM_ANCHOR', 'EDITORIAL_SPLIT', 'CENTERED_HERO'],
+      allowedHeaderPlacements: ['top', 'bottom', 'center'],
+      allowedCardArrangements: ['stacked', 'horizontal_split', 'single_hero_card', 'grid_compact'],
+      canMutatePalette: true,
+    },
   },
 
   // ---------------------------------------------------------------------------
@@ -395,7 +587,7 @@ export const POSTER_BLUEPRINT_CATALOG: PreAnalyzedPosterBlueprint[] = [
   {
     id: 'TPL-13-MINIMAL-MONOLINE',
     name: 'Minimalist Monoline Framing',
-    archetype: 'POP_OUT_HERO',
+    archetype: 'TYPOGRAPHIC_MASK',
     referenceFile: 'poster (1).jpg',
     description: 'Garis batas tunggal (monoline border) yang elegan mengelilingi visual tengah dengan judul ramping dan ruang nafas luas.',
     tags: ['monoline', 'minimalis', 'elegan', 'frame-tipis', 'modern'],
@@ -408,7 +600,7 @@ export const POSTER_BLUEPRINT_CATALOG: PreAnalyzedPosterBlueprint[] = [
       subTextColor: '#64748B',
     },
     scenePromptHint: 'Ultra-clean modern civic architectural composition, balanced soft shadows, pristine clarity, high editorial elegance.',
-    negativeSpaceZone: 'Perimeter 10% margins completely clear for subtle border lines, top 30% clear for typography.',
+    negativeSpaceZone: 'The entire center-top area features an expansive, tranquil atmospheric open space in soft daylight.',
     slotManifest: {
       canvas: { width: 1080, height: 1350, aspectRatio: '4:5' },
       slots: {
@@ -418,6 +610,22 @@ export const POSTER_BLUEPRINT_CATALOG: PreAnalyzedPosterBlueprint[] = [
         officialEmblem: { x: 0.80, y: 0.05, w: 0.10, maxHeightPx: 36, placement: 'top-right' },
       },
     },
+
+    fixedConstraints: {
+      baseBackgroundTone: 'WARM_PAPER',
+      requiredFontFamilies: {
+        headline: 'Anton',
+        body: 'Plus Jakarta Sans',
+      },
+      imageNegativeAllow: ['banner', 'frame', 'border'],
+      toneSafety: 'ALL_TOPICS',
+    },
+    variationRules: {
+      allowedLayoutVariants: ['TOP_BANNER', 'BOTTOM_ANCHOR', 'EDITORIAL_SPLIT', 'CENTERED_HERO'],
+      allowedHeaderPlacements: ['top', 'bottom', 'center'],
+      allowedCardArrangements: ['stacked', 'horizontal_split', 'single_hero_card', 'grid_compact'],
+      canMutatePalette: true,
+    },
   },
 
   // ---------------------------------------------------------------------------
@@ -426,7 +634,7 @@ export const POSTER_BLUEPRINT_CATALOG: PreAnalyzedPosterBlueprint[] = [
   {
     id: 'TPL-14-URBAN-STREET-NARRATIVE',
     name: 'Modern Urban Street Narrative',
-    archetype: 'STREET_JOURNALISM',
+    archetype: 'KINETIC_MOTION',
     referenceFile: 'poster.jpg',
     description: 'Komposisi dokumenter perkotaan modern dengan pita judul hitam tebal di bawah dan kontras foto jalanan yang sinematik.',
     tags: ['urban', 'tata-kota', 'jalanan', 'jurnalisme', 'dokumenter'],
@@ -439,7 +647,7 @@ export const POSTER_BLUEPRINT_CATALOG: PreAnalyzedPosterBlueprint[] = [
       subTextColor: '#94A3B8',
     },
     scenePromptHint: 'Atmospheric Indonesian street-level perspective, authentic public transport or community development setting, 35mm street documentary texture.',
-    negativeSpaceZone: 'Bottom 25% reserved for solid black typography banner block.',
+    negativeSpaceZone: 'The bottom 25% of the frame features a calm, deep shadow zone with smooth, low-contrast pavement texture.',
     slotManifest: {
       canvas: { width: 1080, height: 1350, aspectRatio: '4:5' },
       slots: {
@@ -449,6 +657,22 @@ export const POSTER_BLUEPRINT_CATALOG: PreAnalyzedPosterBlueprint[] = [
         officialEmblem: { x: 0.82, y: 0.04, w: 0.12, maxHeightPx: 38, placement: 'top-right' },
       },
     },
+
+    fixedConstraints: {
+      baseBackgroundTone: 'DARK',
+      requiredFontFamilies: {
+        headline: 'Anton',
+        body: 'Plus Jakarta Sans',
+      },
+      imageNegativeAllow: ['banner', 'frame', 'border'],
+      toneSafety: 'ALL_TOPICS',
+    },
+    variationRules: {
+      allowedLayoutVariants: ['TOP_BANNER', 'BOTTOM_ANCHOR', 'EDITORIAL_SPLIT', 'CENTERED_HERO'],
+      allowedHeaderPlacements: ['top', 'bottom', 'center'],
+      allowedCardArrangements: ['stacked', 'horizontal_split', 'single_hero_card', 'grid_compact'],
+      canMutatePalette: true,
+    },
   },
 
   // ---------------------------------------------------------------------------
@@ -457,7 +681,7 @@ export const POSTER_BLUEPRINT_CATALOG: PreAnalyzedPosterBlueprint[] = [
   {
     id: 'TPL-15-DYNAMIC-DIAGONAL-MOTION',
     name: 'Dynamic Diagonal Motion',
-    archetype: 'POP_OUT_HERO',
+    archetype: 'EXECUTIVE_SEMINAR',
     referenceFile: 'download (3).jpg',
     description: 'Potongan diagonal berenergi tinggi yang membelah kanvas secara dinamis, mengarahkan mata pada aksi kebijakan yang bergerak cepat.',
     tags: ['diagonal', 'dinamis', 'aksi', 'gerakan-cepat', 'enerjik'],
@@ -470,7 +694,7 @@ export const POSTER_BLUEPRINT_CATALOG: PreAnalyzedPosterBlueprint[] = [
       subTextColor: '#3B82F6',
     },
     scenePromptHint: 'Dynamic forward-moving action scene, diagonal perspective lines, energetic atmospheric lighting, modern crisp documentary photo.',
-    negativeSpaceZone: 'Top-left and bottom-right triangles provide clear negative space zones for typography.',
+    negativeSpaceZone: 'The upper 40% features an uncluttered, deep midnight shadow gradient with gentle ambient bokeh.',
     slotManifest: {
       canvas: { width: 1080, height: 1350, aspectRatio: '4:5' },
       slots: {
@@ -480,6 +704,22 @@ export const POSTER_BLUEPRINT_CATALOG: PreAnalyzedPosterBlueprint[] = [
         officialEmblem: { x: 0.82, y: 0.04, w: 0.12, maxHeightPx: 40, placement: 'top-right' },
       },
     },
+
+    fixedConstraints: {
+      baseBackgroundTone: 'LIGHT',
+      requiredFontFamilies: {
+        headline: 'Bebas Neue',
+        body: 'Plus Jakarta Sans',
+      },
+      imageNegativeAllow: ['banner', 'frame', 'border'],
+      toneSafety: 'ALL_TOPICS',
+    },
+    variationRules: {
+      allowedLayoutVariants: ['TOP_BANNER', 'BOTTOM_ANCHOR', 'EDITORIAL_SPLIT', 'CENTERED_HERO'],
+      allowedHeaderPlacements: ['top', 'bottom', 'center'],
+      allowedCardArrangements: ['stacked', 'horizontal_split', 'single_hero_card', 'grid_compact'],
+      canMutatePalette: true,
+    },
   },
 
   // ---------------------------------------------------------------------------
@@ -488,7 +728,7 @@ export const POSTER_BLUEPRINT_CATALOG: PreAnalyzedPosterBlueprint[] = [
   {
     id: 'TPL-16-DUOTONE-PORTRAITURE',
     name: 'Minimalist Duotone Portraiture',
-    archetype: 'STATEMENT_PROFILE',
+    archetype: 'TORN_VISION',
     referenceFile: 'download (4).jpg',
     description: 'Potret subjek hitam-putih di atas latar belakang blok warna solid cerah, menghasilkan identitas visual yang ikonik dan kontemporer.',
     tags: ['duotone', 'portrait', 'solid-color', 'ikonik', 'bold'],
@@ -501,7 +741,7 @@ export const POSTER_BLUEPRINT_CATALOG: PreAnalyzedPosterBlueprint[] = [
       subTextColor: '#DDD6FE',
     },
     scenePromptHint: 'Studio portrait with clean solid duotone color background, high contrast lighting, pure silhouette edge definition, editorial polish.',
-    negativeSpaceZone: 'Side 40% area clear solid color backdrop for bold vertical headline alignment.',
+    negativeSpaceZone: 'The upper-right and lower-left zones provide quiet, flat, low-contrast textured surfaces with minimal detail.',
     slotManifest: {
       canvas: { width: 1080, height: 1350, aspectRatio: '4:5' },
       slots: {
@@ -511,6 +751,22 @@ export const POSTER_BLUEPRINT_CATALOG: PreAnalyzedPosterBlueprint[] = [
         officialEmblem: { x: 0.82, y: 0.04, w: 0.12, maxHeightPx: 38, placement: 'top-right' },
       },
     },
+
+    fixedConstraints: {
+      baseBackgroundTone: 'DARK',
+      requiredFontFamilies: {
+        headline: 'Anton',
+        body: 'Plus Jakarta Sans',
+      },
+      imageNegativeAllow: ['banner', 'frame', 'border'],
+      toneSafety: 'ALL_TOPICS',
+    },
+    variationRules: {
+      allowedLayoutVariants: ['TOP_BANNER', 'BOTTOM_ANCHOR', 'EDITORIAL_SPLIT', 'CENTERED_HERO'],
+      allowedHeaderPlacements: ['top', 'bottom', 'center'],
+      allowedCardArrangements: ['stacked', 'horizontal_split', 'single_hero_card', 'grid_compact'],
+      canMutatePalette: true,
+    },
   },
 
   // ---------------------------------------------------------------------------
@@ -519,7 +775,7 @@ export const POSTER_BLUEPRINT_CATALOG: PreAnalyzedPosterBlueprint[] = [
   {
     id: 'TPL-17-RETRO-HALFTONE-RISO',
     name: 'Retro Halftone Risoprint',
-    archetype: 'RETRO_CAMPAIGN',
+    archetype: 'GALLERY_EXHIBITION',
     referenceFile: 'download (5).jpg',
     description: 'Cetak risograph vintage dengan tekstur titik halftone kentara, warna tinta berlapis (overprint), dan nuansa advokasi akar rumput.',
     tags: ['risograph', 'halftone', 'retro', 'akar-rumput', 'advokasi'],
@@ -532,7 +788,7 @@ export const POSTER_BLUEPRINT_CATALOG: PreAnalyzedPosterBlueprint[] = [
       subTextColor: '#86198F',
     },
     scenePromptHint: 'Vintage risograph two-color print with authentic visible halftone dots, ink bleed along edges, tactile aged paper grain.',
-    negativeSpaceZone: 'Top 35% features warm paper background ready for bold risograph headline.',
+    negativeSpaceZone: 'The top 30% and bottom 20% provide calm, quiet open negative space with soft neutral tones.',
     slotManifest: {
       canvas: { width: 1080, height: 1350, aspectRatio: '4:5' },
       slots: {
@@ -542,6 +798,22 @@ export const POSTER_BLUEPRINT_CATALOG: PreAnalyzedPosterBlueprint[] = [
         officialEmblem: { x: 0.82, y: 0.04, w: 0.12, maxHeightPx: 36, placement: 'top-right' },
       },
     },
+
+    fixedConstraints: {
+      baseBackgroundTone: 'WARM_PAPER',
+      requiredFontFamilies: {
+        headline: 'Anton',
+        body: 'Plus Jakarta Sans',
+      },
+      imageNegativeAllow: ['banner', 'frame', 'border'],
+      toneSafety: 'ALL_TOPICS',
+    },
+    variationRules: {
+      allowedLayoutVariants: ['TOP_BANNER', 'BOTTOM_ANCHOR', 'EDITORIAL_SPLIT', 'CENTERED_HERO'],
+      allowedHeaderPlacements: ['top', 'bottom', 'center'],
+      allowedCardArrangements: ['stacked', 'horizontal_split', 'single_hero_card', 'grid_compact'],
+      canMutatePalette: true,
+    },
   },
 
   // ---------------------------------------------------------------------------
@@ -550,7 +822,7 @@ export const POSTER_BLUEPRINT_CATALOG: PreAnalyzedPosterBlueprint[] = [
   {
     id: 'TPL-18-COMPACT-BULLETIN',
     name: 'Compact Informational Bulletin',
-    archetype: 'RETRO_SPLIT_MITIGATION',
+    archetype: 'POP_MAGAZINE_COLLAGE',
     referenceFile: 'download (6).jpg',
     description: 'Tata letak buletin 3-tingkat yang padat dan informatif, menyajikan poin kebijakan penting secara terstruktur dalam kartu kompak.',
     tags: ['buletin', 'kompak', 'informasi-publik', '3-tingkat', 'resmi'],
@@ -563,7 +835,7 @@ export const POSTER_BLUEPRINT_CATALOG: PreAnalyzedPosterBlueprint[] = [
       subTextColor: '#047857',
     },
     scenePromptHint: 'Organized civic environment, clear architecture, soft neutral daylight, documentary credibility.',
-    negativeSpaceZone: 'Divided cleanly into 3 vertical tiers for bulletin card overlays.',
+    negativeSpaceZone: 'The upper-center section features an expansive, soft-focus warm paper texture with gentle daylight.',
     slotManifest: {
       canvas: { width: 1080, height: 1350, aspectRatio: '4:5' },
       slots: {
@@ -573,6 +845,22 @@ export const POSTER_BLUEPRINT_CATALOG: PreAnalyzedPosterBlueprint[] = [
         officialEmblem: { x: 0.08, y: 0.02, w: 0.12, maxHeightPx: 34, placement: 'top-left' },
       },
     },
+
+    fixedConstraints: {
+      baseBackgroundTone: 'WARM_PAPER',
+      requiredFontFamilies: {
+        headline: 'Anton',
+        body: 'Plus Jakarta Sans',
+      },
+      imageNegativeAllow: ['banner', 'frame', 'border'],
+      toneSafety: 'VIRAL_ONLY',
+    },
+    variationRules: {
+      allowedLayoutVariants: ['TOP_BANNER', 'BOTTOM_ANCHOR', 'EDITORIAL_SPLIT', 'CENTERED_HERO'],
+      allowedHeaderPlacements: ['top', 'bottom', 'center'],
+      allowedCardArrangements: ['stacked', 'horizontal_split', 'single_hero_card', 'grid_compact'],
+      canMutatePalette: true,
+    },
   },
 
   // ---------------------------------------------------------------------------
@@ -580,11 +868,11 @@ export const POSTER_BLUEPRINT_CATALOG: PreAnalyzedPosterBlueprint[] = [
   // ---------------------------------------------------------------------------
   {
     id: 'TPL-19-CINEMATIC-VISTA',
-    name: 'Cinematic Panoramic Vista',
-    archetype: 'POP_OUT_HERO',
+    name: 'Vintage Field Expedition (Polaroid)',
+    archetype: 'POLAROID_ADVENTURE',
     referenceFile: 'download (7).jpg',
-    description: 'Pemandangan alam/wilayah yang luas dengan bingkai letterbox sinematik di atas dan bawah, menonjolkan skala kemajuan pembangunan.',
-    tags: ['vista', 'panorama', 'letterbox', 'skala-besar', 'sinematik'],
+    description: 'Jurnal ekspedisi blusukan daerah dengan bingkai foto polaroid lapangan, catatan riset analog hangat, dan narasi langsung dari warga.',
+    tags: ['blusukan', 'ekspedisi', 'polaroid', 'lapangan', 'daerah', 'analog'],
     aspectRatio: '4:5',
     colorPalette: {
       primaryAccent: '#E11D48',
@@ -594,7 +882,7 @@ export const POSTER_BLUEPRINT_CATALOG: PreAnalyzedPosterBlueprint[] = [
       subTextColor: '#9F1239',
     },
     scenePromptHint: 'Epic panoramic landscape or major public infrastructure vista, dramatic wide-angle perspective, cinematic letterbox framing, rich sunset or golden hour lighting.',
-    negativeSpaceZone: 'Top 30% sky area and bottom letterbox band clear for bold typography.',
+    negativeSpaceZone: 'The upper 35% features an uncluttered, soft-focus archival warm paper patina with minimal detail.',
     slotManifest: {
       canvas: { width: 1080, height: 1350, aspectRatio: '4:5' },
       slots: {
@@ -604,6 +892,22 @@ export const POSTER_BLUEPRINT_CATALOG: PreAnalyzedPosterBlueprint[] = [
         officialEmblem: { x: 0.82, y: 0.04, w: 0.12, maxHeightPx: 38, placement: 'top-right' },
       },
     },
+
+    fixedConstraints: {
+      baseBackgroundTone: 'WARM_PAPER',
+      requiredFontFamilies: {
+        headline: 'Bebas Neue',
+        body: 'Plus Jakarta Sans',
+      },
+      imageNegativeAllow: ['banner', 'frame', 'border'],
+      toneSafety: 'ALL_TOPICS',
+    },
+    variationRules: {
+      allowedLayoutVariants: ['TOP_BANNER', 'BOTTOM_ANCHOR', 'EDITORIAL_SPLIT', 'CENTERED_HERO'],
+      allowedHeaderPlacements: ['top', 'bottom', 'center'],
+      allowedCardArrangements: ['stacked', 'horizontal_split', 'single_hero_card', 'grid_compact'],
+      canMutatePalette: true,
+    },
   },
 
   // ---------------------------------------------------------------------------
@@ -612,7 +916,7 @@ export const POSTER_BLUEPRINT_CATALOG: PreAnalyzedPosterBlueprint[] = [
   {
     id: 'TPL-20-CONTEMPORARY-LOOKBOOK',
     name: 'Contemporary Editorial Lookbook',
-    archetype: 'STATEMENT_PROFILE',
+    archetype: 'VINTAGE_PERSONA_GAZETTE',
     referenceFile: 'download (8).jpg',
     description: 'Tata letak majalah seni kontemporer dengan ruang putih (white space) yang lapang, tipografi sans modern, dan komposisi asimetris bernilai seni tinggi.',
     tags: ['lookbook', 'editorial-seni', 'white-space', 'asimetris', 'kontemporer'],
@@ -625,7 +929,7 @@ export const POSTER_BLUEPRINT_CATALOG: PreAnalyzedPosterBlueprint[] = [
       subTextColor: '#71717A',
     },
     scenePromptHint: 'Museum gallery aesthetic, pristine white spaces, subtle architectural daylight, clean minimalist sophistication, high fashion editorial tone.',
-    negativeSpaceZone: 'Generous white margins surrounding the central artwork.',
+    negativeSpaceZone: 'Pristine white museum gallery wall with soft ambient daylight, providing 60% calm open negative space.',
     slotManifest: {
       canvas: { width: 1080, height: 1350, aspectRatio: '4:5' },
       slots: {
@@ -635,6 +939,22 @@ export const POSTER_BLUEPRINT_CATALOG: PreAnalyzedPosterBlueprint[] = [
         officialEmblem: { x: 0.82, y: 0.04, w: 0.12, maxHeightPx: 36, placement: 'top-right' },
       },
     },
+
+    fixedConstraints: {
+      baseBackgroundTone: 'WARM_PAPER',
+      requiredFontFamilies: {
+        headline: 'Anton',
+        body: 'Plus Jakarta Sans',
+      },
+      imageNegativeAllow: ['banner', 'frame', 'border'],
+      toneSafety: 'ALL_TOPICS',
+    },
+    variationRules: {
+      allowedLayoutVariants: ['TOP_BANNER', 'BOTTOM_ANCHOR', 'EDITORIAL_SPLIT', 'CENTERED_HERO'],
+      allowedHeaderPlacements: ['top', 'bottom', 'center'],
+      allowedCardArrangements: ['stacked', 'horizontal_split', 'single_hero_card', 'grid_compact'],
+      canMutatePalette: true,
+    },
   },
 
   // ---------------------------------------------------------------------------
@@ -642,11 +962,11 @@ export const POSTER_BLUEPRINT_CATALOG: PreAnalyzedPosterBlueprint[] = [
   // ---------------------------------------------------------------------------
   {
     id: 'TPL-21-SKYSCRAPER-INFOGRAPHIC',
-    name: 'Vertical Skyscraper Infographic',
-    archetype: 'MODULAR_GRID_CARDS',
+    name: 'Civic Broadsheet Chronicle',
+    archetype: 'BROADSHEET_NEWSPAPER',
     referenceFile: 'download (9).jpg',
-    description: 'Format narasi bertingkat ke bawah (vertical timeline) dengan 4 blok tahapan capaian kebijakan yang terstruktur runut dan mudah dipahami.',
-    tags: ['timeline', 'bertingkat', 'tahapan', 'alur-kebijakan', 'infografis-panjang'],
+    description: 'Format koran investigasi kebijakan publik multi-kolom dengan tipografi gazette padat dan rekam analisis mendalam.',
+    tags: ['koran', 'broadsheet', 'investigasi', 'kolom', 'kebijakan', 'analisis'],
     aspectRatio: '4:5',
     colorPalette: {
       primaryAccent: '#0284C7',
@@ -656,7 +976,7 @@ export const POSTER_BLUEPRINT_CATALOG: PreAnalyzedPosterBlueprint[] = [
       subTextColor: '#0369A1',
     },
     scenePromptHint: 'Vertical upward perspective of civic progress, clean structural lines, bright blue sky background, progressive momentum.',
-    negativeSpaceZone: 'Structured 4 vertical segments clear for sequential timeline cards.',
+    negativeSpaceZone: 'The top 25% and side margins remain clean, calm, archival off-white paper space.',
     slotManifest: {
       canvas: { width: 1080, height: 1350, aspectRatio: '4:5' },
       slots: {
@@ -666,6 +986,22 @@ export const POSTER_BLUEPRINT_CATALOG: PreAnalyzedPosterBlueprint[] = [
         officialEmblem: { x: 0.85, y: 0.92, w: 0.10, maxHeightPx: 36, placement: 'bottom-right' },
       },
     },
+
+    fixedConstraints: {
+      baseBackgroundTone: 'WARM_PAPER',
+      requiredFontFamilies: {
+        headline: 'Anton',
+        body: 'Plus Jakarta Sans',
+      },
+      imageNegativeAllow: ['banner', 'frame', 'border'],
+      toneSafety: 'ALL_TOPICS',
+    },
+    variationRules: {
+      allowedLayoutVariants: ['TOP_BANNER', 'BOTTOM_ANCHOR', 'EDITORIAL_SPLIT', 'CENTERED_HERO'],
+      allowedHeaderPlacements: ['top', 'bottom', 'center'],
+      allowedCardArrangements: ['stacked', 'horizontal_split', 'single_hero_card', 'grid_compact'],
+      canMutatePalette: true,
+    },
   },
 
   // ---------------------------------------------------------------------------
@@ -674,7 +1010,7 @@ export const POSTER_BLUEPRINT_CATALOG: PreAnalyzedPosterBlueprint[] = [
   {
     id: 'TPL-22-POP-CULTURE-COMMENTARY',
     name: 'Pop Culture & Viral Discourse',
-    archetype: 'RETRO_CAMPAIGN',
+    archetype: 'TECHNICAL_GRID_CALLOUT',
     referenceFile: '“Yeh marketing nahi chhoti cheez hai babu bhaiya… digital hai digital!”.jpg',
     description: 'Gaya visual pop komunikatif yang berani dengan kutipan viral santai namun mengena, warna-warna pop kontras, dan pesan lugas untuk anak muda.',
     tags: ['pop-culture', 'viral', 'anak-muda', 'komunikatif', 'santai', 'bold'],
@@ -687,7 +1023,7 @@ export const POSTER_BLUEPRINT_CATALOG: PreAnalyzedPosterBlueprint[] = [
       subTextColor: '#FEF08A',
     },
     scenePromptHint: 'Modern viral pop culture setting, bold dynamic lighting, expressive energetic atmosphere, cinematic pop art colors.',
-    negativeSpaceZone: 'Top 40% and lower third reserved for high-impact conversational headline banner.',
+    negativeSpaceZone: 'Spacious, calm, low-contrast drafting surfaces with minimal visual distraction.',
     slotManifest: {
       canvas: { width: 1080, height: 1350, aspectRatio: '4:5' },
       slots: {
@@ -696,6 +1032,22 @@ export const POSTER_BLUEPRINT_CATALOG: PreAnalyzedPosterBlueprint[] = [
         memberIdentity: { x: 0.08, y: 0.90, w: 0.45, nameFontSizePx: 18, titleFontSizePx: 12, nameColor: '#FFFFFF', titleColor: '#EAB308' },
         officialEmblem: { x: 0.82, y: 0.04, w: 0.12, maxHeightPx: 38, placement: 'top-right' },
       },
+    },
+
+    fixedConstraints: {
+      baseBackgroundTone: 'DARK',
+      requiredFontFamilies: {
+        headline: 'Anton',
+        body: 'Plus Jakarta Sans',
+      },
+      imageNegativeAllow: ['banner', 'frame', 'border'],
+      toneSafety: 'VIRAL_ONLY',
+    },
+    variationRules: {
+      allowedLayoutVariants: ['TOP_BANNER', 'BOTTOM_ANCHOR', 'EDITORIAL_SPLIT', 'CENTERED_HERO'],
+      allowedHeaderPlacements: ['top', 'bottom', 'center'],
+      allowedCardArrangements: ['stacked', 'horizontal_split', 'single_hero_card', 'grid_compact'],
+      canMutatePalette: true,
     },
   },
 ];

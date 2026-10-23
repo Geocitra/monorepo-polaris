@@ -52,6 +52,18 @@ export class GenerateArticleRequestDto {
   generateDallePoster: boolean = true;
 
   @IsOptional()
+  @IsBoolean()
+  includeUserPhoto?: boolean;
+
+  @IsOptional()
+  @IsString()
+  compositionMode?: 'PUBLIC_ADVOCACY' | 'FIGURE_CENTERPIECE';
+
+  @IsOptional()
+  @IsString()
+  customPhotoUrl?: string;
+
+  @IsOptional()
   @IsString()
   taskType?: 'FULL_CAMPAIGN' | 'INFOGRAPHIC_ONLY' | 'ARTICLE_ONLY' | 'REGENERATE_POSTER';
 }

@@ -27,10 +27,28 @@ function SuperadminLoginFormContent() {
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
 
   useEffect(() => {
-    if (AdminApiClient.isAuthenticated()) {
-      router.replace(redirectUrl);
+    // Jika ada parameter reset atau logout di URL, bersihkan sesi
+    if (searchParams.get('reset') === 'true' || searchParams.get('logout') === 'true') {
+      AdminApiClient.logout();
+      return;
     }
-  }, [redirectUrl, router]);
+
+    const token = AdminApiClient.getToken();
+    const user = AdminApiClient.getUser();
+
+    if (token && user) {
+      if (user.role === 'CONTENT_OPERATOR' || user.role === 'SUPPORT_OPERATOR') {
+        router.replace('/operator');
+      } else if (user.role === 'SUPERADMIN') {
+        router.replace(redirectUrl || '/superadmin');
+      } else {
+        AdminApiClient.logout();
+      }
+    } else if (token && !user) {
+      // Keadaan tidak konsisten (token ada tapi data user tidak ada / korup)
+      AdminApiClient.logout();
+    }
+  }, [redirectUrl, router, searchParams]);
 
   useEffect(() => {
     if (countdown <= 0) return;
@@ -113,7 +131,11 @@ function SuperadminLoginFormContent() {
 
       if (res.token && res.admin) {
         AdminApiClient.setAuth(res.token, res.admin);
-        router.push(redirectUrl);
+        if (res.admin.role === 'CONTENT_OPERATOR' || res.admin.role === 'SUPPORT_OPERATOR') {
+          router.push('/operator');
+        } else {
+          router.push(redirectUrl);
+        }
       } else {
         throw new Error('Respons verifikasi tidak valid.');
       }
@@ -255,6 +277,21 @@ function SuperadminLoginFormContent() {
             onResendOtp={handleResendOtp}
             onResetError={() => setErrorMsg(null)}
           />
+
+          {/* Opsi Reset Cache / Ganti Akun */}
+          <div className="flex justify-center pt-1">
+            <button
+              type="button"
+              onClick={() => {
+                AdminApiClient.logout();
+                setErrorMsg(null);
+                setSuccessMsg('Sesi dan cache berhasil dibersihkan.');
+              }}
+              className="text-[11px] text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 underline transition-colors cursor-pointer"
+            >
+              Bersihkan Cache / Reset Sesi Login
+            </button>
+          </div>
         </div>
 
         {/* Footer Notice */}
