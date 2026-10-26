@@ -291,6 +291,9 @@ importers:
       drizzle-orm:
         specifier: ^0.39.3
         version: 0.39.3(postgres@3.4.9)
+      express:
+        specifier: ^4.22.1
+        version: 4.22.1(supports-color@8.1.1)
       google-auth-library:
         specifier: ^11.1.0
         version: 11.1.0(supports-color@8.1.1)

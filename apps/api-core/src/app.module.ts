@@ -22,8 +22,10 @@ import { RedisModule } from './modules/redis/redis.module.js';
 import { RealtimeModule } from './modules/realtime/realtime.module.js';
 import { DatahubModule } from './modules/datahub/datahub.module.js';
 import { OperatorModule } from './modules/operator/operator.module.js';
+import { AppController } from './app.controller.js';
 
 @Module({
+  controllers: [AppController],
   imports: [
     ConfigModule.forRoot({
       isGlobal: true,
