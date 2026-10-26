@@ -1,8 +1,9 @@
 'use client';
 
 import React, { useState } from 'react';
-import { X, UserPlus, Copy, Check, ShieldAlert, CreditCard, Sparkles, AlertCircle, ExternalLink } from 'lucide-react';
+import { X, UserPlus, Copy, Check, ShieldAlert, CreditCard, Sparkles, AlertCircle, ExternalLink, Globe } from 'lucide-react';
 import { AdminApiClient } from '@/lib/api-client';
+import { getRootDomain } from '@/lib/urls';
 
 export interface InitialLeadData {
   inquiryId?: string;
@@ -23,6 +24,7 @@ interface CreateTenantModalProps {
 }
 
 export function CreateTenantModal({ onClose, onSuccess, initialLeadData }: CreateTenantModalProps) {
+  const rootDomain = getRootDomain();
   const [fullName, setFullName] = useState(initialLeadData?.fullName || '');
   const [email, setEmail] = useState(initialLeadData?.email || '');
   const [username, setUsername] = useState('');
@@ -30,6 +32,7 @@ export function CreateTenantModal({ onClose, onSuccess, initialLeadData }: Creat
   const [partyAffiliation, setPartyAffiliation] = useState(initialLeadData?.partyAffiliation || '');
   const [legislativeLevel, setLegislativeLevel] = useState(initialLeadData?.legislativeLevel || 'DPRD_PROVINSI');
   const [customDapilName, setCustomDapilName] = useState(initialLeadData?.customDapilName || '');
+  const [customDomain, setCustomDomain] = useState('');
   const [subdomainSlug, setSubdomainSlug] = useState(() => {
     if (initialLeadData?.fullName) {
       return initialLeadData.fullName
@@ -49,6 +52,23 @@ export function CreateTenantModal({ onClose, onSuccess, initialLeadData }: Creat
   const [error, setError] = useState<string | null>(null);
   const [createdResult, setCreatedResult] = useState<any | null>(null);
   const [copied, setCopied] = useState(false);
+
+  // Helper kategori peran
+  const isParliament = ['DPR_RI', 'DPD_RI', 'MPR_RI', 'DPRD_PROVINSI', 'DPRD_KABUPATEN_KOTA'].includes(legislativeLevel);
+  const isGovernor = legislativeLevel === 'KEPALA_DAERAH_GUBERNUR';
+  const isMayorBupati = legislativeLevel === 'KEPALA_DAERAH_WALIKOTA_BUPATI';
+  const isBureaucrat = legislativeLevel === 'PEJABAT_BIROKRAT_DIRJEN_SEKJEN_OPD';
+  const isPublicFigure = legislativeLevel === 'PIMPINAN_LEMBAGA_REKTOR_SWASTA';
+
+  const handleRoleChange = (newRole: string) => {
+    setLegislativeLevel(newRole);
+    const parliamentRoles = ['DPR_RI', 'DPD_RI', 'MPR_RI', 'DPRD_PROVINSI', 'DPRD_KABUPATEN_KOTA'];
+    if (!parliamentRoles.includes(newRole)) {
+      if (!partyAffiliation || partyAffiliation.toLowerCase().includes('fraksi') || partyAffiliation.toLowerCase().includes('partai')) {
+        setPartyAffiliation('Non-Partai / Independen');
+      }
+    }
+  };
 
   // Auto-generate subdomain saat fullName berubah
   const handleNameChange = (val: string) => {
@@ -79,6 +99,7 @@ export function CreateTenantModal({ onClose, onSuccess, initialLeadData }: Creat
         legislativeLevel,
         customDapilName: customDapilName.trim() || undefined,
         subdomainSlug: subdomainSlug.trim().toLowerCase(),
+        customDomain: customDomain.trim() || undefined,
         planTier,
         billingCycle,
         generatePrepaidInvoice: generatePrepaid,
@@ -100,16 +121,20 @@ export function CreateTenantModal({ onClose, onSuccess, initialLeadData }: Creat
 
   const copyCredentials = () => {
     if (!createdResult) return;
+    const portalUrl = createdResult.customDomain
+      ? `https://${createdResult.customDomain} (Subdomain cadangan: https://${createdResult.subdomainSlug}.${rootDomain})`
+      : `https://${createdResult.subdomainSlug}.${rootDomain}`;
+
     const text = `KREDENSIAL RESMI AKUN POLARIS
 Nama: ${createdResult.fullName}
 Email: ${createdResult.email}
 Username: ${createdResult.username}
 Kata Sandi Sementara: ${createdResult.temporaryPasswordPlaintext}
-Subdomain Portal: https://${createdResult.subdomainSlug}.polaris.id
+Alamat Website Publik: ${portalUrl}
 Tingkat Jabatan: ${createdResult.legislativeLevel}
 Status: ${createdResult.accountStatus}
 
-Catatan Keamanan: Silakan login di https://app.polaris.id/login. Anda akan diminta memperbarui kata sandi ini pada saat login pertama kali.`;
+Catatan Keamanan: Silakan login di https://app.${rootDomain}/login. Anda akan diminta memperbarui kata sandi ini pada saat login pertama kali.`;
     navigator.clipboard.writeText(text);
     setCopied(true);
     setTimeout(() => setCopied(false), 2500);
@@ -191,8 +216,10 @@ Catatan Keamanan: Silakan login di https://app.polaris.id/login. Anda akan dimin
                   <span className="font-mono font-semibold text-blue-600 dark:text-blue-400">{createdResult.username}</span>
                 </div>
                 <div>
-                  <span className="text-slate-400 block">Subdomain Portal:</span>
-                  <span className="font-mono font-semibold text-slate-900 dark:text-white">{createdResult.subdomainSlug}.polaris.id</span>
+                  <span className="text-slate-400 block">Alamat Portal:</span>
+                  <span className="font-mono font-semibold text-slate-900 dark:text-white">
+                    {createdResult.customDomain || `${createdResult.subdomainSlug}.${rootDomain}`}
+                  </span>
                 </div>
               </div>
 
@@ -332,55 +359,114 @@ Catatan Keamanan: Silakan login di https://app.polaris.id/login. Anda akan dimin
                 />
               </div>
 
-              {/* TINGKAT LEGISLATIF (IMMUTABLE ANCHOR) */}
-              <div className="space-y-1.5">
+              {/* TINGKAT LEGISLATIF / KATEGORI JABATAN */}
+              <div className="space-y-1.5 sm:col-span-2">
                 <label className="font-bold text-slate-700 dark:text-slate-300 flex items-center gap-1.5">
                   <ShieldAlert className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400" />
-                  Tingkat Jabatan Resmi <span className="text-rose-500">*</span>
+                  Kategori & Tingkat Jabatan <span className="text-rose-500">*</span>
                 </label>
                 <select
                   value={legislativeLevel}
-                  onChange={(e) => setLegislativeLevel(e.target.value)}
+                  onChange={(e) => handleRoleChange(e.target.value)}
                   className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-slate-900 dark:text-white font-semibold focus:outline-none focus:ring-2 focus:ring-blue-500"
                 >
-                  <option value="DPR_RI">DPR RI (Parlemen Nasional)</option>
-                  <option value="DPD_RI">DPD RI (Senator Daerah)</option>
-                  <option value="MPR_RI">MPR RI</option>
-                  <option value="DPRD_PROVINSI">DPRD Provinsi</option>
-                  <option value="DPRD_KABUPATEN_KOTA">DPRD Kabupaten / Kota</option>
-                  <option value="KEPALA_DAERAH_GUBERNUR">Gubernur / Wakil Gubernur</option>
-                  <option value="KEPALA_DAERAH_WALIKOTA_BUPATI">Walikota / Bupati</option>
-                  <option value="PEJABAT_BIROKRAT_DIRJEN_SEKJEN_OPD">Birokrat / OPD / Sekjen</option>
-                  <option value="PIMPINAN_LEMBAGA_REKTOR_SWASTA">Pimpinan Lembaga / Rektor</option>
+                  <optgroup label="🏢 Kepala Daerah & Eksekutif Wilayah">
+                    <option value="KEPALA_DAERAH_GUBERNUR">Gubernur / Wakil Gubernur (Pemerintah Provinsi)</option>
+                    <option value="KEPALA_DAERAH_WALIKOTA_BUPATI">Walikota / Bupati (Pemerintah Kab/Kota)</option>
+                  </optgroup>
+                  <optgroup label="🌟 Tokoh Publik & Institusi">
+                    <option value="PIMPINAN_LEMBAGA_REKTOR_SWASTA">Tokoh Publik Independen / Pimpinan Lembaga / Rektor</option>
+                  </optgroup>
+                  <optgroup label="💼 Birokrasi & Pejabat OPD">
+                    <option value="PEJABAT_BIROKRAT_DIRJEN_SEKJEN_OPD">Pejabat Eksekutif / Kadis OPD / Dirjen / Sekjen</option>
+                  </optgroup>
+                  <optgroup label="🏛️ Parlemen & Legislatif">
+                    <option value="DPR_RI">DPR RI (Parlemen Nasional)</option>
+                    <option value="DPD_RI">DPD RI (Senator Daerah)</option>
+                    <option value="MPR_RI">MPR RI</option>
+                    <option value="DPRD_PROVINSI">DPRD Provinsi (Tingkat I)</option>
+                    <option value="DPRD_KABUPATEN_KOTA">DPRD Kabupaten / Kota (Tingkat II)</option>
+                  </optgroup>
                 </select>
               </div>
 
-              {/* FRAKSI / PARTAI */}
+              {/* FRAKSI / AFILIASI POLITIK */}
               <div className="space-y-1.5">
-                <label className="font-bold text-slate-700 dark:text-slate-300">
-                  Partai / Fraksi Politik
-                </label>
+                <div className="flex items-center justify-between">
+                  <label className="font-bold text-slate-700 dark:text-slate-300">
+                    {isParliament ? 'Partai / Fraksi Politik' : 'Afiliasi / Status Politik'}
+                  </label>
+                  <span className="text-[10px] text-slate-500">
+                    {isParliament ? 'Fraksi partai di parlemen' : 'Pilihan bebas / non-partai'}
+                  </span>
+                </div>
                 <input
                   type="text"
-                  placeholder="Fraksi PDI-P, Golkar, Gerindra, dll"
+                  placeholder={isParliament ? 'Contoh: Fraksi Golkar, PDI-P, dll' : 'Contoh: Non-Partai / Independen'}
                   value={partyAffiliation}
                   onChange={(e) => setPartyAffiliation(e.target.value)}
                   className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
                 />
+                {!isParliament && (
+                  <div className="flex flex-wrap gap-1.5 pt-0.5">
+                    {['Non-Partai / Independen', 'Pemerintah Daerah (Pemda)', 'Kementerian / Lembaga Negara'].map((opt) => (
+                      <button
+                        key={opt}
+                        type="button"
+                        onClick={() => setPartyAffiliation(opt)}
+                        className={`px-2 py-0.5 rounded text-[10px] font-semibold border transition-all ${
+                          partyAffiliation === opt
+                            ? 'bg-blue-600 text-white border-blue-600'
+                            : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-700 hover:border-blue-400'
+                        }`}
+                      >
+                        {opt}
+                      </button>
+                    ))}
+                  </div>
+                )}
               </div>
 
-              {/* ASAL DAPIL */}
+              {/* ASAL DAPIL / WILAYAH KERJA */}
               <div className="space-y-1.5">
-                <label className="font-bold text-slate-700 dark:text-slate-300">
-                  Dapil / Wilayah Kerja
-                </label>
+                <div className="flex items-center justify-between">
+                  <label className="font-bold text-slate-700 dark:text-slate-300">
+                    {isParliament
+                      ? 'Dapil (Daerah Pemilihan)'
+                      : isGovernor
+                      ? 'Wilayah Pemerintahan (Provinsi)'
+                      : isMayorBupati
+                      ? 'Wilayah Pemerintahan (Kab/Kota)'
+                      : isBureaucrat
+                      ? 'Instansi / Dinas / OPD'
+                      : 'Wilayah Pengabdian / Fokus Ruang Lingkup'}
+                  </label>
+                  {!isParliament && (
+                    <span className="text-[10px] text-slate-500">Boleh kosong (default otomatis)</span>
+                  )}
+                </div>
                 <input
                   type="text"
-                  placeholder="Dapil Jabar VII / Kab. Bekasi"
+                  placeholder={
+                    isParliament
+                      ? 'Contoh: Dapil Jabar VII / Kab. Bekasi'
+                      : isGovernor
+                      ? 'Contoh: Provinsi Jawa Barat'
+                      : isMayorBupati
+                      ? 'Contoh: Kabupaten Bekasi / Kota Bogor'
+                      : isBureaucrat
+                      ? 'Contoh: Dinas Bina Marga Prov. Jabar'
+                      : 'Contoh: Nasional / Regional / Lintas Sektor'
+                  }
                   value={customDapilName}
                   onChange={(e) => setCustomDapilName(e.target.value)}
                   className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
                 />
+                {!isParliament && (
+                  <p className="text-[10px] text-slate-500">
+                    Jika dikosongkan, sistem otomatis mengisi cakupan wilayah resmi.
+                  </p>
+                )}
               </div>
 
               {/* SUBDOMAIN SLUG */}
@@ -398,9 +484,27 @@ Catatan Keamanan: Silakan login di https://app.polaris.id/login. Anda akan dimin
                     className="w-full px-3.5 py-2.5 rounded-l-xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-slate-900 dark:text-white font-mono focus:outline-none focus:ring-2 focus:ring-blue-500"
                   />
                   <span className="px-4 py-2.5 rounded-r-xl bg-slate-200 dark:bg-slate-800 border border-l-0 border-slate-200 dark:border-slate-800 text-slate-500 dark:text-slate-400 font-mono text-xs">
-                    .polaris.id
+                    .{rootDomain}
                   </span>
                 </div>
+              </div>
+
+              {/* CUSTOM DOMAIN PRIBADI */}
+              <div className="space-y-1.5 sm:col-span-2">
+                <div className="flex items-center justify-between">
+                  <label className="font-bold text-slate-700 dark:text-slate-300 flex items-center gap-1.5">
+                    <Globe className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400" />
+                    Custom Domain Pribadi (Opsional)
+                  </label>
+                  <span className="text-[11px] text-slate-500">Contoh: opinitaru.com atau ayublaksono.com</span>
+                </div>
+                <input
+                  type="text"
+                  placeholder="opinitaru.com (tanpa https://)"
+                  value={customDomain}
+                  onChange={(e) => setCustomDomain(e.target.value.toLowerCase().trim())}
+                  className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-slate-900 dark:text-white font-mono focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
               </div>
             </div>
 

@@ -209,6 +209,10 @@ export class AdminCreateTenantDto {
 
   @IsOptional()
   @IsString()
+  customDomain?: string;
+
+  @IsOptional()
+  @IsString()
   inquiryId?: string;
 }
 

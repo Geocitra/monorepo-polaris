@@ -126,6 +126,11 @@ CREATE TABLE IF NOT EXISTS tenant_members (
   is_verified BOOLEAN NOT NULL DEFAULT false,
   account_status VARCHAR(30) NOT NULL DEFAULT 'ACTIVE',
   internal_notes TEXT,
+  username VARCHAR(50) UNIQUE,
+  must_change_password BOOLEAN NOT NULL DEFAULT false,
+  temporary_password_plaintext_preview VARCHAR(100),
+  password_changed_at TIMESTAMPTZ,
+  political_party_id UUID,
   created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
   updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );

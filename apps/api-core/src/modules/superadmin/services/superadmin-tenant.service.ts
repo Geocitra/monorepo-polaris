@@ -281,6 +281,20 @@ export class SuperadminTenantService {
       throw new ConflictException('Subdomain sudah digunakan. Silakan gunakan kombinasi lain.');
     }
 
+    let cleanCustomDomain: string | null = null;
+    if (dto.customDomain && dto.customDomain.trim()) {
+      cleanCustomDomain = dto.customDomain.trim().toLowerCase().replace(/^https?:\/\//, '').replace(/\/$/, '');
+      const [existingCustom] = await db
+        .select({ id: portalConfigs.id })
+        .from(portalConfigs)
+        .where(eq(portalConfigs.customDomain, cleanCustomDomain))
+        .limit(1);
+
+      if (existingCustom) {
+        throw new ConflictException(`Custom domain '${cleanCustomDomain}' sudah digunakan oleh portal lain.`);
+      }
+    }
+
     // 2. Generate username jika belum diisi
     let cleanUsername = dto.username?.trim().toLowerCase();
     if (!cleanUsername) {
@@ -303,6 +317,23 @@ export class SuperadminTenantService {
     const tempPassword = this.generateSecureTempPassword();
     const passwordHash = await bcrypt.hash(tempPassword, 10);
 
+    // Smart Fallbacks untuk non-parlemen / eksekutif / tokoh publik
+    let resolvedParty = dto.partyAffiliation?.trim() || null;
+    let resolvedDapil = dto.customDapilName?.trim() || null;
+
+    const parliamentLevels = ['DPR_RI', 'DPD_RI', 'MPR_RI', 'DPRD_PROVINSI', 'DPRD_KABUPATEN_KOTA'];
+    if (!parliamentLevels.includes(dto.legislativeLevel)) {
+      if (!resolvedParty) {
+        resolvedParty = 'Non-Partai / Independen';
+      }
+      if (!resolvedDapil) {
+        if (dto.legislativeLevel === 'KEPALA_DAERAH_GUBERNUR') resolvedDapil = 'Pemerintah Provinsi';
+        else if (dto.legislativeLevel === 'KEPALA_DAERAH_WALIKOTA_BUPATI') resolvedDapil = 'Pemerintah Kabupaten / Kota';
+        else if (dto.legislativeLevel === 'PEJABAT_BIROKRAT_DIRJEN_SEKJEN_OPD') resolvedDapil = 'Instansi & OPD';
+        else if (dto.legislativeLevel === 'PIMPINAN_LEMBAGA_REKTOR_SWASTA') resolvedDapil = 'Nasional / Independen';
+      }
+    }
+
     const isPrepaid = dto.generatePrepaidInvoice === true;
 
     // 4. Inisialisasi atomik data dewan, portal, dan langganan
@@ -318,10 +349,10 @@ export class SuperadminTenantService {
           passwordHash,
           fullName: dto.fullName.trim(),
           phoneNumber: dto.phoneNumber.trim(),
-          partyAffiliation: dto.partyAffiliation?.trim() || null,
+          partyAffiliation: resolvedParty,
           legislativeLevel: dto.legislativeLevel, // DIKUNCI OLEH ADMIN
           electoralDistrictId: dto.electoralDistrictId || null,
-          customDapilName: dto.customDapilName?.trim() || null,
+          customDapilName: resolvedDapil,
           isVerified: true,
           mustChangePassword: true,
           temporaryPasswordPlaintextPreview: tempPassword,
@@ -336,6 +367,9 @@ export class SuperadminTenantService {
         .values({
           tenantId: member.id,
           subdomainSlug: cleanSlug,
+          customDomain: cleanCustomDomain,
+          customDomainStatus: cleanCustomDomain ? 'VERIFIED' : 'UNVERIFIED',
+          domainVerifiedAt: cleanCustomDomain ? new Date() : null,
           isActive: true,
           metaTitle: `${member.fullName} - Portal Aspirasi & Akuntabilitas Publik`,
         })
@@ -455,6 +489,7 @@ export class SuperadminTenantService {
         fullName: createdMember.fullName,
         temporaryPasswordPlaintext: tempPassword,
         subdomainSlug: cleanSlug,
+        customDomain: cleanCustomDomain,
         legislativeLevel: dto.legislativeLevel,
         planTier: dto.planTier || PlanTier.PRO,
         accountStatus: createdMember.accountStatus,
