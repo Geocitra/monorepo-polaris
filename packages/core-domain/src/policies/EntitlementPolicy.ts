@@ -23,7 +23,7 @@ export class EntitlementPolicy {
       customDomainEnabled: false,
       spkProcurementEnabled: false,
       priorityQueueEnabled: false,
-      allowedTemplateIds: ['standard-default'],
+      allowedTemplateIds: ['polaris-insight', 'standard-default'],
     },
     [PlanTier.PRO]: {
       tier: PlanTier.PRO,
@@ -34,7 +34,17 @@ export class EntitlementPolicy {
       customDomainEnabled: true,
       spkProcurementEnabled: true,
       priorityQueueEnabled: true,
-      allowedTemplateIds: ['standard-default', 'editorial-prestige', 'baliho-hero', 'newsroom-brief'],
+      allowedTemplateIds: [
+        'dark-modern',
+        'bold-typography',
+        'neon-glow',
+        'creative-warm',
+        'polaris-insight',
+        'standard-default',
+        'editorial-prestige',
+        'baliho-hero',
+        'newsroom-brief',
+      ],
     },
   };
 

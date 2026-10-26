@@ -1,5 +1,7 @@
 import { drizzle } from 'drizzle-orm/postgres-js';
 import postgres from 'postgres';
+import * as dotenv from 'dotenv';
+import * as path from 'path';
 import * as enums from './schema/enums.js';
 import * as identity from './schema/identity.js';
 import * as billing from './schema/billing.js';
@@ -9,7 +11,16 @@ import * as knowledge from './schema/knowledge.js';
 import * as constituent from './schema/constituent.js';
 import * as comments from './schema/comments.js';
 import * as socialDistribution from './schema/social-distribution.js';
+import * as pricingMatrix from './schema/pricing-matrix.js';
+import * as inquiry from './schema/inquiry.js';
 import { tenantContextStorage } from './rls/tenant-context.js';
+
+if (!process.env.DATABASE_URL) {
+  dotenv.config({ path: path.resolve(process.cwd(), '.env') });
+  if (!process.env.DATABASE_URL) {
+    dotenv.config({ path: path.resolve(process.cwd(), '../../.env') });
+  }
+}
 
 export const schema = {
   ...enums,
@@ -21,9 +32,16 @@ export const schema = {
   ...constituent,
   ...comments,
   ...socialDistribution,
+  ...pricingMatrix,
+  ...inquiry,
 };
 
-const connectionString = process.env.DATABASE_URL || 'postgresql://polaris_admin:polaris_secret_2026@localhost:5432/polaris_db';
+export function cleanPostgresUrl(url: string): string {
+  return url.replace(/([?&])schema=[^&]+(&|$)/, '$1').replace(/[?&]$/, '');
+}
+
+const rawConnectionString = process.env.DATABASE_URL || 'postgresql://postgres:admin123@localhost:5432/polaris?schema=public';
+const connectionString = cleanPostgresUrl(rawConnectionString);
 
 // Connection pool connection
 export const pgClient = postgres(connectionString, {

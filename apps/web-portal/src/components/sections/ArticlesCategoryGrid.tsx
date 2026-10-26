@@ -2,7 +2,7 @@
 
 import React from 'react';
 import Link from 'next/link';
-import { ArrowRight, MessageSquare } from 'lucide-react';
+import { ArrowRight, MessageSquare, Calendar, Clock, BookOpen } from 'lucide-react';
 import { formatDateIndonesian } from '@/lib/utils';
 
 interface ArticlesCategoryGridProps {
@@ -65,54 +65,66 @@ export function ArticlesCategoryGrid({
             return (
               <article
                 key={article.id || index}
-                className="group rounded-2xl border border-slate-200/90 bg-white overflow-hidden shadow-xs hover:shadow-md hover:border-slate-300 transition-all flex flex-col justify-between"
+                className="group flex flex-col justify-between rounded-2xl bg-white border border-slate-200/80 shadow-[0_2px_10px_-3px_rgba(0,0,0,0.06),0_1px_3px_rgba(0,0,0,0.02)] hover:shadow-[0_16px_32px_-8px_rgba(150,112,44,0.18)] hover:border-[#96702c]/50 hover:-translate-y-1.5 transition-all duration-300 overflow-hidden"
               >
                 <div>
                   {/* Thumbnail dengan Badge Tanggal di pojok kiri bawah foto */}
-                  <div className="relative aspect-[16/10] overflow-hidden bg-slate-100">
+                  <div className="relative w-full aspect-[16/10] overflow-hidden bg-slate-900">
                     {/* eslint-disable-next-line @next/next/no-img-element */}
                     <img
                       src={thumbnail}
                       alt={article.title}
-                      className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                      className="w-full h-full object-cover object-center group-hover:scale-105 transition-transform duration-500 ease-out"
                     />
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/75 via-black/20 to-transparent pointer-events-none" />
 
-                    {/* Date Badge Pill (kiri bawah seperti Gambar 1) */}
-                    <div className="absolute bottom-3 left-3 bg-[#96702c]/90 text-white text-[11px] font-bold px-2.5 py-1 rounded-md backdrop-blur-xs shadow-sm">
-                      {dateLabel}
+                    {/* Date Badge Pill (Frosted Glass dengan Icon Calendar) */}
+                    <div className="absolute bottom-2.5 left-2.5 inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-black/60 backdrop-blur-md border border-white/20 text-white/95 text-[10.5px] font-medium shadow-sm">
+                      <Calendar className="w-3 h-3 text-amber-300 shrink-0" />
+                      <span>{dateLabel}</span>
+                    </div>
+
+                    {/* Estimasi Waktu Baca di Kanan Atas */}
+                    <div className="absolute top-2.5 right-2.5 inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-black/50 backdrop-blur-md border border-white/15 text-white/85 text-[10px] font-medium">
+                      <Clock className="w-2.5 h-2.5 text-amber-200" />
+                      <span>3 mnt baca</span>
                     </div>
                   </div>
 
                   {/* Body Info */}
-                  <div className="p-5 space-y-2.5">
-                    {/* Sektor Kategori dengan Vertical Bar */}
-                    <div className="flex items-center gap-1.5 text-xs font-bold text-slate-600">
-                      <span className="text-[#96702c] font-black">|</span>
-                      <span>{sector}</span>
+                  <div className="p-4 space-y-2.5">
+                    {/* Sektor Kategori dengan Gold Accent Dot Pill */}
+                    <div className="flex items-center justify-between">
+                      <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-amber-50 text-[#96702c] border border-amber-200/70">
+                        <span className="w-1.5 h-1.5 rounded-full bg-[#96702c]" />
+                        {sector}
+                      </span>
                     </div>
 
                     {/* Judul Artikel */}
-                    <h3 className="text-base font-bold text-slate-900 group-hover:text-[#96702c] transition-colors line-clamp-2 leading-snug">
-                      <Link href={`/artikel/${article.slug}`}>{article.title}</Link>
+                    <h3 className="text-[13.5px] sm:text-sm font-bold text-slate-900 group-hover:text-[#96702c] transition-colors line-clamp-2 leading-snug min-h-[2.5rem]">
+                      <Link href={`/artikel/${article.slug}`} className="hover:underline decoration-[#96702c]/40 underline-offset-2">
+                        {article.title}
+                      </Link>
                     </h3>
 
                     {/* Excerpt */}
-                    <p className="text-xs text-slate-500 line-clamp-3 leading-relaxed">
+                    <p className="text-[11px] sm:text-xs text-slate-500 line-clamp-2 leading-relaxed min-h-[2rem]">
                       {article.excerpt}
                     </p>
                   </div>
                 </div>
 
-                {/* Footer: Tanggapan Warga & Baca Selengkapnya */}
-                <div className="px-5 py-3.5 border-t border-slate-100 flex items-center justify-between text-xs">
-                  <div className="flex items-center gap-1 text-[11px] font-semibold text-slate-400">
-                    <MessageSquare className="w-3.5 h-3.5" />
-                    <span>{article.commentCount || 0} Tanggapan Warga</span>
+                {/* Footer: Kajian Resmi & Baca Selengkapnya */}
+                <div className="pt-2.5 pb-3 px-4 border-t border-slate-100 flex items-center justify-between mt-auto bg-slate-50/50">
+                  <div className="flex items-center gap-1.5 text-[10.5px] font-medium text-slate-400">
+                    <BookOpen className="w-3 h-3 text-[#96702c]/70" />
+                    <span>Kajian Resmi</span>
                   </div>
 
                   <Link
                     href={`/artikel/${article.slug}`}
-                    className="font-bold text-[#96702c] group-hover:text-[#836125] flex items-center gap-1 transition"
+                    className="inline-flex items-center gap-1 text-xs font-bold text-[#96702c] group-hover:text-[#7d5c21] transition-colors"
                   >
                     <span>Baca Selengkapnya</span>
                     <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-1 transition-transform" />

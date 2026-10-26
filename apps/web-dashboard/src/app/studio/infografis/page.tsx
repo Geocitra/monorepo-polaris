@@ -174,6 +174,15 @@ export default function InfografisStudioPage() {
     currentSession?.iterations.find((it) => it.id === currentSession.activeIterationId) ||
     currentSession?.iterations[currentSession.iterations.length - 1];
 
+  // Sinkronisasi status terbitan saat ganti iterasi
+  useEffect(() => {
+    if (currentIteration?.publishedUrl) {
+      setPublishedUrl(currentIteration.publishedUrl);
+    } else {
+      setPublishedUrl(null);
+    }
+  }, [currentIteration?.id, currentIteration?.publishedUrl]);
+
   // Buat Sesi Baru (+ Chat Baru)
   function handleCreateNewSession() {
     const newSessionId = `session-${Date.now()}`;
@@ -392,6 +401,7 @@ export default function InfografisStudioPage() {
         style: submittedStyle,
         aspectRatio: submittedAspectRatio,
         source: latestTargetSession.iterations.length === 0 ? 'INITIAL' : 'REFINE',
+        publicationId: publicationId || undefined,
       };
 
       const updated = sessionsRef.current.map((s) => {
@@ -526,23 +536,62 @@ export default function InfografisStudioPage() {
 
     setPublishing(true);
     try {
-      await ApiClient.request<any>('/studio/articles/publish', {
+      const res = await ApiClient.request<any>('/studio/infographics/publish', {
         method: 'POST',
         body: JSON.stringify({
           title: currentIteration.title,
-          bodyContentMarkdown: `# ${currentIteration.title}\n\n![${currentIteration.title}](${currentIteration.imageUrl})\n\n*Dipublikasikan melalui Studio Infografis Polaris Gov.*`,
+          imageUrl: currentIteration.imageUrl,
+          caption: currentIteration.caption,
+          prompt: currentIteration.prompt,
+          aspectRatio: currentIteration.aspectRatio,
+          style: currentIteration.style,
+          publicationId: currentIteration.publicationId,
         }),
       });
 
-      const portalDomain = profile?.subdomain
-        ? `http://${profile.subdomain}.localhost:3001`
-        : 'http://localhost:3001';
-      setPublishedUrl(`${portalDomain}/artikel/kesenjangan-digital`);
+      const portalHost =
+        typeof window !== 'undefined' &&
+        (window.location.hostname === 'localhost' || window.location.hostname.endsWith('.localhost'))
+          ? profile?.subdomain
+            ? `http://${profile.subdomain}.localhost:3001`
+            : 'http://localhost:3001'
+          : profile?.subdomain
+            ? `https://${profile.subdomain}.polaris.id`
+            : 'https://polaris.id';
+
+      const finalUrl = res?.slug
+        ? `${portalHost}/artikel/${res.slug}`
+        : (res?.canonicalUrl || `${portalHost}/infografis`);
+
+      setPublishedUrl(finalUrl);
+
+      // Simpan status published di iterasi aktif & localStorage
+      const updated = sessionsRef.current.map((s) => {
+        if (s.id === activeSessionId) {
+          return {
+            ...s,
+            updatedAt: new Date().toISOString(),
+            iterations: s.iterations.map((it) =>
+              it.id === currentIteration.id
+                ? {
+                    ...it,
+                    isPublished: true,
+                    publishedUrl: finalUrl,
+                    publicationId: res?.publicationId || it.publicationId,
+                  }
+                : it
+            ),
+          };
+        }
+        return s;
+      });
+
+      persistSessions(updated);
 
       toast({
         type: 'success',
-        title: 'Infografis Diterbitkan!',
-        description: 'Telah tayang di galeri publik website resmi dewan.',
+        title: 'Infografis Berhasil Diterbitkan!',
+        description: 'Telah tayang resmi di portal publik website anggota dewan.',
       });
     } catch (err: any) {
       toast({

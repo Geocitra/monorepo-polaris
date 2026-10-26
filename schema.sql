@@ -282,12 +282,40 @@ CREATE TABLE IF NOT EXISTS portal_theme_settings (
   primary_hex_color VARCHAR(7) NOT NULL DEFAULT '#1890ff',
   secondary_hex_color VARCHAR(7) NOT NULL DEFAULT '#001529',
   font_family VARCHAR(50) NOT NULL DEFAULT 'Inter, sans-serif',
+  layout_template_id VARCHAR(50) NOT NULL DEFAULT 'standard-default',
+  layout_schema JSONB,
   hero_banner_url TEXT,
   official_photo_url TEXT,
   headline_tagline VARCHAR(255),
   bio_biography TEXT,
   updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
+
+CREATE TABLE IF NOT EXISTS portal_documents (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  portal_id UUID NOT NULL REFERENCES portal_configs(id) ON DELETE CASCADE,
+  title VARCHAR(255) NOT NULL,
+  doc_type VARCHAR(50) DEFAULT 'REPORT_TRIWULAN' NOT NULL,
+  description TEXT,
+  file_url TEXT NOT NULL,
+  file_size_bytes INTEGER,
+  download_count INTEGER DEFAULT 0 NOT NULL,
+  published_at TIMESTAMPTZ DEFAULT now() NOT NULL,
+  created_at TIMESTAMPTZ DEFAULT now() NOT NULL,
+  updated_at TIMESTAMPTZ DEFAULT now() NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS portal_newsletter_subscribers (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  portal_id UUID NOT NULL REFERENCES portal_configs(id) ON DELETE CASCADE,
+  email VARCHAR(255) NOT NULL,
+  is_active BOOLEAN DEFAULT true NOT NULL,
+  created_at TIMESTAMPTZ DEFAULT now() NOT NULL,
+  updated_at TIMESTAMPTZ DEFAULT now() NOT NULL,
+  CONSTRAINT unq_portal_email UNIQUE (portal_id, email)
+);
+
+CREATE INDEX IF NOT EXISTS idx_portal_subscribers ON portal_newsletter_subscribers (portal_id, created_at);
 
 CREATE TABLE IF NOT EXISTS social_links (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),

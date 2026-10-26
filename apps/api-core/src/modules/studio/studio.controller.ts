@@ -11,7 +11,12 @@ import {
   UseGuards
 } from '@nestjs/common';
 import { StudioService } from './studio.service.js';
-import { GenerateArticleRequestDto, UpdateDraftArticleDto, UploadArticleImageDto } from './dto/studio.dto.js';
+import {
+  GenerateArticleRequestDto,
+  UpdateDraftArticleDto,
+  UploadArticleImageDto,
+  PublishInfographicDto,
+} from './dto/studio.dto.js';
 import { CurrentTenant, AuthenticatedTenantPayload } from '../../common/decorators/current-tenant.decorator.js';
 import { SubscriptionGuard } from '../../common/guards/subscription.guard.js';
 import { TokenCircuitBreakerGuard } from '../../common/guards/token-circuit-breaker.guard.js';
@@ -183,5 +188,51 @@ export class StudioController {
   ) {
     return await this.studioService.deleteResearchSource(user.tenantId, id, sourceId);
   }
-}
 
+  // ─── INFOGRAFIS AI PUBLISH & MANAGEMENT ENDPOINTS ───
+  @Post('infographics/publish')
+  @UseGuards(SubscriptionGuard)
+  @HttpCode(HttpStatus.OK)
+  async publishInfographic(
+    @CurrentTenant() user: AuthenticatedTenantPayload,
+    @Body() dto: PublishInfographicDto
+  ) {
+    return await this.studioService.publishInfographic(user.tenantId, dto);
+  }
+
+  @Post('infographics/:id/publish')
+  @UseGuards(SubscriptionGuard)
+  @HttpCode(HttpStatus.OK)
+  async publishInfographicById(
+    @CurrentTenant() user: AuthenticatedTenantPayload,
+    @Param('id') id: string,
+    @Body() dto: Partial<PublishInfographicDto>
+  ) {
+    return await this.studioService.publishInfographic(user.tenantId, { ...dto, publicationId: id } as PublishInfographicDto);
+  }
+
+  @Post('infographics/:id/unpublish')
+  @UseGuards(SubscriptionGuard)
+  @HttpCode(HttpStatus.OK)
+  async unpublishInfographic(
+    @CurrentTenant() user: AuthenticatedTenantPayload,
+    @Param('id') id: string
+  ) {
+    return await this.studioService.unpublishInfographic(user.tenantId, id);
+  }
+
+  @Get('infographics')
+  @HttpCode(HttpStatus.OK)
+  async listInfographics(@CurrentTenant() user: AuthenticatedTenantPayload) {
+    return await this.studioService.listInfographics(user.tenantId);
+  }
+
+  @Get('infographics/:id')
+  @HttpCode(HttpStatus.OK)
+  async getInfographicDetail(
+    @CurrentTenant() user: AuthenticatedTenantPayload,
+    @Param('id') id: string
+  ) {
+    return await this.studioService.getInfographicDetail(user.tenantId, id);
+  }
+}

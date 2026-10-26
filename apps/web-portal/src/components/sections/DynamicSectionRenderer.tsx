@@ -3,6 +3,7 @@
 import React from 'react';
 import { PortalSectionType, PortalTemplateId } from '@polaris/shared-types';
 import { DEFAULT_PRESET_LAYOUTS, SectionDescriptor } from './SectionPresets';
+import { generateDynamicThemeCss } from '@/lib/dynamicThemeCss';
 import { HeroFeaturedStory } from './HeroFeaturedStory';
 import { HeroParliamentStand } from './HeroParliamentStand';
 import { HeroVideoLoop } from './HeroVideoLoop';
@@ -13,11 +14,44 @@ import { NewsletterSubscriptionBox } from './NewsletterSubscriptionBox';
 import { PhotojournalismGallery } from './PhotojournalismGallery';
 import { MetricsInfographicDock } from './MetricsInfographicDock';
 import { CivicAspirationCTA } from './CivicAspirationCTA';
+import {
+  DarkModernTemplate,
+  BoldTypographyTemplate,
+  NeonGlowTemplate,
+  CreativeWarmTemplate,
+  CleanEditorialTemplate,
+  PolarisInsightTemplate,
+  WarmPortfolioTemplate,
+  MidnightGoldTemplate,
+  EmeraldTechTemplate,
+  QurifolioTemplate,
+  AmberPortfolioTemplate,
+  MidnightLimeTemplate,
+  PlatinumSlateTemplate,
+  CreatixLimeTemplate,
+  StudioEditorialTemplate,
+  FoliobloxTemplate,
+  NayaEditorialTemplate,
+  CrimsonNoirTemplate,
+  GoldenSplitTemplate,
+  BlushEditorialTemplate,
+  ParichayAmberTemplate,
+  OrixVioletTemplate,
+  AgethaRubyTemplate,
+  WashoskiCyanTemplate,
+  ArikNoirTemplate,
+  AnivioxEmeraldTemplate,
+  LailaSakuraTemplate,
+  NexoraVioletTemplate,
+  XenonMintTemplate,
+  TiaraBurgundyTemplate,
+} from '../templates';
 
 interface DynamicSectionRendererProps {
   member: any;
   theme: any;
   recentArticles?: any[];
+  recentInfographics?: any[];
   documents?: any[];
   subdomain?: string;
 }
@@ -26,11 +60,467 @@ export function DynamicSectionRenderer({
   member,
   theme,
   recentArticles = [],
+  recentInfographics = [],
   documents = [],
   subdomain,
 }: DynamicSectionRendererProps) {
-  // 1. Resolve Layout Configuration (SDUI Schema or Preset Fallback)
-  const templateId = theme?.layoutTemplateId || PortalTemplateId.POLARIS_INSIGHT;
+  // 1. Resolve Layout Configuration with Instant Live Preview Support
+  const [activeTemplateId, setActiveTemplateId] = React.useState<string>(
+    theme?.layoutTemplateId || PortalTemplateId.DARK_MODERN
+  );
+
+  React.useEffect(() => {
+    if (theme?.layoutTemplateId) {
+      setActiveTemplateId(theme.layoutTemplateId);
+    }
+  }, [theme?.layoutTemplateId]);
+
+  // Listen to instantaneous postMessage from dashboard live simulator
+  React.useEffect(() => {
+    function handleSimulatorMessage(event: MessageEvent) {
+      if (event.data?.type === 'POLARIS_PREVIEW_TEMPLATE_CHANGE' && event.data?.templateId) {
+        setActiveTemplateId(event.data.templateId);
+      }
+    }
+    window.addEventListener('message', handleSimulatorMessage);
+    return () => window.removeEventListener('message', handleSimulatorMessage);
+  }, []);
+
+  const [activePrimaryColor, setActivePrimaryColor] = React.useState<string>(
+    theme?.primaryHexColor || '#1890FF'
+  );
+
+  React.useEffect(() => {
+    if (theme?.primaryHexColor) {
+      setActivePrimaryColor(theme.primaryHexColor);
+    }
+  }, [theme?.primaryHexColor]);
+
+  // Listen to instantaneous postMessage from dashboard live simulator for color change
+  React.useEffect(() => {
+    function handleSimulatorColorMessage(event: MessageEvent) {
+      if (event.data?.type === 'POLARIS_PREVIEW_COLOR_CHANGE' && event.data?.primaryHexColor) {
+        setActivePrimaryColor(event.data.primaryHexColor);
+      }
+    }
+    window.addEventListener('message', handleSimulatorColorMessage);
+    return () => window.removeEventListener('message', handleSimulatorColorMessage);
+  }, []);
+
+  const templateId = activeTemplateId;
+  const currentTheme = React.useMemo(() => ({
+    ...theme,
+    layoutTemplateId: activeTemplateId,
+    primaryHexColor: activePrimaryColor,
+  }), [theme, activeTemplateId, activePrimaryColor]);
+
+  const dynamicCss = React.useMemo(
+    () => generateDynamicThemeCss(activePrimaryColor),
+    [activePrimaryColor]
+  );
+
+  const wrapWithTheme = (node: React.ReactNode) => (
+    <div data-polaris-theme="true" className="w-full min-h-screen">
+      {dynamicCss && (
+        <style dangerouslySetInnerHTML={{ __html: dynamicCss }} />
+      )}
+      {node}
+    </div>
+  );
+
+  // Direct render for Standalone Custom Visual Templates
+  if (templateId === PortalTemplateId.DARK_MODERN) {
+    return wrapWithTheme(
+      <DarkModernTemplate
+        member={member}
+        theme={currentTheme}
+        recentArticles={recentArticles}
+        recentInfographics={recentInfographics}
+        documents={documents}
+        subdomain={subdomain}
+      />
+    );
+  }
+
+  if (templateId === PortalTemplateId.BOLD_TYPOGRAPHY) {
+    return wrapWithTheme(
+      <BoldTypographyTemplate
+        member={member}
+        theme={currentTheme}
+        recentArticles={recentArticles}
+        recentInfographics={recentInfographics}
+        documents={documents}
+        subdomain={subdomain}
+      />
+    );
+  }
+
+  if (templateId === PortalTemplateId.NEON_GLOW) {
+    return wrapWithTheme(
+      <NeonGlowTemplate
+        member={member}
+        theme={currentTheme}
+        recentArticles={recentArticles}
+        recentInfographics={recentInfographics}
+        documents={documents}
+        subdomain={subdomain}
+      />
+    );
+  }
+
+  if (templateId === PortalTemplateId.CREATIVE_WARM) {
+    return wrapWithTheme(
+      <CreativeWarmTemplate
+        member={member}
+        theme={currentTheme}
+        recentArticles={recentArticles}
+        recentInfographics={recentInfographics}
+        documents={documents}
+        subdomain={subdomain}
+      />
+    );
+  }
+
+  if (templateId === PortalTemplateId.CLEAN_EDITORIAL) {
+    return wrapWithTheme(
+      <CleanEditorialTemplate
+        member={member}
+        theme={currentTheme}
+        recentArticles={recentArticles}
+        recentInfographics={recentInfographics}
+        documents={documents}
+        subdomain={subdomain}
+      />
+    );
+  }
+
+  if (templateId === PortalTemplateId.WARM_PORTFOLIO || templateId === 'warm-portfolio') {
+    return wrapWithTheme(
+      <WarmPortfolioTemplate
+        member={member}
+        theme={currentTheme}
+        recentArticles={recentArticles}
+        recentInfographics={recentInfographics}
+        documents={documents}
+        subdomain={subdomain}
+      />
+    );
+  }
+
+  if (templateId === PortalTemplateId.MIDNIGHT_GOLD || templateId === 'midnight-gold') {
+    return wrapWithTheme(
+      <MidnightGoldTemplate
+        member={member}
+        theme={currentTheme}
+        recentArticles={recentArticles}
+        recentInfographics={recentInfographics}
+        documents={documents}
+        subdomain={subdomain}
+      />
+    );
+  }
+
+  if (templateId === PortalTemplateId.EMERALD_TECH || templateId === 'emerald-tech') {
+    return wrapWithTheme(
+      <EmeraldTechTemplate
+        member={member}
+        theme={currentTheme}
+        recentArticles={recentArticles}
+        recentInfographics={recentInfographics}
+        documents={documents}
+        subdomain={subdomain}
+      />
+    );
+  }
+
+  if (templateId === PortalTemplateId.QURIFOLIO || templateId === 'qurifolio') {
+    return wrapWithTheme(
+      <QurifolioTemplate
+        member={member}
+        theme={currentTheme}
+        recentArticles={recentArticles}
+        recentInfographics={recentInfographics}
+        documents={documents}
+        subdomain={subdomain}
+      />
+    );
+  }
+
+  if (templateId === PortalTemplateId.AMBER_PORTFOLIO || templateId === 'amber-portfolio') {
+    return wrapWithTheme(
+      <AmberPortfolioTemplate
+        member={member}
+        theme={currentTheme}
+        recentArticles={recentArticles}
+        recentInfographics={recentInfographics}
+        documents={documents}
+        subdomain={subdomain}
+      />
+    );
+  }
+
+  if (templateId === PortalTemplateId.MIDNIGHT_LIME || templateId === 'midnight-lime') {
+    return wrapWithTheme(
+      <MidnightLimeTemplate
+        member={member}
+        theme={currentTheme}
+        recentArticles={recentArticles}
+        recentInfographics={recentInfographics}
+        documents={documents}
+        subdomain={subdomain}
+      />
+    );
+  }
+
+  if (templateId === PortalTemplateId.PLATINUM_SLATE || templateId === 'platinum-slate') {
+    return wrapWithTheme(
+      <PlatinumSlateTemplate
+        member={member}
+        theme={currentTheme}
+        recentArticles={recentArticles}
+        recentInfographics={recentInfographics}
+        documents={documents}
+        subdomain={subdomain}
+      />
+    );
+  }
+
+  if (templateId === PortalTemplateId.CREATIX_LIME || templateId === 'creatix-lime') {
+    return wrapWithTheme(
+      <CreatixLimeTemplate
+        member={member}
+        theme={currentTheme}
+        recentArticles={recentArticles}
+        recentInfographics={recentInfographics}
+        documents={documents}
+        subdomain={subdomain}
+      />
+    );
+  }
+
+  if (templateId === PortalTemplateId.STUDIO_EDITORIAL || templateId === 'studio-editorial') {
+    return wrapWithTheme(
+      <StudioEditorialTemplate
+        member={member}
+        theme={currentTheme}
+        recentArticles={recentArticles}
+        recentInfographics={recentInfographics}
+        documents={documents}
+        subdomain={subdomain}
+      />
+    );
+  }
+
+  if (templateId === PortalTemplateId.FOLIOBLOX || templateId === 'folioblox') {
+    return wrapWithTheme(
+      <FoliobloxTemplate
+        member={member}
+        theme={currentTheme}
+        recentArticles={recentArticles}
+        recentInfographics={recentInfographics}
+        documents={documents}
+        subdomain={subdomain}
+      />
+    );
+  }
+
+  if (templateId === PortalTemplateId.CRIMSON_NOIR || templateId === 'crimson-noir') {
+    return wrapWithTheme(
+      <CrimsonNoirTemplate
+        member={member}
+        theme={currentTheme}
+        recentArticles={recentArticles}
+        recentInfographics={recentInfographics}
+        documents={documents}
+        subdomain={subdomain}
+      />
+    );
+  }
+
+  if (templateId === PortalTemplateId.GOLDEN_SPLIT || templateId === 'golden-split') {
+    return wrapWithTheme(
+      <GoldenSplitTemplate
+        member={member}
+        theme={currentTheme}
+        recentArticles={recentArticles}
+        recentInfographics={recentInfographics}
+        documents={documents}
+        subdomain={subdomain}
+      />
+    );
+  }
+
+  if (templateId === PortalTemplateId.BLUSH_EDITORIAL || templateId === 'blush-editorial') {
+    return wrapWithTheme(
+      <BlushEditorialTemplate
+        member={member}
+        theme={currentTheme}
+        recentArticles={recentArticles}
+        recentInfographics={recentInfographics}
+        documents={documents}
+        subdomain={subdomain}
+      />
+    );
+  }
+
+  if (templateId === PortalTemplateId.PARICHAY_AMBER || templateId === 'parichay-amber') {
+    return wrapWithTheme(
+      <ParichayAmberTemplate
+        member={member}
+        theme={currentTheme}
+        recentArticles={recentArticles}
+        recentInfographics={recentInfographics}
+        documents={documents}
+        subdomain={subdomain}
+      />
+    );
+  }
+
+  if (templateId === PortalTemplateId.ORIX_VIOLET || templateId === 'orix-violet') {
+    return wrapWithTheme(
+      <OrixVioletTemplate
+        member={member}
+        theme={currentTheme}
+        recentArticles={recentArticles}
+        recentInfographics={recentInfographics}
+        documents={documents}
+        subdomain={subdomain}
+      />
+    );
+  }
+
+  if (templateId === PortalTemplateId.AGETHA_RUBY || templateId === 'agetha-ruby') {
+    return wrapWithTheme(
+      <AgethaRubyTemplate
+        member={member}
+        theme={currentTheme}
+        recentArticles={recentArticles}
+        recentInfographics={recentInfographics}
+        documents={documents}
+        subdomain={subdomain}
+      />
+    );
+  }
+
+  if (templateId === PortalTemplateId.WASHOSKI_CYAN || templateId === 'washoski-cyan') {
+    return wrapWithTheme(
+      <WashoskiCyanTemplate
+        member={member}
+        theme={currentTheme}
+        recentArticles={recentArticles}
+        recentInfographics={recentInfographics}
+        documents={documents}
+        subdomain={subdomain}
+      />
+    );
+  }
+
+  if (templateId === PortalTemplateId.ARIK_NOIR || templateId === 'arik-noir') {
+    return wrapWithTheme(
+      <ArikNoirTemplate
+        member={member}
+        theme={currentTheme}
+        recentArticles={recentArticles}
+        recentInfographics={recentInfographics}
+        documents={documents}
+        subdomain={subdomain}
+      />
+    );
+  }
+
+  if (templateId === PortalTemplateId.ANIVIOX_EMERALD || templateId === 'aniviox-emerald') {
+    return wrapWithTheme(
+      <AnivioxEmeraldTemplate
+        member={member}
+        theme={currentTheme}
+        recentArticles={recentArticles}
+        recentInfographics={recentInfographics}
+        documents={documents}
+        subdomain={subdomain}
+      />
+    );
+  }
+
+  if (templateId === PortalTemplateId.LAILA_SAKURA || templateId === 'laila-sakura') {
+    return wrapWithTheme(
+      <LailaSakuraTemplate
+        member={member}
+        theme={currentTheme}
+        recentArticles={recentArticles}
+        recentInfographics={recentInfographics}
+        documents={documents}
+        subdomain={subdomain}
+      />
+    );
+  }
+
+  if (templateId === PortalTemplateId.NEXORA_VIOLET || templateId === 'nexora-violet') {
+    return wrapWithTheme(
+      <NexoraVioletTemplate
+        member={member}
+        theme={currentTheme}
+        articles={recentArticles}
+        infographics={recentInfographics}
+        subdomain={subdomain}
+      />
+    );
+  }
+
+  if (templateId === PortalTemplateId.XENON_MINT || templateId === 'xenon-mint') {
+    return wrapWithTheme(
+      <XenonMintTemplate
+        member={member}
+        theme={currentTheme}
+        articles={recentArticles}
+        infographics={recentInfographics}
+        subdomain={subdomain}
+      />
+    );
+  }
+
+  if (templateId === (PortalTemplateId as any).TIARA_BURGUNDY || templateId === 'tiara-burgundy') {
+    return wrapWithTheme(
+      <TiaraBurgundyTemplate
+        member={member}
+        theme={currentTheme}
+        articles={recentArticles}
+        infographics={recentInfographics}
+        subdomain={subdomain}
+      />
+    );
+  }
+
+
+  if (
+    templateId === PortalTemplateId.NAYA_EDITORIAL ||
+    templateId === 'naya-editorial' ||
+    templateId === 'naya-digital'
+  ) {
+    return wrapWithTheme(
+      <NayaEditorialTemplate
+        member={member}
+        theme={currentTheme}
+        recentArticles={recentArticles}
+        recentInfographics={recentInfographics}
+        documents={documents}
+        subdomain={subdomain}
+      />
+    );
+  }
+
+  if (templateId === PortalTemplateId.POLARIS_INSIGHT || templateId === PortalTemplateId.STANDARD_DEFAULT) {
+    return wrapWithTheme(
+      <PolarisInsightTemplate
+        member={member}
+        theme={currentTheme}
+        recentArticles={recentArticles}
+        recentInfographics={recentInfographics}
+        documents={documents}
+        subdomain={subdomain}
+      />
+    );
+  }
+
   const hasMatchingSchema =
     theme?.layoutSchema?.templatePreset === templateId &&
     Array.isArray(theme?.layoutSchema?.sections) &&

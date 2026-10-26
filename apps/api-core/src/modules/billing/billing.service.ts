@@ -633,7 +633,7 @@ export class BillingService {
           : [
               'Durasi Masa Aktif Penuh Sesuai Siklus',
               'AI Unlimited (Naskah Legislasi & Poster Dapil)',
-              'Bebas Pilih Layout Tematik (Editorial, Baliho, Newsroom)',
+              'Bebas Pilih Layout Tematik (Dark Modern, Bold Typography, Neon Glow, Creative Warm)',
               'Dukungan Custom Domain Pribadi (.id / .com)',
               'Fasilitasi Dokumen Administrasi SPK & Setwan',
               'Faktur Pajak Resmi Negara (PPN 11% & PPh Instansi)',

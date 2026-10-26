@@ -12,6 +12,9 @@
     "test:e2e:ui": "playwright test --ui",
     "check-types": "turbo run check-types",
     "clean": "rimraf dist .turbo",
+    "db:migrate": "node scripts/db-migrate.mjs",
+    "db:seed": "node scripts/db-seed.mjs",
+    "db:setup": "node scripts/db-setup.mjs",
     "bum": "python3 bum.py",
     "bum:keep": "python3 bum.py --keep-comments"
   },

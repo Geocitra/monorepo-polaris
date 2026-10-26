@@ -1,5 +1,5 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
-import { eq, and, desc } from 'drizzle-orm';
+import { eq, and, desc, inArray } from 'drizzle-orm';
 import {
   db,
   portalConfigs,
@@ -13,7 +13,7 @@ import {
   socialSyndicationPacks,
   subscriptions,
 } from '@polaris/database';
-import { ContentStatus, SubscriptionStatus, PlanTier } from '@polaris/shared-types';
+import { ContentStatus, SubscriptionStatus, PlanTier, AssetType } from '@polaris/shared-types';
 
 @Injectable()
 export class CmsPublicPortalService {
@@ -120,7 +120,7 @@ export class CmsPublicPortalService {
       .from(socialLinks)
       .where(eq(socialLinks.portalId, portal.id));
 
-    const recentArticles = await db
+    const publishedArticles = await db
       .select({
         id: contentPublications.id,
         title: contentPublications.title,
@@ -139,6 +139,49 @@ export class CmsPublicPortalService {
       )
       .orderBy(desc(contentPublications.publishedAt))
       .limit(50);
+
+    // Ambil media asset terkait untuk tiap publikasi (poster / featured image)
+    const articleIds = publishedArticles.map((a) => a.id);
+    const mediaMap = new Map<string, { cdnPublicUrl: string; assetType: string }>();
+    if (articleIds.length > 0) {
+      const medias = await db
+        .select({
+          publicationId: mediaAssets.publicationId,
+          cdnPublicUrl: mediaAssets.cdnPublicUrl,
+          assetType: mediaAssets.assetType,
+        })
+        .from(mediaAssets)
+        .where(
+          and(
+            inArray(mediaAssets.publicationId, articleIds),
+            inArray(mediaAssets.assetType, [AssetType.DALLE_POSTER, AssetType.INFOGRAPHIC_PNG, AssetType.HEADER_IMAGE])
+          )
+        );
+      for (const m of medias) {
+        if (!mediaMap.has(m.publicationId)) {
+          mediaMap.set(m.publicationId, { cdnPublicUrl: m.cdnPublicUrl, assetType: m.assetType });
+        }
+      }
+    }
+
+    const allPublications = publishedArticles.map((a) => {
+      const media = mediaMap.get(a.id);
+      return {
+        ...a,
+        posterUrl: media?.cdnPublicUrl || null,
+        featuredImageUrl: media?.cdnPublicUrl || null,
+        assetType: media?.assetType || null,
+      };
+    });
+
+    // Pisahkan secara tegas antara Artikel dan Infografis agar tidak bercampur di template
+    const isInfographic = (item: any) =>
+      item.assetType === 'INFOGRAPHIC_PNG' ||
+      (typeof item.slug === 'string' && item.slug.toLowerCase().startsWith('infografis-')) ||
+      (typeof item.title === 'string' && item.title.toLowerCase().startsWith('infografis:'));
+
+    const recentInfographics = allPublications.filter(isInfographic);
+    const recentArticles = allPublications.filter((item) => !isInfographic(item));
 
     const documents = await db
       .select({
@@ -191,6 +234,7 @@ export class CmsPublicPortalService {
       },
       socialLinks: socials,
       recentArticles,
+      recentInfographics,
       documents,
     };
   }

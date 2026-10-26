@@ -115,10 +115,12 @@ export class SuperadminAuthService {
     });
 
     // Kirim email lewat SMTP transport (Gmail)
-    await this.emailService.sendOtpEmail(cleanEmail, otpCode, admin.fullName);
+    const emailResult = await this.emailService.sendOtpEmail(cleanEmail, otpCode, admin.fullName);
 
     return {
-      message: `Kode otorisasi 6-digit berhasil dikirimkan ke inbox email ${cleanEmail}.`,
+      message: (emailResult as any)?.fallback
+        ? `Kode OTP darurat tercatat di konsol server backend.`
+        : `Kode otorisasi 6-digit berhasil dikirimkan ke inbox email ${cleanEmail}.`,
       expiresInMinutes: 5,
     };
   }

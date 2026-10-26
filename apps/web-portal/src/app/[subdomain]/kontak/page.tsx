@@ -1,8 +1,42 @@
 import { notFound } from 'next/navigation';
 import type { Metadata } from 'next';
-import Link from 'next/link';
 import { fetchPortalData } from '@/lib/api';
-import { Building2, Mail, MessageCircle, MapPin, ArrowLeft, Instagram, ExternalLink, Clock, ShieldCheck } from 'lucide-react';
+import { PortalTemplateId } from '@polaris/shared-types';
+
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
+import { ParliamentShell } from '@/components/templates/polaris-insight/ParliamentShell';
+import { KontakPageClient } from '@/components/templates/polaris-insight/KontakPageClient';
+import { BoldTypographyShell, BoldKontakClient } from '@/components/templates/bold-typography';
+import { DarkModernShell, DarkModernKontakClient } from '@/components/templates/dark-modern';
+import { NeonGlowShell, NeonGlowKontakClient } from '@/components/templates/neon-glow';
+import { CleanEditorialShell, CleanEditorialKontakClient } from '@/components/templates/clean-editorial';
+import { CreativeWarmShell, CreativeWarmKontakClient } from '@/components/templates/creative-warm';
+import { WarmPortfolioShell, WarmPortfolioKontakClient } from '@/components/templates/warm-portfolio';
+import { MidnightGoldShell, MidnightGoldKontakClient } from '@/components/templates/midnight-gold';
+import { EmeraldTechShell, EmeraldTechKontakClient } from '@/components/templates/emerald-tech';
+import { QurifolioShell, QurifolioKontakClient } from '@/components/templates/qurifolio';
+import { AmberPortfolioShell, AmberPortfolioKontakClient } from '@/components/templates/amber-portfolio';
+import { MidnightLimeShell, MidnightLimeKontakClient } from '@/components/templates/midnight-lime';
+import { PlatinumSlateShell, PlatinumSlateKontakClient } from '@/components/templates/platinum-slate';
+import { NayaEditorialShell, NayaEditorialKontakClient } from '@/components/templates/naya-editorial';
+import { CrimsonNoirShell, CrimsonNoirKontakClient } from '@/components/templates/crimson-noir';
+import { GoldenSplitShell, GoldenSplitKontakClient } from '@/components/templates/golden-split';
+import { BlushEditorialShell, BlushEditorialKontakClient } from '@/components/templates/blush-editorial';
+import { FoliobloxShell, FoliobloxKontakClient } from '@/components/templates/folioblox';
+import { StudioEditorialShell, StudioEditorialKontakClient } from '@/components/templates/studio-editorial';
+import { CreatixLimeShell, CreatixLimeKontakClient } from '@/components/templates/creatix-lime';
+import { ParichayAmberKontakClient } from '@/components/templates/parichay-amber';
+import { OrixVioletKontakClient } from '@/components/templates/orix-violet';
+import { AgethaRubyKontakClient } from '@/components/templates/agetha-ruby';
+import { WashoskiCyanKontakClient } from '@/components/templates/washoski-cyan';
+import { ArikNoirKontakClient } from '@/components/templates/arik-noir';
+import { AnivioxEmeraldKontakClient } from '@/components/templates/aniviox-emerald';
+import { LailaSakuraKontakClient } from '@/components/templates/laila-sakura';
+import { NexoraVioletKontakClient } from '@/components/templates/nexora-violet';
+import { XenonMintKontakClient } from '@/components/templates/xenon-mint';
+import { TiaraBurgundyKontakClient } from '@/components/templates/tiara-burgundy';
+
 
 export async function generateMetadata({
   params,
@@ -15,145 +49,500 @@ export async function generateMetadata({
 
   return {
     title: `Kontak Resmi & Sekretariat - ${data.member.fullName}`,
-    description: `Alamat kantor perwakilan dewan, kontak staf ahli, dan media sosial resmi ${data.member.fullName}.`,
+    description: `Alamat kantor perwakilan dewan, layanan staf ahli, saluran aspirasi, dan media sosial resmi ${data.member.fullName}.`,
   };
 }
 
 export default async function KontakPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ subdomain: string }>;
+  searchParams?: Promise<{ preview_template?: string; preview_color?: string }>;
 }) {
   const { subdomain } = await params;
+  const sp = searchParams ? await searchParams : {};
   const data = await fetchPortalData(subdomain);
   if (!data) notFound();
 
-  const { member } = data;
-  const party = member.partyAffiliation || 'Golkar';
-  const dapil = member.dapilName || member.customDapil || 'Jawa Barat I';
+  const { member, theme } = data;
+  const effectiveTheme = {
+    ...theme,
+    ...(sp.preview_template ? { layoutTemplateId: sp.preview_template } : {}),
+    ...(sp.preview_color ? { primaryHexColor: sp.preview_color } : {}),
+  };
+  const templateId = effectiveTheme?.layoutTemplateId || PortalTemplateId.POLARIS_INSIGHT;
+
+  const officialFullName =
+    member?.fullName ||
+    theme?.officialFullName ||
+    'Dr. Ir. Sangsoro Mowo Berkah, M.Sc.';
+  const dapil =
+    member?.dapilName || member?.customDapilName || member?.customDapil || 'Jawa Barat I';
+
+  if (templateId === PortalTemplateId.BOLD_TYPOGRAPHY || templateId === 'bold-typography') {
+    return (
+      <BoldTypographyShell
+        member={member}
+        theme={effectiveTheme}
+        subdomain={subdomain}
+        activePage="kontak"
+        breadcrumbTitle="Kontak & Sekretariat"
+        pageBadge="Kanal Korespondensi & Layanan Konstituen"
+        pageTitle="Kontak & Sekretariat Resmi"
+        pageSubtitle={`Informasi alamat kantor perwakilan, posko aspirasi konstituen Daerah Pemilihan ${dapil}, layanan staf ahli dewan, dan saluran komunikasi langsung bersama ${officialFullName}.`}
+      >
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10 sm:py-16">
+          <BoldKontakClient member={member} theme={effectiveTheme} subdomain={subdomain} />
+        </div>
+      </BoldTypographyShell>
+    );
+  }
+
+  if (templateId === PortalTemplateId.DARK_MODERN || templateId === 'dark-modern') {
+    return (
+      <DarkModernShell
+        member={member}
+        theme={effectiveTheme}
+        subdomain={subdomain}
+        activePage="kontak"
+        breadcrumbTitle="Kontak & Sekretariat"
+        pageBadge="Kanal Korespondensi & Layanan Konstituen"
+        pageTitle="Kontak & Sekretariat Resmi"
+        pageSubtitle={`Informasi alamat kantor perwakilan, posko aspirasi konstituen Daerah Pemilihan ${dapil}, layanan staf ahli dewan, dan saluran komunikasi langsung bersama ${officialFullName}.`}
+      >
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10 sm:py-16">
+          <DarkModernKontakClient member={member} theme={effectiveTheme} subdomain={subdomain} />
+        </div>
+      </DarkModernShell>
+    );
+  }
+
+  if (templateId === PortalTemplateId.NEON_GLOW || templateId === 'neon-glow') {
+    return (
+      <NeonGlowShell
+        member={member}
+        theme={effectiveTheme}
+        subdomain={subdomain}
+        activePage="kontak"
+        breadcrumbTitle="Kontak & Sekretariat"
+        pageBadge="Kanal Korespondensi & Layanan Konstituen"
+        pageTitle="Kontak & Sekretariat Resmi"
+        pageSubtitle={`Informasi alamat kantor perwakilan, posko aspirasi konstituen Daerah Pemilihan ${dapil}, layanan staf ahli dewan, dan saluran komunikasi langsung bersama ${officialFullName}.`}
+      >
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10 sm:py-16">
+          <NeonGlowKontakClient member={member} theme={effectiveTheme} subdomain={subdomain} />
+        </div>
+      </NeonGlowShell>
+    );
+  }
+
+  if (templateId === PortalTemplateId.CLEAN_EDITORIAL || templateId === 'clean-editorial') {
+    return (
+      <CleanEditorialShell
+        member={member}
+        theme={effectiveTheme}
+        subdomain={subdomain}
+        activePage="kontak"
+        breadcrumbTitle="Kontak & Sekretariat"
+        pageBadge="KANAL KOLEKTIF & KOMUNIKASI RESMI"
+        pageTitle="Kontak & Sekretariat Resmi"
+        pageSubtitle={`Informasi alamat kantor perwakilan, posko aspirasi konstituen Daerah Pemilihan ${dapil}, layanan staf ahli dewan, dan saluran komunikasi langsung bersama ${officialFullName}.`}
+      >
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10 sm:py-16">
+          <CleanEditorialKontakClient member={member} theme={effectiveTheme} subdomain={subdomain} />
+        </div>
+      </CleanEditorialShell>
+    );
+  }
+
+  if (templateId === PortalTemplateId.CREATIVE_WARM || templateId === 'creative-warm') {
+    return (
+      <CreativeWarmShell
+        member={member}
+        theme={effectiveTheme}
+        subdomain={subdomain}
+        activePage="kontak"
+        breadcrumbTitle="Kontak & Sekretariat"
+        pageBadge="Kanal Aspirasi & Kontak Resmi"
+        pageTitle="Kontak & Sekretariat Resmi"
+        pageSubtitle={`Informasi alamat kantor perwakilan, posko aspirasi konstituen Daerah Pemilihan ${dapil}, layanan staf ahli dewan, dan saluran komunikasi langsung bersama ${officialFullName}.`}
+      >
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10 sm:py-16">
+          <CreativeWarmKontakClient member={member} theme={effectiveTheme} subdomain={subdomain} />
+        </div>
+      </CreativeWarmShell>
+    );
+  }
+
+  if (templateId === PortalTemplateId.FOLIOBLOX || templateId === 'folioblox') {
+    return (
+      <FoliobloxShell
+        member={member}
+        theme={effectiveTheme}
+        subdomain={subdomain}
+        activePage="kontak"
+        breadcrumbTitle="Kontak & Sekretariat"
+        pageBadge="Kanal Aspirasi & Kontak Resmi"
+        pageTitle="Kontak & Posko Pengaduan Resmi"
+        pageSubtitle={`Informasi alamat kantor perwakilan, posko aspirasi konstituen Daerah Pemilihan ${dapil}, layanan staf ahli dewan, dan saluran komunikasi langsung bersama ${officialFullName}.`}
+      >
+        <FoliobloxKontakClient member={member} theme={effectiveTheme} subdomain={subdomain} />
+      </FoliobloxShell>
+    );
+  }
+
+  if (templateId === PortalTemplateId.STUDIO_EDITORIAL || templateId === 'studio-editorial') {
+    return (
+      <StudioEditorialShell
+        member={member}
+        theme={effectiveTheme}
+        subdomain={subdomain}
+        activePage="kontak"
+        breadcrumbTitle="Saluran Aspirasi & Kontak"
+        pageBadge="SALURAN ASPIRASI AKTIF"
+        pageTitle="Kontak Dewan & Sekretariat Parlemen"
+        pageSubtitle={`Informasi alamat kantor perwakilan, rumah aspirasi Dapil ${dapil}, nomor pengaduan konstituen, dan layanan staf ahli dewan bersama ${officialFullName}.`}
+      >
+        <StudioEditorialKontakClient member={member} theme={effectiveTheme} subdomain={subdomain} />
+      </StudioEditorialShell>
+    );
+  }
+
+  if (
+    templateId === PortalTemplateId.WARM_PORTFOLIO ||
+    templateId === 'warm-portfolio'
+  ) {
+    return (
+      <WarmPortfolioShell
+        member={member}
+        theme={effectiveTheme}
+        subdomain={subdomain}
+        activePage="kontak"
+        breadcrumbTitle="Kontak & Sekretariat"
+        pageBadge="Kanal Aspirasi & Kontak Resmi"
+        pageTitle="Kontak & Sekretariat Resmi"
+        pageSubtitle={`Informasi alamat kantor perwakilan, posko aspirasi konstituen Daerah Pemilihan ${dapil}, layanan staf ahli dewan, dan saluran komunikasi langsung bersama ${officialFullName}.`}
+      >
+        <WarmPortfolioKontakClient member={member} theme={effectiveTheme} subdomain={subdomain} />
+      </WarmPortfolioShell>
+    );
+  }
+
+  if (templateId === PortalTemplateId.CRIMSON_NOIR || templateId === 'crimson-noir') {
+    return (
+      <CrimsonNoirShell
+        member={member}
+        theme={effectiveTheme}
+        subdomain={subdomain}
+        activePage="kontak"
+        breadcrumbTitle="Kontak"
+        pageBadge="Mari Terhubung"
+        pageTitle="Kontak & Posko Aspirasi"
+        pageSubtitle={`Sampaikan gagasan, laporan persoalan daerah, masukan regulasi, atau permohonan audiensi langsung kepada ${officialFullName}.`}
+        showCta={false}
+      >
+        <CrimsonNoirKontakClient member={member} theme={effectiveTheme} subdomain={subdomain} />
+      </CrimsonNoirShell>
+    );
+  }
+
+  if (templateId === PortalTemplateId.GOLDEN_SPLIT || templateId === 'golden-split') {
+    return (
+      <GoldenSplitShell
+        member={member}
+        theme={effectiveTheme}
+        subdomain={subdomain}
+        activePage="kontak"
+        breadcrumbTitle="Kontak"
+        pageBadge="Posko Layanan Publik"
+        pageTitle="Kontak & Saluran Aspirasi"
+        pageSubtitle={`Sampaikan pengaduan, masukan kebijakan, atau permohonan audiensi langsung kepada ${officialFullName}.`}
+      >
+        <GoldenSplitKontakClient member={member} theme={effectiveTheme} subdomain={subdomain} />
+      </GoldenSplitShell>
+    );
+  }
+
+  if (templateId === PortalTemplateId.BLUSH_EDITORIAL || templateId === 'blush-editorial') {
+    return (
+      <BlushEditorialShell
+        member={member}
+        theme={effectiveTheme}
+        subdomain={subdomain}
+        activePage="kontak"
+        breadcrumbTitle="Kontak"
+        pageBadge="Posko Aspirasi & Pengaduan"
+        pageTitle="Kontak & Saluran Aspirasi"
+        pageSubtitle={`Sampaikan aspirasi warga, permohonan audiensi, serta usulan perbaikan layanan publik langsung kepada ${officialFullName}.`}
+      >
+        <BlushEditorialKontakClient member={member} theme={effectiveTheme} subdomain={subdomain} />
+      </BlushEditorialShell>
+    );
+  }
+
+  if (templateId === PortalTemplateId.PARICHAY_AMBER || templateId === 'parichay-amber') {
+    return (
+      <ParichayAmberKontakClient
+        member={member}
+        theme={effectiveTheme}
+        subdomain={subdomain}
+      />
+    );
+  }
+
+  if (templateId === PortalTemplateId.ORIX_VIOLET || templateId === 'orix-violet') {
+    return (
+      <OrixVioletKontakClient
+        member={member}
+        theme={effectiveTheme}
+        subdomain={subdomain}
+      />
+    );
+  }
+
+  if (templateId === PortalTemplateId.AGETHA_RUBY || templateId === 'agetha-ruby') {
+    return (
+      <AgethaRubyKontakClient
+        member={member}
+        theme={effectiveTheme}
+        subdomain={subdomain}
+      />
+    );
+  }
+
+  if (templateId === PortalTemplateId.WASHOSKI_CYAN || templateId === 'washoski-cyan') {
+    return (
+      <WashoskiCyanKontakClient
+        member={member}
+        theme={effectiveTheme}
+        subdomain={subdomain}
+      />
+    );
+  }
+
+  if (templateId === PortalTemplateId.ARIK_NOIR || templateId === 'arik-noir') {
+    return (
+      <ArikNoirKontakClient
+        member={member}
+        theme={effectiveTheme}
+        subdomain={subdomain}
+      />
+    );
+  }
+
+  if (templateId === PortalTemplateId.ANIVIOX_EMERALD || templateId === 'aniviox-emerald') {
+    return (
+      <AnivioxEmeraldKontakClient
+        member={member}
+        theme={effectiveTheme}
+        subdomain={subdomain}
+      />
+    );
+  }
+
+  if (templateId === PortalTemplateId.LAILA_SAKURA || templateId === 'laila-sakura') {
+    return (
+      <LailaSakuraKontakClient
+        member={member}
+        theme={effectiveTheme}
+        subdomain={subdomain}
+      />
+    );
+  }
+
+  if (templateId === PortalTemplateId.NEXORA_VIOLET || templateId === 'nexora-violet') {
+    return (
+      <NexoraVioletKontakClient
+        member={member}
+        theme={effectiveTheme}
+        subdomain={subdomain}
+      />
+    );
+  }
+
+  if (templateId === PortalTemplateId.XENON_MINT || templateId === 'xenon-mint') {
+    return (
+      <XenonMintKontakClient
+        member={member}
+        theme={effectiveTheme}
+        subdomain={subdomain}
+      />
+    );
+  }
+
+  if (templateId === (PortalTemplateId as any).TIARA_BURGUNDY || templateId === 'tiara-burgundy') {
+    return (
+      <TiaraBurgundyKontakClient
+        member={member}
+        theme={effectiveTheme}
+        subdomain={subdomain}
+      />
+    );
+  }
+
+
+  if (
+    templateId === PortalTemplateId.NAYA_EDITORIAL ||
+    templateId === 'naya-editorial' ||
+    templateId === 'naya-digital'
+  ) {
+    return (
+      <NayaEditorialShell
+        member={member}
+        theme={effectiveTheme}
+        subdomain={subdomain}
+        activePage="kontak"
+        breadcrumbTitle="Kontak & Posko Aspirasi"
+        pageBadge="Kanal Komunikasi Publik"
+        pageTitle="Posko Aspirasi & Kanal Kontak Resmi"
+        pageSubtitle={`Sampaikan gagasan, laporan persoalan lingkungan daerah, masukan regulasi daerah, serta permohonan audiensi langsung kepada ${officialFullName}.`}
+      >
+        <NayaEditorialKontakClient
+          member={member}
+          theme={effectiveTheme}
+          subdomain={subdomain}
+        />
+      </NayaEditorialShell>
+    );
+  }
+
+  if (templateId === PortalTemplateId.MIDNIGHT_GOLD || templateId === 'midnight-gold') {
+    return (
+      <MidnightGoldShell
+        member={member}
+        theme={effectiveTheme}
+        subdomain={subdomain}
+        activePage="kontak"
+        breadcrumbTitle="Kontak & Sekretariat"
+        pageBadge="Kanal Aspirasi & Kontak Resmi"
+        pageTitle="Kontak & Sekretariat Resmi"
+        pageSubtitle={`Informasi alamat kantor perwakilan, posko aspirasi konstituen Daerah Pemilihan ${dapil}, layanan staf ahli dewan, dan saluran komunikasi langsung bersama ${officialFullName}.`}
+      >
+        <MidnightGoldKontakClient member={member} theme={effectiveTheme} subdomain={subdomain} />
+      </MidnightGoldShell>
+    );
+  }
+
+  if (templateId === PortalTemplateId.EMERALD_TECH || templateId === 'emerald-tech') {
+    return (
+      <EmeraldTechShell
+        member={member}
+        theme={effectiveTheme}
+        subdomain={subdomain}
+        activePage="kontak"
+        breadcrumbTitle="Kontak & Sekretariat"
+        pageBadge="Kanal Komunikasi Resmi"
+        pageTitle="Kontak & Sekretariat Resmi"
+        pageSubtitle={`Informasi alamat kantor perwakilan, posko aspirasi konstituen Daerah Pemilihan ${dapil}, layanan staf ahli dewan, dan saluran komunikasi langsung bersama ${officialFullName}.`}
+      >
+        <EmeraldTechKontakClient member={member} theme={effectiveTheme} subdomain={subdomain} />
+      </EmeraldTechShell>
+    );
+  }
+
+  if (templateId === PortalTemplateId.QURIFOLIO || templateId === 'qurifolio') {
+    return (
+      <QurifolioShell
+        member={member}
+        theme={effectiveTheme}
+        subdomain={subdomain}
+        activePage="kontak"
+        breadcrumbTitle="Kontak"
+        pageBadge="LAYANAN ASPIRASI & KORESPONDENSI"
+        pageTitle="Pintu Terbuka Saluran Komunikasi bagi Rakyat."
+        pageSubtitle={`Informasi alamat kantor perwakilan, posko aspirasi konstituen Daerah Pemilihan ${dapil}, layanan staf ahli dewan, dan saluran komunikasi langsung bersama ${officialFullName}.`}
+      >
+        <QurifolioKontakClient member={member} theme={effectiveTheme} subdomain={subdomain} />
+      </QurifolioShell>
+    );
+  }
+
+  if (templateId === PortalTemplateId.AMBER_PORTFOLIO || templateId === 'amber-portfolio') {
+    return (
+      <AmberPortfolioShell
+        member={member}
+        theme={effectiveTheme}
+        subdomain={subdomain}
+        activePage="kontak"
+        breadcrumbTitle="Kontak"
+        pageBadge="LAYANAN ASPIRASI & KORESPONDENSI"
+        pageTitle="Pintu Terbuka Saluran Komunikasi bagi Rakyat."
+        pageSubtitle={`Informasi alamat kantor perwakilan, posko aspirasi konstituen Daerah Pemilihan ${dapil}, layanan staf ahli dewan, dan saluran komunikasi langsung bersama ${officialFullName}.`}
+      >
+        <AmberPortfolioKontakClient member={member} theme={effectiveTheme} subdomain={subdomain} />
+      </AmberPortfolioShell>
+    );
+  }
+
+  if (templateId === PortalTemplateId.CREATIX_LIME || templateId === 'creatix-lime') {
+    return (
+      <CreatixLimeShell
+        member={member}
+        theme={effectiveTheme}
+        subdomain={subdomain}
+        activePage="kontak"
+        breadcrumbTitle="Kontak & Lokasi Aspirasi"
+        pageBadge="Saluran Aspirasi Terbuka"
+        pageTitle="Kontak Dewan & Posko Aspirasi"
+        pageSubtitle={`Informasi alamat kantor perwakilan, posko aspirasi konstituen Daerah Pemilihan ${dapil}, layanan staf ahli dewan, dan saluran komunikasi langsung bersama ${officialFullName}.`}
+      >
+        <CreatixLimeKontakClient member={member} theme={effectiveTheme} subdomain={subdomain} />
+      </CreatixLimeShell>
+    );
+  }
+
+  if (
+    templateId === PortalTemplateId.MIDNIGHT_LIME ||
+    templateId === 'midnight-lime'
+  ) {
+    return (
+      <MidnightLimeShell
+        member={member}
+        theme={effectiveTheme}
+        subdomain={subdomain}
+        activePage="kontak"
+        breadcrumbTitle="Kontak"
+        pageBadge="LAYANAN ASPIRASI & KORESPONDENSI"
+        pageTitle="Pintu Terbuka Saluran Komunikasi bagi Rakyat."
+        pageSubtitle={`Informasi alamat kantor perwakilan, posko aspirasi konstituen Daerah Pemilihan ${dapil}, layanan staf ahli dewan, dan saluran komunikasi langsung bersama ${officialFullName}.`}
+      >
+        <MidnightLimeKontakClient member={member} theme={effectiveTheme} subdomain={subdomain} />
+      </MidnightLimeShell>
+    );
+  }
+
+  if (templateId === PortalTemplateId.PLATINUM_SLATE || templateId === 'platinum-slate') {
+    return (
+      <PlatinumSlateShell
+        member={member}
+        theme={effectiveTheme}
+        subdomain={subdomain}
+        activePage="kontak"
+        breadcrumbTitle="Kontak"
+        pageBadge="LAYANAN ASPIRASI & KORESPONDENSI"
+        pageTitle="Pintu Terbuka Saluran Komunikasi bagi Rakyat."
+        pageSubtitle={`Informasi alamat kantor perwakilan, posko aspirasi konstituen Daerah Pemilihan ${dapil}, layanan staf ahli dewan, dan saluran komunikasi langsung bersama ${officialFullName}.`}
+      >
+        <PlatinumSlateKontakClient member={member} theme={effectiveTheme} subdomain={subdomain} />
+      </PlatinumSlateShell>
+    );
+  }
 
   return (
-    <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8 space-y-10">
-      {/* HEADER & BREADCRUMB */}
-      <div className="space-y-3 border-b border-slate-200 pb-6">
-        <Link
-          href="/"
-          className="inline-flex items-center gap-1.5 text-xs font-bold text-slate-500 hover:text-amber-700 transition-colors"
-        >
-          <ArrowLeft className="w-3.5 h-3.5" />
-          <span>Kembali ke Beranda</span>
-        </Link>
-
-        <div>
-          <div className="inline-flex items-center gap-1.5 text-xs font-bold text-amber-700 uppercase tracking-widest mb-1">
-            <Building2 className="w-3.5 h-3.5" />
-            <span>Kanal Korespondensi & Komunikasi Dewan</span>
-          </div>
-          <h1 className="text-3xl sm:text-4xl font-black text-slate-900 tracking-tight">
-            Kontak & Sekretariat Resmi
-          </h1>
-          <p className="text-xs sm:text-sm text-slate-500 mt-1 max-w-2xl">
-            Informasi alamat kantor perwakilan, layanan staf ahli, serta kanal media sosial terverifikasi {member.fullName}.
-          </p>
-        </div>
+    <ParliamentShell
+      member={member}
+      theme={effectiveTheme}
+      subdomain={subdomain}
+      activePage="kontak"
+      breadcrumbTitle="Kontak & Sekretariat"
+      pageBadge="Kanal Korespondensi & Layanan Konstituen"
+      pageTitle="Kontak & Sekretariat Resmi"
+      pageSubtitle={`Informasi alamat kantor perwakilan, posko aspirasi konstituen Daerah Pemilihan ${dapil}, layanan staf ahli dewan, dan saluran komunikasi langsung bersama ${officialFullName}.`}
+    >
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10 sm:py-14">
+        <KontakPageClient member={member} theme={effectiveTheme} subdomain={subdomain} />
       </div>
-
-      {/* INFORMASI KANTOR & KANAL KOMUNIKASI */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {/* KARTU 1: KANTOR PERWAKILAN FRAKSI */}
-        <div className="p-6 rounded-2xl bg-white border border-slate-200/90 shadow-xs space-y-4">
-          <div className="w-10 h-10 rounded-xl bg-amber-500/10 text-amber-700 flex items-center justify-center font-black">
-            <Building2 className="w-5 h-5 text-amber-600" />
-          </div>
-          <div>
-            <h2 className="text-base font-bold text-slate-900">
-              Sekretariat Fraksi {party}
-            </h2>
-            <p className="text-xs text-slate-500 mt-1">
-              Gedung Dewan Perwakilan Rakyat
-            </p>
-          </div>
-          <div className="space-y-2 text-xs text-slate-600 border-t border-slate-100 pt-3">
-            <p className="flex items-center gap-2">
-              <MapPin className="w-4 h-4 text-slate-400 shrink-0" />
-              <span>Wilayah Penugasan: Dapil {dapil}</span>
-            </p>
-            <p className="flex items-center gap-2">
-              <Clock className="w-4 h-4 text-slate-400 shrink-0" />
-              <span>Senin – Jumat: 08.30 – 16.30 WIB</span>
-            </p>
-          </div>
-        </div>
-
-        {/* KARTU 2: WHATSAPP STAF AHLI */}
-        <div className="p-6 rounded-2xl bg-white border border-slate-200/90 shadow-xs space-y-4">
-          <div className="w-10 h-10 rounded-xl bg-emerald-500/10 text-emerald-700 flex items-center justify-center font-black">
-            <MessageCircle className="w-5 h-5 text-emerald-600" />
-          </div>
-          <div>
-            <h2 className="text-base font-bold text-slate-900">
-              WhatsApp Layanan Staf Ahli
-            </h2>
-            <p className="text-xs text-slate-500 mt-1">
-              Komunikasi permohonan dialog & konfirmasi agenda dewan.
-            </p>
-          </div>
-          <div className="border-t border-slate-100 pt-3">
-            <a
-              href="https://wa.me/?text=Halo%20Sekretariat%20Dewan,%20saya%20ingin%20mengajukan%20komunikasi%20terkait%20kebijakan."
-              target="_blank"
-              rel="noopener noreferrer"
-              className="inline-flex items-center gap-2 text-xs font-bold text-emerald-700 hover:text-emerald-800 transition"
-            >
-              <span>Hubungi via WhatsApp</span>
-              <ExternalLink className="w-3.5 h-3.5" />
-            </a>
-          </div>
-        </div>
-
-        {/* KARTU 3: MEDIA SOSIAL RESMI */}
-        <div className="p-6 rounded-2xl bg-white border border-slate-200/90 shadow-xs space-y-4">
-          <div className="w-10 h-10 rounded-xl bg-pink-500/10 text-pink-700 flex items-center justify-center font-black">
-            <Instagram className="w-5 h-5 text-pink-600" />
-          </div>
-          <div>
-            <h2 className="text-base font-bold text-slate-900">
-              Media Sosial Resmi
-            </h2>
-            <p className="text-xs text-slate-500 mt-1">
-              Dokumentasi kegiatan lapangan dan warta aktual.
-            </p>
-          </div>
-          <div className="space-y-2 border-t border-slate-100 pt-3 text-xs">
-            <a
-              href={`https://instagram.com/${subdomain}`}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="flex items-center justify-between text-slate-700 hover:text-pink-600 font-semibold transition"
-            >
-              <span>Instagram: @{subdomain}</span>
-              <ExternalLink className="w-3.5 h-3.5 text-slate-400" />
-            </a>
-            <a
-              href={`https://threads.net/@${subdomain}`}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="flex items-center justify-between text-slate-700 hover:text-slate-900 font-semibold transition"
-            >
-              <span>Threads: @{subdomain}</span>
-              <ExternalLink className="w-3.5 h-3.5 text-slate-400" />
-            </a>
-          </div>
-        </div>
-      </div>
-
-      {/* INFORMASI KEBIJAKAN PRIVASI & INTEGRITAS */}
-      <section className="p-6 rounded-2xl bg-amber-50/70 border border-amber-200/60 flex items-center gap-4 text-xs text-amber-900">
-        <ShieldCheck className="w-6 h-6 text-amber-700 shrink-0" />
-        <p className="leading-relaxed">
-          Seluruh komunikasi yang masuk ke sekretariat {member.fullName} ditangani langsung oleh tim staf ahli dewan dengan komitmen integritas, kerahasiaan identitas masyarakat sipil, dan keterbukaan informasi publik.
-        </p>
-      </section>
-    </div>
+    </ParliamentShell>
   );
 }

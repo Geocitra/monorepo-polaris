@@ -3,6 +3,9 @@ import type { Metadata } from 'next';
 import { fetchPortalData } from '@/lib/api';
 import { DynamicSectionRenderer } from '@/components/sections/DynamicSectionRenderer';
 
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
+
 export async function generateMetadata({
   params,
 }: {
@@ -53,21 +56,31 @@ export async function generateMetadata({
 
 export default async function TenantHomePage({
   params,
+  searchParams,
 }: {
   params: Promise<{ subdomain: string }>;
+  searchParams?: Promise<{ preview_template?: string; preview_color?: string }>;
 }) {
   const { subdomain } = await params;
+  const sp = searchParams ? await searchParams : {};
   const data = await fetchPortalData(subdomain);
 
   if (!data) notFound();
 
-  const { member, theme, recentArticles, documents } = data;
+  const { member, theme, recentArticles, recentInfographics, documents } = data;
+
+  const effectiveTheme = {
+    ...theme,
+    ...(sp.preview_template ? { layoutTemplateId: sp.preview_template } : {}),
+    ...(sp.preview_color ? { primaryHexColor: sp.preview_color } : {}),
+  };
 
   return (
     <DynamicSectionRenderer
       member={member}
-      theme={theme}
+      theme={effectiveTheme}
       recentArticles={recentArticles || []}
+      recentInfographics={recentInfographics || []}
       documents={documents || []}
       subdomain={subdomain}
     />

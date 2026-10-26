@@ -253,14 +253,15 @@ export class IdentityAuthService {
       attempts: 0,
     });
 
-    await this.emailService.sendOtpEmail(cleanEmail, otpCode, member.fullName);
+    const emailResult = await this.emailService.sendOtpEmail(cleanEmail, otpCode, member.fullName);
 
     return {
       step: '2FA_REQUIRED',
       requireOtp: true,
       email: cleanEmail,
-      message:
-        'Kredensial terverifikasi. Kode OTP 2FA telah dikirimkan ke kotak masuk email Anda.',
+      message: (emailResult as any)?.fallback
+        ? 'Kredensial valid. Layanan email terkendala; gunakan kode OTP darurat yang tertera di konsol backend.'
+        : 'Kredensial terverifikasi. Kode OTP 2FA telah dikirimkan ke kotak masuk email Anda.',
     };
   }
 
@@ -299,10 +300,12 @@ export class IdentityAuthService {
       attempts: 0,
     });
 
-    await this.emailService.sendOtpEmail(cleanEmail, otpCode, member.fullName);
+    const emailResult = await this.emailService.sendOtpEmail(cleanEmail, otpCode, member.fullName);
 
     return {
-      message: 'Kode OTP 6-digit berhasil dikirimkan ke email Anda. Berlaku selama 5 menit.',
+      message: (emailResult as any)?.fallback
+        ? 'Kode OTP darurat tercatat di konsol server. Berlaku selama 5 menit.'
+        : 'Kode OTP 6-digit berhasil dikirimkan ke email Anda. Berlaku selama 5 menit.',
       email: cleanEmail,
     };
   }

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useRef, useEffect, useMemo } from 'react';
 import Link from 'next/link';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -11,23 +11,32 @@ import {
   Palette,
   Paintbrush,
   Check,
+  CheckCircle2,
   Sparkles,
   User,
   Globe,
   FileText,
   Image as ImageIcon,
+  ExternalLink,
+  Upload,
+  RefreshCw,
+  Layout,
+  Layers,
+  ChevronRight,
+  Info,
+  Camera,
 } from 'lucide-react';
 import { ColorPicker } from '@/components/ui/color-picker';
 import { cn } from '@/lib/utils';
-import { TemplateLayoutSelector } from './TemplateLayoutSelector';
+import { TemplateLayoutSelector, TEMPLATE_LAYOUTS } from './TemplateLayoutSelector';
 
-interface ColorPalette {
+export interface ColorPalette {
   name: string;
   primary: string;
   secondary: string;
 }
 
-const CURATED_PALETTES: ColorPalette[] = [
+export const CURATED_PALETTES: ColorPalette[] = [
   { name: 'Biru Polaris', primary: '#3B82F6', secondary: '#0F172A' },
   { name: 'Cyan Samudra', primary: '#06B6D4', secondary: '#0B132B' },
   { name: 'Biru Safir', primary: '#4F46E5', secondary: '#1E1B4B' },
@@ -42,7 +51,7 @@ const CURATED_PALETTES: ColorPalette[] = [
   { name: 'Teal Modern', primary: '#14B8A6', secondary: '#0F1E1E' },
 ];
 
-const PARTY_PRESETS: ColorPalette[] = [
+export const PARTY_PRESETS: ColorPalette[] = [
   { name: 'Golkar', primary: '#F5B800', secondary: '#001529' },
   { name: 'PDI Perjuangan', primary: '#D60000', secondary: '#1A1A1A' },
   { name: 'Gerindra', primary: '#C92A2A', secondary: '#1E293B' },
@@ -53,10 +62,12 @@ const PARTY_PRESETS: ColorPalette[] = [
   { name: 'PAN', primary: '#003399', secondary: '#111827' },
 ];
 
-const DEFAULT_WEBSITE_COLORS = {
+export const DEFAULT_WEBSITE_COLORS = {
   primary: '#1890FF',
   secondary: '#001529',
 };
+
+export type FormSectionTab = 'colors' | 'templates' | 'profile' | 'domain' | 'all';
 
 interface ThemeFormProps {
   primaryColor: string;
@@ -68,6 +79,7 @@ interface ThemeFormProps {
   planTier?: string | null;
   officialPhotoUrl: string;
   onOfficialPhotoUrlChange: (val: string) => void;
+  profilePhotoUrl?: string;
   headlineTagline: string;
   onHeadlineTaglineChange: (val: string) => void;
   bioBiography: string;
@@ -92,6 +104,7 @@ export function ThemeForm({
   planTier,
   officialPhotoUrl,
   onOfficialPhotoUrlChange,
+  profilePhotoUrl,
   headlineTagline,
   onHeadlineTaglineChange,
   bioBiography,
@@ -104,7 +117,37 @@ export function ThemeForm({
   saving,
   onSubmit,
 }: ThemeFormProps) {
+  const [activeTab, setActiveTab] = useState<FormSectionTab>('colors');
   const [showCustomPicker, setShowCustomPicker] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const effectivePhoto = officialPhotoUrl || profilePhotoUrl || '';
+
+  useEffect(() => {
+    if (!officialPhotoUrl && profilePhotoUrl) {
+      onOfficialPhotoUrlChange(profilePhotoUrl);
+    }
+  }, [officialPhotoUrl, profilePhotoUrl, onOfficialPhotoUrlChange]);
+
+  const activeTemplate = useMemo(() => {
+    return TEMPLATE_LAYOUTS.find((tpl) => tpl.id === layoutTemplateId) || TEMPLATE_LAYOUTS[0];
+  }, [layoutTemplateId]);
+
+  const handleDirectFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (!file.type.startsWith('image/')) {
+      alert('Format berkas wajib berupa gambar (JPG, PNG, WebP).');
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      const dataUrl = event.target?.result as string;
+      if (dataUrl) {
+        onOfficialPhotoUrlChange(dataUrl);
+      }
+    };
+    reader.readAsDataURL(file);
+  };
 
   function applyPreset(p: ColorPalette) {
     onPrimaryColorChange(p.primary);
@@ -116,34 +159,20 @@ export function ThemeForm({
     onSecondaryColorChange(DEFAULT_WEBSITE_COLORS.secondary);
   }
 
-  return (
-    <Card className="lg:col-span-6 space-y-7 p-6 sm:p-7">
-      {/* ─── BANNER UNPAID ─── */}
-      {isUnpaid && (
-        <div className="p-4 rounded-2xl bg-amber-500/10 border border-amber-500/20 text-amber-900 dark:text-amber-200 space-y-2">
-          <div className="flex items-center gap-2">
-            <Lock className="h-4 w-4 text-amber-600 dark:text-amber-400 shrink-0" />
-            <span className="font-extrabold text-xs">Mode Pratinjau (Simpan Tema Terkunci)</span>
-          </div>
-          <p className="text-[11px] text-amber-700 dark:text-amber-300 leading-relaxed">
-            Eksplorasi kombinasi warna partai dan profil dapat disimulasikan secara real-time pada simulator di samping. Selesaikan aktivasi lisensi untuk menyinkronkan tema ke website publik resmi.
-          </p>
-          <Link href="/billing" className="block pt-1">
-            <Button size="sm" className="w-full bg-amber-600 hover:bg-amber-700 text-white font-bold text-xs gap-1.5 shadow-sm">
-              <Lock className="h-3.5 w-3.5" />
-              <span>Aktifkan Akun POLARIS</span>
-            </Button>
-          </Link>
-        </div>
-      )}
+  /* ─────────────────────────────────────────────────────────────
+     SUB-COMPONENTS FOR CLEAN SECTION MODULARITY
+     ───────────────────────────────────────────────────────────── */
 
-      {/* ─── HEADER: TITLE & RESET BUTTON ─── */}
+  // 1. COLORS SECTION
+  const renderColorsSection = () => (
+    <div className="space-y-6">
+      {/* HEADER: TITLE & RESET BUTTON */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-100 dark:border-slate-800 pb-4">
         <div>
-          <h2 className="text-base font-black text-slate-900 dark:text-white flex items-center gap-2">
+          <h3 className="text-base font-black text-slate-900 dark:text-white flex items-center gap-2">
             <Palette className="h-4 w-4" style={{ color: primaryColor }} />
             Skema Warna Website Publik
-          </h2>
+          </h3>
           <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
             Pilih warna resmi partai atau palet terkurasi untuk publikasi portal.
           </p>
@@ -159,7 +188,7 @@ export function ThemeForm({
         </button>
       </div>
 
-      {/* ─── STATUS WARNA TERPILIH ─── */}
+      {/* STATUS WARNA TERPILIH */}
       <div className="flex items-center gap-4 bg-slate-50 dark:bg-slate-900/60 p-3.5 rounded-2xl border border-slate-200/80 dark:border-slate-800">
         <div className="flex items-center gap-2.5">
           <div
@@ -194,19 +223,19 @@ export function ThemeForm({
         </div>
       </div>
 
-      {/* ─── SECTION 1: PALET WARNA TERKURASI (1-KLIK) ─── */}
+      {/* SECTION: PALET WARNA TERKURASI (1-KLIK) */}
       <div className="space-y-2.5">
         <div>
-          <label className="text-xs font-bold text-slate-700 dark:text-white uppercase tracking-wide flex items-center gap-1.5">
+          <label className="text-xs font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wide flex items-center gap-1.5">
             <Paintbrush className="h-3.5 w-3.5" style={{ color: primaryColor }} />
             Palet Warna Terkurasi Website
           </label>
-          <p className="text-[11px] text-slate-400 dark:text-slate-300 mt-0.5">
+          <p className="text-[11px] text-slate-400 mt-0.5">
             Kombinasi warna website resmi — klik langsung terlihat di simulator sebelah kanan.
           </p>
         </div>
 
-        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2">
+        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-3 xl:grid-cols-4 gap-2.5">
           {CURATED_PALETTES.map((p) => {
             const active =
               primaryColor.toLowerCase() === p.primary.toLowerCase() &&
@@ -234,7 +263,7 @@ export function ThemeForm({
                     style={{ backgroundColor: p.secondary }}
                   />
                 </div>
-                <span className="text-[10px] font-bold text-slate-700 dark:text-slate-100 truncate w-full mt-0.5">
+                <span className="text-[10px] font-bold text-slate-700 dark:text-slate-300 truncate w-full mt-0.5">
                   {p.name}
                 </span>
                 {active && (
@@ -248,7 +277,7 @@ export function ThemeForm({
         </div>
       </div>
 
-      {/* ─── SECTION 1: PRECISION COLOR PICKER (PLACED DIRECTLY BELOW PREVIEW) ─── */}
+      {/* SECTION: PRECISION COLOR PICKER */}
       <div className="space-y-3">
         <button
           type="button"
@@ -268,7 +297,7 @@ export function ThemeForm({
               <span className="block text-xs font-extrabold text-slate-900 dark:text-white">
                 Pilih Warna Kustom Presisi (Color Picker)
               </span>
-              <span className="block text-[10px] text-slate-500 dark:text-slate-300">
+              <span className="block text-[10px] text-slate-500 dark:text-slate-400">
                 Sesuaikan rona dan saturasi warna secara presisi menggunakan spektrum interaktif.
               </span>
             </div>
@@ -294,11 +323,10 @@ export function ThemeForm({
         )}
       </div>
 
-      {/* ─── SECTION 2: PRESET PARTAI POLITIK (DISEMBUNYIKAN SEMENTARA) ─── */}
-      {/* Disembunyikan sementara atas arahan user
+      {/* SECTION: PRESET PARTAI POLITIK */}
       <div className="space-y-2.5">
-        <label className="text-xs font-bold text-slate-700 dark:text-white uppercase tracking-wide block">
-          Preset Resmi Partai Politik
+        <label className="text-xs font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wide block">
+          🏛️ Preset Resmi Partai Politik
         </label>
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
           {PARTY_PRESETS.map((p) => {
@@ -328,7 +356,7 @@ export function ThemeForm({
                     style={{ backgroundColor: p.secondary }}
                   />
                 </div>
-                <span className="text-[10.5px] font-bold text-slate-700 dark:text-slate-100 truncate">
+                <span className="text-[10.5px] font-bold text-slate-700 dark:text-slate-300 truncate">
                   {p.name}
                 </span>
                 {active && (
@@ -341,135 +369,408 @@ export function ThemeForm({
           })}
         </div>
       </div>
-      */}
+    </div>
+  );
 
-      {/* ─── SECTION 4: FOTO BALIHO & TAGLINE PROFIL ─── */}
-      <div className="space-y-4 pt-4 border-t border-slate-100 dark:border-slate-800">
+  // 2. TEMPLATES SECTION
+  const renderTemplatesSection = () => (
+    <div className="space-y-4">
+      <TemplateLayoutSelector
+        selectedTemplateId={layoutTemplateId}
+        onSelectTemplate={(id) => onLayoutTemplateIdChange?.(id)}
+        planTier={planTier}
+      />
+    </div>
+  );
+
+  // 3. PROFILE & IDENTITY SECTION
+  const renderProfileSection = () => (
+    <div className="space-y-4">
+      {/* SECTION TITLE */}
+      <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-3">
         <div>
-          <label className="text-xs font-bold text-slate-700 dark:text-white uppercase flex items-center gap-1.5">
-            <ImageIcon className="h-3.5 w-3.5 text-blue-500" />
-            URL Foto Resmi Dewan (Format Portrait)
-          </label>
-          <input
-            type="url"
-            placeholder="https://assets.polaris.id/official-photo.webp"
-            value={officialPhotoUrl}
-            onChange={(e) => onOfficialPhotoUrlChange(e.target.value)}
-            className="mt-1.5 block w-full rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 px-3.5 py-2.5 text-xs sm:text-sm text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:border-blue-600 focus:outline-none focus:ring-1 focus:ring-blue-600"
-          />
-          <p className="text-[11px] text-slate-400 dark:text-slate-300 mt-1">
-            Gunakan foto formal resolusi tinggi dengan latar belakang bersih.
+          <h3 className="text-sm sm:text-base font-black text-slate-900 dark:text-white flex items-center gap-2">
+            <User className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+            <span>Identitas & Konten Website Dewan</span>
+          </h3>
+          <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">
+            Kelola foto profil resmi, tagline visi perjuangan, dan biografi narasi publikasi portal.
           </p>
         </div>
+      </div>
 
-        <div>
-          <label className="text-xs font-bold text-slate-700 dark:text-white uppercase flex items-center gap-1.5">
-            <Sparkles className="h-3.5 w-3.5 text-blue-500" />
-            Tagline Visi Kebijakan
-          </label>
+      {/* ─── KARTU FOTO RESMI DEWAN ─── */}
+      <div className="p-4 rounded-2xl border border-slate-200/80 dark:border-slate-800 bg-slate-50/60 dark:bg-slate-900/40 space-y-3">
+        <div className="flex items-center justify-between">
+          <span className="text-xs font-bold text-slate-800 dark:text-slate-200 flex items-center gap-1.5 uppercase tracking-wide">
+            <ImageIcon className="h-3.5 w-3.5 text-blue-500" />
+            <span>Foto Resmi Dewan</span>
+          </span>
+          {effectivePhoto ? (
+            <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-emerald-50 dark:bg-emerald-950/60 text-emerald-600 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800/60">
+              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
+              <span>Tersinkronisasi</span>
+            </span>
+          ) : (
+            <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-amber-50 dark:bg-amber-950/60 text-amber-600 dark:text-amber-400 border border-amber-200 dark:border-amber-800/60">
+              <span>Belum Ada Foto</span>
+            </span>
+          )}
+        </div>
+
+        <input
+          type="file"
+          ref={fileInputRef}
+          onChange={handleDirectFileSelect}
+          accept="image/*"
+          className="hidden"
+        />
+
+        {effectivePhoto ? (
+          <div className="flex flex-col sm:flex-row items-center sm:items-start gap-4 bg-white dark:bg-slate-900 p-3.5 rounded-xl border border-slate-200/60 dark:border-slate-800 shadow-2xs">
+            {/* Image Preview with Hover Action */}
+            <div
+              onClick={() => fileInputRef.current?.click()}
+              className="relative w-24 h-32 sm:w-24 sm:h-32 shrink-0 rounded-xl overflow-hidden border border-slate-200 dark:border-slate-700 bg-slate-100 dark:bg-slate-950 shadow-sm group cursor-pointer"
+              title="Klik untuk ganti foto langsung"
+            >
+              <img
+                src={effectivePhoto}
+                alt="Foto Resmi Dewan"
+                className="w-full h-full object-cover object-top transition-transform duration-300 group-hover:scale-105"
+              />
+              <div className="absolute inset-0 bg-slate-950/60 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col items-center justify-center gap-1 text-white p-1">
+                <Camera className="w-4 h-4" />
+                <span className="text-[9px] font-bold text-center">Ganti Foto</span>
+              </div>
+            </div>
+
+            {/* Content & Actions */}
+            <div className="flex-1 space-y-2 text-center sm:text-left min-w-0">
+              <div>
+                <h4 className="text-xs font-bold text-slate-900 dark:text-white">
+                  Tampilan Visual Hero & Baliho Beranda
+                </h4>
+                <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5 leading-relaxed">
+                  Foto ini ditampilkan secara otomatis pada banner hero beranda, kartu risalah kebijakan, dan halaman profil publik.
+                </p>
+              </div>
+
+              {/* Action Buttons */}
+              <div className="pt-1 flex flex-wrap items-center justify-center sm:justify-start gap-2">
+                <button
+                  type="button"
+                  onClick={() => fileInputRef.current?.click()}
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold text-slate-700 dark:text-slate-200 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 transition-all cursor-pointer shadow-2xs"
+                >
+                  <Upload className="h-3 w-3 text-slate-500" />
+                  <span>Unggah Foto Baru</span>
+                </button>
+
+                <Link
+                  href="/profile"
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-950/50 transition-colors"
+                >
+                  <ExternalLink className="h-3 w-3" />
+                  <span>Menu Profil</span>
+                </Link>
+
+                {profilePhotoUrl && officialPhotoUrl && officialPhotoUrl !== profilePhotoUrl && (
+                  <button
+                    type="button"
+                    onClick={() => onOfficialPhotoUrlChange(profilePhotoUrl)}
+                    className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-[11px] font-medium text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer"
+                    title="Kembalikan ke foto profil utama"
+                  >
+                    <RefreshCw className="h-3 w-3" />
+                    <span>Pulihkan Foto Asli</span>
+                  </button>
+                )}
+              </div>
+            </div>
+          </div>
+        ) : (
+          <div className="p-5 rounded-xl border border-dashed border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-center space-y-2.5">
+            <div className="w-10 h-10 rounded-full bg-blue-50 dark:bg-blue-950/50 text-blue-600 dark:text-blue-400 mx-auto flex items-center justify-center">
+              <User className="h-5 w-5" />
+            </div>
+            <div className="space-y-0.5">
+              <h4 className="text-xs font-bold text-slate-900 dark:text-slate-100">
+                Foto Belum Diatur
+              </h4>
+              <p className="text-[11px] text-slate-400 max-w-xs mx-auto">
+                Unggah foto jas/peci resmi untuk ditampilkan di baliho beranda.
+              </p>
+            </div>
+            <div className="pt-1 flex items-center justify-center gap-2">
+              <button
+                type="button"
+                onClick={() => fileInputRef.current?.click()}
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold text-white bg-blue-600 hover:bg-blue-700 shadow-2xs transition-all cursor-pointer"
+              >
+                <Upload className="h-3.5 w-3.5" />
+                <span>Pilih Foto dari Perangkat</span>
+              </button>
+              <Link
+                href="/profile"
+                className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-semibold text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+              >
+                <ExternalLink className="h-3 w-3" />
+                <span>Menu Profil</span>
+              </Link>
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* ─── KONTEN NARASI & VISI PUBLIK ─── */}
+      <div className="p-4 rounded-2xl border border-slate-200/80 dark:border-slate-800 bg-slate-50/60 dark:bg-slate-900/40 space-y-4">
+        {/* TAGLINE VISI KEBIJAKAN */}
+        <div className="space-y-1.5">
+          <div className="flex items-center justify-between">
+            <label className="text-xs font-bold text-slate-800 dark:text-slate-200 flex items-center gap-1.5 uppercase tracking-wide">
+              <Sparkles className="h-3.5 w-3.5 text-blue-500" />
+              <span>Tagline Visi Kebijakan</span>
+            </label>
+            <span className="text-[10px] text-slate-400 font-mono">
+              {headlineTagline.length} karakter
+            </span>
+          </div>
           <input
             type="text"
             required
-            placeholder="Mengawal aspirasi rakyat demi kemakmuran dan keadilan daerah."
+            placeholder="Contoh: Mengawal aspirasi rakyat demi kemakmuran dan keadilan daerah."
             value={headlineTagline}
             onChange={(e) => onHeadlineTaglineChange(e.target.value)}
-            className="mt-1.5 block w-full rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 px-3.5 py-2.5 text-xs sm:text-sm text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:border-blue-600 focus:outline-none focus:ring-1 focus:ring-blue-600"
+            className="block w-full rounded-xl border border-slate-200 dark:border-slate-700/80 bg-white dark:bg-slate-900 px-3.5 py-2.5 text-xs sm:text-sm text-slate-900 dark:text-white placeholder:text-slate-400 focus:border-blue-600 focus:bg-white focus:outline-none focus:ring-1 focus:ring-blue-600 transition-all shadow-2xs"
           />
+          <p className="text-[10.5px] text-slate-500 dark:text-slate-400">
+            Tampil sebagai kutipan komitmen pembuka berwibawa di banner hero beranda.
+          </p>
         </div>
 
-        <div>
-          <label className="text-xs font-bold text-slate-700 dark:text-white uppercase flex items-center gap-1.5">
-            <FileText className="h-3.5 w-3.5 text-blue-500" />
-            Biografi Singkat Dewan
-          </label>
+        {/* BIOGRAFI SINGKAT DEWAN */}
+        <div className="space-y-1.5 pt-3 border-t border-slate-200/60 dark:border-slate-800">
+          <div className="flex items-center justify-between">
+            <label className="text-xs font-bold text-slate-800 dark:text-slate-200 flex items-center gap-1.5 uppercase tracking-wide">
+              <FileText className="h-3.5 w-3.5 text-blue-500" />
+              <span>Biografi Singkat Dewan</span>
+            </label>
+            <span className="text-[10px] text-slate-400 font-mono">
+              {bioBiography.length} karakter
+            </span>
+          </div>
           <textarea
-            rows={4}
+            rows={3}
             required
             placeholder="Riwayat pengabdian, komisi, fokus perjuangan legislasi, dan latar belakang profesional..."
             value={bioBiography}
             onChange={(e) => onBioBiographyChange(e.target.value)}
-            className="mt-1.5 block w-full rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-3 text-xs sm:text-sm text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:border-blue-600 focus:outline-none focus:ring-1 focus:ring-blue-600"
+            className="block w-full rounded-xl border border-slate-200 dark:border-slate-700/80 bg-white dark:bg-slate-900 p-3 text-xs sm:text-sm text-slate-900 dark:text-white placeholder:text-slate-400 focus:border-blue-600 focus:bg-white focus:outline-none focus:ring-1 focus:ring-blue-600 transition-all shadow-2xs resize-y"
           />
-        </div>
-      </div>
-
-      {/* ─── SECTION 4.5: TEMPLATE THEMATIC LAYOUT SELECTOR ─── */}
-      <div className="pt-4 border-t border-slate-100 dark:border-slate-800">
-        <TemplateLayoutSelector
-          selectedTemplateId={layoutTemplateId}
-          onSelectTemplate={(id) => onLayoutTemplateIdChange?.(id)}
-          planTier={planTier}
-        />
-      </div>
-
-      {/* ─── SECTION 5: DOMAIN SETTINGS ─── */}
-      <div className="space-y-4 pt-4 border-t border-slate-100 dark:border-slate-800">
-        <div>
-          <label className="text-xs font-bold text-slate-700 dark:text-white uppercase flex items-center gap-1.5">
-            <Globe className="h-3.5 w-3.5 text-blue-500" />
-            Subdomain Polaris.id
-          </label>
-          <div className="mt-1.5 flex items-center">
-            <input
-              type="text"
-              required
-              value={subdomainSlug}
-              onChange={(e) => onSubdomainSlugChange(e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, ''))}
-              className="block w-full rounded-l-xl border border-r-0 border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 px-3.5 py-2.5 text-xs sm:text-sm font-semibold text-slate-900 dark:text-white"
-            />
-            <span className="inline-flex items-center px-4 py-2.5 rounded-r-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-800 text-xs font-bold text-slate-500 dark:text-slate-300">
-              .polaris.id
-            </span>
-          </div>
-        </div>
-
-        <div>
-          <label className="text-xs font-bold text-slate-700 dark:text-white uppercase block">
-            Custom Domain Pribadi (Opsional)
-          </label>
-          <input
-            type="text"
-            placeholder="achmadfauzi.id"
-            value={customDomain}
-            onChange={(e) => onCustomDomainChange(e.target.value.toLowerCase().trim())}
-            className="mt-1.5 block w-full rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 px-3.5 py-2.5 text-xs sm:text-sm text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-500"
-          />
-          <p className="text-[11px] text-slate-400 dark:text-slate-300 mt-1">
-            Arahkan CNAME domain ke: <code className="font-bold text-blue-600 dark:text-blue-400">cname.polaris.id</code>
+          <p className="text-[10.5px] text-slate-500 dark:text-slate-400">
+            Ringkasan profil narasi dewan untuk mengedukasi konstituen mengenai rekam jejak Anda.
           </p>
         </div>
       </div>
+    </div>
+  );
 
-      {/* ─── ACTION SUBMIT BUTTON ─── */}
-      <div className="pt-2">
-        {isUnpaid ? (
-          <Link href="/billing" className="block w-full">
-            <Button
-              type="button"
-              size="lg"
-              className="w-full bg-amber-600 hover:bg-amber-700 text-white shadow-md gap-2 cursor-pointer"
-            >
-              <Lock className="h-4 w-4 text-amber-100" />
-              <span>Aktivasi Lisensi untuk Menyimpan Tema</span>
+  // 4. DOMAIN & WEB ADDRESS SECTION
+  const renderDomainSection = () => (
+    <div className="space-y-6">
+      {/* SECTION TITLE */}
+      <div className="border-b border-slate-100 dark:border-slate-800 pb-3">
+        <h3 className="text-base font-black text-slate-900 dark:text-white flex items-center gap-2">
+          <Globe className="h-4 w-4 text-blue-500" />
+          Pengaturan Domain & Alamat Website
+        </h3>
+        <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+          Kelola nama subdomain polaris.id resmi atau tautkan domain pribadi kustom Anda.
+        </p>
+      </div>
+
+      {/* SUBDOMAIN */}
+      <div className="space-y-1.5">
+        <label className="text-xs font-bold text-slate-700 dark:text-slate-300 uppercase flex items-center gap-1.5">
+          <Globe className="h-3.5 w-3.5 text-blue-500" />
+          Subdomain Polaris.id
+        </label>
+        <div className="flex items-center">
+          <input
+            type="text"
+            required
+            value={subdomainSlug}
+            onChange={(e) => onSubdomainSlugChange(e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, ''))}
+            className="block w-full rounded-l-xl border border-r-0 border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 px-3.5 py-2.5 text-xs sm:text-sm font-semibold text-slate-900 dark:text-white focus:outline-none focus:border-blue-600"
+          />
+          <span className="inline-flex items-center px-4 py-2.5 rounded-r-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-800 text-xs font-bold text-slate-500 dark:text-slate-400 select-none">
+            .polaris.id
+          </span>
+        </div>
+        <p className="text-[10.5px] text-slate-400">
+          Alamat portal publik instan: <span className="font-mono text-blue-600 dark:text-blue-400">https://{subdomainSlug || 'nama'}.polaris.id</span>
+        </p>
+      </div>
+
+      {/* CUSTOM DOMAIN */}
+      <div className="space-y-1.5">
+        <label className="text-xs font-bold text-slate-700 dark:text-slate-300 uppercase block">
+          Custom Domain Pribadi (Opsional)
+        </label>
+        <input
+          type="text"
+          placeholder="achmadfauzi.id"
+          value={customDomain}
+          onChange={(e) => onCustomDomainChange(e.target.value.toLowerCase().trim())}
+          className="block w-full rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 px-3.5 py-2.5 text-xs sm:text-sm text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:outline-none focus:border-blue-600"
+        />
+        <div className="p-3 rounded-xl bg-blue-50/60 dark:bg-blue-950/30 border border-blue-100 dark:border-blue-900/60 flex items-start gap-2.5 mt-2">
+          <Info className="w-4 h-4 text-blue-600 shrink-0 mt-0.5" />
+          <p className="text-[11px] text-slate-600 dark:text-slate-300 leading-relaxed">
+            Untuk menghubungkan domain pribadi, buat rekod DNS tipe <strong className="text-slate-900 dark:text-white font-mono">CNAME</strong> yang mengarah ke: <code className="font-bold text-blue-600 dark:text-blue-400">cname.polaris.id</code>
+          </p>
+        </div>
+      </div>
+    </div>
+  );
+
+  return (
+    <Card className="w-full space-y-6 p-5 sm:p-7 shadow-xs">
+      {/* ─── BANNER UNPAID ─── */}
+      {isUnpaid && (
+        <div className="p-4 rounded-2xl bg-amber-500/10 border border-amber-500/20 text-amber-900 dark:text-amber-200 space-y-2">
+          <div className="flex items-center gap-2">
+            <Lock className="h-4 w-4 text-amber-600 dark:text-amber-400 shrink-0" />
+            <span className="font-extrabold text-xs">Mode Pratinjau (Simpan Tema Terkunci)</span>
+          </div>
+          <p className="text-[11px] text-amber-700 dark:text-amber-300 leading-relaxed">
+            Eksplorasi kombinasi warna partai dan profil dapat disimulasikan secara real-time pada simulator di samping. Selesaikan aktivasi lisensi untuk menyinkronkan tema ke website publik resmi.
+          </p>
+          <Link href="/billing" className="block pt-1">
+            <Button size="sm" className="w-full bg-amber-600 hover:bg-amber-700 text-white font-bold text-xs gap-1.5 shadow-sm">
+              <Lock className="h-3.5 w-3.5" />
+              <span>Aktifkan Lisensi Parlemen</span>
             </Button>
           </Link>
-        ) : (
-          <Button
-            type="submit"
-            disabled={saving}
-            loading={saving}
-            size="lg"
-            className="w-full shadow-lg text-white font-extrabold cursor-pointer hover:opacity-90 transition-all"
-            style={{
-              backgroundColor: primaryColor,
-              boxShadow: '0 10px 25px -5px rgba(59, 130, 246, 0.3)',
-            }}
-          >
-            <Save className="h-4 w-4" />
-            <span>Simpan Konfigurasi Branding Website</span>
-          </Button>
+        </div>
+      )}
+
+      {/* ─── TOP STUDIO QUICK STATUS & ACTION BAR ─── */}
+      <div className="flex items-center gap-2.5 p-3 bg-slate-50/80 dark:bg-slate-900/60 rounded-2xl border border-slate-200/80 dark:border-slate-800">
+        <div className="flex items-center -space-x-1 shrink-0">
+          <span
+            className="w-4 h-4 rounded-full border border-white dark:border-slate-800 shadow-2xs"
+            style={{ backgroundColor: primaryColor }}
+            title={`Aksen: ${primaryColor}`}
+          />
+          <span
+            className="w-4 h-4 rounded-full border border-white dark:border-slate-800 shadow-2xs"
+            style={{ backgroundColor: secondaryColor }}
+            title={`Header: ${secondaryColor}`}
+          />
+        </div>
+        <div className="min-w-0">
+          <span className="text-[10px] text-slate-400 uppercase font-bold block leading-none">
+            Template Terpilih
+          </span>
+          <span className="text-xs font-bold text-slate-800 dark:text-slate-100 truncate block mt-0.5">
+            {activeTemplate.name}
+          </span>
+        </div>
+      </div>
+
+      {/* ─── STUDIO SECTION SUB-TABS (CLEAN SEGMENTED GRID - NO HORIZONTAL SCROLLBAR) ─── */}
+      <div className="grid grid-cols-4 sm:grid-cols-5 gap-1 p-1 bg-slate-100 dark:bg-slate-800/80 rounded-xl">
+        <button
+          type="button"
+          onClick={() => setActiveTab('colors')}
+          className={cn(
+            'flex flex-col sm:flex-row items-center justify-center gap-1 sm:gap-1.5 py-2 px-1 rounded-lg text-[11px] font-bold transition-all cursor-pointer text-center',
+            activeTab === 'colors'
+              ? 'bg-white dark:bg-slate-900 text-blue-600 dark:text-blue-400 shadow-xs'
+              : 'text-slate-500 hover:text-slate-800 dark:hover:text-slate-200'
+          )}
+        >
+          <Palette className="w-3.5 h-3.5 shrink-0" />
+          <span className="truncate">Warna</span>
+        </button>
+
+        <button
+          type="button"
+          onClick={() => setActiveTab('templates')}
+          className={cn(
+            'flex flex-col sm:flex-row items-center justify-center gap-1 sm:gap-1.5 py-2 px-1 rounded-lg text-[11px] font-bold transition-all cursor-pointer text-center',
+            activeTab === 'templates'
+              ? 'bg-white dark:bg-slate-900 text-indigo-600 dark:text-indigo-400 shadow-xs'
+              : 'text-slate-500 hover:text-slate-800 dark:hover:text-slate-200'
+          )}
+        >
+          <Layout className="w-3.5 h-3.5 shrink-0" />
+          <span className="truncate">Layout</span>
+        </button>
+
+        <button
+          type="button"
+          onClick={() => setActiveTab('profile')}
+          className={cn(
+            'flex flex-col sm:flex-row items-center justify-center gap-1 sm:gap-1.5 py-2 px-1 rounded-lg text-[11px] font-bold transition-all cursor-pointer text-center',
+            activeTab === 'profile'
+              ? 'bg-white dark:bg-slate-900 text-emerald-600 dark:text-emerald-400 shadow-xs'
+              : 'text-slate-500 hover:text-slate-800 dark:hover:text-slate-200'
+          )}
+        >
+          <User className="w-3.5 h-3.5 shrink-0" />
+          <span className="truncate">Profil</span>
+        </button>
+
+        <button
+          type="button"
+          onClick={() => setActiveTab('domain')}
+          className={cn(
+            'flex flex-col sm:flex-row items-center justify-center gap-1 sm:gap-1.5 py-2 px-1 rounded-lg text-[11px] font-bold transition-all cursor-pointer text-center',
+            activeTab === 'domain'
+              ? 'bg-white dark:bg-slate-900 text-violet-600 dark:text-violet-400 shadow-xs'
+              : 'text-slate-500 hover:text-slate-800 dark:hover:text-slate-200'
+          )}
+        >
+          <Globe className="w-3.5 h-3.5 shrink-0" />
+          <span className="truncate">Domain</span>
+        </button>
+
+        <button
+          type="button"
+          onClick={() => setActiveTab('all')}
+          className={cn(
+            'hidden sm:flex flex-col sm:flex-row items-center justify-center gap-1 sm:gap-1.5 py-2 px-1 rounded-lg text-[11px] font-bold transition-all cursor-pointer text-center',
+            activeTab === 'all'
+              ? 'bg-white dark:bg-slate-900 text-slate-900 dark:text-white shadow-xs'
+              : 'text-slate-400 hover:text-slate-600 dark:hover:text-slate-300'
+          )}
+          title="Tampilkan semua pengaturan sekaligus"
+        >
+          <Layers className="w-3.5 h-3.5 shrink-0" />
+          <span className="truncate">Semua</span>
+        </button>
+      </div>
+
+      {/* ─── TAB CONTENT PANELS ─── */}
+      <div className="pt-1">
+        {activeTab === 'colors' && renderColorsSection()}
+        {activeTab === 'templates' && renderTemplatesSection()}
+        {activeTab === 'profile' && renderProfileSection()}
+        {activeTab === 'domain' && renderDomainSection()}
+        {activeTab === 'all' && (
+          <div className="space-y-8 divide-y divide-slate-100 dark:divide-slate-800">
+            {renderColorsSection()}
+            <div className="pt-6">{renderTemplatesSection()}</div>
+            <div className="pt-6">{renderProfileSection()}</div>
+            <div className="pt-6">{renderDomainSection()}</div>
+          </div>
         )}
       </div>
+
     </Card>
   );
 }
+

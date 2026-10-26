@@ -1,3 +1,5 @@
+import { cache } from 'react';
+
 const API_BASE_URL =
   process.env.NEXT_PUBLIC_API_URL ||
   process.env.INTERNAL_API_URL ||
@@ -34,22 +36,34 @@ export async function sendPublicChatMessage(payload: {
   return data as PublicChatResponse;
 }
 
-export async function fetchPortalData(subdomain: string) {
+// Lightweight memory cache to avoid redundant backend roundtrips during navigation
+const portalDataCache = new Map<string, { data: any; timestamp: number }>();
+const PORTAL_CACHE_TTL_MS = 15000; // 15 seconds
+
+export const fetchPortalData = cache(async (subdomain: string) => {
+  const now = Date.now();
+  const cached = portalDataCache.get(subdomain);
+  if (cached && now - cached.timestamp < PORTAL_CACHE_TTL_MS) {
+    return cached.data;
+  }
+
   try {
     const res = await fetch(`${API_BASE_URL}/cms/public/${subdomain}`, {
-      next: { revalidate: 60 }, // ISR Cache 60 detik
+      cache: 'no-store',
     });
 
     if (!res.ok) {
       return null;
     }
 
-    return await res.json();
+    const data = await res.json();
+    portalDataCache.set(subdomain, { data, timestamp: now });
+    return data;
   } catch (error) {
     console.error('[PortalFetchError] Gagal mengambil data portal:', error);
     return null;
   }
-}
+});
 
 export async function submitAspiration(payload: {
   subdomainSlug: string;

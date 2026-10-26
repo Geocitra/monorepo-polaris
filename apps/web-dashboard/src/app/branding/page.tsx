@@ -1,13 +1,17 @@
 'use client';
 
 import { useState, useEffect, useRef, Suspense } from 'react';
+import Link from 'next/link';
+import { useSearchParams } from 'next/navigation';
 import { ApiClient } from '@/lib/api-client';
 import { Sidebar } from '@/components/layout/sidebar';
 import { Topbar } from '@/components/layout/topbar';
 import { useToast } from '@/components/ui/toast';
 import { useTheme } from '@/contexts/ThemeContext';
-import { Palette, Globe, ExternalLink, Loader2, Monitor, Paintbrush } from 'lucide-react';
+import { Palette, Globe, ExternalLink, Loader2, Monitor, Paintbrush, Instagram, Sparkles, Columns, Sliders, Eye, Save, Lock } from 'lucide-react';
+import { cn } from '@/lib/utils';
 
+import { Button } from '@/components/ui/button';
 import { ThemeForm } from '@/components/branding/ThemeForm';
 import { DeviceSimulator } from '@/components/branding/DeviceSimulator';
 import { DashboardThemeCustomizer } from '@/components/branding/DashboardThemeCustomizer';
@@ -24,7 +28,8 @@ const PARTY_COLOR_PRESETS = [
   { name: 'PAN', primary: '#003399', secondary: '#FFFFFF' },
 ];
 
-type ActiveTab = 'dashboard' | 'website';
+type ActiveTab = 'dashboard' | 'website' | 'documents' | 'instagram' | 'threads';
+type StudioViewMode = 'split' | 'editor' | 'preview';
 
 function BrandingContent() {
   const { toast } = useToast();
@@ -38,6 +43,7 @@ function BrandingContent() {
   const [previewDevice, setPreviewDevice] = useState<'desktop' | 'tablet' | 'mobile'>('desktop');
   const [iframeKey, setIframeKey] = useState(0);
   const [activeTab, setActiveTab] = useState<ActiveTab>('dashboard');
+  const [studioViewMode, setStudioViewMode] = useState<StudioViewMode>('split');
 
   // Form State (Website Branding)
   const [primaryColor, setPrimaryColor] = useState('#1890FF');
@@ -62,10 +68,14 @@ function BrandingContent() {
         if (portalData?.theme) {
           setPrimaryColor(portalData.theme.primaryHexColor || '#1890FF');
           setSecondaryColor(portalData.theme.secondaryHexColor || '#001529');
-          setOfficialPhotoUrl(portalData.theme.officialPhotoUrl || '');
+          // Prioritaskan foto profil resmi dewan jika ada, atau fallback ke tema portal
+          const initialPhoto = p?.photoUrl || portalData.theme.officialPhotoUrl || '';
+          setOfficialPhotoUrl(initialPhoto);
           setHeadlineTagline(portalData.theme.headlineTagline || '');
           setBioBiography(portalData.theme.bioBiography || '');
           setLayoutTemplateId(portalData.theme.layoutTemplateId || 'standard-default');
+        } else if (p?.photoUrl) {
+          setOfficialPhotoUrl(p.photoUrl);
         }
 
         if (portalData?.portal) {
@@ -96,6 +106,7 @@ function BrandingContent() {
     setSaving(true);
 
     try {
+      const photoToSave = (officialPhotoUrl || profile?.photoUrl || '').trim();
       await ApiClient.request<any>('/cms/theme', {
         method: 'PUT',
         body: JSON.stringify({
@@ -103,7 +114,7 @@ function BrandingContent() {
           secondaryHexColor: secondaryColor,
           fontFamily: 'Inter, sans-serif',
           layoutTemplateId,
-          officialPhotoUrl: officialPhotoUrl.trim() || undefined,
+          officialPhotoUrl: photoToSave,
           headlineTagline,
           bioBiography,
         }),
@@ -136,9 +147,40 @@ function BrandingContent() {
   }
 
   const isUnpaid = billing?.subscriptionStatus !== 'ACTIVE';
-  const previewUrl = subdomainSlug
+  const previewBaseUrl = subdomainSlug
     ? `http://${subdomainSlug}.localhost:3001`
     : 'http://default-portal.localhost:3001';
+  const previewUrl = `${previewBaseUrl}?preview_template=${encodeURIComponent(layoutTemplateId)}&preview_color=${encodeURIComponent(primaryColor)}`;
+
+  const handleLayoutTemplateChange = (newTemplateId: string) => {
+    setLayoutTemplateId(newTemplateId);
+    // Instantaneous live preview switch via postMessage to iframe
+    try {
+      iframeRef.current?.contentWindow?.postMessage(
+        {
+          type: 'POLARIS_PREVIEW_TEMPLATE_CHANGE',
+          templateId: newTemplateId,
+        },
+        '*'
+      );
+    } catch (err) {
+      console.error('Error posting message to simulator:', err);
+    }
+  };
+
+  useEffect(() => {
+    try {
+      iframeRef.current?.contentWindow?.postMessage(
+        {
+          type: 'POLARIS_PREVIEW_COLOR_CHANGE',
+          primaryHexColor: primaryColor,
+        },
+        '*'
+      );
+    } catch (err) {
+      console.error('Error posting color message to simulator:', err);
+    }
+  }, [primaryColor]);
 
   if (loading) {
     return (
@@ -161,7 +203,18 @@ function BrandingContent() {
           currentPeriodEnd={billing?.currentPeriodEnd}
         />
 
-        <main className="flex-1 p-4 sm:p-6 md:p-8 max-w-7xl w-full mx-auto space-y-6 transition-all duration-300">
+        <main
+          className={cn(
+            'flex-1 p-4 sm:p-6 transition-all duration-300 w-full mx-auto',
+            activeTab === 'website'
+              ? studioViewMode === 'split'
+                ? 'max-w-[1800px] space-y-4'
+                : studioViewMode === 'editor'
+                ? 'max-w-6xl space-y-4'
+                : 'max-w-[1800px] space-y-4'
+              : 'max-w-7xl space-y-6'
+          )}
+        >
           {/* HEADER */}
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-200 dark:border-slate-800 pb-5">
             <div>
@@ -178,7 +231,7 @@ function BrandingContent() {
             </div>
 
             <a
-              href={previewUrl}
+              href={previewBaseUrl}
               target="_blank"
               rel="noopener noreferrer"
               className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl text-white font-bold text-xs hover:opacity-90 transition-all shadow-sm shrink-0"
@@ -204,17 +257,40 @@ function BrandingContent() {
               <Paintbrush className="h-3.5 w-3.5" />
               <span>Tema Dashboard</span>
             </button>
+            <Link
+              href="/branding/website"
+              className="flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-bold transition-all text-slate-600 hover:text-blue-600 dark:text-slate-400 dark:hover:text-white hover:bg-white dark:hover:bg-slate-900 shadow-2xs group"
+              title="Buka Halaman Penuh Studio Website Publik"
+            >
+              <Monitor className="h-3.5 w-3.5 text-blue-500 group-hover:scale-110 transition-transform" />
+              <span>Branding Website</span>
+              <span className="text-[9px] font-black uppercase px-1.5 py-0.5 rounded bg-blue-100 dark:bg-blue-950 text-blue-700 dark:text-blue-300">
+                Full Page ↗
+              </span>
+            </Link>
             <button
               type="button"
-              onClick={() => setActiveTab('website')}
+              onClick={() => setActiveTab('instagram')}
               className={`flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-bold transition-all ${
-                activeTab === 'website'
-                  ? 'bg-white dark:bg-slate-900 text-slate-900 dark:text-white shadow-sm'
+                activeTab === 'instagram'
+                  ? 'bg-gradient-to-r from-purple-600 to-rose-600 text-white shadow-sm'
                   : 'text-slate-500 hover:text-slate-700 dark:hover:text-slate-300'
               }`}
             >
-              <Monitor className="h-3.5 w-3.5" />
-              <span>Branding Website</span>
+              <Instagram className="h-3.5 w-3.5" />
+              <span>Instagram Resmi</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => setActiveTab('threads')}
+              className={`flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-bold transition-all ${
+                activeTab === 'threads'
+                  ? 'bg-slate-900 dark:bg-white text-white dark:text-slate-900 shadow-sm'
+                  : 'text-slate-500 hover:text-slate-700 dark:hover:text-slate-300'
+              }`}
+            >
+              <Sparkles className="h-3.5 w-3.5" />
+              <span>Meta Threads</span>
             </button>
           </div>
 
@@ -226,40 +302,179 @@ function BrandingContent() {
           )}
 
           {activeTab === 'website' && (
-            <form onSubmit={handleSave} className="grid gap-6 lg:grid-cols-12 items-start">
-              <ThemeForm
-                primaryColor={primaryColor}
-                onPrimaryColorChange={setPrimaryColor}
-                secondaryColor={secondaryColor}
-                onSecondaryColorChange={setSecondaryColor}
-                layoutTemplateId={layoutTemplateId}
-                onLayoutTemplateIdChange={setLayoutTemplateId}
-                planTier={billing?.planTier}
-                officialPhotoUrl={officialPhotoUrl}
-                onOfficialPhotoUrlChange={setOfficialPhotoUrl}
-                headlineTagline={headlineTagline}
-                onHeadlineTaglineChange={setHeadlineTagline}
-                bioBiography={bioBiography}
-                onBioBiographyChange={setBioBiography}
-                subdomainSlug={subdomainSlug}
-                onSubdomainSlugChange={setSubdomainSlug}
-                customDomain={customDomain}
-                onCustomDomainChange={setCustomDomain}
-                isUnpaid={isUnpaid}
-                saving={saving}
-                onSubmit={handleSave}
-                partyPresets={PARTY_COLOR_PRESETS}
-              />
+            <div className="space-y-4">
+              {/* STUDIO LAUNCHPAD BANNER */}
+              <div className="p-4 sm:p-5 rounded-2xl bg-gradient-to-r from-blue-600 via-indigo-600 to-indigo-700 text-white shadow-md flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                <div className="space-y-1">
+                  <div className="flex items-center gap-2">
+                    <span className="text-[10px] font-black uppercase px-2 py-0.5 rounded-full bg-white/20 text-white">
+                      Rekomendasi Terbaik
+                    </span>
+                    <h3 className="text-sm sm:text-base font-black">
+                      Mode Studio Website Layar Penuh (100% Leluasa)
+                    </h3>
+                  </div>
+                  <p className="text-xs text-blue-100 max-w-xl leading-relaxed">
+                    Buka konfigurasi tema, 13 arsitektur tata letak, palet partai, dan simulator website dalam 1 layar penuh tanpa terhalang bilah samping dashboard.
+                  </p>
+                </div>
+                <Link
+                  href="/branding/website"
+                  className="inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl bg-white text-blue-700 hover:bg-blue-50 font-black text-xs transition-all shadow-md shrink-0 cursor-pointer"
+                >
+                  <span>Buka Studio Layar Penuh</span>
+                  <ExternalLink className="w-3.5 h-3.5" />
+                </Link>
+              </div>
 
-              <DeviceSimulator
-                previewUrl={previewUrl}
-                previewDevice={previewDevice}
-                onDeviceChange={setPreviewDevice}
-                onRefresh={() => setIframeKey((prev) => prev + 1)}
-                iframeKey={iframeKey}
-                iframeRef={iframeRef}
-              />
-            </form>
+              {/* STUDIO WORKSPACE TOOLBAR (MODE 3-IN-1: SPLIT, FOKUS EDITOR, FOKUS PRATINJAU) */}
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-2 sm:p-2.5 bg-slate-100/90 dark:bg-slate-800/90 backdrop-blur rounded-2xl border border-slate-200/80 dark:border-slate-700/80 shadow-2xs">
+                {/* Left: Quick Mode Switcher */}
+                <div className="flex items-center gap-1 bg-white dark:bg-slate-900 p-1 rounded-xl border border-slate-200/60 dark:border-slate-800 shadow-2xs w-full sm:w-fit">
+                  <button
+                    type="button"
+                    onClick={() => setStudioViewMode('split')}
+                    className={cn(
+                      'flex-1 sm:flex-initial flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer',
+                      studioViewMode === 'split'
+                        ? 'bg-blue-600 text-white shadow-xs'
+                        : 'text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white'
+                    )}
+                    title="Tampilan Studio Berdampingan (Editor + Simulator)"
+                  >
+                    <Columns className="w-3.5 h-3.5" />
+                    <span>Split Studio</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => setStudioViewMode('editor')}
+                    className={cn(
+                      'flex-1 sm:flex-initial flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer',
+                      studioViewMode === 'editor'
+                        ? 'bg-indigo-600 text-white shadow-xs'
+                        : 'text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white'
+                    )}
+                    title="Fokus Pengaturan Penuh (100% Layar Leluasa)"
+                  >
+                    <Sliders className="w-3.5 h-3.5" />
+                    <span>Fokus Editor (Leluasa)</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => setStudioViewMode('preview')}
+                    className={cn(
+                      'flex-1 sm:flex-initial flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer',
+                      studioViewMode === 'preview'
+                        ? 'bg-emerald-600 text-white shadow-xs'
+                        : 'text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white'
+                    )}
+                    title="Fokus Pratinjau Website Layar Penuh"
+                  >
+                    <Eye className="w-3.5 h-3.5" />
+                    <span>Fokus Pratinjau</span>
+                  </button>
+                </div>
+
+                {/* Right: Quick status & Tab baru link */}
+                <div className="flex items-center justify-between sm:justify-end gap-2 text-xs">
+                  <span className="hidden md:inline-flex items-center gap-1.5 text-slate-500 dark:text-slate-400 text-[11px] font-medium px-2.5 py-1 rounded-lg bg-slate-50 dark:bg-slate-900/60 border border-slate-200/60 dark:border-slate-800">
+                    <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+                    <span>Sinkronisasi Live</span>
+                  </span>
+
+                  <a
+                    href={previewBaseUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center gap-1 px-3 py-1.5 rounded-xl text-slate-700 dark:text-slate-200 hover:bg-white dark:hover:bg-slate-900 border border-slate-200 dark:border-slate-700 font-bold text-xs transition-all shadow-2xs"
+                  >
+                    <Globe className="h-3 w-3 text-blue-500" />
+                    <span>Buka Tab Baru</span>
+                    <ExternalLink className="h-2.5 w-2.5 text-slate-400" />
+                  </a>
+
+                  {isUnpaid ? (
+                    <Link href="/billing">
+                      <Button size="sm" className="bg-amber-600 hover:bg-amber-700 text-white font-bold text-xs gap-1.5 shadow-sm">
+                        <Lock className="w-3.5 h-3.5" />
+                        <span>Aktifkan Lisensi</span>
+                      </Button>
+                    </Link>
+                  ) : (
+                    <Button
+                      type="submit"
+                      disabled={saving}
+                      loading={saving}
+                      size="sm"
+                      className="text-white font-extrabold text-xs gap-1.5 shadow-md hover:opacity-90 transition-all cursor-pointer"
+                      style={{ backgroundColor: primaryColor }}
+                    >
+                      <Save className="w-3.5 h-3.5" />
+                      <span>Simpan Perubahan</span>
+                    </Button>
+                  )}
+                </div>
+              </div>
+
+              {/* RESPONSIVE GRID CANVAS */}
+              <form onSubmit={handleSave} className="grid gap-6 lg:grid-cols-12 items-start">
+                {/* Form Column */}
+                <div
+                  className={cn(
+                    'transition-all duration-300',
+                    studioViewMode === 'split' && 'lg:col-span-5 xl:col-span-5 2xl:col-span-4 block w-full',
+                    studioViewMode === 'editor' && 'col-span-12 block w-full',
+                    studioViewMode === 'preview' && 'hidden'
+                  )}
+                >
+                  <ThemeForm
+                    primaryColor={primaryColor}
+                    onPrimaryColorChange={setPrimaryColor}
+                    secondaryColor={secondaryColor}
+                    onSecondaryColorChange={setSecondaryColor}
+                    layoutTemplateId={layoutTemplateId}
+                    onLayoutTemplateIdChange={handleLayoutTemplateChange}
+                    planTier={billing?.planTier}
+                    officialPhotoUrl={officialPhotoUrl}
+                    onOfficialPhotoUrlChange={setOfficialPhotoUrl}
+                    profilePhotoUrl={profile?.photoUrl}
+                    headlineTagline={headlineTagline}
+                    onHeadlineTaglineChange={setHeadlineTagline}
+                    bioBiography={bioBiography}
+                    onBioBiographyChange={setBioBiography}
+                    subdomainSlug={subdomainSlug}
+                    onSubdomainSlugChange={setSubdomainSlug}
+                    customDomain={customDomain}
+                    onCustomDomainChange={setCustomDomain}
+                    isUnpaid={isUnpaid}
+                    saving={saving}
+                    onSubmit={handleSave}
+                    partyPresets={PARTY_COLOR_PRESETS}
+                  />
+                </div>
+
+                {/* Simulator Column */}
+                <div
+                  className={cn(
+                    'transition-all duration-300',
+                    studioViewMode === 'split' && 'lg:col-span-7 xl:col-span-7 2xl:col-span-8 block w-full',
+                    studioViewMode === 'preview' && 'col-span-12 block w-full',
+                    studioViewMode === 'editor' && 'hidden'
+                  )}
+                >
+                  <DeviceSimulator
+                    previewUrl={previewUrl}
+                    previewDevice={previewDevice}
+                    onDeviceChange={setPreviewDevice}
+                    onRefresh={() => setIframeKey((prev) => prev + 1)}
+                    iframeKey={iframeKey}
+                    iframeRef={iframeRef}
+                  />
+                </div>
+              </form>
+            </div>
           )}
         </main>
       </div>

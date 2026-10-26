@@ -96,7 +96,7 @@ export function AccountSecurityModal({
 
     setLoading(true);
     try {
-      const res = await ApiClient.request<{ message: string; passwordChangedAt?: string }>(
+      const res = await ApiClient.request<{ message: string; passwordChangedAt?: string; accessToken?: string; user?: any }>(
         '/auth/change-password',
         {
           method: 'POST',
@@ -106,6 +106,15 @@ export function AccountSecurityModal({
           }),
         }
       );
+
+      if (res?.accessToken) {
+        ApiClient.setToken(res.accessToken);
+        if (res.user) {
+          try {
+            localStorage.setItem('polaris_user', JSON.stringify(res.user));
+          } catch {}
+        }
+      }
 
       setSuccessMsg(res?.message || 'Kata sandi berhasil diperbarui.');
       setCurrentPassword('');

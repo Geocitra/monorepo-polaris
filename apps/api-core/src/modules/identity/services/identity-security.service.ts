@@ -31,6 +31,11 @@ export class IdentitySecurityService {
     const [member] = await db
       .select({
         id: tenantMembers.id,
+        email: tenantMembers.email,
+        username: tenantMembers.username,
+        fullName: tenantMembers.fullName,
+        partyAffiliation: tenantMembers.partyAffiliation,
+        legislativeLevel: tenantMembers.legislativeLevel,
         passwordHash: tenantMembers.passwordHash,
       })
       .from(tenantMembers)
@@ -62,8 +67,37 @@ export class IdentitySecurityService {
       })
       .where(eq(tenantMembers.id, tenantId));
 
+    const [portal] = await db
+      .select({ subdomainSlug: portalConfigs.subdomainSlug })
+      .from(portalConfigs)
+      .where(eq(portalConfigs.tenantId, tenantId))
+      .limit(1);
+
+    const subdomainSlug = portal?.subdomainSlug || '';
+
+    const payload = {
+      sub: member.id,
+      email: member.email,
+      subdomainSlug,
+      mustChangePassword: false,
+      role: 'MEMBER',
+    };
+
+    const accessToken = await this.jwtService.signAsync(payload);
+
     return {
       success: true,
+      accessToken,
+      user: {
+        id: member.id,
+        email: member.email,
+        username: member.username,
+        fullName: member.fullName,
+        partyAffiliation: member.partyAffiliation,
+        subdomain: subdomainSlug,
+        mustChangePassword: false,
+        legislativeLevel: member.legislativeLevel as any,
+      },
       message:
         'Kata sandi akun Anda berhasil diperbarui. Akses dashboard telah dibuka penuh.',
     };
@@ -76,6 +110,11 @@ export class IdentitySecurityService {
     const [member] = await db
       .select({
         id: tenantMembers.id,
+        email: tenantMembers.email,
+        username: tenantMembers.username,
+        fullName: tenantMembers.fullName,
+        partyAffiliation: tenantMembers.partyAffiliation,
+        legislativeLevel: tenantMembers.legislativeLevel,
         passwordHash: tenantMembers.passwordHash,
       })
       .from(tenantMembers)
@@ -124,8 +163,37 @@ export class IdentitySecurityService {
       this.logger.warn(`Gagal mencatat log perubahan password: ${err.message}`);
     }
 
+    const [portal] = await db
+      .select({ subdomainSlug: portalConfigs.subdomainSlug })
+      .from(portalConfigs)
+      .where(eq(portalConfigs.tenantId, tenantId))
+      .limit(1);
+
+    const subdomainSlug = portal?.subdomainSlug || '';
+
+    const payload = {
+      sub: member.id,
+      email: member.email,
+      subdomainSlug,
+      mustChangePassword: false,
+      role: 'MEMBER',
+    };
+
+    const accessToken = await this.jwtService.signAsync(payload);
+
     return {
       success: true,
+      accessToken,
+      user: {
+        id: member.id,
+        email: member.email,
+        username: member.username,
+        fullName: member.fullName,
+        partyAffiliation: member.partyAffiliation,
+        subdomain: subdomainSlug,
+        mustChangePassword: false,
+        legislativeLevel: member.legislativeLevel as any,
+      },
       message: 'Kata sandi akun Anda berhasil diperbarui.',
       passwordChangedAt: now.toISOString(),
     };

@@ -7,10 +7,57 @@ import {
   ValidateNested,
   IsEnum,
   IsUrl,
-  MaxLength
+  MaxLength,
+  ValidateIf,
+  registerDecorator,
+  ValidationOptions,
+  ValidationArguments,
 } from 'class-validator';
 import { Type } from 'class-transformer';
 import { SocialPlatform, DocType } from '@polaris/shared-types';
+
+/**
+ * Validator kustom untuk URL gambar: menerima URL http/https, data URI (data:image/...),
+ * dan path relatif (/images/...). Nilai kosong atau null diperbolehkan jika opsional.
+ */
+export function IsImageUriOrUrl(validationOptions?: ValidationOptions) {
+  return function (object: Object, propertyName: string) {
+    registerDecorator({
+      name: 'isImageUriOrUrl',
+      target: object.constructor,
+      propertyName: propertyName,
+      options: validationOptions,
+      validator: {
+        validate(value: any, _args: ValidationArguments) {
+          if (value === null || value === undefined || value === '') {
+            return true;
+          }
+          if (typeof value !== 'string') return false;
+          const trimmed = value.trim();
+          if (trimmed === '') return true;
+
+          // 1. Data URI (contoh: data:image/png;base64,... atau data:image/jpeg;base64,...)
+          if (/^data:image\/[a-zA-Z0-9.+_-]+;base64,/i.test(trimmed)) {
+            return true;
+          }
+
+          // 2. Path relatif (contoh: /images/... atau /assets/...)
+          if (/^\/[a-zA-Z0-9_\-\.\/]+$/i.test(trimmed)) {
+            return true;
+          }
+
+          // 3. Web URL absolut (http:// atau https://)
+          try {
+            const url = new URL(trimmed);
+            return url.protocol === 'http:' || url.protocol === 'https:';
+          } catch {
+            return false;
+          }
+        },
+      },
+    });
+  };
+}
 
 export class SocialLinkItemDto {
   @IsEnum(SocialPlatform, { message: 'Platform media sosial tidak valid.' })
@@ -37,11 +84,11 @@ export class UpdateThemeSettingsDto {
   fontFamily: string = 'Inter, sans-serif';
 
   @IsOptional()
-  @IsUrl({}, { message: 'Hero banner harus berupa URL valid.' })
+  @IsImageUriOrUrl({ message: 'Hero banner harus berupa URL valid.' })
   heroBannerUrl?: string;
 
   @IsOptional()
-  @IsUrl({}, { message: 'Foto resmi harus berupa URL valid.' })
+  @IsImageUriOrUrl({ message: 'Foto resmi harus berupa URL valid.' })
   officialPhotoUrl?: string;
 
   @IsOptional()
@@ -100,6 +147,7 @@ export class UpdateDomainConfigDto {
   subdomainSlug?: string;
 
   @IsOptional()
+  @ValidateIf((o) => o.customDomain !== '' && o.customDomain !== null && o.customDomain !== undefined)
   @IsString()
   @MaxLength(253)
   @Matches(/^(?=.{1,253}$)(?:[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?\.)+[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?$/, {
