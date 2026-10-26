@@ -140,7 +140,7 @@ export function PricingPlanGrid({
               )}
               {isStarter && (
                 <div className="absolute -top-3 left-1/2 -translate-x-1/2 px-3.5 py-0.5 rounded-full bg-slate-700 text-white text-[10px] font-black uppercase tracking-wider shadow-sm flex items-center gap-1">
-                  <span>Standar Parlemen</span>
+                  <span>Standar Eksekutif</span>
                 </div>
               )}
 
@@ -156,7 +156,7 @@ export function PricingPlanGrid({
                           : 'bg-slate-100 text-slate-800 dark:bg-slate-800 dark:text-slate-300'
                       )}
                     >
-                      {isPro ? 'Eksekutif Suite' : 'Standar Parlemen'}
+                      {isPro ? 'Executive Suite' : 'Standar Eksekutif'}
                     </span>
                     {isCurrentSubTier && (
                       <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300">
@@ -205,7 +205,7 @@ export function PricingPlanGrid({
 
                   <div className="flex items-start gap-2">
                     <Check className="h-4 w-4 text-emerald-600 shrink-0 mt-0.5 stroke-[2.5]" />
-                    <span>AI Unlimited (Naskah Legislasi & Poster Dapil)</span>
+                    <span>Akses Penuh Studio AI (Naskah Legislasi & Poster Dapil)</span>
                   </div>
 
                   {/* TEMPLATE LAYOUT THEME PERK */}
@@ -228,7 +228,7 @@ export function PricingPlanGrid({
                   ) : (
                     <div className="flex items-start gap-2">
                       <Check className="h-4 w-4 text-slate-600 dark:text-slate-400 shrink-0 mt-0.5 stroke-[2.5]" />
-                      <span>Tata Letak Standar POLARIS Aurora (Responsif)</span>
+                      <span>Tata Letak Standar POLARIS (Responsif &amp; Elegan)</span>
                     </div>
                   )}
 
@@ -237,14 +237,14 @@ export function PricingPlanGrid({
                     <div className="flex items-start gap-2">
                       <Check className="h-4 w-4 text-blue-600 shrink-0 mt-0.5 stroke-[2.5]" />
                       <span>
-                        Dukungan <strong>Custom Domain Pribadi</strong> (<code>namadewan.id</code> / <code>.com</code>)
+                        Dukungan <strong>Custom Domain Pribadi</strong> (<code>namapribadi.id</code> / <code>.com</code>)
                       </span>
                     </div>
                   ) : (
                     <div className="flex items-start gap-2">
                       <Check className="h-4 w-4 text-slate-600 dark:text-slate-400 shrink-0 mt-0.5 stroke-[2.5]" />
                       <span>
-                        Subdomain Resmi Parlemen (<code>namadewan.polaris.id</code>)
+                        Subdomain Resmi POLARIS (<code>namatokoh.polaris.id</code>)
                       </span>
                     </div>
                   )}
@@ -301,7 +301,7 @@ export function PricingPlanGrid({
                     'w-full font-black text-xs py-2.5 rounded-xl cursor-pointer transition-all',
                     isPro
                       ? 'bg-blue-600 hover:bg-blue-700 text-white shadow-lg shadow-blue-600/25'
-                      : 'bg-slate-900 hover:bg-slate-800 text-white shadow-md shadow-slate-900/20'
+                      : 'bg-slate-100 hover:bg-slate-200 text-slate-800 dark:bg-slate-800 dark:hover:bg-slate-700 dark:text-white border border-slate-200 dark:border-slate-700 shadow-xs'
                   )}
                 >
                   {isSelected ? `Lanjut Paket ${offering.name}` : `Pilih ${offering.name}`}
@@ -314,36 +314,36 @@ export function PricingPlanGrid({
 
       {/* 3. CONFIRMATION CHECKOUT STRIP */}
       {activeTierObj && activeCyclePricing && (
-        <div className="p-5 sm:p-6 rounded-3xl bg-slate-900 text-white flex flex-col md:flex-row md:items-center justify-between gap-5 shadow-xl border border-slate-800">
+        <div className="p-5 sm:p-6 rounded-3xl bg-white dark:bg-slate-900 text-slate-900 dark:text-white flex flex-col md:flex-row md:items-center justify-between gap-5 shadow-xl border border-slate-200 dark:border-slate-800">
           <div className="space-y-1.5">
             <div className="flex items-center gap-2 flex-wrap">
-              <span className="text-[10px] font-black uppercase tracking-wider text-blue-400">
+              <span className="text-[10px] font-black uppercase tracking-wider text-blue-600 dark:text-blue-400">
                 Konfirmasi Pilihan:
               </span>
-              <span className="text-xs font-extrabold text-white bg-slate-800 px-2.5 py-0.5 rounded-lg border border-slate-700">
+              <span className="text-xs font-extrabold text-slate-800 dark:text-white bg-slate-100 dark:bg-slate-800 px-2.5 py-0.5 rounded-lg border border-slate-200 dark:border-slate-700">
                 {activeTierObj.name} (Tier {activeTierObj.tier})
               </span>
-              <span className="text-xs font-extrabold text-blue-300 bg-blue-950/80 px-2.5 py-0.5 rounded-lg border border-blue-800">
+              <span className="text-xs font-extrabold text-blue-700 dark:text-blue-300 bg-blue-50 dark:bg-blue-950/80 px-2.5 py-0.5 rounded-lg border border-blue-200 dark:border-blue-800">
                 Durasi +{activeCyclePricing.durationDays} Hari
               </span>
             </div>
-            <div className="text-xs text-slate-300 font-medium">
+            <div className="text-xs text-slate-600 dark:text-slate-300 font-medium">
               {isSubActive && currentPeriodEnd
                 ? `Masa aktif bertambah +${activeCyclePricing.durationDays} hari di ujung periode aktif Anda saat ini.`
                 : `Masa aktif langsung aktif selama ${activeCyclePricing.durationDays} hari sejak pembayaran berhasil diverifikasi.`}
             </div>
-            <div className="text-[11px] text-amber-400 flex items-center gap-1 font-semibold pt-0.5">
-              <Zap className="h-3.5 w-3.5 text-amber-400 shrink-0" />
+            <div className="text-[11px] text-amber-600 dark:text-amber-400 flex items-center gap-1 font-semibold pt-0.5">
+              <Zap className="h-3.5 w-3.5 text-amber-600 dark:text-amber-400 shrink-0" />
               <span>Garansi Akumulasi: Seluruh sisa hari berjalan tidak akan hangus.</span>
             </div>
           </div>
 
           <div className="flex flex-col sm:flex-row sm:items-center gap-4 shrink-0">
             <div className="text-left md:text-right">
-              <div className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">
+              <div className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
                 Total Investasi Resmi
               </div>
-              <div className="text-2xl sm:text-3xl font-black text-white font-mono tracking-tight">
+              <div className="text-2xl sm:text-3xl font-black text-slate-900 dark:text-white font-mono tracking-tight">
                 {activeCyclePricing.priceFormatted}
               </div>
             </div>

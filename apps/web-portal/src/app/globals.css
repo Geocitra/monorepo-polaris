@@ -17,6 +17,83 @@ body {
   -webkit-font-smoothing: antialiased;
 }
 
+/* ═══════════════════════════════════════════════════
+   TipTap Article Media & Table Styles (Web Portal)
+   ═══════════════════════════════════════════════════ */
+
+/* Image alignment & sizing classes */
+.article-image-block {
+  margin: 1.75em auto;
+  transition: all 0.2s ease;
+}
+
+.article-image-block[data-align="left"] {
+  float: left;
+  margin: 0.5em 1.5em 1em 0;
+  text-align: left;
+}
+
+.article-image-block[data-align="center"] {
+  margin: 1.75em auto;
+  text-align: center;
+  clear: both;
+}
+
+.article-image-block[data-align="right"] {
+  float: right;
+  margin: 0.5em 0 1em 1.5em;
+  text-align: right;
+}
+
+.article-image-block[data-size="small"] {
+  max-width: 35%;
+}
+
+.article-image-block[data-size="medium"] {
+  max-width: 65%;
+}
+
+.article-image-block[data-size="full"] {
+  max-width: 100%;
+  width: 100%;
+}
+
+/* Portal Tables */
+.prose table,
+table {
+  border-collapse: collapse;
+  margin: 1.5em 0;
+  width: 100%;
+  table-layout: fixed;
+  overflow: hidden;
+  border-radius: 12px;
+  border: 1px solid #e2e8f0;
+}
+
+.prose table td,
+.prose table th,
+table td,
+table th {
+  min-width: 80px;
+  border: 1px solid #e2e8f0;
+  padding: 10px 14px;
+  vertical-align: top;
+  box-sizing: border-box;
+  font-size: 0.925rem;
+}
+
+.prose table th,
+table th {
+  font-weight: 800;
+  text-align: left;
+  background-color: #f8fafc;
+  color: #0f172a;
+}
+
+/* ═══════════════════════════════════════════════════
+   Portal Typography Classes (Thematic Templates)
+   ═══════════════════════════════════════════════════ */
+
 .font-bebas {
   font-family: 'Bebas Neue', 'Impact', sans-serif;
 }

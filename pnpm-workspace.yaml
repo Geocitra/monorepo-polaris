@@ -2,9 +2,10 @@ packages:
   - 'apps/*'
   - 'packages/*'
 allowBuilds:
+  '@google/genai': true
   '@nestjs/core': true
   bcrypt: true
   esbuild: true
   msgpackr-extract: true
-  sharp: true
   protobufjs: true
+  sharp: true

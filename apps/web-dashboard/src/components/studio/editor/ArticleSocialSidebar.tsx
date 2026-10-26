@@ -85,7 +85,7 @@ export function ArticleSocialSidebar({ socialPack, articleId, posterUrl }: Artic
   return (
     <div className="bg-white dark:bg-slate-900 p-5 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm space-y-4">
       <div className="flex items-center justify-between">
-        <span className="text-xs font-extrabold uppercase text-slate-400">
+        <span className="text-xs font-extrabold uppercase text-slate-400 dark:text-slate-300">
           Format Sebaran Media Sosial
         </span>
         <span className="text-[10px] font-bold text-emerald-700 bg-emerald-50 dark:bg-emerald-950/60 px-2 py-0.5 rounded border border-emerald-200 dark:border-emerald-800">
@@ -107,7 +107,7 @@ export function ArticleSocialSidebar({ socialPack, articleId, posterUrl }: Artic
           )}
         </div>
 
-        <div className="p-2.5 bg-white dark:bg-slate-800 rounded-lg border border-purple-100 dark:border-purple-900 text-slate-700 dark:text-slate-300 text-[11px] max-h-36 overflow-y-auto whitespace-pre-line shadow-inner">
+        <div className="p-2.5 bg-white dark:bg-slate-800/90 rounded-lg border border-purple-100 dark:border-purple-900 text-slate-700 dark:text-slate-100 text-[11px] max-h-36 overflow-y-auto whitespace-pre-line shadow-inner">
           {igCaption}
         </div>
 
@@ -168,7 +168,7 @@ export function ArticleSocialSidebar({ socialPack, articleId, posterUrl }: Artic
             <Copy className="h-3 w-3" /> Salin
           </button>
         </div>
-        <div className="p-2.5 bg-white dark:bg-slate-800 rounded-lg border border-emerald-100 dark:border-emerald-900 text-slate-700 dark:text-slate-300 whitespace-pre-line text-[11px] max-h-36 overflow-y-auto leading-relaxed shadow-inner">
+        <div className="p-2.5 bg-white dark:bg-slate-800/90 rounded-lg border border-emerald-100 dark:border-emerald-900 text-slate-700 dark:text-slate-100 whitespace-pre-line text-[11px] max-h-36 overflow-y-auto leading-relaxed shadow-inner">
           {memoText}
         </div>
       </div>

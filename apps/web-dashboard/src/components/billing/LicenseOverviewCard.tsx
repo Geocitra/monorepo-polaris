@@ -49,12 +49,12 @@ export function LicenseOverviewCard({
                   </span>
                 ) : (
                   <span className="text-[11px] font-bold px-2 py-0.5 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700">
-                    Dewan / Lembaga Publik
+                    Lembaga / Korporat
                   </span>
                 )}
               </div>
               <p className="text-xs text-slate-500 dark:text-slate-400 font-semibold mt-0.5">
-                Ruang Kerja Parlemen POLARIS
+                Ruang Kerja Resmi POLARIS
               </p>
             </div>
           </div>
@@ -81,7 +81,7 @@ export function LicenseOverviewCard({
         <div className="flex flex-wrap items-center gap-2 pt-1 text-xs font-semibold text-slate-700 dark:text-slate-300">
           <div className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200/70 dark:border-emerald-800 text-emerald-800 dark:text-emerald-400">
             <Sparkles className="h-3.5 w-3.5 text-emerald-600" />
-            <span>AI Artikel & Poster: <strong>Unlimited</strong></span>
+            <span>AI Artikel & Poster: <strong>Aktif</strong></span>
           </div>
           <div className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-primary/10 border border-primary/20 text-primary">
             <span>🌐 Portal Publik Resmi: <strong>Aktif</strong></span>
@@ -105,16 +105,16 @@ export function LicenseOverviewCard({
         <div className="my-2">
           {isSubActive && daysLeft !== null ? (
             <div className="space-y-0.5">
-              <div className="text-3xl sm:text-4xl font-black text-slate-900 tracking-tight">
-                {daysLeft} <span className="text-sm font-bold text-slate-500">Hari</span>
+              <div className="text-3xl sm:text-4xl font-black text-slate-900 dark:text-white tracking-tight">
+                {daysLeft} <span className="text-sm font-bold text-slate-500 dark:text-slate-400">Hari</span>
               </div>
-              <p className="text-[11px] font-bold text-emerald-600">
+              <p className="text-[11px] font-bold text-emerald-600 dark:text-emerald-400">
                 Tersisa hingga {formatDateIndonesian(currentPeriodEnd!)}
               </p>
             </div>
           ) : (
             <div className="space-y-0.5">
-              <div className="text-2xl font-black text-amber-600">
+              <div className="text-2xl font-black text-amber-600 dark:text-amber-400">
                 Belum Aktif
               </div>
               <p className="text-[11px] text-slate-400">
@@ -124,35 +124,35 @@ export function LicenseOverviewCard({
           )}
         </div>
 
-        <div className="text-[11px] text-slate-400 pt-2 border-t border-slate-100 flex items-center gap-1 justify-center md:justify-start">
+        <div className="text-[11px] text-slate-400 pt-2 border-t border-slate-100 dark:border-slate-800 flex items-center gap-1 justify-center md:justify-start">
           <Clock className="h-3 w-3" />
           <span>Grace period 3 hari aktif</span>
         </div>
       </Card>
 
       {/* 3. QUICK STATS OUTPUT (2 cols) */}
-      <Card className="md:col-span-2 p-5 sm:p-6 bg-slate-900 text-white border-0 flex flex-col justify-between">
+      <Card className="md:col-span-2 p-5 sm:p-6 bg-white dark:bg-slate-900 text-slate-900 dark:text-white border border-slate-200/80 dark:border-slate-800 shadow-sm flex flex-col justify-between">
         <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">
           Output Anda
         </span>
 
         <div className="space-y-3 my-2">
           <div>
-            <div className="text-xl font-black text-white font-mono">
+            <div className="text-xl font-black text-slate-900 dark:text-white font-mono">
               {articleUsed}
             </div>
-            <div className="text-[11px] text-slate-400 font-medium">Naskah Kajian</div>
+            <div className="text-[11px] text-slate-500 dark:text-slate-400 font-medium">Naskah Kajian</div>
           </div>
           <div>
-            <div className="text-xl font-black text-white font-mono">
+            <div className="text-xl font-black text-slate-900 dark:text-white font-mono">
               {dalleUsed}
             </div>
-            <div className="text-[11px] text-slate-400 font-medium">Poster Visual</div>
+            <div className="text-[11px] text-slate-500 dark:text-slate-400 font-medium">Poster Visual</div>
           </div>
         </div>
 
-        <div className="text-[10px] font-bold text-emerald-400 flex items-center gap-1">
-          <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 animate-pulse" />
+        <div className="text-[10px] font-bold text-emerald-600 dark:text-emerald-400 flex items-center gap-1">
+          <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" />
           <span>Server Siap 24/7</span>
         </div>
       </Card>

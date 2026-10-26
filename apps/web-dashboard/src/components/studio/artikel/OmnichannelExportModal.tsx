@@ -100,8 +100,8 @@ Tanggal: ${new Date().toLocaleDateString('id-ID', { day: 'numeric', month: 'long
 ${text.slice(0, 3500)}
 
 ---
-_Diteruskan resmi dari Ruang Kerja Eksekutif POLARIS Parlemen._
-Silakan sebarkan ke grup konstituen & pengurus wilayah.`;
+_Diteruskan resmi dari Ruang Kerja Eksekutif POLARIS._
+Silakan sebarkan ke jaringan rekanan & wilayah kerja.`;
   }
 
   // Helper to extract key bullet points for Medsos Captions
@@ -243,7 +243,7 @@ Bagaimana pandangan Bapak/Ibu mengenai langkah kebijakan ini? Tuliskan aspirasi 
       <p style="color: #64748b; font-size: 9.5pt; margin-top: 6pt; margin-bottom: 0;">
         <b>Penulis:</b> ${authorName} (${partyName}) &nbsp;|&nbsp; 
         <b>Tanggal:</b> ${new Date().toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })} &nbsp;|&nbsp;
-        <b>Format:</b> Dokumen Resmi Parlemen POLARIS
+        <b>Format:</b> Dokumen Resmi Kepemimpinan POLARIS
       </p>
     </div>
     ${bodyContent}

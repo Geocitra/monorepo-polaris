@@ -47,6 +47,25 @@ body {
   -webkit-font-smoothing: antialiased;
 }
 
+html.dark body {
+  color: #f8fafc;
+  background-color: #07090e;
+}
+
+/* Base form controls styling in Dark Mode */
+.dark input:not([type="checkbox"]):not([type="radio"]):not([type="submit"]):not([type="button"]),
+.dark select,
+.dark textarea {
+  background-color: #0e131f;
+  color: #f8fafc;
+  border-color: #1e293b;
+}
+
+.dark input::placeholder,
+.dark textarea::placeholder {
+  color: #64748b;
+}
+
 /* ═══════════════════════════════════════════════════
    Smooth CSS transitions for theme color changes
    ═══════════════════════════════════════════════════ */
@@ -55,3 +74,206 @@ body {
 .theme-transition * {
   transition: background-color 0.35s ease, color 0.25s ease, border-color 0.3s ease, box-shadow 0.3s ease;
 }
+
+/* ═══════════════════════════════════════════════════
+   TipTap WYSIWYG Document Editor & Table Styling
+   ═══════════════════════════════════════════════════ */
+
+.tiptap {
+  outline: none;
+  min-height: 200px;
+}
+
+.tiptap h1 {
+  font-size: 1.85rem;
+  font-weight: 900;
+  margin-top: 1.5rem;
+  margin-bottom: 0.75rem;
+  letter-spacing: -0.025em;
+  color: #0f172a;
+}
+
+.tiptap h2 {
+  font-size: 1.45rem;
+  font-weight: 800;
+  margin-top: 1.25rem;
+  margin-bottom: 0.5rem;
+  letter-spacing: -0.02em;
+  color: #1e293b;
+}
+
+.tiptap h3 {
+  font-size: 1.2rem;
+  font-weight: 700;
+  margin-top: 1rem;
+  margin-bottom: 0.4rem;
+  color: #334155;
+}
+
+.tiptap p {
+  margin-top: 0.6rem;
+  margin-bottom: 0.6rem;
+  line-height: 1.75;
+}
+
+.tiptap table {
+  border-collapse: collapse;
+  margin: 1.5em 0;
+  width: 100%;
+  table-layout: fixed;
+  border-radius: 12px;
+  border: 1px solid #cbd5e1;
+}
+
+.tiptap .tableWrapper {
+  overflow-x: auto;
+  margin: 1.5em 0;
+}
+
+.tiptap table td,
+.tiptap table th {
+  min-width: 80px;
+  border: 1px solid #e2e8f0;
+  padding: 10px 14px;
+  vertical-align: top;
+  box-sizing: border-box;
+  position: relative;
+  font-size: 0.875rem;
+}
+
+.tiptap table th {
+  font-weight: 800;
+  text-align: left;
+  background-color: #f1f5f9;
+  color: #0f172a;
+}
+
+.tiptap .column-resize-handle {
+  position: absolute;
+  right: -2px;
+  top: 0;
+  bottom: -2px;
+  width: 4px;
+  background-color: #3b82f6;
+  pointer-events: none;
+}
+
+.tiptap.resize-cursor {
+  cursor: col-resize;
+}
+
+.tiptap table .selectedCell:after {
+  z-index: 2;
+  position: absolute;
+  content: "";
+  left: 0; right: 0; top: 0; bottom: 0;
+  background: rgba(59, 130, 246, 0.15);
+  pointer-events: none;
+}
+
+.tiptap hr {
+  border: none;
+  border-top: 1px solid #e2e8f0;
+  margin: 1.5rem 0;
+}
+
+.dark .tiptap hr {
+  border-top-color: #334155;
+}
+
+.tiptap blockquote {
+  border-left: 4px solid #2563eb;
+  background: #f8fafc;
+  padding: 10px 16px;
+  border-radius: 8px;
+  margin: 1.25em 0;
+  font-style: italic;
+  color: #334155;
+}
+
+.tiptap img {
+  max-width: 100%;
+  height: auto;
+  border-radius: 12px;
+  transition: all 0.2s ease-in-out;
+}
+
+/* Image alignment & sizing classes */
+.article-image-block {
+  margin: 1.75em auto;
+  transition: all 0.2s ease;
+}
+
+.article-image-block[data-align="left"] {
+  float: left;
+  margin: 0.5em 1.5em 1em 0;
+  text-align: left;
+}
+
+.article-image-block[data-align="center"] {
+  margin: 1.75em auto;
+  text-align: center;
+  clear: both;
+}
+
+.article-image-block[data-align="right"] {
+  float: right;
+  margin: 0.5em 0 1em 1.5em;
+  text-align: right;
+}
+
+.article-image-block[data-size="small"] {
+  max-width: 35%;
+}
+
+.article-image-block[data-size="medium"] {
+  max-width: 65%;
+}
+
+.article-image-block[data-size="full"] {
+  max-width: 100%;
+  width: 100%;
+}
+
+/* ═══════════════════════════════════════════════════
+   TipTap Editor Dark Mode Styling
+   ═══════════════════════════════════════════════════ */
+
+.dark .tiptap h1 {
+  color: #f8fafc;
+}
+
+.dark .tiptap h2 {
+  color: #f1f5f9;
+}
+
+.dark .tiptap h3 {
+  color: #e2e8f0;
+}
+
+.dark .tiptap p,
+.dark .tiptap li {
+  color: #cbd5e1;
+}
+
+.dark .tiptap table {
+  border-color: #334155;
+}
+
+.dark .tiptap table td,
+.dark .tiptap table th {
+  border-color: #334155;
+}
+
+.dark .tiptap table th {
+  background-color: #1e293b;
+  color: #f8fafc;
+}
+
+.dark .tiptap blockquote {
+  background: #0e131f;
+  color: #94a3b8;
+  border-left-color: #3b82f6;
+}
+
+

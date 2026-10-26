@@ -6,3 +6,20 @@ export * from './knowledge/platform-facts.js';
 export * from './guardrails/prompt-sanitizer.js';
 export * from './prompts/concierge.prompt.js';
 export * from './telemetry/ai-telemetry.service.js';
+export * from './two-stage-article.engine.js';
+export * from './research/research-planner.engine.js';
+export * from './research/source-credibility.assessor.js';
+export * from './research/claim-evidence.extractor.js';
+export * from './research/deterministic-gates.js';
+export * from './research/connectors/academic-discovery.connector.js';
+export * from './research/connectors/internal-knowledge.connector.js';
+export * from './research/connectors/web-discovery.connector.js';
+export * from './research/autonomous-research.orchestrator.js';
+export * from './creative-poster/index.js';
+export * from './adapters/google-imagen.adapter.js';
+export * from './config/image-provider.config.js';
+export * from './master-editorial-sanitizer.js';
+export * from './refiners/prompt-refiner.service.js';
+export * from './datahub/index.js';
+
+

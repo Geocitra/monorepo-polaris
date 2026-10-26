@@ -75,7 +75,7 @@ export function PromptBox({
           placeholder={
             isUnpaid
               ? '🔒 Fitur AI Infografis terkunci. Silakan aktifkan lisensi di menu Billing...'
-              : 'Minta AI untuk mengubah palet warna, membuat poster baru DALL-E 3, atau menyesuaikan data...'
+              : 'Minta AI untuk mengubah palet warna, membuat poster visual baru, atau menyesuaikan data...'
           }
           className="w-full rounded-2xl bg-slate-50 border border-slate-300 px-4 py-3 text-xs sm:text-sm text-slate-900 placeholder-slate-400 focus:bg-white focus:border-blue-600 focus:outline-none disabled:cursor-not-allowed"
         />

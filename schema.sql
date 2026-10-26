@@ -23,8 +23,17 @@ DO $$ BEGIN
 EXCEPTION WHEN duplicate_object THEN null; END $$;
 
 DO $$ BEGIN
-  CREATE TYPE superadmin_role_enum AS ENUM ('SUPERADMIN', 'SUPPORT_OPERATOR', 'FINANCE_ADMIN');
+  CREATE TYPE superadmin_role_enum AS ENUM ('SUPERADMIN', 'SUPPORT_OPERATOR', 'CONTENT_OPERATOR', 'FINANCE_ADMIN');
 EXCEPTION WHEN duplicate_object THEN null; END $$;
+
+DO $$ BEGIN
+  CREATE TYPE operator_assignment_status_enum AS ENUM ('ACTIVE', 'PAUSED', 'REVOKED');
+EXCEPTION WHEN duplicate_object THEN null; END $$;
+
+DO $$ BEGIN
+  CREATE TYPE content_creation_context_enum AS ENUM ('MEMBER', 'OPERATOR', 'SYSTEM_AI');
+EXCEPTION WHEN duplicate_object THEN null; END $$;
+
 
 DO $$ BEGIN
   CREATE TYPE subscription_status_enum AS ENUM ('INACTIVE', 'PENDING_PAYMENT', 'ACTIVE', 'GRACE_PERIOD', 'SUSPENDED', 'ARCHIVED');
@@ -71,6 +80,19 @@ DO $$ BEGIN
 EXCEPTION WHEN duplicate_object THEN null; END $$;
 
 -- 3. BOUNDED CONTEXT: IDENTITY & ELECTORAL
+CREATE TABLE IF NOT EXISTS system_admins (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  email VARCHAR(255) NOT NULL UNIQUE,
+  password_hash VARCHAR(255) NOT NULL,
+  full_name VARCHAR(150) NOT NULL,
+  role superadmin_role_enum NOT NULL DEFAULT 'SUPERADMIN',
+  is_active BOOLEAN NOT NULL DEFAULT true,
+  avatar_url TEXT,
+  last_login_at TIMESTAMPTZ,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
 CREATE TABLE IF NOT EXISTS electoral_districts (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   dapil_code VARCHAR(50) NOT NULL UNIQUE,
@@ -106,6 +128,32 @@ CREATE TABLE IF NOT EXISTS tenant_members (
   internal_notes TEXT,
   created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
   updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+CREATE TABLE IF NOT EXISTS operator_tenant_assignments (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  operator_id UUID NOT NULL REFERENCES system_admins(id) ON DELETE CASCADE,
+  tenant_id UUID NOT NULL REFERENCES tenant_members(id) ON DELETE CASCADE,
+  can_direct_publish BOOLEAN NOT NULL DEFAULT false,
+  status operator_assignment_status_enum NOT NULL DEFAULT 'ACTIVE',
+  notes TEXT,
+  assigned_by_admin_id UUID REFERENCES system_admins(id) ON DELETE SET NULL,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  CONSTRAINT unq_operator_tenant UNIQUE (operator_id, tenant_id)
+);
+
+CREATE TABLE IF NOT EXISTS operator_audit_logs (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  operator_id UUID NOT NULL REFERENCES system_admins(id) ON DELETE CASCADE,
+  tenant_id UUID REFERENCES tenant_members(id) ON DELETE SET NULL,
+  action VARCHAR(100) NOT NULL,
+  target_entity VARCHAR(50) NOT NULL,
+  target_entity_id UUID,
+  details JSONB,
+  ip_address VARCHAR(50),
+  user_agent TEXT,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
 -- 4. BOUNDED CONTEXT: BILLING & SUBSCRIPTIONS
@@ -290,6 +338,8 @@ CREATE TABLE IF NOT EXISTS content_publications (
   status content_status_enum NOT NULL DEFAULT 'DRAFT',
   canonical_url TEXT NOT NULL,
   comment_count INTEGER NOT NULL DEFAULT 0,
+  created_by_operator_id UUID REFERENCES system_admins(id) ON DELETE SET NULL,
+  created_context content_creation_context_enum NOT NULL DEFAULT 'MEMBER',
   published_at TIMESTAMPTZ,
   created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
   updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),

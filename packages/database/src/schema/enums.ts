@@ -15,8 +15,22 @@ export const legislativeLevelEnum = pgEnum('legislative_level_enum', [
 export const superadminRoleEnum = pgEnum('superadmin_role_enum', [
   'SUPERADMIN',
   'SUPPORT_OPERATOR',
+  'CONTENT_OPERATOR',
   'FINANCE_ADMIN',
 ]);
+
+export const operatorAssignmentStatusEnum = pgEnum('operator_assignment_status_enum', [
+  'ACTIVE',
+  'PAUSED',
+  'REVOKED',
+]);
+
+export const contentCreationContextEnum = pgEnum('content_creation_context_enum', [
+  'MEMBER',
+  'OPERATOR',
+  'SYSTEM_AI',
+]);
+
 
 export const subscriptionStatusEnum = pgEnum('subscription_status_enum', [
   'INACTIVE',
@@ -62,6 +76,11 @@ export const docTypeEnum = pgEnum('doc_type_enum', [
   'RPJMD',
   'BPS_STATISTIC',
   'NOTULA_SIDANG',
+  'REPORT_TRIWULAN',
+  'DRAFT_RUU',
+  'BULETIN',
+  'KAJIAN_AKADEMIS',
+  'OTHER',
 ]);
 
 export const legalStatusEnum = pgEnum('legal_status_enum', [
@@ -109,3 +128,67 @@ export const inquiryStatusEnum = pgEnum('inquiry_status_enum', [
   'DEAL_CONVERTED',
   'REJECTED_DROPPED',
 ]);
+
+export const researchJobStatusEnum = pgEnum('research_job_status_enum', [
+  'PENDING',
+  'PLANNING',
+  'SEARCHING',
+  'EVALUATING',
+  'EXTRACTING',
+  'WRITING',
+  'COMPLETED',
+  'FAILED',
+]);
+
+export const questionIntentEnum = pgEnum('question_intent_enum', [
+  'REGULATORY',
+  'STATISTICAL_BENCHMARK',
+  'PUBLIC_OPINION',
+  'POLICY_EVALUATION',
+  'FACTUAL_VERIFICATION',
+]);
+
+export const questionStatusEnum = pgEnum('question_status_enum', [
+  'UNRESOLVED',
+  'PARTIAL',
+  'RESOLVED',
+]);
+
+export const sourceTypeEnum = pgEnum('source_type_enum', [
+  'INTERNAL_REGULATION',
+  'INTERNAL_NEWS',
+  'EXTERNAL_WEB',
+  'ACADEMIC_PAPER',
+  'USER_ATTACHMENT',
+]);
+
+export const publisherTypeEnum = pgEnum('publisher_type_enum', [
+  'GOVERNMENT',
+  'MEDIA',
+  'ACADEMIC',
+  'INDUSTRY',
+  'USER',
+]);
+
+export const sourceLifecycleEnum = pgEnum('source_lifecycle_enum', [
+  'DISCOVERED',
+  'FETCHED',
+  'ASSESSED',
+  'VERIFIED',
+  'REJECTED',
+  'STALE',
+]);
+
+export const claimStatusEnum = pgEnum('claim_status_enum', [
+  'UNSUPPORTED',
+  'PARTIALLY_SUPPORTED',
+  'VERIFIED',
+  'CONTRADICTED',
+]);
+
+export const supportTypeEnum = pgEnum('support_type_enum', [
+  'SUPPORTS',
+  'REFUTES',
+  'NEUTRAL_CONTEXT',
+]);
+

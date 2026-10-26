@@ -20,9 +20,11 @@ export class SubscriptionGuard implements CanActivate {
       .limit(1);
 
     if (!sub || sub.status !== SubscriptionStatus.ACTIVE) {
-      throw new ForbiddenException(
-        'Akses fitur terkunci. Status langganan Anda sedang tidak aktif atau dalam penangguhan (Suspended).'
-      );
+      const statusLabel = sub?.status || 'TIDAK TERDAFTAR';
+      const msg = request.user?.isOperator
+        ? `Akses AI dibatasi: Status langganan tokoh "${request.user?.tenantId}" saat ini adalah "${statusLabel}". Mohon pastikan paket langganan dewan telah aktif.`
+        : 'Akses fitur terkunci. Status langganan Anda sedang tidak aktif atau dalam penangguhan (Suspended).';
+      throw new ForbiddenException(msg);
     }
 
     return true;

@@ -7,12 +7,12 @@ import { ApiClient } from '@/lib/api-client';
 import { Sidebar } from '@/components/layout/sidebar';
 import { Topbar } from '@/components/layout/topbar';
 import { Button } from '@/components/ui/button';
-import { Sparkles, Loader2, CreditCard } from 'lucide-react';
+import { Loader2, CreditCard, Sparkles } from 'lucide-react';
 
-import { PulseMetrics } from '@/components/dashboard/PulseMetrics';
-import { PriorityIssuesSection } from '@/components/dashboard/PriorityIssuesSection';
-import { RegionalNewsSection } from '@/components/dashboard/RegionalNewsSection';
-import { ParliamentAgendaSection } from '@/components/dashboard/ParliamentAgendaSection';
+import { ExecutiveHeroBanner } from '@/components/dashboard/ExecutiveHeroBanner';
+import { SentimentPulseRadar } from '@/components/dashboard/SentimentPulseRadar';
+import { PriorityFocusCard } from '@/components/dashboard/PriorityFocusCard';
+import { StrategicPolicyFeed } from '@/components/dashboard/StrategicPolicyFeed';
 
 export default function DashboardHomePage() {
   const router = useRouter();
@@ -48,8 +48,13 @@ export default function DashboardHomePage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-slate-50">
-        <Loader2 className="h-8 w-8 animate-spin text-blue-600" />
+      <div className="min-h-screen flex items-center justify-center bg-slate-50 dark:bg-[#0A0D14]">
+        <div className="flex flex-col items-center gap-3">
+          <Loader2 className="h-8 w-8 animate-spin text-blue-500" />
+          <p className="text-xs font-bold text-slate-500 dark:text-slate-400 tracking-wider uppercase">
+            Memuat Ruang Kerja POLARIS...
+          </p>
+        </div>
       </div>
     );
   }
@@ -57,7 +62,7 @@ export default function DashboardHomePage() {
   const isUnpaid = billing?.subscriptionStatus !== 'ACTIVE';
 
   return (
-    <div className="flex min-h-screen bg-slate-50">
+    <div className="flex min-h-screen bg-slate-100/70 dark:bg-[#07090E] text-slate-900 dark:text-slate-100 transition-colors duration-300">
       <Sidebar subdomain={profile?.subdomain} />
 
       <div className="flex-1 flex flex-col min-w-0">
@@ -69,86 +74,66 @@ export default function DashboardHomePage() {
           currentPeriodEnd={billing?.currentPeriodEnd}
         />
 
-        <main className="flex-1 p-4 sm:p-6 md:p-8 space-y-8 max-w-7xl w-full mx-auto transition-all duration-300">
+        <main className="flex-1 p-4 sm:p-5 lg:p-6 space-y-6 max-w-[1440px] w-full mx-auto transition-all duration-300">
           {/* BANNER NOTIFIKASI JIKA BELUM MENYELESAIKAN PEMBAYARAN */}
           {isUnpaid && (
-            <div className="p-4 sm:p-5 rounded-2xl bg-amber-500 text-white shadow-md flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            <div className="p-4 sm:p-5 rounded-2xl bg-gradient-to-r from-amber-600 via-amber-500 to-amber-600 text-white shadow-xl flex flex-col sm:flex-row sm:items-center justify-between gap-3 border border-amber-400/30">
               <div className="flex items-center gap-3">
-                <div className="h-10 w-10 rounded-xl bg-white/20 flex items-center justify-center shrink-0">
+                <div className="h-10 w-10 rounded-xl bg-white/20 backdrop-blur-md flex items-center justify-center shrink-0">
                   <CreditCard className="h-5 w-5" />
                 </div>
                 <div>
                   <h4 className="font-extrabold text-sm sm:text-base leading-tight">
-                    Lisensi Parlemen Anda Belum Aktif
+                    Akun POLARIS Anda Belum Aktif
                   </h4>
                   <p className="text-xs text-amber-100 mt-0.5">
-                    Selesaikan aktivasi langganan untuk membuka akses pembuatan artikel AI 3.000 kata dan poster DALL-E.
+                    Selesaikan aktivasi akun untuk membuka akses penuh ke pembuatan artikel, infografis AI, dan analisis isu.
                   </p>
                 </div>
               </div>
 
               <Link href="/billing">
-                <Button variant="secondary" size="sm" className="bg-white text-slate-900 shadow-sm shrink-0">
+                <Button variant="secondary" size="sm" className="bg-white text-slate-900 shadow-md font-bold shrink-0 hover:bg-slate-100">
                   Aktivasi Sekarang
                 </Button>
               </Link>
             </div>
           )}
 
-          {/* HEADER EKSEKUTIF UTAMA */}
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-200 pb-6">
-            <div>
-              <div className="flex items-center gap-2">
-                <span className="text-[10px] font-black uppercase tracking-widest px-2.5 py-0.5 rounded-md bg-blue-600 text-white">
-                  RINGKASAN PAGI
-                </span>
-                <span className="text-xs font-bold text-slate-400">
-                  {briefing?.dateGreeting}
-                </span>
-              </div>
-              <h1 className="text-2xl sm:text-3xl font-black text-slate-900 mt-2">
-                Selamat Pagi, {profile?.fullName?.split(' ')[0] || 'Anggota Dewan'}
-              </h1>
-              <p className="text-xs sm:text-sm text-slate-500 mt-1">
-                Berikut adalah ringkasan situasi wilayah {briefing?.member?.dapilName || 'Dapil'} dan agenda penting hari ini.
-              </p>
-            </div>
-
-            <Link href="/studio">
-              <Button size="md" className="gap-2 shadow-md">
-                <Sparkles className="h-4 w-4" />
-                <span>Buka Studio Konten AI</span>
-              </Button>
-            </Link>
-          </div>
-
           {briefingError && (
             <div
               role="alert"
-              className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-xs font-medium text-amber-900"
+              className="rounded-2xl border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-xs font-medium text-amber-300"
             >
-              Ringkasan belum dapat dimuat. Data yang belum tersedia tidak ditampilkan sebagai angka contoh.
+              Kabar pagi sedang memperbarui data wilayah dan informasi terbaru. Silakan muat ulang beberapa saat lagi.
             </div>
           )}
 
-          {/* 1. PULSE METRICS */}
-          <PulseMetrics metrics={briefing?.metrics} />
-
-          {/* 2. TOP 3 ISU WILAYAH PRIORITAS */}
-          <PriorityIssuesSection issues={briefing?.priorityIssues} />
-
-          {/* 3. BERITA DAERAH & AGENDA PARLEMEN */}
-          <div className="grid gap-6 lg:grid-cols-12 items-start">
-            <div className="lg:col-span-8 space-y-4">
-              <RegionalNewsSection news={briefing?.briefingNews} />
+          {/* ═══════════════════════════════════════════════════════════════ */}
+          {/* BENTO GRID ROW 1: EXECUTIVE HERO (LEFT) + RADAR & FOCUS (RIGHT) */}
+          {/* ═══════════════════════════════════════════════════════════════ */}
+          <div className="grid grid-cols-1 xl:grid-cols-12 gap-5 items-stretch">
+            {/* Left 8 Cols (on wide screens) or Full Width (on laptop with sidebar open) */}
+            <div className="xl:col-span-8 flex flex-col h-full">
+              <ExecutiveHeroBanner profile={profile} briefing={briefing} />
             </div>
 
-            <div className="lg:col-span-4 space-y-4">
-              <ParliamentAgendaSection
-                agendas={briefing?.todayAgenda}
-                recommendation={briefing?.recommendation}
-              />
+            {/* Right 4 Cols: Sentiment Pulse Radar & Priority Constituents Focus Card */}
+            <div className="xl:col-span-4 grid grid-cols-1 md:grid-cols-2 xl:grid-cols-1 gap-4 sm:gap-5 h-full">
+              <SentimentPulseRadar metrics={briefing?.metrics} />
+              <PriorityFocusCard priorityIssues={briefing?.priorityIssues} />
             </div>
+          </div>
+
+          {/* ═══════════════════════════════════════════════════════════════ */}
+          {/* BENTO GRID ROW 2: STRATEGIC POLICY RELEASES & REGIONAL FEED      */}
+          {/* ═══════════════════════════════════════════════════════════════ */}
+          <div className="w-full">
+            <StrategicPolicyFeed
+              news={briefing?.briefingNews}
+              agendas={briefing?.todayAgenda}
+              recommendation={briefing?.recommendation}
+            />
           </div>
         </main>
       </div>

@@ -50,6 +50,22 @@ export class GenerateArticleRequestDto {
   @IsOptional()
   @IsBoolean()
   generateDallePoster: boolean = true;
+
+  @IsOptional()
+  @IsBoolean()
+  includeUserPhoto?: boolean;
+
+  @IsOptional()
+  @IsString()
+  compositionMode?: 'PUBLIC_ADVOCACY' | 'FIGURE_CENTERPIECE';
+
+  @IsOptional()
+  @IsString()
+  customPhotoUrl?: string;
+
+  @IsOptional()
+  @IsString()
+  taskType?: 'FULL_CAMPAIGN' | 'INFOGRAPHIC_ONLY' | 'ARTICLE_ONLY' | 'REGENERATE_POSTER';
 }
 
 export class UpdateDraftArticleDto {
@@ -64,6 +80,20 @@ export class UpdateDraftArticleDto {
   @IsOptional()
   @IsString()
   bodyContentMarkdown?: string;
+}
+
+export class UploadArticleImageDto {
+  @IsString()
+  @IsNotEmpty({ message: 'Data gambar wajib disertakan.' })
+  base64!: string;
+
+  @IsOptional()
+  @IsString()
+  filename?: string;
+
+  @IsOptional()
+  @IsString()
+  caption?: string;
 }
 
 export class PublishInfographicDto {
@@ -95,4 +125,3 @@ export class PublishInfographicDto {
   @IsString()
   publicationId?: string;
 }
-

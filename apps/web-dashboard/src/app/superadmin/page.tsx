@@ -60,7 +60,7 @@ export default function SuperadminDashboardPage() {
             </span>
           </div>
           <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
-            Monitoring agregat pengguna legislatif, lisensi aktif, beban AI, dan master data keparlemenan se-Indonesia.
+            Monitoring agregat pengguna eksekutif, lisensi aktif, beban AI, dan master data institusi se-Indonesia.
           </p>
         </div>
 

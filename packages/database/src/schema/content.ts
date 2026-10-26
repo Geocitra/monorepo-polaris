@@ -1,6 +1,7 @@
 import { pgTable, uuid, varchar, text, integer, timestamp, jsonb, bigint, unique } from 'drizzle-orm/pg-core';
-import { tenantMembers } from './identity.js';
-import { contentStatusEnum, assetTypeEnum } from './enums.js';
+import { tenantMembers, systemAdmins } from './identity.js';
+import { researchJobs } from './research.js';
+import { contentStatusEnum, assetTypeEnum, contentCreationContextEnum } from './enums.js';
 
 export const contentPublications = pgTable('content_publications', {
   id: uuid('id').defaultRandom().primaryKey(),
@@ -13,10 +14,14 @@ export const contentPublications = pgTable('content_publications', {
   status: contentStatusEnum('status').default('DRAFT').notNull(),
   canonicalUrl: text('canonical_url').notNull(),
   commentCount: integer('comment_count').default(0).notNull(),
+  researchJobId: uuid('research_job_id').references(() => researchJobs.id, { onDelete: 'set null' }),
+  createdByOperatorId: uuid('created_by_operator_id').references(() => systemAdmins.id, { onDelete: 'set null' }),
+  createdContext: contentCreationContextEnum('created_context').default('MEMBER').notNull(),
   publishedAt: timestamp('published_at', { withTimezone: true }),
   createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
   updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
 }, (t) => ({
+
   unqTenantSlug: unique().on(t.tenantId, t.slug),
 }));
 

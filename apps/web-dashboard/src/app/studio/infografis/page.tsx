@@ -118,6 +118,8 @@ export default function InfografisStudioPage() {
   const [promptInput, setPromptInput] = useState('');
   const [selectedStyle, setSelectedStyle] = useState<VisualStyle>('infographic');
   const [selectedAspectRatio, setSelectedAspectRatio] = useState<AspectRatio>('16:9');
+  const [includeUserPhoto, setIncludeUserPhoto] = useState(false);
+  const [refiningPrompt, setRefiningPrompt] = useState(false);
 
   // Load sessions from localStorage
   useEffect(() => {
@@ -271,6 +273,41 @@ export default function InfografisStudioPage() {
     });
   }
 
+  // Parafrase & Penyempurnaan Prompt Cerdas AI (Gemini Flash Lite < Rp 1)
+  async function handleRefinePrompt() {
+    const raw = promptInput.trim();
+    if (!raw || refiningPrompt) return;
+    setRefiningPrompt(true);
+    try {
+      const res = await ApiClient.request<any>('/studio/refine-prompt', {
+        method: 'POST',
+        body: JSON.stringify({
+          prompt: raw,
+          style: selectedStyle,
+          dapilName: profile?.electoralDistrict?.dapilName,
+          memberName: profile?.fullName,
+        }),
+      });
+
+      if (res?.refinedPrompt) {
+        setPromptInput(res.refinedPrompt);
+        toast({
+          type: 'success',
+          title: '✨ Prompt Disempurnakan',
+          description: 'Ide Anda telah diperjelas menjadi prompt kebijakan editorial yang tajam dan berwibawa.',
+        });
+      }
+    } catch (err: any) {
+      toast({
+        type: 'error',
+        title: 'Gagal Menyempurnakan Prompt',
+        description: err.message || 'Silakan coba beberapa saat lagi.',
+      });
+    } finally {
+      setRefiningPrompt(false);
+    }
+  }
+
   // Eksekusi Prompting / Refine
   async function handleAIPromptSubmit(e?: React.FormEvent, customSuggestion?: string) {
     if (e) e.preventDefault();
@@ -288,14 +325,19 @@ export default function InfografisStudioPage() {
     const submittedAspectRatio = selectedAspectRatio;
     setLoading(true);
     try {
+      const prefix = submittedStyle === 'poster' ? 'Poster Publik' : 'Infografis Publik';
       const res = await ApiClient.request<any>('/studio/generate', {
         method: 'POST',
         body: JSON.stringify({
-          topic: `Infografis Publik: ${promptText}. STRICT CONSTRAINT: DO NOT generate any institutional logos, government emblems, regional seals, party logos, coat of arms, badges, or watermark symbols.`,
+          taskType: 'INFOGRAPHIC_ONLY',
+          topic: `${prefix}: ${promptText}. STRICT CONSTRAINT: DO NOT generate any institutional logos, government emblems, regional seals, party logos, coat of arms, badges, or watermark symbols.`,
           comparisonRegion: profile?.electoralDistrict?.dapilName || 'Dapil Anda',
           generateDallePoster: true,
           aspectRatio: submittedAspectRatio,
           style: submittedStyle,
+          includeUserPhoto,
+          compositionMode: includeUserPhoto ? 'FIGURE_CENTERPIECE' : 'PUBLIC_ADVOCACY',
+          customPhotoUrl: profile?.photoUrl || (Array.isArray(profile?.photoGallery) && profile.photoGallery[0]) || undefined,
         }),
       });
 
@@ -396,23 +438,88 @@ export default function InfografisStudioPage() {
     }
   }
 
-  // Unduh Gambar HD
+  // Unduh Gambar HD (Menggunakan Blob URL agar otomatis mengunduh berkas, bukan membuka di tab)
   async function handleDownloadHD() {
     if (!currentIteration) return;
     setDownloading(true);
+    const safeTitle = (currentIteration.title || 'Materi-Visual')
+      .replace(/[^a-zA-Z0-9]/g, '-')
+      .replace(/-+/g, '-')
+      .slice(0, 35);
+    const filename = `Visual-V${currentIteration.versionNumber}-${safeTitle}-HD.jpg`;
+
     try {
-      await new Promise((r) => setTimeout(r, 600));
+      // Strategi 1: Direct fetch -> blob (memaksa browser mendownload berkas tanpa buka viewer)
+      try {
+        const response = await fetch(currentIteration.imageUrl);
+        if (!response.ok) throw new Error('Fetch failed');
+        const blob = await response.blob();
+        const objectUrl = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = objectUrl;
+        link.download = filename;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        setTimeout(() => URL.revokeObjectURL(objectUrl), 2000);
+
+        toast({
+          type: 'success',
+          title: 'Berkas Berhasil Diunduh',
+          description: 'Materi visual resolusi tinggi telah tersimpan di folder unduhan Anda.',
+        });
+        return;
+      } catch (fetchErr) {
+        // Strategi 2: Fallback draw ke Canvas jika CORS membatasi fetch langsung
+        const img = new window.Image();
+        img.crossOrigin = 'anonymous';
+        img.src = currentIteration.imageUrl;
+        await new Promise((resolve, reject) => {
+          img.onload = resolve;
+          img.onerror = reject;
+        });
+
+        const canvas = document.createElement('canvas');
+        canvas.width = img.naturalWidth || 1200;
+        canvas.height = img.naturalHeight || 800;
+        const ctx = canvas.getContext('2d');
+        if (ctx) {
+          ctx.drawImage(img, 0, 0);
+          canvas.toBlob((blob) => {
+            if (!blob) throw new Error('Blob creation failed');
+            const objectUrl = URL.createObjectURL(blob);
+            const link = document.createElement('a');
+            link.href = objectUrl;
+            link.download = filename;
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            setTimeout(() => URL.revokeObjectURL(objectUrl), 2000);
+
+            toast({
+              type: 'success',
+              title: 'Berkas Berhasil Diunduh',
+              description: 'Materi visual resolusi tinggi telah tersimpan di folder unduhan Anda.',
+            });
+          }, 'image/jpeg', 0.95);
+          return;
+        }
+      }
+    } catch (err: any) {
+      // Strategi 3: Fallback darurat jika ada proteksi ketat browser
       const link = document.createElement('a');
       link.href = currentIteration.imageUrl;
-      link.download = `Infografis-V${currentIteration.versionNumber}-${currentIteration.title.replace(/[^a-zA-Z0-9]/g, '-').slice(0, 30)}-300DPI.jpg`;
+      link.target = '_blank';
+      link.rel = 'noopener noreferrer';
+      link.download = filename;
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
 
       toast({
-        type: 'success',
-        title: 'Berkas Siap Cetak Diunduh',
-        description: 'Format resolusi tinggi siap dipublikasikan di media cetak atau digital.',
+        type: 'info',
+        title: 'Membuka Berkas Gambar',
+        description: 'Jika unduhan tidak otomatis berjalan, klik kanan gambar lalu pilih "Simpan gambar sebagai...".',
       });
     } finally {
       setDownloading(false);
@@ -640,6 +747,10 @@ export default function InfografisStudioPage() {
             loading={loading}
             isUnpaid={isUnpaid}
             hasExistingIteration={Boolean(currentIteration)}
+            includeUserPhoto={includeUserPhoto}
+            onIncludeUserPhotoChange={setIncludeUserPhoto}
+            onRefinePrompt={handleRefinePrompt}
+            refiningPrompt={refiningPrompt}
           />
         </main>
       </div>

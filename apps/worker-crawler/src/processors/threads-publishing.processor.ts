@@ -152,6 +152,9 @@ export class ThreadsPublishingProcessor {
             throw new Error(check.errorMessage || 'Pemrosesan gambar Threads gagal di sisi server Meta.');
           }
         }
+        if (!isReady) {
+          throw new Error('Timeout: Validasi media container di server Threads melebihi batas waktu.');
+        }
       } else {
         await this.emitProgress(tenantId, publishingJobId, 45, 'Membuat container teks & rich link card Threads...');
         const uploadRes = await this.publisher.createTextContainer({

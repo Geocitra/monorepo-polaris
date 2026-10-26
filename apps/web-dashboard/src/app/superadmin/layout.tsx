@@ -26,9 +26,22 @@ export default function SuperadminLayout({
 
     if (!token) {
       router.replace('/superadmin/login');
-    } else {
-      setAdminUser(user);
+      return;
+    } 
+    
+    if (user?.role === 'CONTENT_OPERATOR' || user?.role === 'SUPPORT_OPERATOR') {
+      // OPERATOR TIDAK BOLEH MENGAKSES PANEL SUPERADMIN!
+      router.replace('/operator');
+      return;
+    } 
+    
+    if (user?.role !== 'SUPERADMIN') {
+      AdminApiClient.logout();
+      router.replace('/superadmin/login');
+      return;
     }
+
+    setAdminUser(user);
   }, [pathname, router]);
 
   // Halaman login tidak menggunakan sidebar & topbar layout
@@ -36,8 +49,16 @@ export default function SuperadminLayout({
     return <>{children}</>;
   }
 
-  if (!mounted) {
-    return null;
+  // Cegah render children jika belum terverifikasi sebagai SUPERADMIN!
+  if (!mounted || !adminUser || adminUser.role !== 'SUPERADMIN') {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-slate-50 dark:bg-[#070A12]">
+        <div className="flex flex-col items-center gap-3">
+          <div className="w-8 h-8 border-3 border-indigo-600 border-t-transparent rounded-full animate-spin" />
+          <p className="text-xs text-slate-500 font-medium">Memverifikasi otorisasi...</p>
+        </div>
+      </div>
+    );
   }
 
   return (

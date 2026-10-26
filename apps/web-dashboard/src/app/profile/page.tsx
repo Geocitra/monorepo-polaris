@@ -1,7 +1,7 @@
 'use client';
 
-import { useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
+import { useState, useEffect, Suspense } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { ApiClient } from '@/lib/api-client';
 import { Sidebar } from '@/components/layout/sidebar';
@@ -17,7 +17,12 @@ import {
   Eye, 
   Edit3, 
   ArrowLeft,
-  ArrowRight
+  ArrowRight,
+  Camera,
+  MapPin,
+  GraduationCap,
+  Sparkles,
+  Check
 } from 'lucide-react';
 import { 
   LicenseStatusBanner,
@@ -27,15 +32,14 @@ import {
   ElectoralDistrictForm,
   PublicWebsiteCard,
   ProfilePreviewView,
-  ProfileStepIndicator,
-  ProfileSessionStep,
   PersonalPhotoCatalog,
   AccountSecurityModal,
 } from '@/components/profile';
 
 
-export default function ProfilePage() {
+function ProfileContent() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { toast } = useToast();
 
   const [loading, setLoading] = useState(true);
@@ -43,11 +47,40 @@ export default function ProfilePage() {
   const [profile, setProfile] = useState<any>(null);
   const [billing, setBilling] = useState<any>(null);
 
+  // Tangkap redirect status dari Meta OAuth (Instagram / Threads)
+  useEffect(() => {
+    const socialStatus = searchParams.get('social_status');
+    const platform = searchParams.get('social_platform');
+    const handle = searchParams.get('handle');
+    const reason = searchParams.get('reason');
+
+    if (socialStatus === 'connected' && handle) {
+      toast({
+        type: 'success',
+        title: `${platform === 'threads' ? 'Meta Threads' : 'Instagram'} Resmi Berhasil Ditautkan!`,
+        description: `Akun resmi @${handle} siap digunakan untuk penerbitan dan sindikasi otomatis.`,
+      });
+    } else if (socialStatus === 'error') {
+      toast({
+        type: 'error',
+        title: 'Gagal Menautkan Akun',
+        description: reason || 'Terjadi kesalahan saat otorisasi Meta.',
+      });
+    } else if (socialStatus === 'cancelled') {
+      toast({
+        type: 'info',
+        title: 'Otorisasi Dibatalkan',
+        description: 'Proses otorisasi akun media sosial dibatalkan.',
+      });
+    }
+  }, [searchParams, toast]);
+
   // Mode Tampilan: 'PREVIEW' (Default tampilan eksekutif) vs 'EDIT' (Formulir pengisian)
   const [activeTabMode, setActiveTabMode] = useState<'PREVIEW' | 'EDIT'>('PREVIEW');
 
-  // Sesi Aktif Multi-Step Wizard: Sesi 1 (Identitas), Sesi 2 (Dapil), Sesi 3 (Pendidikan), Sesi 4 (Isu & Web)
-  const [activeStep, setActiveStep] = useState<ProfileSessionStep>(1);
+  // Mode Navigasi Edit (HireGround Section Tabs): 'identitas' | 'katalog' | 'dapil' | 'pendidikan' | 'isu'
+  type EditSection = 'identitas' | 'katalog' | 'dapil' | 'pendidikan' | 'isu';
+  const [activeEditSection, setActiveEditSection] = useState<EditSection>('identitas');
 
   // Modal Keamanan Akun (Ganti Password & Ganti Email)
   const [securityModalOpen, setSecurityModalOpen] = useState(false);
@@ -250,12 +283,55 @@ export default function ProfilePage() {
 
   const isUnpaid = billing?.subscriptionStatus !== 'ACTIVE';
 
-  const completionMap: Record<ProfileSessionStep, boolean> = {
-    1: Boolean(fullName.trim() && phoneNumber.trim()),
-    2: Boolean(provinceName.trim() && dapilName.trim() && regencyCoverage.length > 0),
-    3: Boolean(education.trim() || courses.length > 0),
-    4: Boolean(issueInterests.length > 0),
-  };
+  const EDIT_SECTIONS: {
+    id: EditSection;
+    label: string;
+    shortLabel: string;
+    icon: any;
+    isComplete: boolean;
+    description: string;
+  }[] = [
+    {
+      id: 'identitas',
+      label: 'Identitas Resmi',
+      shortLabel: 'Identitas',
+      icon: User,
+      isComplete: Boolean(fullName.trim() && phoneNumber.trim()),
+      description: 'Biodata dewan, kontak & penugasan komisi',
+    },
+    {
+      id: 'katalog',
+      label: 'Katalog Foto Dewan',
+      shortLabel: 'Katalog Foto',
+      icon: Camera,
+      isComplete: Boolean(photoUrl || photoGallery.length > 0),
+      description: 'Koleksi foto resmi dewan & portofolio publik',
+    },
+    {
+      id: 'dapil',
+      label: 'Wilayah Kerja Dapil',
+      shortLabel: 'Dapil',
+      icon: MapPin,
+      isComplete: Boolean(provinceName.trim() && dapilName.trim() && regencyCoverage.length > 0),
+      description: 'Basis konstituen & cakupan kabupaten/kota',
+    },
+    {
+      id: 'pendidikan',
+      label: 'Pendidikan & Diklat',
+      shortLabel: 'Pendidikan',
+      icon: GraduationCap,
+      isComplete: Boolean(education.trim() || courses.length > 0),
+      description: 'Riwayat akademik & kursus parlemen',
+    },
+    {
+      id: 'isu',
+      label: 'Minat Isu & Portal Web',
+      shortLabel: 'Isu & Portal',
+      icon: Sparkles,
+      isComplete: Boolean(issueInterests.length > 0),
+      description: 'AI Grounding minat isu & subdomain web',
+    },
+  ];
 
   return (
     <div className="flex min-h-screen bg-slate-100/70 dark:bg-[#070A12] text-slate-900 dark:text-slate-100 font-sans theme-transition">
@@ -338,26 +414,59 @@ export default function ProfilePage() {
               dapilCode={dapilCode}
               regencyCoverage={regencyCoverage}
               subdomain={profile?.subdomain}
+              isUnpaid={isUnpaid}
               onEditClick={() => setActiveTabMode('EDIT')}
               onOpenSecurity={handleOpenSecurity}
             />
           )}
 
-          {/* MODE 2: FORM EDIT DENGAN STEP INDICATOR (PER SESI TERPANDU) */}
+          {/* MODE 2: FORM EDIT DENGAN TABS FLEKSIBEL (HIREGROUND ASYMMETRIC STYLE) */}
           {activeTabMode === 'EDIT' && (
             <form onSubmit={handleSaveProfile} className="space-y-4 animate-in fade-in duration-150">
-              {/* 1. STEP INDICATOR & PROGRESS TRACKER */}
-              <ProfileStepIndicator
-                currentStep={activeStep}
-                onStepChange={setActiveStep}
-                completionMap={completionMap}
-                onSave={handleSaveProfile}
-                isSaving={saving}
-                onCancel={() => setActiveTabMode('PREVIEW')}
-              />
+              {/* HORIZONTAL SECTION TABS (HIREGROUND STYLE - FLEKSIBEL & SEKETIKA) */}
+              <div className="bg-white/90 dark:bg-slate-900/90 backdrop-blur-md p-1.5 rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-xs">
+                <div className="flex items-center gap-1.5 overflow-x-auto scrollbar-none py-0.5">
+                  {EDIT_SECTIONS.map((sec, idx) => {
+                    const Icon = sec.icon;
+                    const isActive = activeEditSection === sec.id;
+                    return (
+                      <button
+                        key={sec.id}
+                        type="button"
+                        onClick={() => setActiveEditSection(sec.id)}
+                        className={`group flex items-center gap-2.5 px-3.5 py-2.5 rounded-xl text-xs font-bold transition-all cursor-pointer whitespace-nowrap shrink-0 ${
+                          isActive
+                            ? 'bg-blue-600 text-white shadow-xs'
+                            : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800/60'
+                        }`}
+                      >
+                        <div
+                          className={`w-6 h-6 rounded-lg flex items-center justify-center transition-colors ${
+                            isActive
+                              ? 'bg-white/20 text-white'
+                              : sec.isComplete
+                              ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400'
+                              : 'bg-slate-100 dark:bg-slate-800 text-slate-500'
+                          }`}
+                        >
+                          {sec.isComplete && !isActive ? (
+                            <Check className="w-3.5 h-3.5" />
+                          ) : (
+                            <Icon className="w-3.5 h-3.5" />
+                          )}
+                        </div>
+                        <span className="block leading-tight">{sec.label}</span>
+                        {sec.isComplete && !isActive && (
+                          <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 shrink-0" />
+                        )}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
 
-              {/* SESI 1: IDENTITAS RESMI & FOTO DEWAN */}
-              {activeStep === 1 && (
+              {/* SEKSI 1: IDENTITAS RESMI DEWAN */}
+              {activeEditSection === 'identitas' && (
                 <div className="space-y-3 animate-in fade-in slide-in-from-right-2 duration-150">
                   <OfficialIdentityForm
                     fullName={fullName}
@@ -380,7 +489,26 @@ export default function ProfilePage() {
                     onOpenSecurity={handleOpenSecurity}
                   />
 
-                  {/* KATALOG FOTO PRIBADI DEWAN (MAKSIMAL 10 FOTO) */}
+                  {/* Navigasi Seksi 1 */}
+                  <div className="p-3.5 px-4 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 flex items-center justify-between gap-3 shadow-xs">
+                    <span className="text-xs text-slate-500 font-medium">
+                      Seksi 1 dari 5: Biodata Diri &amp; Penugasan Lembaga
+                    </span>
+                    <Button
+                      type="button"
+                      onClick={() => setActiveEditSection('katalog')}
+                      className="bg-blue-600 hover:bg-blue-700 text-white font-extrabold text-xs px-5 py-2 rounded-xl cursor-pointer shadow-xs gap-1.5"
+                    >
+                      <span>Lanjut ke Katalog Foto Dewan</span>
+                      <ArrowRight className="w-3.5 h-3.5" />
+                    </Button>
+                  </div>
+                </div>
+              )}
+
+              {/* SEKSI 2: KATALOG FOTO PORTOFOLIO DEWAN */}
+              {activeEditSection === 'katalog' && (
+                <div className="space-y-3 animate-in fade-in slide-in-from-right-2 duration-150">
                   <PersonalPhotoCatalog
                     photoGallery={photoGallery}
                     setPhotoGallery={setPhotoGallery}
@@ -388,25 +516,31 @@ export default function ProfilePage() {
                     setPhotoUrl={setPhotoUrl}
                   />
 
-                  {/* Navigasi Sesi 1 */}
+                  {/* Navigasi Seksi 2 */}
                   <div className="p-3.5 px-4 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 flex items-center justify-between gap-3 shadow-xs">
-                    <span className="text-xs text-slate-500 font-medium">
-                      Langkah 1 dari 4: Identitas Personal & Parlemen
-                    </span>
                     <Button
                       type="button"
-                      onClick={() => setActiveStep(2)}
+                      variant="outline"
+                      onClick={() => setActiveEditSection('identitas')}
+                      className="font-extrabold text-xs px-4 py-2 rounded-xl cursor-pointer"
+                    >
+                      <ArrowLeft className="w-3.5 h-3.5 mr-1" />
+                      <span>Kembali ke Identitas</span>
+                    </Button>
+                    <Button
+                      type="button"
+                      onClick={() => setActiveEditSection('dapil')}
                       className="bg-blue-600 hover:bg-blue-700 text-white font-extrabold text-xs px-5 py-2 rounded-xl cursor-pointer shadow-xs gap-1.5"
                     >
-                      <span>Lanjut ke Wilayah Dapil</span>
+                      <span>Lanjut ke Wilayah Kerja Dapil</span>
                       <ArrowRight className="w-3.5 h-3.5" />
                     </Button>
                   </div>
                 </div>
               )}
 
-              {/* SESI 2: WILAYAH DAPIL KONSTITUEN */}
-              {activeStep === 2 && (
+              {/* SEKSI 3: WILAYAH KERJA & BASIS DAPIL */}
+              {activeEditSection === 'dapil' && (
                 <div className="space-y-3 animate-in fade-in slide-in-from-right-2 duration-150">
                   <ElectoralDistrictForm
                     provinceName={provinceName}
@@ -423,31 +557,31 @@ export default function ProfilePage() {
                     onQuickAddRegency={handleQuickAddRegency}
                   />
 
-                  {/* Navigasi Sesi 2 */}
+                  {/* Navigasi Seksi 3 */}
                   <div className="p-3.5 px-4 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 flex items-center justify-between gap-3 shadow-xs">
                     <Button
                       type="button"
                       variant="outline"
-                      onClick={() => setActiveStep(1)}
+                      onClick={() => setActiveEditSection('katalog')}
                       className="font-extrabold text-xs px-4 py-2 rounded-xl cursor-pointer"
                     >
                       <ArrowLeft className="w-3.5 h-3.5 mr-1" />
-                      <span>Kembali ke Identitas</span>
+                      <span>Kembali ke Katalog Foto</span>
                     </Button>
                     <Button
                       type="button"
-                      onClick={() => setActiveStep(3)}
+                      onClick={() => setActiveEditSection('pendidikan')}
                       className="bg-blue-600 hover:bg-blue-700 text-white font-extrabold text-xs px-5 py-2 rounded-xl cursor-pointer shadow-xs gap-1.5"
                     >
-                      <span>Lanjut ke Pendidikan & Diklat</span>
+                      <span>Lanjut ke Pendidikan &amp; Diklat</span>
                       <ArrowRight className="w-3.5 h-3.5" />
                     </Button>
                   </div>
                 </div>
               )}
 
-              {/* SESI 3: PENDIDIKAN & KREDENSIAL */}
-              {activeStep === 3 && (
+              {/* SEKSI 4: PENDIDIKAN & KURSUS PARLEMEN */}
+              {activeEditSection === 'pendidikan' && (
                 <div className="space-y-3 animate-in fade-in slide-in-from-right-2 duration-150">
                   <CredentialsEducationForm
                     education={education}
@@ -457,12 +591,12 @@ export default function ProfilePage() {
                     onRemoveCourse={handleRemoveCourse}
                   />
 
-                  {/* Navigasi Sesi 3 */}
+                  {/* Navigasi Seksi 4 */}
                   <div className="p-3.5 px-4 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 flex items-center justify-between gap-3 shadow-xs">
                     <Button
                       type="button"
                       variant="outline"
-                      onClick={() => setActiveStep(2)}
+                      onClick={() => setActiveEditSection('dapil')}
                       className="font-extrabold text-xs px-4 py-2 rounded-xl cursor-pointer"
                     >
                       <ArrowLeft className="w-3.5 h-3.5 mr-1" />
@@ -470,18 +604,18 @@ export default function ProfilePage() {
                     </Button>
                     <Button
                       type="button"
-                      onClick={() => setActiveStep(4)}
+                      onClick={() => setActiveEditSection('isu')}
                       className="bg-blue-600 hover:bg-blue-700 text-white font-extrabold text-xs px-5 py-2 rounded-xl cursor-pointer shadow-xs gap-1.5"
                     >
-                      <span>Lanjut ke Fokus Isu & Web</span>
+                      <span>Lanjut ke Fokus Isu &amp; Web</span>
                       <ArrowRight className="w-3.5 h-3.5" />
                     </Button>
                   </div>
                 </div>
               )}
 
-              {/* SESI 4: FOKUS ISU KEBIJAKAN & WEBSITE PUBLIK */}
-              {activeStep === 4 && (
+              {/* SEKSI 5: FOKUS ISU KEBIJAKAN & WEBSITE PUBLIK */}
+              {activeEditSection === 'isu' && (
                 <div className="space-y-3 animate-in fade-in slide-in-from-right-2 duration-150">
                   <div className="grid grid-cols-1 lg:grid-cols-3 gap-3 items-start">
                     <div className="lg:col-span-2">
@@ -497,12 +631,12 @@ export default function ProfilePage() {
                     </div>
                   </div>
 
-                  {/* Navigasi Sesi 4 */}
+                  {/* Navigasi Seksi 5 */}
                   <div className="p-3.5 px-4 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 flex items-center justify-between gap-3 shadow-xs">
                     <Button
                       type="button"
                       variant="outline"
-                      onClick={() => setActiveStep(3)}
+                      onClick={() => setActiveEditSection('pendidikan')}
                       className="font-extrabold text-xs px-4 py-2 rounded-xl cursor-pointer"
                     >
                       <ArrowLeft className="w-3.5 h-3.5 mr-1" />
@@ -521,7 +655,7 @@ export default function ProfilePage() {
                       ) : (
                         <>
                           <Save className="w-3.5 h-3.5" />
-                          <span>Selesai & Simpan Profil</span>
+                          <span>Selesai &amp; Simpan Profil</span>
                         </>
                       )}
                     </Button>
@@ -533,8 +667,10 @@ export default function ProfilePage() {
               <div className="pt-1 flex items-center justify-between gap-3 sticky bottom-3 p-3 px-4 bg-white/95 dark:bg-slate-900/95 backdrop-blur-md rounded-2xl border border-slate-200/90 dark:border-slate-800 shadow-md">
                 <div className="flex items-center gap-2 text-xs font-medium text-slate-500 dark:text-slate-400">
                   <CheckCircle className="h-4 w-4 text-emerald-500 shrink-0" />
-                  <span className="hidden sm:inline">Perubahan dapat disimpan kapan saja tanpa menunggu seluruh sesi selesai.</span>
-                  <span className="sm:hidden font-bold">Sesi {activeStep} / 4 Aktif</span>
+                  <span className="hidden sm:inline">Perubahan dapat disimpan kapan saja tanpa harus mengisi seluruh seksi.</span>
+                  <span className="sm:hidden font-bold">
+                    Seksi: {EDIT_SECTIONS.find((s) => s.id === activeEditSection)?.shortLabel} ({EDIT_SECTIONS.findIndex((s) => s.id === activeEditSection) + 1}/5)
+                  </span>
                 </div>
 
                 <div className="flex items-center gap-2 shrink-0">
@@ -582,5 +718,19 @@ export default function ProfilePage() {
         />
       </div>
     </div>
+  );
+}
+
+export default function ProfilePage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="min-h-screen flex items-center justify-center bg-slate-50 dark:bg-[#0A0D14]">
+          <Loader2 className="h-8 w-8 animate-spin text-blue-600" />
+        </div>
+      }
+    >
+      <ProfileContent />
+    </Suspense>
   );
 }

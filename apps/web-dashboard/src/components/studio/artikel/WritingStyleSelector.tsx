@@ -65,9 +65,9 @@ export const WRITING_STYLES: Record<WritingStyle, WritingStyleConfig> = {
     badge: 'Human Interest',
     icon: Users,
     audience: 'Masyarakat Umum, Tokoh Adat, dan Publik Daerah (Kanal Media Massa/Rilis Publik).',
-    focus: 'Dampak nyata langsung kebijakan terhadap kehidupan warga sehari-hari, penyederhanaan istilah teknis/birokrasi, keterbukaan anggaran, dan manfaat fasilitas pembangunan.',
+    focus: 'Dampak konkret langsung kebijakan terhadap kehidupan warga sehari-hari, penyederhanaan istilah teknis/birokrasi, keterbukaan anggaran, dan manfaat fasilitas pembangunan.',
     tone: 'Komunikatif, mengalir, ramah pembaca (human interest), tanpa mengurangi bobot angka/fakta kunci.',
-    keywords: ['manfaat nyata', 'kehidupan sehari-hari', 'transparansi publik', 'kemudahan layanan', 'uang rakyat', 'kesejahteraan keluarga'],
+    keywords: ['manfaat konkret', 'kehidupan sehari-hari', 'transparansi publik', 'kemudahan layanan', 'uang rakyat', 'kesejahteraan keluarga'],
   },
 };
 

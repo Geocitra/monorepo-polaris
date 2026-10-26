@@ -57,11 +57,11 @@ export function AspirasiCommentFilters({
         </div>
       </div>
 
-      <div className="text-[11px] text-slate-500 pt-1 flex items-center justify-between">
+      <div className="text-[11px] text-slate-500 dark:text-slate-300 pt-1 flex items-center justify-between">
         <span>
           Komentar baru otomatis tayang, kecuali terdeteksi kata kasar/spam. Dewan dapat menyembunyikan atau menghapus kapan saja.
         </span>
-        <span className="font-bold text-slate-700 shrink-0">
+        <span className="font-bold text-slate-700 dark:text-slate-200 shrink-0">
           Total: {totalComments} Komentar
         </span>
       </div>

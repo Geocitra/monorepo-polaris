@@ -12,8 +12,23 @@ import { openaiClient } from './client.js';
 import { PromptTemplates } from './prompts.js';
 import { PromptSanitizer } from './guardrails/prompt-sanitizer.js';
 import { AiTelemetryService } from './telemetry/ai-telemetry.service.js';
+import { TwoStageArticleEngine } from './two-stage-article.engine.js';
+import {
+  PosterBlueprintSelector,
+  PosterPromptCompiler,
+  CreativePosterArchetype,
+  PreAnalyzedPosterBlueprint,
+  CompiledPosterPrompt,
+  ArtCollagePosterPipeline,
+  ArtCollagePosterResult,
+} from './creative-poster/index.js';
+import { GoogleImagenAdapter } from './adapters/google-imagen.adapter.js';
+import { getActiveImageProvider } from './config/image-provider.config.js';
+import { MasterEditorialSanitizer } from './master-editorial-sanitizer.js';
 
 export class OpenAIAIEngineAdapter implements ILLMProviderPort {
+  private readonly googleImagenAdapter = new GoogleImagenAdapter();
+
 
   public async generatePublicConcierge(
     params: GeneratePublicConciergeParams
@@ -112,151 +127,221 @@ export class OpenAIAIEngineAdapter implements ILLMProviderPort {
   }
 
   public async generateArticle(params: GenerateArticleParams): Promise<GeneratedArticleResult> {
-    const telemetry = AiTelemetryService.startTrace({
-      operation: 'generate-parliamentary-article-3000w',
-      model: 'gpt-4o',
-      tenantId: params.tenantId,
-      metadata: { topic: params.topic, targetAudience: params.targetAudience },
-    });
-
-    const userPrompt = `TOPIK ANALISIS KEBIJAKAN: "${params.topic}"
-${params.targetAudience ? `TARGET AUDIENS: ${params.targetAudience}` : ''}
-
-${params.regionalContextData}
-${params.comparisonContextData ? `\nDATA KOMPARASI: ${params.comparisonContextData}` : ''}
-${params.memberWritingStyleSample ? `\nSAMPEL GAYA BAHASA: ${params.memberWritingStyleSample}` : ''}
-
-Instruksikan: Susun artikel utuh, kaya data, kutip pasal yang tersedia, dan capai kedalaman analisis teknokratis setara kajian 3.000 kata.
-Keluarkan hasil dalam format JSON:
-{
-  "title": "Judul Artikel",
-  "excerpt": "Ringkasan Eksekutif 2 Kalimat",
-  "contentMarkdown": "Isi lengkap artikel berformat Markdown..."
-}`;
-
-    try {
-      const response = await openaiClient.chat.completions.create({
-        model: 'gpt-4o',
-        temperature: 0.3,
-        response_format: { type: 'json_object' },
-        messages: [
-          { role: 'system', content: PromptTemplates.getArticleSystemPrompt() },
-          { role: 'user', content: userPrompt },
-        ],
-      });
-
-      const messageContent = response.choices[0]?.message?.content || '{}';
-      const parsed = JSON.parse(messageContent);
-      const inputTokens = response.usage?.prompt_tokens || 0;
-      const outputTokens = response.usage?.completion_tokens || 0;
-      const wordCount = (parsed.contentMarkdown || '').split(/\s+/).filter(Boolean).length;
-
-      await telemetry.endTrace({
-        inputTokens,
-        outputTokens,
-        status: 'SUCCESS',
-        outputPreview: { title: parsed.title, wordCount },
-      });
-
-      return {
-        title: parsed.title || params.topic,
-        excerpt: parsed.excerpt || '',
-        contentMarkdown: parsed.contentMarkdown || '',
-        wordCount,
-        totalTokensUsed: inputTokens + outputTokens,
-        canonicalTraceId: telemetry.canonicalTraceId,
-      };
-    } catch (error: any) {
-      await telemetry.endTrace({
-        inputTokens: 0,
-        outputTokens: 0,
-        status: 'FAILED',
-        errorMessage: error.message,
-      });
-
-      throw new Error(`[AIEngineArticleError] Gagal menghasilkan artikel: ${error.message}`);
-    }
+    return TwoStageArticleEngine.execute(params);
   }
 
   public async generateDalleImage(
     englishPrompt: string,
-    tenantId?: string
+    tenantId?: string,
+    size: '1024x1792' | '1024x1024' | '1792x1024' = '1024x1792'
   ): Promise<{ temporaryImageUrl: string; canonicalTraceId: string }> {
+    const preferredModel = process.env.OPENAI_IMAGE_MODEL || 'chatgpt-image-latest';
+
     const telemetry = AiTelemetryService.startTrace({
       operation: 'dalle-image-generation',
-      model: 'dall-e-3',
+      model: preferredModel,
       tenantId,
-      metadata: { promptLength: englishPrompt.length },
+      metadata: { promptLength: englishPrompt.length, requestedSize: size },
     });
 
-    let activeModel = 'chatgpt-image-latest';
-    try {
-      let temporaryImageUrl: string | undefined;
+    // Urutan model yang dicoba secara adaptif jika model utama tidak tersedia pada API key
+    const candidateModels = [preferredModel];
+    if (preferredModel !== 'chatgpt-image-latest') {
+      candidateModels.push('chatgpt-image-latest');
+    }
+    if (preferredModel !== 'dall-e-3') {
+      candidateModels.push('dall-e-3');
+    }
 
-      // 1. Coba chatgpt-image-latest (model gambar terbaru OpenAI)
+    let lastError: Error | null = null;
+    let activeModel = preferredModel;
+
+    for (const modelToTry of candidateModels) {
       try {
-        const response = await (openaiClient.images as any).generate({
-          model: 'chatgpt-image-latest',
+        activeModel = modelToTry;
+
+        // Pemetaan dimensi yang didukung oleh masing-masing model
+        let resolvedSize: any = size;
+        if (modelToTry === 'chatgpt-image-latest') {
+          if (size === '1024x1792') {
+            resolvedSize = '1024x1536'; // Rasio tegak portrait poster didukung oleh chatgpt-image-latest
+          } else if (size === '1792x1024') {
+            resolvedSize = '1536x1024'; // Rasio lanskap didukung oleh chatgpt-image-latest
+          } else {
+            resolvedSize = '1024x1024';
+          }
+        }
+
+        const requestParams: any = {
+          model: modelToTry,
           prompt: englishPrompt,
+          size: resolvedSize,
           n: 1,
-        });
+        };
+
+        // dall-e-3 mendukung opsi quality, chatgpt-image-latest menentukan kualitas secara dinamis
+        if (modelToTry === 'dall-e-3') {
+          requestParams.quality = 'standard';
+        }
+
+        const response = await openaiClient.images.generate(requestParams);
         const first = response.data?.[0];
+
+        let temporaryImageUrl: string | undefined;
         if (first?.url) {
           temporaryImageUrl = first.url;
         } else if (first?.b64_json) {
           temporaryImageUrl = `data:image/png;base64,${first.b64_json}`;
         }
-      } catch (chatgptErr: any) {
-        console.warn(`[AIEngine] chatgpt-image-latest dialihkan ke DALL-E: ${chatgptErr.message}`);
-        // 2. Fallback ke dall-e-3
-        activeModel = 'dall-e-3';
-        try {
-          const response = await openaiClient.images.generate({
-            model: 'dall-e-3',
-            prompt: englishPrompt,
-            size: '1024x1792',
-            quality: 'standard',
-            n: 1,
-          });
-          temporaryImageUrl = response.data?.[0]?.url;
-        } catch (dalle3Err: any) {
-          // 3. Fallback ke dall-e-2
-          activeModel = 'dall-e-2';
-          const response = await openaiClient.images.generate({
-            model: 'dall-e-2',
-            prompt: englishPrompt,
-            size: '1024x1024',
-            n: 1,
-          });
-          temporaryImageUrl = response.data?.[0]?.url;
+
+        if (!temporaryImageUrl) {
+          throw new Error('AI Generator tidak mengembalikan URL atau data gambar yang valid.');
         }
+
+        await telemetry.endTrace({
+          inputTokens: 1000,
+          outputTokens: 0,
+          status: 'SUCCESS',
+          outputPreview: { temporaryImageUrl: temporaryImageUrl.slice(0, 100), model: activeModel },
+        });
+
+        return {
+          temporaryImageUrl,
+          canonicalTraceId: telemetry.canonicalTraceId,
+        };
+      } catch (err: any) {
+        lastError = err;
+        console.warn(`[AIEngineAdapter] Model gambar '${modelToTry}' gagal: ${err.message}. Mencoba fallback berikutnya...`);
+        // Jika error adalah model does not exist atau izin model, lanjutkan ke model berikutnya di loop
       }
-
-      if (!temporaryImageUrl) {
-        throw new Error('AI Generator tidak mengembalikan URL atau data gambar yang valid.');
-      }
-
-      await telemetry.endTrace({
-        inputTokens: 1000,
-        outputTokens: 0,
-        status: 'SUCCESS',
-        outputPreview: { temporaryImageUrl: temporaryImageUrl.slice(0, 100), model: activeModel },
-      });
-
-      return {
-        temporaryImageUrl,
-        canonicalTraceId: telemetry.canonicalTraceId,
-      };
-    } catch (error: any) {
-      await telemetry.endTrace({
-        inputTokens: 0,
-        outputTokens: 0,
-        status: 'FAILED',
-        errorMessage: error.message,
-      });
-
-      throw new Error(`[AIEngineDalleError] Gagal me-render poster DALL-E: ${error.message}`);
     }
+
+    const finalErrorMessage = lastError ? lastError.message : 'Semua model gambar gagal diinisialisasi.';
+    await telemetry.endTrace({
+      inputTokens: 0,
+      outputTokens: 0,
+      status: 'FAILED',
+      errorMessage: finalErrorMessage,
+    });
+
+    throw new Error(`[AIEngineDalleError] Gagal me-render poster DALL-E: ${finalErrorMessage}`);
+  }
+
+  /**
+   * Menghasilkan kanvas dasar menggunakan Google Imagen 3 (native 4:5 + negative prompt)
+   */
+  public async generateGoogleImagen(params: {
+    prompt: string;
+    aspectRatio?: '4:5' | '1:1' | '16:9' | '9:16' | '3:4' | '4:3';
+    tenantId?: string;
+    stylePromptSuffix?: string;
+    imageNegativeAllow?: string[];
+  }): Promise<{ temporaryImageUrl: string; canonicalTraceId: string }> {
+    return await this.googleImagenAdapter.generateImage(params);
+  }
+
+  /**
+   * generateCreativePosterBackground memilih template secara Constrained RNG,
+   * mengompilasi prompt fotografi clean-art tanpa teks, dan menghasilkan background AI
+   * menggunakan provider aktif (Google Imagen 3 atau OpenAI DALL-E) dengan failover otomatis.
+   */
+  public async generateCreativePosterBackground(params: {
+    topic: string;
+    groundedContextSummary?: string;
+    compositionMode?: import('./creative-poster/types.js').SubjectCompositionMode;
+    forcedArchetype?: CreativePosterArchetype;
+    excludeBlueprintId?: string;
+    tenantBrandHex?: string;
+    tenantId?: string;
+  }): Promise<{
+    temporaryImageUrl: string;
+    blueprint: PreAnalyzedPosterBlueprint;
+    compiledPrompt: CompiledPosterPrompt;
+    canonicalTraceId: string;
+  }> {
+    const blueprint = await PosterBlueprintSelector.selectBestBlueprintAsync({
+      topic: params.topic,
+      forcedArchetype: params.forcedArchetype,
+      excludeBlueprintId: params.excludeBlueprintId,
+      forcedBrandHex: params.tenantBrandHex,
+    });
+
+    const activeProvider = getActiveImageProvider();
+
+    const compiledPrompt = await PosterPromptCompiler.compileScenePrompt({
+      topic: params.topic,
+      groundedContextSummary: params.groundedContextSummary,
+      compositionMode: params.compositionMode,
+      blueprint,
+      tenantBrandHex: params.tenantBrandHex,
+      imageProvider: activeProvider,
+    });
+
+    const targetSize =
+      compiledPrompt.aspectRatio === '9:16' || compiledPrompt.aspectRatio === '4:5'
+        ? '1024x1792'
+        : '1024x1024';
+
+    let imageResult: { temporaryImageUrl: string; canonicalTraceId: string };
+
+    if (activeProvider === 'GOOGLE_IMAGEN') {
+      try {
+        console.log(
+          `[AIEngineAdapter] Menghasilkan kanvas seni Layer 1 via Google Imagen 3 (aspek rasio: ${compiledPrompt.aspectRatio || '4:5'})...`
+        );
+        imageResult = await this.generateGoogleImagen({
+          prompt: compiledPrompt.englishPrompt,
+          aspectRatio: (compiledPrompt.aspectRatio as any) || '4:5',
+          tenantId: params.tenantId,
+          stylePromptSuffix: blueprint.scenePromptHint
+            ? PosterPromptCompiler.sanitizeImageGenerationPrompt(blueprint.scenePromptHint)
+            : undefined,
+          imageNegativeAllow: blueprint.fixedConstraints?.imageNegativeAllow,
+        });
+      } catch (googleError: any) {
+        console.warn(
+          `[AIEngineAdapter] Google Imagen 3 gagal (${googleError.message}). Mengaktifkan failover otomatis ke OpenAI DALL-E...`
+        );
+        imageResult = await this.generateDalleImage(
+          compiledPrompt.englishPrompt,
+          params.tenantId,
+          targetSize
+        );
+      }
+    } else {
+      console.log(
+        `[AIEngineAdapter] Menghasilkan kanvas seni Layer 1 via OpenAI DALL-E (target size: ${targetSize})...`
+      );
+      imageResult = await this.generateDalleImage(
+        compiledPrompt.englishPrompt,
+        params.tenantId,
+        targetSize
+      );
+    }
+
+    return {
+      temporaryImageUrl: imageResult.temporaryImageUrl,
+      blueprint,
+      compiledPrompt,
+      canonicalTraceId: imageResult.canonicalTraceId,
+    };
+  }
+
+  /**
+   * Pipeline Baru: ART-COLLAGE POSTER GENERATION
+   * Alur: AI Copywriter (teks) + AI Image (kolase seni utuh) -> AI Vision Layout Locator
+   *       -> Satori Zero-Box (transparan, tanpa kotak) -> Sharp Ink-Blend.
+   */
+  public async generateArtCollagePoster(params: {
+    topic: string;
+    groundedContextSummary?: string;
+    forcedArchetype?: CreativePosterArchetype;
+    excludeBlueprintId?: string;
+    tenantBrandHex?: string;
+    tenantId?: string;
+    variationKey?: string;
+  }): Promise<ArtCollagePosterResult> {
+    return ArtCollagePosterPipeline.generate(params);
   }
 
   public async generateCivicAnswer(
@@ -393,7 +478,14 @@ Keluarkan hasil dalam format JSON:
       ],
     });
 
-    return JSON.parse(response.choices[0]?.message?.content || '{}');
+    const parsed = JSON.parse(response.choices[0]?.message?.content || '{}') as GeneratedSocialPackResult;
+    return {
+      instagramCaption: MasterEditorialSanitizer.sanitize(parsed.instagramCaption || ''),
+      twitterThreads: (parsed.twitterThreads || []).map((t) =>
+        MasterEditorialSanitizer.sanitize(t || '')
+      ),
+      whatsappBroadcast: MasterEditorialSanitizer.sanitize(parsed.whatsappBroadcast || ''),
+    };
   }
 
   public async performVisionOCR(params: {

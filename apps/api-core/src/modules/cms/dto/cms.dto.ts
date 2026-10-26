@@ -14,7 +14,7 @@ import {
   ValidationArguments,
 } from 'class-validator';
 import { Type } from 'class-transformer';
-import { SocialPlatform } from '@polaris/shared-types';
+import { SocialPlatform, DocType } from '@polaris/shared-types';
 
 /**
  * Validator kustom untuk URL gambar: menerima URL http/https, data URI (data:image/...),
@@ -121,10 +121,9 @@ export class CreatePortalDocumentRequestDto {
   @MaxLength(255)
   title!: string;
 
-  @IsString()
-  @IsNotEmpty()
-  @MaxLength(50)
-  docType: string = 'REPORT_TRIWULAN';
+  @IsOptional()
+  @IsEnum(DocType, { message: 'Tipe dokumen tidak valid.' })
+  docType?: DocType = DocType.REPORT_TRIWULAN;
 
   @IsOptional()
   @IsString()

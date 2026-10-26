@@ -47,7 +47,7 @@ export class InstagramController {
     @Query() query: InstagramCallbackQueryDto,
     @Res() res: Response
   ): Promise<void> {
-    const redirectTarget = `${this.dashboardBaseUrl}/branding`;
+    const redirectTarget = `${this.dashboardBaseUrl}/profile`;
 
     // 1. Tangani jika dewan membatalkan persetujuan di layar Meta
     if (query.error || query.error_reason) {

@@ -36,18 +36,18 @@ export function AspirasiDetailModal({
     >
       <div className="space-y-5">
         {/* STATUS STEPPER */}
-        <div className="p-3.5 rounded-xl bg-slate-50 border border-slate-200 flex items-center justify-between">
-          <span className="text-xs font-bold text-slate-700">Status Tindak Lanjut:</span>
+        <div className="p-3.5 rounded-xl bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 flex items-center justify-between">
+          <span className="text-xs font-bold text-slate-700 dark:text-slate-200">Status Tindak Lanjut:</span>
           <div className="flex gap-1.5">
             {['RECEIVED', 'VERIFIED', 'RESPONDED'].map((st) => (
               <button
                 key={st}
                 disabled={updatingId !== null}
                 onClick={() => onStatusChange(selectedItem.id, st)}
-                className={`px-2.5 py-1 rounded-lg text-xs font-extrabold transition-all ${
+                className={`px-2.5 py-1 rounded-lg text-xs font-extrabold transition-all cursor-pointer ${
                   selectedItem.status === st
                     ? 'bg-primary text-primary-foreground shadow-sm'
-                    : 'bg-white border border-slate-200 text-slate-600 hover:bg-slate-100'
+                    : 'bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-700'
                 }`}
               >
                 {st}
@@ -61,37 +61,37 @@ export function AspirasiDetailModal({
           <span className="text-[10px] font-black uppercase tracking-wider text-primary flex items-center gap-1">
             <ShieldCheck className="h-3.5 w-3.5" /> Identitas Terdekripsi (UU PDP Safe)
           </span>
-          <div className="grid grid-cols-2 gap-2 pt-1 font-medium text-slate-800">
+          <div className="grid grid-cols-2 gap-2 pt-1 font-medium text-slate-800 dark:text-slate-200">
             <div>
-              <span className="text-slate-400 block text-[10px]">Nama Pelapor:</span>
-              <strong className="text-slate-900">{selectedItem.citizenName}</strong>
+              <span className="text-slate-400 dark:text-slate-400 block text-[10px]">Nama Pelapor:</span>
+              <strong className="text-slate-900 dark:text-white">{selectedItem.citizenName}</strong>
             </div>
             <div>
-              <span className="text-slate-400 block text-[10px]">Nomor WhatsApp:</span>
-              <strong className="font-mono text-slate-900">{selectedItem.phoneNumber}</strong>
+              <span className="text-slate-400 dark:text-slate-400 block text-[10px]">Nomor WhatsApp:</span>
+              <strong className="font-mono text-slate-900 dark:text-white">{selectedItem.phoneNumber}</strong>
             </div>
           </div>
         </div>
 
         {/* DETAIL LOKASI & MASALAH */}
-        <div className="space-y-2 text-xs text-slate-800">
+        <div className="space-y-2 text-xs text-slate-800 dark:text-slate-200">
           <div className="flex gap-2">
-            <span className="text-slate-400 w-24 shrink-0">Wilayah:</span>
-            <span className="font-bold">
+            <span className="text-slate-400 dark:text-slate-400 w-24 shrink-0">Wilayah:</span>
+            <span className="font-bold text-slate-900 dark:text-white">
               Kecamatan {selectedItem.districtKecamatan}, {selectedItem.regencyName}
             </span>
           </div>
           <div className="flex gap-2">
-            <span className="text-slate-400 w-24 shrink-0">Kategori:</span>
+            <span className="text-slate-400 dark:text-slate-400 w-24 shrink-0">Kategori:</span>
             <Badge variant="blue">{selectedItem.category}</Badge>
           </div>
           <div className="flex gap-2">
-            <span className="text-slate-400 w-24 shrink-0">Waktu Lapor:</span>
-            <span>{formatDateIndonesian(selectedItem.submittedAt)}</span>
+            <span className="text-slate-400 dark:text-slate-400 w-24 shrink-0">Waktu Lapor:</span>
+            <span className="text-slate-900 dark:text-slate-200">{formatDateIndonesian(selectedItem.submittedAt)}</span>
           </div>
           <div className="pt-2">
-            <span className="text-slate-400 block mb-1">Isi Pesan Warga:</span>
-            <div className="p-3.5 rounded-xl bg-slate-50 border border-slate-200 leading-relaxed font-sans text-xs">
+            <span className="text-slate-400 dark:text-slate-400 block mb-1">Isi Pesan Warga:</span>
+            <div className="p-3.5 rounded-xl bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 leading-relaxed font-sans text-xs text-slate-800 dark:text-white">
               {selectedItem.aspirationMessage}
             </div>
           </div>

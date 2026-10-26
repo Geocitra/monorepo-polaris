@@ -3,6 +3,7 @@ import {
   Post,
   Get,
   Put,
+  Delete,
   Body,
   Param,
   HttpCode,
@@ -10,7 +11,12 @@ import {
   UseGuards
 } from '@nestjs/common';
 import { StudioService } from './studio.service.js';
-import { GenerateArticleRequestDto, UpdateDraftArticleDto, PublishInfographicDto } from './dto/studio.dto.js';
+import {
+  GenerateArticleRequestDto,
+  UpdateDraftArticleDto,
+  UploadArticleImageDto,
+  PublishInfographicDto,
+} from './dto/studio.dto.js';
 import { CurrentTenant, AuthenticatedTenantPayload } from '../../common/decorators/current-tenant.decorator.js';
 import { SubscriptionGuard } from '../../common/guards/subscription.guard.js';
 import { TokenCircuitBreakerGuard } from '../../common/guards/token-circuit-breaker.guard.js';
@@ -27,6 +33,14 @@ export class StudioController {
     return await this.studioService.getMorningBriefing(user.tenantId);
   }
 
+  // Rekomendasi Isu Hangat Dapil Dinamis berbasis AI (Gemini Flash Lite)
+  @Get('trending-topics')
+  @SkipRlsContext()
+  @HttpCode(HttpStatus.OK)
+  async getTrendingTopics(@CurrentTenant() user: AuthenticatedTenantPayload) {
+    return await this.studioService.getTrendingDapilTopics(user.tenantId);
+  }
+
   // Generate konten AI WAJIB memiliki status langganan ACTIVE (Bebas Kuota Unlimited)
   @Post('generate')
   @SkipRlsContext()
@@ -36,7 +50,26 @@ export class StudioController {
     @CurrentTenant() user: AuthenticatedTenantPayload,
     @Body() dto: GenerateArticleRequestDto
   ) {
-    return await this.studioService.generateNewContentPackage(user.tenantId, dto);
+    return await this.studioService.generateNewContentPackage(user.tenantId, dto, user);
+  }
+
+  // Parafrase & Penyempurnaan Prompt Cerdas menggunakan Gemini Flash Lite (Ultra-Cepat & Hemat)
+  @Post('refine-prompt')
+  @SkipRlsContext()
+  @HttpCode(HttpStatus.OK)
+  async refinePrompt(
+    @CurrentTenant() user: AuthenticatedTenantPayload,
+    @Body()
+    dto: {
+      prompt: string;
+      style?: 'poster' | 'infographic' | 'article_agenda';
+      dapilName?: string;
+      memberName?: string;
+      partyAffiliation?: string;
+      commissionName?: string;
+    }
+  ) {
+    return await this.studioService.refinePrompt(user.tenantId, dto);
   }
 
   @Get('jobs/:jobId')
@@ -92,7 +125,7 @@ export class StudioController {
     @CurrentTenant() user: AuthenticatedTenantPayload,
     @Param('id') id: string
   ) {
-    return await this.studioService.publishArticle(user.tenantId, id);
+    return await this.studioService.publishArticle(user.tenantId, id, user);
   }
 
   @Post('articles/:id/unpublish')
@@ -103,6 +136,57 @@ export class StudioController {
     @Param('id') id: string
   ) {
     return await this.studioService.unpublishArticle(user.tenantId, id);
+  }
+
+  @Delete('articles/:id')
+  @UseGuards(SubscriptionGuard)
+  @HttpCode(HttpStatus.OK)
+  async deleteArticle(
+    @CurrentTenant() user: AuthenticatedTenantPayload,
+    @Param('id') id: string
+  ) {
+    return await this.studioService.deleteArticle(user.tenantId, id);
+  }
+
+  @Post('upload-image')
+  @UseGuards(SubscriptionGuard)
+  @HttpCode(HttpStatus.CREATED)
+  async uploadImage(
+    @CurrentTenant() user: AuthenticatedTenantPayload,
+    @Body() dto: UploadArticleImageDto
+  ) {
+    return await this.studioService.uploadArticleImage(user.tenantId, dto);
+  }
+
+  @Get('articles/:id/research')
+  @HttpCode(HttpStatus.OK)
+  async getArticleResearch(
+    @CurrentTenant() user: AuthenticatedTenantPayload,
+    @Param('id') id: string
+  ) {
+    return await this.studioService.getArticleResearchAuditTrail(user.tenantId, id);
+  }
+
+  @Post('articles/:id/research/sources')
+  @UseGuards(SubscriptionGuard)
+  @HttpCode(HttpStatus.CREATED)
+  async addManualSource(
+    @CurrentTenant() user: AuthenticatedTenantPayload,
+    @Param('id') id: string,
+    @Body() dto: { url: string; title: string; publisherName: string; notes?: string }
+  ) {
+    return await this.studioService.addManualResearchSource(user.tenantId, id, dto);
+  }
+
+  @Delete('articles/:id/research/sources/:sourceId')
+  @UseGuards(SubscriptionGuard)
+  @HttpCode(HttpStatus.OK)
+  async deleteSource(
+    @CurrentTenant() user: AuthenticatedTenantPayload,
+    @Param('id') id: string,
+    @Param('sourceId') sourceId: string
+  ) {
+    return await this.studioService.deleteResearchSource(user.tenantId, id, sourceId);
   }
 
   // ─── INFOGRAFIS AI PUBLISH & MANAGEMENT ENDPOINTS ───

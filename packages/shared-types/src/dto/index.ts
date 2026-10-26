@@ -185,9 +185,25 @@ export interface PortalLayoutSectionDto {
   config?: Record<string, any>;
 }
 
+export interface VisionMissionItemDto {
+  title: string;
+  subtitle?: string;
+  description: string;
+  icon?: string;
+}
+
+export interface CareerAssignmentItemDto {
+  role: string;
+  period?: string;
+  description: string;
+}
+
 export interface PortalLayoutSchemaDto {
   templatePreset: PortalTemplateId | string;
-  sections: PortalLayoutSectionDto[];
+  sections?: PortalLayoutSectionDto[];
+  watermarkText?: string;
+  visionMission?: VisionMissionItemDto[];
+  careers?: CareerAssignmentItemDto[];
 }
 
 export interface PortalDocumentItemDto {

@@ -1,6 +1,12 @@
+import dns from 'node:dns';
+try {
+  dns.setDefaultResultOrder('ipv4first');
+} catch {}
+
 import { NestFactory } from '@nestjs/core';
 import { ValidationPipe } from '@nestjs/common';
 import express from 'express';
+import path from 'node:path';
 import { AppModule } from './app.module.js';
 
 async function bootstrap() {
@@ -10,9 +16,13 @@ async function bootstrap() {
   app.use(express.json({ limit: '50mb' }));
   app.use(express.urlencoded({ limit: '50mb', extended: true }));
 
-  // Aktifkan CORS untuk dashboard dan portal publik
+  // Sajikan folder uploads statis
+  app.use('/uploads', express.static(path.resolve(process.cwd(), 'uploads')));
+  app.use('/uploads', express.static(path.resolve(process.cwd(), '../../uploads')));
+
+  // Aktifkan CORS untuk dashboard dan portal publik (dinamis untuk multi-subdomain)
   app.enableCors({
-    origin: '*',
+    origin: true,
     methods: 'GET,HEAD,PUT,PATCH,POST,DELETE',
     credentials: true,
   });

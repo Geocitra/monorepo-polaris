@@ -24,6 +24,8 @@ export * from './ports/storage.port.js';
 export * from './ports/payment-gateway.port.js';
 export * from './ports/payment-report.port.js';
 export * from './ports/social-publisher.port.js';
+export * from './ports/poster-blueprint-repository.port.js';
+export * from './ports/research-job-repository.port.js';
 
 // Policies
 export * from './policies/EntitlementPolicy.js';

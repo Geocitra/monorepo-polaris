@@ -154,23 +154,23 @@ export function DocumentManager() {
   return (
     <div className="space-y-6">
       {/* Header Banner */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-6 rounded-3xl bg-gradient-to-r from-slate-900 to-indigo-950 text-white shadow-xl">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-6 rounded-3xl bg-gradient-to-r from-blue-50/90 via-slate-50 to-indigo-50/70 dark:from-slate-900 dark:to-indigo-950 text-slate-900 dark:text-white border border-blue-100 dark:border-slate-800 shadow-sm">
         <div className="space-y-1">
-          <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-white/10 text-amber-300 text-xs font-bold uppercase tracking-wider backdrop-blur-md">
+          <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-blue-100/70 dark:bg-white/10 text-blue-800 dark:text-amber-300 text-xs font-bold uppercase tracking-wider backdrop-blur-md">
             <Sparkles className="w-3.5 h-3.5" />
             <span>Pojok Literasi & Akuntabilitas Parlemen</span>
           </div>
-          <h2 className="text-xl sm:text-2xl font-black text-white">
+          <h2 className="text-xl sm:text-2xl font-black text-slate-900 dark:text-white">
             Katalog Dokumen Resmi Dewan (PDF)
           </h2>
-          <p className="text-xs sm:text-sm text-slate-300 max-w-xl">
+          <p className="text-xs sm:text-sm text-slate-600 dark:text-slate-300 max-w-xl">
             Unggah dan kelola naskah akademik, draf rancangan regulasi, laporan kinerja masa sidang, serta buletin aspirasi yang dapat diakses publik.
           </p>
         </div>
 
         <button
           onClick={() => setShowAddForm(!showAddForm)}
-          className="inline-flex items-center justify-center gap-2 px-5 py-3 rounded-2xl bg-gradient-to-r from-amber-400 to-amber-500 hover:from-amber-300 hover:to-amber-400 text-slate-950 font-bold text-xs sm:text-sm shadow-lg shadow-amber-500/20 transition-all hover:scale-[1.02] shrink-0"
+          className="inline-flex items-center justify-center gap-2 px-5 py-3 rounded-2xl bg-blue-600 hover:bg-blue-700 text-white dark:bg-gradient-to-r dark:from-amber-400 dark:to-amber-500 dark:hover:from-amber-300 dark:hover:to-amber-400 dark:text-slate-950 font-bold text-xs sm:text-sm shadow-md transition-all hover:scale-[1.02] shrink-0 cursor-pointer"
         >
           <Plus className="w-4 h-4" />
           <span>{showAddForm ? 'Tutup Formulir' : 'Terbitkan Dokumen Baru'}</span>

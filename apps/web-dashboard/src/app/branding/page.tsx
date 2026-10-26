@@ -15,8 +15,6 @@ import { Button } from '@/components/ui/button';
 import { ThemeForm } from '@/components/branding/ThemeForm';
 import { DeviceSimulator } from '@/components/branding/DeviceSimulator';
 import { DashboardThemeCustomizer } from '@/components/branding/DashboardThemeCustomizer';
-import { InstagramConnectionCard } from '@/components/social/InstagramConnectionCard';
-import { ThreadsConnectionCard } from '@/components/social/ThreadsConnectionCard';
 import { Card } from '@/components/ui/card';
 
 const PARTY_COLOR_PRESETS = [
@@ -36,7 +34,6 @@ type StudioViewMode = 'split' | 'editor' | 'preview';
 function BrandingContent() {
   const { toast } = useToast();
   const { setColors } = useTheme();
-  const searchParams = useSearchParams();
   const iframeRef = useRef<HTMLIFrameElement>(null);
 
   const [profile, setProfile] = useState<any>(null);
@@ -57,29 +54,9 @@ function BrandingContent() {
   const [subdomainSlug, setSubdomainSlug] = useState('');
   const [customDomain, setCustomDomain] = useState('');
   const [layoutTemplateId, setLayoutTemplateId] = useState('standard-default');
-
-  useEffect(() => {
-    // Tangkap feedback redirect setelah OAuth Meta selesai
-    const socialStatus = searchParams.get('social_status');
-    const handle = searchParams.get('handle');
-    const reason = searchParams.get('reason');
-
-    if (socialStatus === 'connected' && handle) {
-      setActiveTab('instagram');
-      toast({
-        type: 'success',
-        title: 'Instagram Berhasil Ditautkan!',
-        description: `Akun resmi @${handle} siap digunakan untuk penerbitan otomatis dari Studio.`,
-      });
-    } else if (socialStatus === 'error') {
-      setActiveTab('instagram');
-      toast({
-        type: 'error',
-        title: 'Gagal Menautkan Akun',
-        description: reason || 'Terjadi kesalahan saat otorisasi Meta.',
-      });
-    }
-  }, [searchParams, toast]);
+  const [visionMission, setVisionMission] = useState<any[]>([]);
+  const [careers, setCareers] = useState<any[]>([]);
+  const [layoutSchema, setLayoutSchema] = useState<any>(null);
 
   useEffect(() => {
     async function loadConfig() {
@@ -100,6 +77,15 @@ function BrandingContent() {
           setHeadlineTagline(portalData.theme.headlineTagline || '');
           setBioBiography(portalData.theme.bioBiography || '');
           setLayoutTemplateId(portalData.theme.layoutTemplateId || 'standard-default');
+
+          const schema = portalData.theme.layoutSchema || {};
+          setLayoutSchema(schema);
+          if (Array.isArray(schema.visionMission) && schema.visionMission.length > 0) {
+            setVisionMission(schema.visionMission);
+          }
+          if (Array.isArray(schema.careers) && schema.careers.length > 0) {
+            setCareers(schema.careers);
+          }
         } else if (p?.photoUrl) {
           setOfficialPhotoUrl(p.photoUrl);
         }
@@ -133,6 +119,13 @@ function BrandingContent() {
 
     try {
       const photoToSave = (officialPhotoUrl || profile?.photoUrl || '').trim();
+      const updatedSchema = {
+        ...(layoutSchema || {}),
+        templatePreset: layoutTemplateId,
+        visionMission,
+        careers,
+      };
+
       await ApiClient.request<any>('/cms/theme', {
         method: 'PUT',
         body: JSON.stringify({
@@ -143,6 +136,7 @@ function BrandingContent() {
           officialPhotoUrl: photoToSave,
           headlineTagline,
           bioBiography,
+          layoutSchema: updatedSchema,
         }),
       });
 
@@ -210,14 +204,14 @@ function BrandingContent() {
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-slate-50">
+      <div className="min-h-screen flex items-center justify-center bg-slate-50 dark:bg-[#0A0D14]">
         <Loader2 className="h-8 w-8 animate-spin text-blue-600" />
       </div>
     );
   }
 
   return (
-    <div className="flex min-h-screen bg-slate-50">
+    <div className="flex min-h-screen bg-slate-100/70 dark:bg-[#070A12] text-slate-900 dark:text-slate-100 font-sans theme-transition">
       <Sidebar subdomain={profile?.subdomain} />
 
       <div className="flex-1 flex flex-col min-w-0">
@@ -242,17 +236,17 @@ function BrandingContent() {
           )}
         >
           {/* HEADER */}
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-200 pb-5">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-200 dark:border-slate-800 pb-5">
             <div>
               <span className="text-[10px] font-black uppercase tracking-widest flex items-center gap-1.5" style={{ color: 'var(--color-primary)' }}>
                 <Palette className="h-3.5 w-3.5" />
                 Identitas & Tampilan
               </span>
-              <h1 className="text-2xl sm:text-3xl font-black text-slate-900 mt-1">
+              <h1 className="text-2xl sm:text-3xl font-black text-slate-900 dark:text-white mt-1">
                 Tema & Desain
               </h1>
-              <p className="text-xs sm:text-sm text-slate-500 mt-0.5">
-                Atur tampilan dashboard, website publik, dan akun media sosial resmi Anda.
+              <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400 mt-0.5">
+                Atur palet warna fraksi, tema dashboard, serta tampilan portal website aspirasi konstituen.
               </p>
             </div>
 
@@ -478,6 +472,12 @@ function BrandingContent() {
                     saving={saving}
                     onSubmit={handleSave}
                     partyPresets={PARTY_COLOR_PRESETS}
+                    visionMission={visionMission}
+                    onVisionMissionChange={setVisionMission}
+                    careers={careers}
+                    onCareersChange={setCareers}
+                    profileEducation={profile?.education}
+                    profileCourses={profile?.courses}
                   />
                 </div>
 
@@ -502,14 +502,6 @@ function BrandingContent() {
               </form>
             </div>
           )}
-
-          {activeTab === 'instagram' && (
-            <InstagramConnectionCard isUnpaid={isUnpaid} />
-          )}
-
-          {activeTab === 'threads' && (
-            <ThreadsConnectionCard isUnpaid={isUnpaid} />
-          )}
         </main>
       </div>
     </div>
@@ -520,7 +512,7 @@ export default function BrandingPage() {
   return (
     <Suspense
       fallback={
-        <div className="min-h-screen flex items-center justify-center bg-slate-50">
+        <div className="min-h-screen flex items-center justify-center bg-slate-50 dark:bg-[#0A0D14]">
           <Loader2 className="h-8 w-8 animate-spin text-blue-600" />
         </div>
       }

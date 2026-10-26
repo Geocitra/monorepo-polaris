@@ -15,6 +15,7 @@ import {
   ChevronLeft,
   ChevronRight,
   User,
+  Database,
 } from 'lucide-react';
 import { ApiClient } from '@/lib/api-client';
 import { cn } from '@/lib/utils';
@@ -22,6 +23,7 @@ import { cn } from '@/lib/utils';
 const navItems = [
   { name: 'Ringkasan Pagi', href: '/', icon: LayoutDashboard },
   { name: 'Studio Konten AI', href: '/studio', icon: Sparkles },
+  { name: 'DataHub Knowledge', href: '/datahub', icon: Database },
   { name: 'Kelola Konten & Web', href: '/studio/library', icon: BookOpen },
   { name: 'Suara & Aspirasi Warga', href: '/aspirasi', icon: Inbox },
   { name: 'Tema & Website', href: '/branding', icon: Palette },
@@ -54,7 +56,7 @@ export function Sidebar({ subdomain }: { subdomain?: string }) {
     <aside
       className={cn(
         'sticky top-0 h-screen flex flex-col justify-between hidden md:flex shrink-0 transition-all duration-300 z-30 theme-transition',
-        collapsed ? 'w-20' : 'w-64'
+        collapsed ? 'w-20' : 'w-60'
       )}
       style={{
         backgroundColor: 'var(--sidebar-bg)',

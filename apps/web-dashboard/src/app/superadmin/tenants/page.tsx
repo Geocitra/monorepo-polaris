@@ -89,10 +89,10 @@ export default function SuperadminTenantsPage() {
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-200 dark:border-slate-800 pb-5">
         <div>
           <h1 className="text-xl sm:text-2xl font-black text-slate-900 dark:text-white tracking-tight">
-            Direktori & Tata Kelola Anggota Dewan
+            Direktori &amp; Tata Kelola Klien Eksekutif
           </h1>
           <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
-            Daftar seluruh klien eksekutif, verifikasi tanda sah KPU, penerbitan akun resmi & lisensi B2B parlemen.
+            Daftar seluruh pimpinan eksekutif, verifikasi data kelembagaan, serta penerbitan akun dan lisensi resmi.
           </p>
         </div>
 

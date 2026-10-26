@@ -144,7 +144,7 @@ export function PosterCanvas({
               <div className="w-full h-full flex flex-col items-center justify-center p-4 bg-gradient-to-br from-blue-950 to-slate-900 text-slate-300 text-center">
                 <ImageIcon className="h-10 w-10 text-blue-400 mb-2 opacity-80" />
                 <span className="text-xs font-bold text-white">Visual Kanvas Kebijakan</span>
-                <span className="text-[10px] text-slate-400 mt-1">DALL-E 3 High Resolution 300 DPI</span>
+                <span className="text-[10px] text-slate-400 mt-1">High Resolution 300 DPI</span>
               </div>
             )}
             <div className="absolute inset-0 bg-gradient-to-t from-slate-950/80 via-transparent to-transparent pointer-events-none" />

@@ -27,10 +27,28 @@ function SuperadminLoginFormContent() {
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
 
   useEffect(() => {
-    if (AdminApiClient.isAuthenticated()) {
-      router.replace(redirectUrl);
+    // Jika ada parameter reset atau logout di URL, bersihkan sesi
+    if (searchParams.get('reset') === 'true' || searchParams.get('logout') === 'true') {
+      AdminApiClient.logout();
+      return;
     }
-  }, [redirectUrl, router]);
+
+    const token = AdminApiClient.getToken();
+    const user = AdminApiClient.getUser();
+
+    if (token && user) {
+      if (user.role === 'CONTENT_OPERATOR' || user.role === 'SUPPORT_OPERATOR') {
+        router.replace('/operator');
+      } else if (user.role === 'SUPERADMIN') {
+        router.replace(redirectUrl || '/superadmin');
+      } else {
+        AdminApiClient.logout();
+      }
+    } else if (token && !user) {
+      // Keadaan tidak konsisten (token ada tapi data user tidak ada / korup)
+      AdminApiClient.logout();
+    }
+  }, [redirectUrl, router, searchParams]);
 
   useEffect(() => {
     if (countdown <= 0) return;
@@ -113,7 +131,11 @@ function SuperadminLoginFormContent() {
 
       if (res.token && res.admin) {
         AdminApiClient.setAuth(res.token, res.admin);
-        router.push(redirectUrl);
+        if (res.admin.role === 'CONTENT_OPERATOR' || res.admin.role === 'SUPPORT_OPERATOR') {
+          router.push('/operator');
+        } else {
+          router.push(redirectUrl);
+        }
       } else {
         throw new Error('Respons verifikasi tidak valid.');
       }
@@ -153,10 +175,10 @@ function SuperadminLoginFormContent() {
               </span>
             </div>
             <h3 className="text-base sm:text-lg font-black text-white leading-snug tracking-tight">
-              Pusat Kendali Sistem & Tata Kelola Platform Parlemen
+              Pusat Kendali Sistem &amp; Tata Kelola Platform POLARIS
             </h3>
             <p className="text-[11px] text-slate-300 leading-relaxed line-clamp-2">
-              Konsol operasional terpadu untuk monitoring server, manajemen lisensi B2B dewan, dan integrasi master data nasional se-Indonesia.
+              Konsol operasional terpadu untuk monitoring server, manajemen lisensi pimpinan eksekutif, dan integrasi master data nasional se-Indonesia.
             </p>
             <div className="pt-1 flex flex-wrap items-center gap-1.5 text-[9px] font-bold text-slate-300">
               <span className="px-2 py-0.5 rounded-full bg-white/10 border border-white/10">
@@ -255,6 +277,21 @@ function SuperadminLoginFormContent() {
             onResendOtp={handleResendOtp}
             onResetError={() => setErrorMsg(null)}
           />
+
+          {/* Opsi Reset Cache / Ganti Akun */}
+          <div className="flex justify-center pt-1">
+            <button
+              type="button"
+              onClick={() => {
+                AdminApiClient.logout();
+                setErrorMsg(null);
+                setSuccessMsg('Sesi dan cache berhasil dibersihkan.');
+              }}
+              className="text-[11px] text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 underline transition-colors cursor-pointer"
+            >
+              Bersihkan Cache / Reset Sesi Login
+            </button>
+          </div>
         </div>
 
         {/* Footer Notice */}

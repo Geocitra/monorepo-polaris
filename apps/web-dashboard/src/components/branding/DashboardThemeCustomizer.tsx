@@ -110,27 +110,27 @@ function ThemePreviewModal({
 
   return (
     <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-in fade-in">
-      <div className="w-full max-w-2xl bg-white rounded-2xl border border-slate-200 shadow-2xl overflow-hidden animate-in zoom-in-95">
-        <div className="flex items-center justify-between p-5 border-b border-slate-100">
+      <div className="w-full max-w-2xl bg-white dark:bg-[#0E131F] rounded-2xl border border-slate-200 dark:border-slate-800 shadow-2xl overflow-hidden animate-in zoom-in-95">
+        <div className="flex items-center justify-between p-5 border-b border-slate-100 dark:border-slate-800">
           <div>
-            <h4 className="text-base font-extrabold text-slate-900 flex items-center gap-2">
+            <h4 className="text-base font-extrabold text-slate-900 dark:text-white flex items-center gap-2">
               <Eye className="h-4 w-4" style={{ color: primary }} />
               Pratinjau Tema Baru
             </h4>
-            <p className="text-xs text-slate-500 mt-0.5">Pastikan tampilannya sesuai keinginan Anda sebelum diterapkan.</p>
+            <p className="text-xs text-slate-500 dark:text-slate-300 mt-0.5">Pastikan tampilannya sesuai keinginan Anda sebelum diterapkan.</p>
           </div>
-          <button onClick={onClose} className="p-1.5 rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition-colors"><X className="h-4 w-4" /></button>
+          <button onClick={onClose} className="p-1.5 rounded-lg text-slate-400 dark:text-slate-400 hover:text-slate-600 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer"><X className="h-4 w-4" /></button>
         </div>
 
         <div className="p-6 space-y-5">
           <div className="flex items-center gap-5">
             <div className="flex items-center gap-2">
               <div className="h-9 w-9 rounded-xl shadow-inner border border-black/10" style={{ backgroundColor: primary }} />
-              <div><span className="text-[10px] font-bold text-slate-400 uppercase block">Aksen</span><span className="text-xs font-bold text-slate-700">Tombol & Highlight</span></div>
+              <div><span className="text-[10px] font-bold text-slate-400 dark:text-slate-400 uppercase block">Aksen</span><span className="text-xs font-bold text-slate-700 dark:text-slate-200">Tombol & Highlight</span></div>
             </div>
             <div className="flex items-center gap-2">
               <div className="h-9 w-9 rounded-xl shadow-inner border border-black/10" style={{ backgroundColor: secondary }} />
-              <div><span className="text-[10px] font-bold text-slate-400 uppercase block">Sidebar</span><span className="text-xs font-bold text-slate-700">Panel Navigasi</span></div>
+              <div><span className="text-[10px] font-bold text-slate-400 dark:text-slate-400 uppercase block">Sidebar</span><span className="text-xs font-bold text-slate-700 dark:text-slate-200">Panel Navigasi</span></div>
             </div>
           </div>
 
@@ -143,11 +143,11 @@ function ThemePreviewModal({
           </div>
         </div>
 
-        <div className="flex items-center justify-end gap-3 p-5 border-t border-slate-100 bg-slate-50/50">
-          <button onClick={onClose} className="px-5 py-2.5 rounded-xl text-sm font-bold text-slate-600 hover:bg-slate-100 transition-colors">Batal</button>
+        <div className="flex items-center justify-end gap-3 p-5 border-t border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/50">
+          <button onClick={onClose} className="px-5 py-2.5 rounded-xl text-sm font-bold text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer">Batal</button>
           <button
             onClick={onApply} disabled={applying}
-            className="px-6 py-2.5 rounded-xl text-sm font-bold text-white shadow-md hover:opacity-90 transition-all disabled:opacity-50 flex items-center gap-2"
+            className="px-6 py-2.5 rounded-xl text-sm font-bold text-white shadow-md hover:opacity-90 transition-all disabled:opacity-50 flex items-center gap-2 cursor-pointer"
             style={{ backgroundColor: primary }}
           >
             {applying ? (<><span className="h-4 w-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />Menerapkan...</>)
@@ -207,29 +207,29 @@ export function DashboardThemeCustomizer() {
           {/* Left: current theme info */}
           <div className="space-y-3">
             <div>
-              <h3 className="text-sm font-extrabold text-slate-900 flex items-center gap-2">
+              <h3 className="text-sm font-extrabold text-slate-900 dark:text-white flex items-center gap-2">
                 <Palette className="h-4 w-4" style={{ color: stagePrimary }} />
                 Warna Tema Dashboard Anda
               </h3>
-              <p className="text-xs text-slate-500 mt-0.5">
+              <p className="text-xs text-slate-500 dark:text-slate-300 mt-0.5">
                 Pilih dari palet di bawah, atau buat kombinasi warna sendiri.
               </p>
             </div>
 
             {/* Current color badges */}
             <div className="flex items-center gap-4">
-              <div className="flex items-center gap-2.5 px-3 py-2 rounded-xl bg-slate-50 border border-slate-100">
-                <div className="h-7 w-7 rounded-lg shadow-inner border border-black/10" style={{ backgroundColor: stagePrimary }} />
+              <div className="flex items-center gap-2.5 px-3 py-2 rounded-xl bg-slate-50 dark:bg-slate-800/80 border border-slate-100 dark:border-slate-700">
+                <div className="h-7 w-7 rounded-lg shadow-inner border border-black/10 shrink-0" style={{ backgroundColor: stagePrimary }} />
                 <div>
-                  <span className="text-[9px] font-bold text-slate-400 uppercase block leading-none">Aksen</span>
-                  <span className="text-[11px] font-bold text-slate-700">Tombol & highlight</span>
+                  <span className="text-[9px] font-bold text-slate-400 dark:text-slate-400 uppercase block leading-none">Aksen</span>
+                  <span className="text-[11px] font-bold text-slate-700 dark:text-slate-200">Tombol & highlight</span>
                 </div>
               </div>
-              <div className="flex items-center gap-2.5 px-3 py-2 rounded-xl bg-slate-50 border border-slate-100">
-                <div className="h-7 w-7 rounded-lg shadow-inner border border-black/10" style={{ backgroundColor: stageSecondary }} />
+              <div className="flex items-center gap-2.5 px-3 py-2 rounded-xl bg-slate-50 dark:bg-slate-800/80 border border-slate-100 dark:border-slate-700">
+                <div className="h-7 w-7 rounded-lg shadow-inner border border-black/10 shrink-0" style={{ backgroundColor: stageSecondary }} />
                 <div>
-                  <span className="text-[9px] font-bold text-slate-400 uppercase block leading-none">Sidebar</span>
-                  <span className="text-[11px] font-bold text-slate-700">Panel navigasi</span>
+                  <span className="text-[9px] font-bold text-slate-400 dark:text-slate-400 uppercase block leading-none">Sidebar</span>
+                  <span className="text-[11px] font-bold text-slate-700 dark:text-slate-200">Panel navigasi</span>
                 </div>
               </div>
             </div>
@@ -241,7 +241,7 @@ export function DashboardThemeCustomizer() {
                   <button
                     type="button"
                     onClick={() => setShowPreview(true)}
-                    className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-bold text-white shadow-md hover:opacity-90 transition-all"
+                    className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-bold text-white shadow-md hover:opacity-90 transition-all cursor-pointer"
                     style={{ backgroundColor: stagePrimary }}
                   >
                     <Eye className="h-3.5 w-3.5" />
@@ -250,7 +250,7 @@ export function DashboardThemeCustomizer() {
                   <button
                     type="button"
                     onClick={() => { setStagePrimary(colors.primary); setStageSecondary(colors.secondary); }}
-                    className="flex items-center gap-1.5 px-3 py-2.5 rounded-xl text-xs font-bold text-slate-500 border border-slate-200 hover:bg-slate-50 transition-colors"
+                    className="flex items-center gap-1.5 px-3 py-2.5 rounded-xl text-xs font-bold text-slate-500 dark:text-slate-300 border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors cursor-pointer"
                   >
                     <RotateCcw className="h-3 w-3" />
                     Reset
@@ -267,11 +267,11 @@ export function DashboardThemeCustomizer() {
         {/* ═══════ SECTION 2: CURATED PALETTES ═══════ */}
         <div className="space-y-3">
           <div>
-            <h3 className="text-xs font-bold text-slate-700 uppercase tracking-wide flex items-center gap-1.5">
+            <h3 className="text-xs font-bold text-slate-700 dark:text-white uppercase tracking-wide flex items-center gap-1.5">
               <Paintbrush className="h-3.5 w-3.5" />
               Palet Warna Siap Pakai
             </h3>
-            <p className="text-[11px] text-slate-400 mt-0.5">Pilih tema instan — klik langsung terapkan ke preview.</p>
+            <p className="text-[11px] text-slate-400 dark:text-slate-300 mt-0.5">Pilih tema instan — klik langsung terapkan ke preview.</p>
           </div>
 
           <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 gap-2">
@@ -279,55 +279,69 @@ export function DashboardThemeCustomizer() {
               const active = isActive(p);
               return (
                 <button key={p.name} type="button" onClick={() => applyPreset(p)}
-                  className={`group relative flex flex-col items-center gap-1.5 px-2 py-2.5 rounded-xl border text-center transition-all hover:shadow-md hover:scale-[1.03] ${
-                    active ? 'border-slate-900 bg-slate-50 ring-1 ring-slate-900' : 'border-slate-200 bg-white hover:border-slate-300'
+                  className={`group relative flex flex-col items-center gap-1.5 px-2 py-2.5 rounded-xl border text-center transition-all hover:shadow-md hover:scale-[1.03] cursor-pointer ${
+                    active
+                      ? 'border-blue-600 bg-blue-50/50 dark:bg-blue-950/40 ring-2 ring-blue-500/20'
+                      : 'border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 hover:border-slate-300 dark:hover:border-slate-700'
                   }`}
                 >
                   <div className="flex items-center gap-0.5">
                     <div className="h-6 w-6 rounded-l-lg shadow-sm border border-black/10" style={{ backgroundColor: p.primary }} />
                     <div className="h-6 w-6 rounded-r-lg shadow-sm border border-black/10" style={{ backgroundColor: p.secondary }} />
                   </div>
-                  <span className="text-[10px] font-bold text-slate-600 truncate w-full">{p.name}</span>
-                  {active && <div className="absolute -top-1 -right-1 h-4 w-4 rounded-full bg-slate-900 flex items-center justify-center"><Check className="h-2.5 w-2.5 text-white" /></div>}
+                  <span className="text-[10px] font-bold text-slate-600 dark:text-slate-200 truncate w-full">{p.name}</span>
+                  {active && (
+                    <div className="absolute -top-1 -right-1 h-4 w-4 rounded-full bg-blue-600 flex items-center justify-center shadow-xs">
+                      <Check className="h-2.5 w-2.5 text-white stroke-[3]" />
+                    </div>
+                  )}
                 </button>
               );
             })}
           </div>
         </div>
 
-        {/* ═══════ SECTION 3: PARTY PRESETS ═══════ */}
+        {/* ═══════ SECTION 3: PARTY PRESETS (DISEMBUNYIKAN SEMENTARA) ═══════ */}
+        {/* Disembunyikan sementara atas arahan user
         <div className="space-y-3">
-          <h3 className="text-xs font-bold text-slate-700 uppercase tracking-wide">🏛️ Preset Partai Politik</h3>
+          <h3 className="text-xs font-bold text-slate-700 dark:text-white uppercase tracking-wide">Preset Partai Politik</h3>
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
             {PARTY_PRESETS.map((p) => {
               const active = isActive(p);
               return (
                 <button key={p.name} type="button" onClick={() => applyPreset(p)}
-                  className={`group relative flex items-center gap-2.5 px-3 py-2.5 rounded-xl border text-left transition-all hover:shadow-md hover:scale-[1.02] ${
-                    active ? 'border-slate-900 bg-slate-50 ring-1 ring-slate-900' : 'border-slate-200 bg-white hover:border-slate-300'
+                  className={`group relative flex items-center gap-2.5 px-3 py-2.5 rounded-xl border text-left transition-all hover:shadow-md hover:scale-[1.02] cursor-pointer ${
+                    active
+                      ? 'border-blue-600 bg-blue-50/50 dark:bg-blue-950/40 ring-2 ring-blue-500/20'
+                      : 'border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 hover:border-slate-300 dark:hover:border-slate-700'
                   }`}
                 >
                   <div className="flex items-center gap-0.5 shrink-0">
                     <div className="h-6 w-6 rounded-l-lg shadow-sm border border-black/10" style={{ backgroundColor: p.primary }} />
                     <div className="h-6 w-4 rounded-r-md shadow-sm border border-black/10" style={{ backgroundColor: p.secondary }} />
                   </div>
-                  <span className="text-[11px] font-bold text-slate-700 truncate">{p.name}</span>
-                  {active && <div className="absolute -top-1 -right-1 h-4 w-4 rounded-full bg-slate-900 flex items-center justify-center"><Check className="h-2.5 w-2.5 text-white" /></div>}
+                  <span className="text-[11px] font-bold text-slate-700 dark:text-slate-200 truncate">{p.name}</span>
+                  {active && (
+                    <div className="absolute -top-1 -right-1 h-4 w-4 rounded-full bg-blue-600 flex items-center justify-center shadow-xs">
+                      <Check className="h-2.5 w-2.5 text-white stroke-[3]" />
+                    </div>
+                  )}
                 </button>
               );
             })}
           </div>
         </div>
+        */}
 
         {/* ═══════ SECTION 4: CUSTOM COLOR PICKER (Expandable) ═══════ */}
         <div className="space-y-3">
           <button
             type="button"
             onClick={() => setShowCustomPicker(!showCustomPicker)}
-            className={`w-full flex items-center justify-between px-4 py-3.5 rounded-xl border-2 border-dashed transition-all ${
+            className={`w-full flex items-center justify-between px-4 py-3.5 rounded-xl border-2 border-dashed transition-all cursor-pointer ${
               showCustomPicker
-                ? 'border-slate-400 bg-slate-50'
-                : 'border-slate-200 bg-white hover:border-slate-300 hover:bg-slate-50'
+                ? 'border-blue-400 bg-blue-50/30 dark:bg-blue-950/20'
+                : 'border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 hover:border-slate-300 dark:hover:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800/40'
             }`}
           >
             <div className="flex items-center gap-3">
@@ -335,18 +349,18 @@ export function DashboardThemeCustomizer() {
                 <Palette className="h-4 w-4 text-white" />
               </div>
               <div className="text-left">
-                <span className="block text-sm font-extrabold text-slate-900">Pilih Warna Sendiri</span>
-                <span className="block text-[11px] text-slate-500">Buka color picker untuk memilih warna aksen & sidebar sesuka hati Anda</span>
+                <span className="block text-sm font-extrabold text-slate-900 dark:text-white">Pilih Warna Sendiri</span>
+                <span className="block text-[11px] text-slate-500 dark:text-slate-300">Buka color picker untuk memilih warna aksen & sidebar sesuka hati Anda</span>
               </div>
             </div>
-            <div className={`h-5 w-5 rounded-full border-2 border-slate-300 flex items-center justify-center transition-transform ${showCustomPicker ? 'rotate-45' : ''}`}>
-              <span className="text-slate-400 text-xs font-bold">{showCustomPicker ? '×' : '+'}</span>
+            <div className={`h-5 w-5 rounded-full border-2 border-slate-300 dark:border-slate-600 flex items-center justify-center transition-transform ${showCustomPicker ? 'rotate-45' : ''}`}>
+              <span className="text-slate-400 dark:text-slate-300 text-xs font-bold">{showCustomPicker ? '×' : '+'}</span>
             </div>
           </button>
 
           {/* Expandable color picker panel */}
           {showCustomPicker && (
-            <div className="grid gap-5 sm:grid-cols-2 p-4 rounded-xl bg-slate-50 border border-slate-200 animate-in slide-in-from-top-2 duration-200">
+            <div className="grid gap-5 sm:grid-cols-2 p-4 rounded-xl bg-slate-50 dark:bg-slate-900/60 border border-slate-200 dark:border-slate-800 animate-in slide-in-from-top-2 duration-200">
               <ColorPicker
                 label="🎨 Warna Aksen Utama"
                 value={stagePrimary}
@@ -363,18 +377,18 @@ export function DashboardThemeCustomizer() {
 
         {/* ═══════ BOTTOM ACTION (sticky feel) ═══════ */}
         {hasChanges && (
-          <div className="flex items-center gap-3 p-4 rounded-xl bg-slate-900 shadow-lg animate-in slide-in-from-bottom-2 duration-200">
+          <div className="flex items-center gap-3 p-4 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-slate-900 dark:text-white shadow-xl animate-in slide-in-from-bottom-2 duration-200">
             <div className="flex items-center gap-2 flex-1">
               <div className="flex items-center gap-1">
-                <div className="h-5 w-5 rounded-md border border-white/20" style={{ backgroundColor: stagePrimary }} />
-                <div className="h-5 w-5 rounded-md border border-white/20" style={{ backgroundColor: stageSecondary }} />
+                <div className="h-5 w-5 rounded-md border border-slate-200 dark:border-white/20" style={{ backgroundColor: stagePrimary }} />
+                <div className="h-5 w-5 rounded-md border border-slate-200 dark:border-white/20" style={{ backgroundColor: stageSecondary }} />
               </div>
-              <span className="text-xs font-bold text-white/80">Tema baru siap diterapkan</span>
+              <span className="text-xs font-bold text-slate-700 dark:text-white/80">Tema baru siap diterapkan</span>
             </div>
             <button
               type="button"
               onClick={() => { setStagePrimary(colors.primary); setStageSecondary(colors.secondary); setShowCustomPicker(false); }}
-              className="px-3 py-2 rounded-lg text-xs font-bold text-white/60 hover:text-white hover:bg-white/10 transition-colors"
+              className="px-3 py-2 rounded-lg text-xs font-bold text-slate-500 hover:text-slate-900 hover:bg-slate-100 dark:text-white/60 dark:hover:text-white dark:hover:bg-white/10 transition-colors cursor-pointer"
             >
               Batal
             </button>

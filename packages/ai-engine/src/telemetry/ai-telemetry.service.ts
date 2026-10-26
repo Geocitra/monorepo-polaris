@@ -121,4 +121,63 @@ export class AiTelemetryService {
       endTrace,
     };
   }
+
+  /**
+   * Mencatat metrik evaluasi visual poster QA gate secara non-blocking
+   */
+  public static async recordPosterQAMetrics(params: {
+    tenantId?: string;
+    archetype: string;
+    score: number;
+    passed: boolean;
+    issues: string[];
+    metrics: Record<string, any>;
+    recommendation?: Record<string, any>;
+  }): Promise<void> {
+    const traceId = this.generateCanonicalTraceId();
+    try {
+      if (langfuseClient) {
+        const trace = langfuseClient.trace({
+          id: traceId,
+          name: 'poster-visual-qa-audit',
+          userId: params.tenantId || 'PUBLIC_VISITOR',
+          metadata: {
+            archetype: params.archetype,
+            score: params.score,
+            passed: params.passed,
+            issues: params.issues,
+            metrics: params.metrics,
+            recommendation: params.recommendation,
+          },
+        });
+        trace.event({
+          name: 'qa-evaluation-result',
+          metadata: {
+            score: params.score,
+            passed: params.passed,
+          },
+        });
+      }
+    } catch (lfErr: any) {
+      console.warn(`[AiTelemetryWarning] Gagal mencatat Langfuse QA event: ${lfErr?.message}`);
+    }
+
+    try {
+      await db.insert(aiTraceLogs).values({
+        traceId,
+        tenantId: params.tenantId || null,
+        operation: 'poster_visual_qa',
+        model: 'deterministic-qa-gate',
+        inputTokens: 0,
+        outputTokens: 0,
+        totalTokens: 0,
+        latencyMs: 15,
+        costUsd: '0.000000',
+        status: params.passed ? 'SUCCESS' : 'REFUSAL',
+        errorMessage: params.passed ? null : params.issues.join('; '),
+      });
+    } catch (dbErr: any) {
+      console.warn(`[AiTelemetryWarning] Gagal menyimpan log QA ${traceId} ke database: ${dbErr?.message}`);
+    }
+  }
 }

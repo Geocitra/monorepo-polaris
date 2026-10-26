@@ -53,6 +53,16 @@ export const TEMPLATE_LAYOUTS = [
     previewBadge: 'Executive Suite',
   },
   {
+    id: PortalTemplateId.STANDARD_DEFAULT,
+    name: 'Standar Eksekutif (Default)',
+    tagline: 'Klasik, Resmi & Terstruktur',
+    description: 'Tata letak resmi berbobot seimbang antara profil pimpinan, warta kinerja, dan kanal aspirasi publik.',
+    icon: Layout,
+    category: 'flagship' as TemplateCategory,
+    isPremium: false,
+    previewBadge: 'Tersedia di Semua Paket',
+  },
+  {
     id: PortalTemplateId.DARK_MODERN,
     name: 'POLARIS Aurora',
     tagline: 'Monokrom Gelap, Center Cutout & Metrik Elegan',

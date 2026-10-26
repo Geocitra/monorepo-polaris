@@ -90,8 +90,8 @@ export default function StudioHubPage() {
 
           {/* 3 KARTU ALAT UTAMA (HERO LAUNCHPAD) */}
           <section className="grid gap-6 md:grid-cols-3">
-            {/* KARTU 1: KAMPANYE ISU TERPADU */}
-            <div className="rounded-2xl border-2 border-primary bg-gradient-to-b from-primary/10 via-white to-white dark:via-slate-900 dark:to-slate-900 p-6 shadow-sm hover:shadow-md transition-all flex flex-col justify-between relative">
+            {/* KARTU 1: PUBLIKASI ISU TERPADU */}
+            <div className="rounded-2xl border-2 border-primary bg-gradient-to-b from-primary/10 via-white to-white dark:via-[#0E131F] dark:to-[#0E131F] p-6 shadow-sm hover:shadow-md transition-all flex flex-col justify-between relative">
               <span className="absolute -top-3 right-5 px-3 py-0.5 rounded-full bg-primary text-primary-foreground text-[10px] font-black uppercase tracking-wider shadow-sm">
                 Paket Lengkap
               </span>
@@ -103,29 +103,29 @@ export default function StudioHubPage() {
 
                 <div>
                   <h3 className="font-extrabold text-slate-900 dark:text-white text-lg">
-                    Kampanye Isu Terpadu
+                    Publikasi Isu Terpadu
                   </h3>
-                  <span className="text-xs font-bold text-primary">
-                    Website Resmi + Sebaran Medsos
+                  <span className="text-xs font-bold text-primary dark:text-blue-400">
+                    Naskah Narasi + Visual Kreatif + Medsos
                   </span>
                 </div>
 
-                <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed">
-                  Cukup masukkan 1 isu daerah. Mesin otomatis menyusun naskah kajian website 3.000 kata, poster DALL-E, dan teks sebaran WA/IG yang membawa link ke web Anda.
+                <p className="text-xs text-slate-500 dark:text-slate-200 leading-relaxed">
+                  Satu input gagasan atau isu daerah untuk merumuskan naskah narasi lengkap, visual pendukung (poster/infografis), dan pesan sebaran multi-kanal.
                 </p>
 
-                <ul className="text-xs text-slate-600 dark:text-slate-300 space-y-2 pt-2 border-t border-slate-100 dark:border-slate-800">
+                <ul className="text-xs text-slate-600 dark:text-slate-100 space-y-2 pt-2 border-t border-slate-100 dark:border-slate-800">
                   <li className="flex items-center gap-2">
-                    <CheckCircle2 className="h-4 w-4 text-emerald-600 shrink-0" />
-                    <span>Naskah Artikel 3.000 Kata</span>
+                    <CheckCircle2 className="h-4 w-4 text-emerald-600 dark:text-emerald-400 shrink-0" />
+                    <span>Naskah Narasi & Kajian Mendalam</span>
                   </li>
                   <li className="flex items-center gap-2">
-                    <CheckCircle2 className="h-4 w-4 text-emerald-600 shrink-0" />
-                    <span>Poster Visual DALL-E 3</span>
+                    <CheckCircle2 className="h-4 w-4 text-emerald-600 dark:text-emerald-400 shrink-0" />
+                    <span>Visual Pendukung (Poster / Infografis)</span>
                   </li>
                   <li className="flex items-center gap-2">
-                    <CheckCircle2 className="h-4 w-4 text-emerald-600 shrink-0" />
-                    <span>Format WhatsApp & Instagram</span>
+                    <CheckCircle2 className="h-4 w-4 text-emerald-600 dark:text-emerald-400 shrink-0" />
+                    <span>Format Sebaran WhatsApp & Instagram</span>
                   </li>
                 </ul>
               </div>
@@ -140,92 +140,92 @@ export default function StudioHubPage() {
               </div>
             </div>
 
-            {/* KARTU 2: TULIS ARTIKEL SAJA */}
-            <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm hover:shadow-md hover:border-slate-300 transition-all flex flex-col justify-between">
+            {/* KARTU 2: PENYUSUNAN NASKAH & NARASI */}
+            <div className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-[#0E131F] p-6 shadow-sm hover:shadow-md hover:border-slate-300 dark:hover:border-slate-700 transition-all flex flex-col justify-between">
               <div className="space-y-4">
-                <div className="h-12 w-12 rounded-xl bg-slate-900 text-white flex items-center justify-center shadow-sm">
-                  <FileText className="h-6 w-6 text-teal-400" />
+                <div className="h-12 w-12 rounded-xl bg-teal-600 dark:bg-slate-800 border border-teal-500/30 dark:border-slate-800 text-white flex items-center justify-center shadow-sm">
+                  <FileText className="h-6 w-6 text-white" />
                 </div>
 
                 <div>
-                  <h3 className="font-extrabold text-slate-900 text-lg">
-                    Tulis Artikel Saja
+                  <h3 className="font-extrabold text-slate-900 dark:text-white text-lg">
+                    Penyusunan Naskah & Narasi
                   </h3>
-                  <span className="text-xs font-bold text-slate-500">
-                    Dokumen Naskah & Cetak PDF
+                  <span className="text-xs font-bold text-slate-500 dark:text-slate-300">
+                    Kajian Kebijakan, Rilis Pers & PDF
                   </span>
                 </div>
 
-                <p className="text-xs text-slate-500 leading-relaxed">
-                  Editor teks untuk menyusun rilis pers wartawan, draf pandangan umum fraksi, atau opini kebijakan tanpa perlu repot memikirkan poster dan medsos.
+                <p className="text-xs text-slate-500 dark:text-slate-200 leading-relaxed">
+                  Editor terfokus untuk merumuskan rilis pers wartawan, naskah opini, telaah kebijakan, materi pidato, maupun draf pandangan umum fraksi tanpa materi visual.
                 </p>
 
-                <ul className="text-xs text-slate-600 space-y-2 pt-2 border-t border-slate-100">
+                <ul className="text-xs text-slate-600 dark:text-slate-100 space-y-2 pt-2 border-t border-slate-100 dark:border-slate-800">
                   <li className="flex items-center gap-2">
-                    <CheckCircle2 className="h-4 w-4 text-emerald-600 shrink-0" />
-                    <span>Editor Naskah Bebas Distraksi</span>
+                    <CheckCircle2 className="h-4 w-4 text-emerald-600 dark:text-emerald-400 shrink-0" />
+                    <span>Editor Naskah Fokus & Bebas Distraksi</span>
                   </li>
                   <li className="flex items-center gap-2">
-                    <CheckCircle2 className="h-4 w-4 text-emerald-600 shrink-0" />
-                    <span>Kutipan Pasal Regulasi UU & Perda</span>
+                    <CheckCircle2 className="h-4 w-4 text-emerald-600 dark:text-emerald-400 shrink-0" />
+                    <span>Rujukan Regulasi UU & Konteks Kebijakan</span>
                   </li>
                   <li className="flex items-center gap-2">
-                    <CheckCircle2 className="h-4 w-4 text-emerald-600 shrink-0" />
+                    <CheckCircle2 className="h-4 w-4 text-emerald-600 dark:text-emerald-400 shrink-0" />
                     <span>Ekspor Dokumen Resmi Format PDF</span>
                   </li>
                 </ul>
               </div>
 
-              <div className="pt-6 mt-4 border-t border-slate-100">
+              <div className="pt-6 mt-4 border-t border-slate-100 dark:border-slate-800">
                 <Link href="/studio/artikel" className="block w-full">
-                  <Button variant="outline" size="md" className="w-full border-slate-300 font-bold text-xs gap-2 text-slate-700 hover:text-slate-900">
-                    <span>Buka Editor Naskah</span>
+                  <Button variant="outline" size="md" className="w-full font-bold text-xs gap-2 border-slate-200 text-slate-800 hover:bg-slate-50 dark:bg-slate-800 dark:border-slate-700 dark:text-white dark:hover:bg-slate-700 cursor-pointer">
+                    <span>Buka Studio Naskah</span>
                     <ArrowRight className="h-4 w-4" />
                   </Button>
                 </Link>
               </div>
             </div>
 
-            {/* KARTU 3: DESAIN INFOGRAFIS */}
-            <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm hover:shadow-md hover:border-slate-300 transition-all flex flex-col justify-between">
+            {/* KARTU 3: KREATIF VISUAL & DESAIN */}
+            <div className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-[#0E131F] p-6 shadow-sm hover:shadow-md hover:border-slate-300 dark:hover:border-slate-700 transition-all flex flex-col justify-between">
               <div className="space-y-4">
                 <div className="h-12 w-12 rounded-xl bg-amber-500 text-white flex items-center justify-center shadow-sm">
                   <BarChart3 className="h-6 w-6" />
                 </div>
 
                 <div>
-                  <h3 className="font-extrabold text-slate-900 text-lg">
-                    Desain Infografis Saja
+                  <h3 className="font-extrabold text-slate-900 dark:text-white text-lg">
+                    Kreatif Visual & Desain
                   </h3>
-                  <span className="text-xs font-bold text-slate-500">
-                    Flyer Visual & Feed Instagram
+                  <span className="text-xs font-bold text-slate-500 dark:text-slate-300">
+                    Poster Publik, Flyer & Infografis
                   </span>
                 </div>
 
-                <p className="text-xs text-slate-500 leading-relaxed">
-                  Canvas grafis instan untuk membuat poster ucapan hari besar, flyer jadwal silaturahmi reses, atau kartu data statistik APBD satu slide siap unduh.
+                <p className="text-xs text-slate-500 dark:text-slate-200 leading-relaxed">
+                  Kanvas grafis instan untuk merancang poster advokasi aspirasi, infografis data daerah/APBD, flyer silaturahmi reses, hingga kartu ucapan publik siap siar.
                 </p>
 
-                <ul className="text-xs text-slate-600 space-y-2 pt-2 border-t border-slate-100">
+                <ul className="text-xs text-slate-600 dark:text-slate-100 space-y-2 pt-2 border-t border-slate-100 dark:border-slate-800">
                   <li className="flex items-center gap-2">
-                    <CheckCircle2 className="h-4 w-4 text-emerald-600 shrink-0" />
-                    <span>Template Visual Khas Parlemen</span>
+                    <CheckCircle2 className="h-4 w-4 text-emerald-600 dark:text-emerald-400 shrink-0" />
+                    <span>Poster Publik & Flyer Silaturahmi</span>
                   </li>
                   <li className="flex items-center gap-2">
-                    <CheckCircle2 className="h-4 w-4 text-emerald-600 shrink-0" />
-                    <span>Kartu Statistik Data Daerah</span>
+                    <CheckCircle2 className="h-4 w-4 text-emerald-600 dark:text-emerald-400 shrink-0" />
+                    <span>Infografis Data & Kartu Statistik APBD</span>
                   </li>
                   <li className="flex items-center gap-2">
-                    <CheckCircle2 className="h-4 w-4 text-emerald-600 shrink-0" />
-                    <span>Unduh Gambar PNG Resolusi Tinggi</span>
+                    <CheckCircle2 className="h-4 w-4 text-emerald-600 dark:text-emerald-400 shrink-0" />
+                    <span>Unduh Gambar Resolusi Tinggi (PNG / WebP)</span>
                   </li>
                 </ul>
               </div>
 
-              <div className="pt-6 mt-4 border-t border-slate-100">
+              <div className="pt-6 mt-4 border-t border-slate-100 dark:border-slate-800">
                 <Link href="/studio/infografis" className="block w-full">
-                  <Button variant="outline" size="md" className="w-full border-slate-300 font-bold text-xs gap-2 text-slate-700 hover:text-slate-900">
-                    <span>Buka Studio Grafis</span>
+                  <Button variant="outline" size="md" className="w-full font-bold text-xs gap-2 border-slate-200 text-slate-800 hover:bg-slate-50 dark:bg-slate-800 dark:border-slate-700 dark:text-white dark:hover:bg-slate-700 cursor-pointer">
+                    <span>Buka Studio Visual</span>
                     <ArrowRight className="h-4 w-4" />
                   </Button>
                 </Link>
@@ -234,22 +234,22 @@ export default function StudioHubPage() {
           </section>
 
           {/* SECTION BAWAH: STATUS KONTEN & AKSES CEPAT KE KATALOG */}
-          <Card className="p-6 bg-gradient-to-r from-slate-900 to-slate-800 text-white rounded-2xl flex flex-col sm:flex-row sm:items-center justify-between gap-6 shadow-md">
+          <Card className="p-6 bg-white dark:bg-slate-900 text-slate-900 dark:text-white border border-slate-200 dark:border-slate-800 rounded-2xl flex flex-col sm:flex-row sm:items-center justify-between gap-6 shadow-sm">
             <div className="space-y-1.5">
-              <div className="flex items-center gap-2 text-blue-400 font-extrabold text-xs uppercase tracking-wider">
+              <div className="flex items-center gap-2 text-blue-600 dark:text-blue-400 font-extrabold text-xs uppercase tracking-wider">
                 <BookOpen className="h-4 w-4" />
                 <span>Katalog & Kelola Konten Website</span>
               </div>
-              <h3 className="text-lg sm:text-xl font-black">
+              <h3 className="text-lg sm:text-xl font-black text-slate-900 dark:text-white">
                 {articles.length} Karya Tersimpan ({publishedCount} Tayang di Website Resmi, {draftCount} Draf)
               </h3>
-              <p className="text-xs text-slate-300 max-w-xl leading-relaxed">
+              <p className="text-xs text-slate-500 dark:text-slate-300 max-w-xl leading-relaxed">
                 Kelola naskah yang tayang di website portal dewan, atur publikasi, perbarui artikel lama, atau salin tautan artikel untuk konstituen.
               </p>
             </div>
 
             <Link href="/studio/library" className="shrink-0">
-              <Button size="md" className="bg-white text-slate-900 hover:bg-slate-100 font-extrabold text-xs gap-2 shadow-sm">
+              <Button size="md" className="bg-blue-600 hover:bg-blue-700 text-white dark:bg-white dark:text-slate-900 dark:hover:bg-slate-100 font-extrabold text-xs gap-2 shadow-sm cursor-pointer">
                 <span>Kelola Konten & Website</span>
                 <ChevronRight className="h-4 w-4" />
               </Button>

@@ -74,7 +74,7 @@ export default function ArticleLibraryPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-slate-50">
+      <div className="min-h-screen flex items-center justify-center bg-slate-50 dark:bg-[#0A0D14]">
         <Loader2 className="h-8 w-8 animate-spin text-blue-600" />
       </div>
     );

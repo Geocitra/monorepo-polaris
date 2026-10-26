@@ -173,7 +173,7 @@ export class ConstituentService {
         feedbackId: feedback.id,
         encryptedCitizenName: encryptedName.encryptedBuffer,
         encryptedPhoneNumber: encryptedPhone.encryptedBuffer,
-        ivVector: encryptedName.ivHex,
+        ivVector: `${encryptedName.ivHex}:${encryptedPhone.ivHex}`,
       });
 
       return feedback;
@@ -246,18 +246,21 @@ export class ConstituentService {
       .where(eq(constituentFeedbacks.portalId, portal.id))
       .orderBy(desc(constituentFeedbacks.submittedAt));
 
-    return records.map((r) => ({
-      id: r.id,
-      trackingTicketCode: r.ticket,
-      regencyName: r.regency,
-      districtKecamatan: r.district,
-      category: r.category,
-      aspirationMessage: r.message,
-      status: r.status,
-      submittedAt: r.submittedAt,
-      citizenName: this.cryptoService.decryptData(r.encryptedName, r.iv, tenantId),
-      phoneNumber: this.cryptoService.decryptData(r.encryptedPhone, r.iv, tenantId),
-    }));
+    return records.map((r) => {
+      const [nameIv, phoneIv] = r.iv.includes(':') ? r.iv.split(':') : [r.iv, r.iv];
+      return {
+        id: r.id,
+        trackingTicketCode: r.ticket,
+        regencyName: r.regency,
+        districtKecamatan: r.district,
+        category: r.category,
+        aspirationMessage: r.message,
+        status: r.status,
+        submittedAt: r.submittedAt,
+        citizenName: this.cryptoService.decryptData(r.encryptedName, nameIv, tenantId),
+        phoneNumber: this.cryptoService.decryptData(r.encryptedPhone, phoneIv, tenantId),
+      };
+    });
   }
 
   async updateFeedbackStatus(tenantId: string, feedbackId: string, status: FeedbackStatus) {

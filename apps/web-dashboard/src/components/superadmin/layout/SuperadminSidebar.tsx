@@ -14,6 +14,8 @@ import {
   ShieldCheck,
   Receipt,
   Video,
+  Files,
+  UserCheck,
 } from 'lucide-react';
 import { AdminApiClient } from '@/lib/api-client';
 import { cn } from '@/lib/utils';
@@ -21,7 +23,9 @@ import { useTheme } from '@/contexts/ThemeContext';
 
 const adminNavItems = [
   { name: 'Control Tower', href: '/superadmin', icon: LayoutDashboard },
+  { name: 'DataHub Dokumen AI', href: '/superadmin/datahub', icon: Files },
   { name: 'Kelola Dewan & Lisensi', href: '/superadmin/tenants', icon: Users },
+  { name: 'Staf Operator Konten', href: '/superadmin/operators', icon: UserCheck },
   { name: 'Lead Inquiries & GMeet', href: '/superadmin/inquiries', icon: Video },
   { name: 'Rekonsiliasi Kas Midtrans', href: '/superadmin/reconciliation', icon: Receipt },
   { name: 'Audit & Log Aktivitas', href: '/superadmin/activity-logs', icon: ShieldCheck },
