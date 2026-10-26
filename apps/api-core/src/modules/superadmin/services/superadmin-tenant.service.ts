@@ -258,9 +258,53 @@ export class SuperadminTenantService {
    */
   async createTenantWithCredentials(dto: AdminCreateTenantDto) {
     const cleanEmail = dto.email.trim().toLowerCase();
-    const cleanSlug = dto.subdomainSlug.trim().toLowerCase();
 
-    // 1. Validasi keunikan email & subdomain
+    // 1. Sanitasi Custom Domain jika ada
+    let cleanCustomDomain: string | null = null;
+    if (dto.customDomain && dto.customDomain.trim()) {
+      cleanCustomDomain = dto.customDomain
+        .trim()
+        .toLowerCase()
+        .replace(/^https?:\/\//, '')
+        .replace(/\/$/, '');
+
+      const [existingCustom] = await db
+        .select({ id: portalConfigs.id })
+        .from(portalConfigs)
+        .where(eq(portalConfigs.customDomain, cleanCustomDomain))
+        .limit(1);
+
+      if (existingCustom) {
+        throw new ConflictException(`Custom domain '${cleanCustomDomain}' sudah digunakan oleh portal lain.`);
+      }
+    }
+
+    // 2. Sanitasi & Auto-generate Subdomain Slug (Toleran terhadap '-', string kosong, dll)
+    let cleanSlug = (dto.subdomainSlug || '')
+      .trim()
+      .toLowerCase()
+      .replace(/[^a-z0-9-]/g, '')
+      .replace(/-+/g, '-')
+      .replace(/^-|-$/g, '');
+
+    if (!cleanSlug || cleanSlug.length < 3) {
+      if (cleanCustomDomain) {
+        cleanSlug = cleanCustomDomain.split('.')[0].replace(/[^a-z0-9]/g, '');
+      }
+      if (!cleanSlug || cleanSlug.length < 3) {
+        cleanSlug = dto.fullName
+          .toLowerCase()
+          .replace(/[^a-z0-9]/g, '-')
+          .replace(/-+/g, '-')
+          .replace(/^-|-$/g, '')
+          .slice(0, 30);
+      }
+      if (!cleanSlug || cleanSlug.length < 3) {
+        cleanSlug = `portal-${Math.floor(100 + Math.random() * 900)}`;
+      }
+    }
+
+    // Cek keunikan email
     const [existingEmail] = await db
       .select({ id: tenantMembers.id })
       .from(tenantMembers)
@@ -271,6 +315,7 @@ export class SuperadminTenantService {
       throw new ConflictException('Email sudah terdaftar pada akun lain.');
     }
 
+    // Cek keunikan subdomain, jika konflik otomatis beri akhiran angka
     const [existingPortal] = await db
       .select({ id: portalConfigs.id })
       .from(portalConfigs)
@@ -278,21 +323,7 @@ export class SuperadminTenantService {
       .limit(1);
 
     if (existingPortal) {
-      throw new ConflictException('Subdomain sudah digunakan. Silakan gunakan kombinasi lain.');
-    }
-
-    let cleanCustomDomain: string | null = null;
-    if (dto.customDomain && dto.customDomain.trim()) {
-      cleanCustomDomain = dto.customDomain.trim().toLowerCase().replace(/^https?:\/\//, '').replace(/\/$/, '');
-      const [existingCustom] = await db
-        .select({ id: portalConfigs.id })
-        .from(portalConfigs)
-        .where(eq(portalConfigs.customDomain, cleanCustomDomain))
-        .limit(1);
-
-      if (existingCustom) {
-        throw new ConflictException(`Custom domain '${cleanCustomDomain}' sudah digunakan oleh portal lain.`);
-      }
+      cleanSlug = `${cleanSlug.slice(0, 20)}-${Math.floor(100 + Math.random() * 900)}`;
     }
 
     // 2. Generate username jika belum diisi

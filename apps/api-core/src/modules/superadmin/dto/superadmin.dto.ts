@@ -192,8 +192,8 @@ export class AdminCreateTenantDto {
   customDapilName?: string;
 
   @IsString()
-  @IsNotEmpty({ message: 'Subdomain slug tidak boleh kosong.' })
-  subdomainSlug!: string;
+  @IsOptional()
+  subdomainSlug?: string;
 
   @IsEnum(PlanTier)
   @IsOptional()

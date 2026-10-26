@@ -141,17 +141,17 @@ Catatan Keamanan: Silakan login di https://app.${rootDomain}/login. Anda akan di
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fade-in overflow-y-auto">
-      <div className="bg-white dark:bg-[#0B0F17] border border-slate-200 dark:border-slate-800 rounded-2xl w-full max-w-2xl shadow-2xl overflow-hidden my-8 theme-transition">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/60 backdrop-blur-sm animate-fade-in overflow-y-auto">
+      <div className="bg-white dark:bg-[#0B0F17] border border-slate-200 dark:border-slate-800 rounded-2xl w-full max-w-xl shadow-2xl overflow-hidden my-4 sm:my-6 theme-transition">
         {/* HEADER */}
-        <div className="flex items-center justify-between p-5 border-b border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/50">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-blue-600/10 dark:bg-blue-500/20 text-blue-600 dark:text-blue-400 flex items-center justify-center font-bold">
-              <UserPlus className="w-5 h-5" />
+        <div className="flex items-center justify-between p-4 border-b border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/50">
+          <div className="flex items-center gap-2.5">
+            <div className="w-8 h-8 rounded-lg bg-blue-600/10 dark:bg-blue-500/20 text-blue-600 dark:text-blue-400 flex items-center justify-center font-bold">
+              <UserPlus className="w-4 h-4" />
             </div>
             <div>
-              <h3 className="text-base font-bold text-slate-900 dark:text-white">
-                {createdResult ? 'Kredensial Akun Berhasil Diterbitkan' : 'Registrasi & Inisialisasi Akun Dewan Baru'}
+              <h3 className="text-sm font-bold text-slate-900 dark:text-white">
+                {createdResult ? 'Kredensial Akun Berhasil Diterbitkan' : 'Registrasi Akun Klien / Tokoh Publik'}
               </h3>
               <p className="text-xs text-slate-500 dark:text-slate-400">
                 {createdResult
@@ -277,9 +277,9 @@ Catatan Keamanan: Silakan login di https://app.${rootDomain}/login. Anda akan di
           </div>
         ) : (
           /* FORM PEMBUATAN AKUN BARU */
-          <form onSubmit={handleSubmit} className="p-6 space-y-5">
+          <form onSubmit={handleSubmit} className="p-4 sm:p-5 space-y-3.5">
             {initialLeadData && (
-              <div className="p-3.5 rounded-xl bg-blue-50 dark:bg-blue-950/40 border border-blue-200 dark:border-blue-800 text-blue-900 dark:text-blue-200 text-xs flex items-center justify-between">
+              <div className="p-3 rounded-xl bg-blue-50 dark:bg-blue-950/40 border border-blue-200 dark:border-blue-800 text-blue-900 dark:text-blue-200 text-xs flex items-center justify-between">
                 <div className="flex items-center gap-2">
                   <Sparkles className="w-4 h-4 text-blue-600 shrink-0" />
                   <span>
@@ -293,15 +293,15 @@ Catatan Keamanan: Silakan login di https://app.${rootDomain}/login. Anda akan di
             )}
 
             {error && (
-              <div className="p-3.5 rounded-xl bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-800 text-rose-700 dark:text-rose-300 text-xs flex items-center gap-2">
+              <div className="p-3 rounded-xl bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-800 text-rose-700 dark:text-rose-300 text-xs flex items-center gap-2">
                 <AlertCircle className="w-4 h-4 shrink-0" />
                 <span>{error}</span>
               </div>
             )}
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
               {/* NAMA LENGKAP */}
-              <div className="space-y-1.5 sm:col-span-2">
+              <div className="space-y-1 sm:col-span-2">
                 <label className="font-bold text-slate-700 dark:text-slate-300">
                   Nama Lengkap & Gelar Resmi <span className="text-rose-500">*</span>
                 </label>
@@ -311,7 +311,7 @@ Catatan Keamanan: Silakan login di https://app.${rootDomain}/login. Anda akan di
                   placeholder="Contoh: Dr. H. Ahmad Fauzi, S.H., M.Si."
                   value={fullName}
                   onChange={(e) => handleNameChange(e.target.value)}
-                  className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="w-full px-3 py-2 rounded-xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
                 />
               </div>
 
