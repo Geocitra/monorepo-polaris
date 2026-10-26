@@ -36,6 +36,7 @@ import {
 import { ColorPicker } from '@/components/ui/color-picker';
 import { cn } from '@/lib/utils';
 import { TemplateLayoutSelector, TEMPLATE_LAYOUTS } from './TemplateLayoutSelector';
+import { getRootDomain } from '@/lib/urls';
 
 export interface ColorPalette {
   name: string;
@@ -917,30 +918,30 @@ export function ThemeForm({
             className="block w-full rounded-l-xl border border-r-0 border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 px-3.5 py-2.5 text-xs sm:text-sm font-semibold text-slate-900 dark:text-white focus:outline-none focus:border-blue-600"
           />
           <span className="inline-flex items-center px-4 py-2.5 rounded-r-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-800 text-xs font-bold text-slate-500 dark:text-slate-400 select-none">
-            .polaris.id
+            .{getRootDomain()}
           </span>
         </div>
         <p className="text-[10.5px] text-slate-400">
-          Alamat portal publik instan: <span className="font-mono text-blue-600 dark:text-blue-400">https://{subdomainSlug || 'nama'}.polaris.id</span>
+          Alamat portal publik instan: <span className="font-mono text-blue-600 dark:text-blue-400">https://{subdomainSlug || 'nama'}.{getRootDomain()}</span>
         </p>
       </div>
 
       {/* CUSTOM DOMAIN */}
       <div className="space-y-1.5">
         <label className="text-xs font-bold text-slate-700 dark:text-slate-300 uppercase block">
-          Custom Domain Pribadi (Opsional)
+          Custom Domain Pribadi
         </label>
         <input
           type="text"
-          placeholder="achmadfauzi.id"
+          placeholder="opinitaru.com atau ayublaksono.com"
           value={customDomain}
           onChange={(e) => onCustomDomainChange(e.target.value.toLowerCase().trim())}
-          className="block w-full rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 px-3.5 py-2.5 text-xs sm:text-sm text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:outline-none focus:border-blue-600"
+          className="block w-full rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 px-3.5 py-2.5 text-xs sm:text-sm text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:outline-none focus:border-blue-600 font-mono"
         />
         <div className="p-3 rounded-xl bg-blue-50/60 dark:bg-blue-950/30 border border-blue-100 dark:border-blue-900/60 flex items-start gap-2.5 mt-2">
           <Info className="w-4 h-4 text-blue-600 shrink-0 mt-0.5" />
           <p className="text-[11px] text-slate-600 dark:text-slate-300 leading-relaxed">
-            Untuk menghubungkan domain pribadi, buat rekod DNS tipe <strong className="text-slate-900 dark:text-white font-mono">CNAME</strong> yang mengarah ke: <code className="font-bold text-blue-600 dark:text-blue-400">cname.polaris.id</code>
+            Untuk menghubungkan domain pribadi, buat rekod DNS tipe <strong className="text-slate-900 dark:text-white font-mono">A</strong> yang mengarah ke IP Server VPS: <code className="font-bold text-blue-600 dark:text-blue-400">202.155.13.40</code> atau <strong className="text-slate-900 dark:text-white font-mono">CNAME</strong> ke <code className="font-bold text-blue-600 dark:text-blue-400">app.{getRootDomain()}</code>.
           </p>
         </div>
       </div>
@@ -957,12 +958,12 @@ export function ThemeForm({
             <span className="font-extrabold text-xs">Mode Pratinjau (Simpan Tema Terkunci)</span>
           </div>
           <p className="text-[11px] text-amber-700 dark:text-amber-300 leading-relaxed">
-            Eksplorasi kombinasi warna partai dan profil dapat disimulasikan secara real-time pada simulator di samping. Selesaikan aktivasi lisensi untuk menyinkronkan tema ke website publik resmi.
+            Eksplorasi kombinasi warna dan tata letak dapat disimulasikan secara real-time pada simulator di samping. Selesaikan aktivasi lisensi untuk menyinkronkan tema ke website publik resmi.
           </p>
           <Link href="/billing" className="block pt-1">
             <Button size="sm" className="w-full bg-amber-600 hover:bg-amber-700 text-white font-bold text-xs gap-1.5 shadow-sm">
               <Lock className="h-3.5 w-3.5" />
-              <span>Aktifkan Lisensi Parlemen</span>
+              <span>Aktifkan Lisensi Akun</span>
             </Button>
           </Link>
         </div>

@@ -415,6 +415,11 @@ export class SuperadminTenantService {
       });
 
       const now = new Date();
+      let durationDays = 365;
+      if (dto.billingCycle === 'MONTHLY') durationDays = 30;
+      else if (dto.billingCycle === 'SEMESTER') durationDays = 180;
+      else if (dto.billingCycle === 'ANNUAL') durationDays = 365;
+
       const [sub] = await tx
         .insert(subscriptions)
         .values({
@@ -422,11 +427,24 @@ export class SuperadminTenantService {
           planTier: dto.planTier || PlanTier.PRO,
           status: isPrepaid ? SubscriptionStatus.PENDING_PAYMENT : SubscriptionStatus.ACTIVE,
           currentPeriodStart: isPrepaid ? null : now,
-          currentPeriodEnd: isPrepaid ? null : new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000),
+          currentPeriodEnd: isPrepaid ? null : new Date(now.getTime() + durationDays * 24 * 60 * 60 * 1000),
         })
         .returning();
 
       createdSub = sub;
+
+      if (!isPrepaid) {
+        const invNumber = `INV-ADM-${Date.now().toString().slice(-6)}`;
+        await tx.insert(invoiceTransactions).values({
+          subscriptionId: sub.id,
+          invoiceNumber: invNumber,
+          amountIdr: '0.00',
+          gatewayOrderId: `ADMIN-GRANT-${Date.now()}`,
+          paymentMethod: 'SUPERADMIN_DIRECT_GRANT',
+          paymentStatus: PaymentStatus.SETTLEMENT,
+          paidAt: now,
+        });
+      }
 
       const currentMonth = now.toISOString().slice(0, 7);
       await tx

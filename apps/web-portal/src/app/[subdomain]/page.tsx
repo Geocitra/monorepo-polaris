@@ -21,7 +21,7 @@ export async function generateMetadata({
   }
 
   const { member, theme, portal } = data;
-  const title = `${member.fullName} - Portal Publik Resmi`;
+  const title = portal?.metaTitle || `${member?.fullName || 'Portal'} - Portal Publik Resmi`;
   const description =
     theme.headlineTagline ||
     `Portal resmi publikasi pemikiran kebijakan, naskah risalah, dan dokumentasi kerja ${member.fullName}.`;

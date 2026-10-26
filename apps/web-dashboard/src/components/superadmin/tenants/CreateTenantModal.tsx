@@ -32,18 +32,9 @@ export function CreateTenantModal({ onClose, onSuccess, initialLeadData }: Creat
   const [partyAffiliation, setPartyAffiliation] = useState(initialLeadData?.partyAffiliation || '');
   const [legislativeLevel, setLegislativeLevel] = useState(initialLeadData?.legislativeLevel || 'DPRD_PROVINSI');
   const [customDapilName, setCustomDapilName] = useState(initialLeadData?.customDapilName || '');
+  const [domainInput, setDomainInput] = useState('');
   const [customDomain, setCustomDomain] = useState('');
-  const [subdomainSlug, setSubdomainSlug] = useState(() => {
-    if (initialLeadData?.fullName) {
-      return initialLeadData.fullName
-        .toLowerCase()
-        .replace(/[^a-z0-9]/g, '-')
-        .replace(/-+/g, '-')
-        .replace(/^-|-$/g, '')
-        .slice(0, 30);
-    }
-    return '';
-  });
+  const [subdomainSlug, setSubdomainSlug] = useState('');
   const [planTier, setPlanTier] = useState(initialLeadData?.planTier || 'PRO');
   const [billingCycle, setBillingCycle] = useState(initialLeadData?.billingCycle || 'SEMESTER');
   const [generatePrepaid, setGeneratePrepaid] = useState(false);
@@ -70,10 +61,24 @@ export function CreateTenantModal({ onClose, onSuccess, initialLeadData }: Creat
     }
   };
 
-  // Auto-generate subdomain saat fullName berubah
+  const handleDomainChange = (val: string) => {
+    setDomainInput(val);
+    const clean = val.toLowerCase().trim().replace(/^https?:\/\//, '').replace(/\/$/, '');
+    if (clean.includes('.')) {
+      setCustomDomain(clean);
+      const base = clean.split('.')[0].replace(/[^a-z0-9-]/g, '').slice(0, 30);
+      setSubdomainSlug(base.length >= 3 ? base : `${base}portal`);
+    } else {
+      setCustomDomain('');
+      const slug = clean.replace(/[^a-z0-9-]/g, '').slice(0, 30);
+      setSubdomainSlug(slug);
+    }
+  };
+
+  // Auto-generate domain saat fullName berubah jika domainInput masih kosong
   const handleNameChange = (val: string) => {
     setFullName(val);
-    if (!subdomainSlug || subdomainSlug === '') {
+    if (!domainInput) {
       const slug = val
         .toLowerCase()
         .replace(/[^a-z0-9]/g, '-')
@@ -90,6 +95,28 @@ export function CreateTenantModal({ onClose, onSuccess, initialLeadData }: Creat
     setLoading(true);
 
     try {
+      const cleanInput = domainInput.toLowerCase().trim().replace(/^https?:\/\//, '').replace(/\/$/, '');
+      let effectiveCustomDomain = customDomain.trim().toLowerCase();
+      let effectiveSlug = subdomainSlug.trim().toLowerCase();
+
+      if (cleanInput.includes('.')) {
+        effectiveCustomDomain = cleanInput;
+        const base = cleanInput.split('.')[0].replace(/[^a-z0-9-]/g, '').slice(0, 30);
+        effectiveSlug = base.length >= 3 ? base : `${base}portal`;
+      } else if (cleanInput) {
+        effectiveSlug = cleanInput.replace(/[^a-z0-9-]/g, '').slice(0, 30);
+      }
+
+      if (!effectiveSlug || effectiveSlug === '-') {
+        effectiveSlug = fullName
+          .toLowerCase()
+          .replace(/[^a-z0-9]/g, '-')
+          .replace(/-+/g, '-')
+          .replace(/^-|-$/g, '')
+          .slice(0, 20) || 'tenant';
+        if (effectiveSlug.length < 3) effectiveSlug = `${effectiveSlug}portal`;
+      }
+
       const payload: any = {
         email: email.trim().toLowerCase(),
         username: username.trim().toLowerCase() || undefined,
@@ -98,8 +125,8 @@ export function CreateTenantModal({ onClose, onSuccess, initialLeadData }: Creat
         partyAffiliation: partyAffiliation.trim() || undefined,
         legislativeLevel,
         customDapilName: customDapilName.trim() || undefined,
-        subdomainSlug: subdomainSlug.trim().toLowerCase(),
-        customDomain: customDomain.trim() || undefined,
+        subdomainSlug: effectiveSlug,
+        customDomain: effectiveCustomDomain || undefined,
         planTier,
         billingCycle,
         generatePrepaidInvoice: generatePrepaid,
@@ -469,42 +496,34 @@ Catatan Keamanan: Silakan login di https://app.${rootDomain}/login. Anda akan di
                 )}
               </div>
 
-              {/* SUBDOMAIN SLUG */}
-              <div className="space-y-1.5 sm:col-span-2">
-                <label className="font-bold text-slate-700 dark:text-slate-300">
-                  Subdomain Portal Publik <span className="text-rose-500">*</span>
-                </label>
-                <div className="flex items-center">
-                  <input
-                    type="text"
-                    required
-                    placeholder="ahmad-fauzi"
-                    value={subdomainSlug}
-                    onChange={(e) => setSubdomainSlug(e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, ''))}
-                    className="w-full px-3.5 py-2.5 rounded-l-xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-slate-900 dark:text-white font-mono focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  />
-                  <span className="px-4 py-2.5 rounded-r-xl bg-slate-200 dark:bg-slate-800 border border-l-0 border-slate-200 dark:border-slate-800 text-slate-500 dark:text-slate-400 font-mono text-xs">
-                    .{rootDomain}
-                  </span>
-                </div>
-              </div>
-
-              {/* CUSTOM DOMAIN PRIBADI */}
+              {/* DOMAIN WEBSITE RESMI */}
               <div className="space-y-1.5 sm:col-span-2">
                 <div className="flex items-center justify-between">
                   <label className="font-bold text-slate-700 dark:text-slate-300 flex items-center gap-1.5">
                     <Globe className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400" />
-                    Custom Domain Pribadi (Opsional)
+                    Domain Website Publik <span className="text-rose-500">*</span>
                   </label>
                   <span className="text-[11px] text-slate-500">Contoh: opinitaru.com atau ayublaksono.com</span>
                 </div>
                 <input
                   type="text"
-                  placeholder="opinitaru.com (tanpa https://)"
-                  value={customDomain}
-                  onChange={(e) => setCustomDomain(e.target.value.toLowerCase().trim())}
+                  required
+                  placeholder="opinitaru.com atau nama-anda"
+                  value={domainInput}
+                  onChange={(e) => handleDomainChange(e.target.value)}
                   className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-slate-900 dark:text-white font-mono focus:outline-none focus:ring-2 focus:ring-blue-500"
                 />
+                <p className="text-[10.5px] text-slate-500">
+                  {domainInput.includes('.') ? (
+                    <span className="text-emerald-600 dark:text-emerald-400 font-medium">
+                      ✓ Menggunakan domain mandiri: <strong>https://{domainInput.toLowerCase().trim().replace(/^https?:\/\//, '').replace(/\/$/, '')}</strong>
+                    </span>
+                  ) : (
+                    <span>
+                      Masukkan domain pribadi (contoh: <code>opinitaru.com</code>) atau nama unik untuk portal.
+                    </span>
+                  )}
+                </p>
               </div>
             </div>
 

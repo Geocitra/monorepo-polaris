@@ -23,7 +23,7 @@ import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 
 import { ThemeForm } from '@/components/branding/ThemeForm';
-import { getPortalUrl } from '@/lib/urls';
+import { getPortalUrl, getRootDomain } from '@/lib/urls';
 import { DeviceSimulator } from '@/components/branding/DeviceSimulator';
 import { TEMPLATE_LAYOUTS } from '@/components/branding/TemplateLayoutSelector';
 
@@ -172,7 +172,7 @@ function WebsiteStudioContent() {
   }
 
   const isUnpaid = billing?.subscriptionStatus !== 'ACTIVE';
-  const previewBaseUrl = getPortalUrl(subdomainSlug || 'default-portal');
+  const previewBaseUrl = getPortalUrl(subdomainSlug, customDomain);
   const previewUrl = `${previewBaseUrl}?preview_template=${encodeURIComponent(layoutTemplateId)}&preview_color=${encodeURIComponent(primaryColor)}`;
 
   const handleLayoutTemplateChange = (newTemplateId: string) => {
@@ -248,8 +248,12 @@ function WebsiteStudioContent() {
                   {activeTemplate.name}
                 </span>
               </div>
-              <p className="text-[10.5px] text-slate-500 truncate">
-                {subdomainSlug ? `https://${subdomainSlug}.polaris.id` : 'Portal Publik Resmi Dewan'}
+              <p className="text-[10.5px] text-slate-500 truncate font-mono">
+                {customDomain
+                  ? `https://${customDomain}`
+                  : subdomainSlug
+                  ? `https://${subdomainSlug}.${getRootDomain()}`
+                  : 'Portal Publik Resmi'}
               </p>
             </div>
           </div>

@@ -25,7 +25,14 @@ export function getLandingPageUrl(): string {
   return `https://${getRootDomain()}`;
 }
 
-export function getPortalUrl(subdomain?: string | null): string {
+export function getPortalUrl(subdomain?: string | null, customDomain?: string | null): string {
+  if (customDomain && customDomain.trim()) {
+    const clean = customDomain.trim().replace(/^https?:\/\//, '').replace(/\/$/, '');
+    if (isLocalhost()) {
+      return `http://${clean}:3001`;
+    }
+    return `https://${clean}`;
+  }
   if (!subdomain) {
     return getLandingPageUrl();
   }
