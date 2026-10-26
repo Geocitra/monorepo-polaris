@@ -91,6 +91,9 @@ services:
       - polaris_prod_net
     ports:
       - "0.0.0.0:4000:4000"
+    volumes:
+      - ./assets:/app/assets:ro
+      - ./uploads:/app/uploads
     deploy:
       resources:
         limits:
@@ -112,6 +115,9 @@ services:
       - DATABASE_URL=postgresql://${POSTGRES_USER:-polaris_admin}:${POSTGRES_PASSWORD:-polaris_secret_2026}@postgres:5432/${POSTGRES_DB:-polaris_db}
       - REDIS_URL=redis://:${REDIS_PASSWORD:-polaris_redis_secret_2026}@redis:6379
       - NODE_ENV=production
+    volumes:
+      - ./assets:/app/assets:ro
+      - ./uploads:/app/uploads
     depends_on:
       postgres:
         condition: service_healthy

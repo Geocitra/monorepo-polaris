@@ -343,6 +343,7 @@ CREATE TABLE IF NOT EXISTS content_publications (
   status content_status_enum NOT NULL DEFAULT 'DRAFT',
   canonical_url TEXT NOT NULL,
   comment_count INTEGER NOT NULL DEFAULT 0,
+  research_job_id UUID REFERENCES research_jobs(id) ON DELETE SET NULL,
   created_by_operator_id UUID REFERENCES system_admins(id) ON DELETE SET NULL,
   created_context content_creation_context_enum NOT NULL DEFAULT 'MEMBER',
   published_at TIMESTAMPTZ,

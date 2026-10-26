@@ -30,6 +30,7 @@ RUN pnpm install --frozen-lockfile
 FROM dependencies AS builder
 COPY packages/ ./packages/
 COPY apps/worker-crawler/ ./apps/worker-crawler/
+COPY assets/ ./assets/
 
 RUN pnpm --filter @polaris/worker-crawler... build
 
@@ -49,6 +50,7 @@ COPY --from=builder /app/package.json ./package.json
 COPY --from=builder /app/pnpm-workspace.yaml ./pnpm-workspace.yaml
 COPY --from=builder /app/node_modules ./node_modules
 COPY --from=builder /app/packages ./packages
+COPY --from=builder /app/assets ./assets
 COPY --from=builder /app/apps/worker-crawler/package.json ./apps/worker-crawler/package.json
 COPY --from=builder /app/apps/worker-crawler/node_modules ./apps/worker-crawler/node_modules
 COPY --from=builder /app/apps/worker-crawler/dist ./apps/worker-crawler/dist
