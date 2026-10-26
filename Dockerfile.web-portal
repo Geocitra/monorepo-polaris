@@ -23,6 +23,11 @@ RUN pnpm install --frozen-lockfile
 # STAGE 3: BUILDER
 # =========================================================================
 FROM dependencies AS builder
+ARG NEXT_PUBLIC_API_URL="https://api.polarismedia.id/api/v1"
+ARG NEXT_PUBLIC_ROOT_DOMAIN="polarismedia.id"
+ENV NEXT_PUBLIC_API_URL=$NEXT_PUBLIC_API_URL
+ENV NEXT_PUBLIC_ROOT_DOMAIN=$NEXT_PUBLIC_ROOT_DOMAIN
+
 COPY packages/shared-types/ ./packages/shared-types/
 COPY apps/web-portal/ ./apps/web-portal/
 

@@ -135,6 +135,9 @@ services:
     build:
       context: .
       dockerfile: Dockerfile.web-dashboard
+      args:
+        - NEXT_PUBLIC_API_URL=${NEXT_PUBLIC_API_URL:-https://api.polarismedia.id/api/v1}
+        - NEXT_PUBLIC_ROOT_DOMAIN=${NEXT_PUBLIC_ROOT_DOMAIN:-polarismedia.id}
     container_name: polaris_prod_web_dashboard
     restart: unless-stopped
     env_file:
@@ -143,7 +146,8 @@ services:
       - NODE_ENV=production
       - PORT=3000
       - INTERNAL_API_URL=http://api-core:4000
-      - NEXT_PUBLIC_API_URL=${NEXT_PUBLIC_API_URL:-http://localhost:4000/api/v1}
+      - NEXT_PUBLIC_API_URL=${NEXT_PUBLIC_API_URL:-https://api.polarismedia.id/api/v1}
+      - NEXT_PUBLIC_ROOT_DOMAIN=${NEXT_PUBLIC_ROOT_DOMAIN:-polarismedia.id}
     depends_on:
       - api-core
     networks:
@@ -164,6 +168,9 @@ services:
     build:
       context: .
       dockerfile: Dockerfile.web-portal
+      args:
+        - NEXT_PUBLIC_API_URL=${NEXT_PUBLIC_API_URL:-https://api.polarismedia.id/api/v1}
+        - NEXT_PUBLIC_ROOT_DOMAIN=${NEXT_PUBLIC_ROOT_DOMAIN:-polarismedia.id}
     container_name: polaris_prod_web_portal
     restart: unless-stopped
     env_file:
@@ -172,7 +179,8 @@ services:
       - NODE_ENV=production
       - PORT=3001
       - INTERNAL_API_URL=http://api-core:4000
-      - NEXT_PUBLIC_API_URL=${NEXT_PUBLIC_API_URL:-http://localhost:4000/api/v1}
+      - NEXT_PUBLIC_API_URL=${NEXT_PUBLIC_API_URL:-https://api.polarismedia.id/api/v1}
+      - NEXT_PUBLIC_ROOT_DOMAIN=${NEXT_PUBLIC_ROOT_DOMAIN:-polarismedia.id}
     depends_on:
       - api-core
     networks:

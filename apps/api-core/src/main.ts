@@ -20,9 +20,9 @@ async function bootstrap() {
   app.use('/uploads', express.static(path.resolve(process.cwd(), 'uploads')));
   app.use('/uploads', express.static(path.resolve(process.cwd(), '../../uploads')));
 
-  // Aktifkan CORS untuk dashboard dan portal publik
+  // Aktifkan CORS untuk dashboard dan portal publik (dinamis untuk multi-subdomain)
   app.enableCors({
-    origin: '*',
+    origin: true,
     methods: 'GET,HEAD,PUT,PATCH,POST,DELETE',
     credentials: true,
   });
