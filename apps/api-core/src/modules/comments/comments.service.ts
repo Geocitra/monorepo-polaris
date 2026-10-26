@@ -418,12 +418,21 @@ export class CommentsService {
 
     await db.delete(articleComments).where(eq(articleComments.id, commentId));
 
-    if (comment.status === 'PUBLISHED') {
-      await db
-        .update(contentPublications)
-        .set({ commentCount: sql`GREATEST(0, ${contentPublications.commentCount} - 1)` })
-        .where(eq(contentPublications.id, comment.publicationId));
-    }
+    // Sinkronkan ulang commentCount secara presisi untuk mengantisipasi cascading delete pada balasan
+    const [publishedCount] = await db
+      .select({ count: sql<number>`count(*)::int` })
+      .from(articleComments)
+      .where(
+        and(
+          eq(articleComments.publicationId, comment.publicationId),
+          eq(articleComments.status, 'PUBLISHED')
+        )
+      );
+
+    await db
+      .update(contentPublications)
+      .set({ commentCount: publishedCount?.count ?? 0 })
+      .where(eq(contentPublications.id, comment.publicationId));
 
     return { message: 'Komentar berhasil dihapus permanen oleh dewan.' };
   }

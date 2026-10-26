@@ -1,18 +1,4 @@
 import {
-  db,
-  researchJobs,
-  researchQuestions,
-  sources,
-  researchJobSources,
-  sourceVersions,
-  sourceAssessments,
-  evidenceSpans,
-  claims,
-  claimEvidence,
-  researchOutputs,
-  eq,
-} from '@polaris/database';
-import {
   ResearchJobStatus,
   SourceType,
   PublisherType,
@@ -20,9 +6,14 @@ import {
   ClaimStatus,
   SupportType,
 } from '@polaris/shared-types';
+import {
+  IResearchJobRepositoryPort,
+  RegisteredSourceItem,
+  InsertedResearchQuestion,
+} from '@polaris/core-domain';
 
+import { DrizzleResearchJobRepository } from './research-job.repository.js';
 import { ResearchPlannerEngine, ResearchPlanInput, ResearchPlanOutput } from './research-planner.engine.js';
-
 import { AcademicDiscoveryConnector } from './connectors/academic-discovery.connector.js';
 import { InternalKnowledgeConnector } from './connectors/internal-knowledge.connector.js';
 import { WebDiscoveryConnector } from './connectors/web-discovery.connector.js';
@@ -39,6 +30,7 @@ export interface AutonomousResearchJobInput {
   attachedDocuments?: Array<{ name: string; type: string; extractedContent: string }>;
   providedUrls?: string[];
   onProgress?: (step: string, percent: number) => Promise<void> | void;
+  repository?: IResearchJobRepositoryPort;
 }
 
 export interface AutonomousResearchJobResult {
@@ -55,525 +47,265 @@ export interface AutonomousResearchJobResult {
 }
 
 export class AutonomousResearchOrchestrator {
+  private static defaultRepository: IResearchJobRepositoryPort = new DrizzleResearchJobRepository();
+
+  /**
+   * Menyuntikkan repository port kustom (Dependency Injection / DIP).
+   */
+  public static setRepository(repository: IResearchJobRepositoryPort): void {
+    this.defaultRepository = repository;
+  }
+
+  public static resetRepository(): void {
+    this.defaultRepository = new DrizzleResearchJobRepository();
+  }
+
+  public static getRepository(): IResearchJobRepositoryPort {
+    return this.defaultRepository;
+  }
+
   /**
    * Menjalankan siklus riset otonom POLARIS secara menyeluruh (End-to-End Autonomous Research)
    */
   public static async executeResearchPipeline(
-    input: AutonomousResearchJobInput
+    input: AutonomousResearchJobInput,
+    customRepo?: IResearchJobRepositoryPort
   ): Promise<AutonomousResearchJobResult> {
+    const repo = customRepo || input.repository || this.defaultRepository;
     const emit = async (msg: string, pct: number) => {
       if (input.onProgress) {
         await input.onProgress(msg, pct);
       }
     };
 
-    // 1. Inisialisasi Job Riset di Basis Data
-    await emit('Menginisialisasi sesi riset otonom di database...', 5);
-    const [job] = await db
-      .insert(researchJobs)
-      .values({
+    let jobId: string | undefined;
+
+    try {
+      // 1. Inisialisasi Job Riset di Basis Data via Repository Port
+      await emit('Menginisialisasi sesi riset otonom di database...', 5);
+      const { id } = await repo.createJob({
         tenantId: input.tenantId,
         topic: input.topic,
         userPrompt: input.userPrompt,
         targetRegion: input.targetRegion,
         status: ResearchJobStatus.PLANNING,
-      })
-      .returning();
+      });
 
-    const jobId = job.id;
+      jobId = id;
 
-    // 2. TAHAP 1: Research Planner (Divide-and-Conquer Questions)
-    await emit('Merumuskan pertanyaan riset kausal & parameter bukti...', 12);
-    const attachedSummary = (input.attachedDocuments || [])
-      .map((d) => `[${d.name}]: ${d.extractedContent.slice(0, 500)}`)
-      .join('\n');
+      // 2. TAHAP 1: Research Planner (Divide-and-Conquer Questions)
+      await emit('Merumuskan pertanyaan riset kausal & parameter bukti...', 12);
+      const attachedSummary = (input.attachedDocuments || [])
+        .map((d) => `[${d.name}]: ${d.extractedContent.slice(0, 500)}`)
+        .join('\n');
 
-    const plan: ResearchPlanOutput = await ResearchPlannerEngine.createPlan({
-      userPrompt: input.userPrompt,
-      targetRegion: input.targetRegion,
-      attachedDocsSummary: attachedSummary,
-      providedUrls: input.providedUrls,
-      tenantId: input.tenantId,
-    });
+      const plan: ResearchPlanOutput = await ResearchPlannerEngine.createPlan({
+        userPrompt: input.userPrompt,
+        targetRegion: input.targetRegion,
+        attachedDocsSummary: attachedSummary,
+        providedUrls: input.providedUrls,
+        tenantId: input.tenantId,
+      });
 
-    // Simpan daftar pertanyaan riset ke tabel research_questions
-    const insertedQuestions: Array<{ id: string; question: string; minRequiredEvidence: number }> = [];
-    for (const q of plan.questions) {
-      const [qRow] = await db
-        .insert(researchQuestions)
-        .values({
-          researchJobId: jobId,
+      // Simpan daftar pertanyaan riset ke tabel research_questions secara atomik via Repository Port
+      const insertedQuestions = await repo.saveQuestions(
+        jobId,
+        plan.questions.map((q) => ({
           question: q.question,
           intentCategory: q.intentCategory,
           temporalBound: q.temporalBound,
           geographicScope: q.geographicScope,
           minRequiredEvidence: q.minRequiredEvidence || 1,
-        })
-        .returning();
-      insertedQuestions.push({
-        id: qRow.id,
-        question: qRow.question,
-        minRequiredEvidence: qRow.minRequiredEvidence,
-      });
-    }
-
-    // 3. TAHAP 2: Multi-Source Discovery (Internal Knowledge + Web + Academic Crossref)
-    await db
-      .update(researchJobs)
-      .set({ status: ResearchJobStatus.SEARCHING, updatedAt: new Date() })
-      .where(eq(researchJobs.id, jobId));
-
-    await emit('Mengambil regulasi internal daerah & arsip diskursus berita...', 22);
-    const internalKnowledge = await InternalKnowledgeConnector.retrieveInternalKnowledge({
-      queryEmbedding: input.queryEmbedding,
-      targetRegion: input.targetRegion,
-      policySector: plan.internalRetrievalPlan.mediaSector,
-      keywords: plan.internalRetrievalPlan.mediaKeywords,
-      maxRegulations: 3,
-      maxNews: 4,
-    });
-
-    await emit('Menelusuri publikasi ilmiah bereputasi (Crossref DOI) & tautan web...', 32);
-    const academicPapers = plan.academicQueries && plan.academicQueries.length > 0
-      ? await AcademicDiscoveryConnector.searchCrossref(plan.academicQueries[0], 3)
-      : [];
-
-    const webCandidates = input.providedUrls && input.providedUrls.length > 0
-      ? await WebDiscoveryConnector.fetchMultipleUrls(input.providedUrls)
-      : [];
-
-    // 4. TAHAP 3: Source Registry, Deduplication & Credibility Assessment
-    await db
-      .update(researchJobs)
-      .set({ status: ResearchJobStatus.EVALUATING, updatedAt: new Date() })
-      .where(eq(researchJobs.id, jobId));
-
-    await emit('Menilai substansi, kesegaran & integritas metodologi sumber...', 42);
-
-    interface RegisteredSourceItem {
-      sourceId: string;
-      versionId: string;
-      title: string;
-      url: string;
-      publisherName: string;
-      extractedText: string;
-      isAccepted: boolean;
-    }
-
-    const evaluatedSources: RegisteredSourceItem[] = [];
-
-    // Proses A: Registrasi Sumber Regulasi Internal
-    for (const reg of internalKnowledge.regulations) {
-      const [s] = await db
-        .insert(sources)
-        .values({
-          url: `internal://regulation/${reg.documentId}`,
-          canonicalUrl: `internal://regulation/${reg.documentId}`,
-          sourceType: SourceType.INTERNAL_REGULATION,
-          publisherName: 'Pemerintah Daerah / JDIH',
-          publisherType: PublisherType.GOVERNMENT,
-          publisherCredibilityScore: 0.95,
-          lifecycleStatus: SourceLifecycle.VERIFIED,
-        })
-        .returning();
-
-      const [sv] = await db
-        .insert(sourceVersions)
-        .values({
-          sourceId: s.id,
-          contentHash: WebDiscoveryConnector.hashContent(reg.chunkContent),
-          title: reg.structuralReference,
-          extractedText: reg.chunkContent,
-          httpStatus: 200,
-        })
-        .returning();
-
-      await db.insert(researchJobSources).values({
-        researchJobId: jobId,
-        sourceId: s.id,
-        relevanceScore: reg.similarityScore,
-        queryUsed: 'Vector HNSW Cosine Search',
-      });
-
-      evaluatedSources.push({
-        sourceId: s.id,
-        versionId: sv.id,
-        title: reg.structuralReference,
-        url: s.url,
-        publisherName: 'JDIH / Regulasi Daerah',
-        extractedText: reg.chunkContent,
-        isAccepted: true,
-      });
-    }
-
-    // Proses B: Registrasi Sumber Berita Internal (media_discourses)
-    for (const news of internalKnowledge.news) {
-      const [s] = await db
-        .insert(sources)
-        .values({
-          url: news.originalUrl,
-          canonicalUrl: news.originalUrl,
-          sourceType: SourceType.INTERNAL_NEWS,
-          publisherName: news.portalName,
-          publisherType: PublisherType.MEDIA,
-          publisherCredibilityScore: 0.80,
-          lifecycleStatus: SourceLifecycle.VERIFIED,
-        })
-        .returning();
-
-      const [sv] = await db
-        .insert(sourceVersions)
-        .values({
-          sourceId: s.id,
-          contentHash: WebDiscoveryConnector.hashContent(news.cleanSummary),
-          title: news.articleTitle,
-          extractedText: news.cleanSummary,
-          httpStatus: 200,
-        })
-        .returning();
-
-      await db.insert(researchJobSources).values({
-        researchJobId: jobId,
-        sourceId: s.id,
-        relevanceScore: 0.80,
-        queryUsed: 'Civic Media Diskursus Filter',
-      });
-
-      evaluatedSources.push({
-        sourceId: s.id,
-        versionId: sv.id,
-        title: news.articleTitle,
-        url: s.url,
-        publisherName: news.portalName,
-        extractedText: news.cleanSummary,
-        isAccepted: true,
-      });
-    }
-
-    // Proses C: Asesmen dan Registrasi Paper Akademik Crossref
-    for (const paper of academicPapers) {
-      const [s] = await db
-        .insert(sources)
-        .values({
-          url: paper.url,
-          canonicalUrl: `https://doi.org/${paper.doi}`,
-          sourceType: SourceType.ACADEMIC_PAPER,
-          publisherName: paper.journalTitle || 'Academic Publisher',
-          publisherType: PublisherType.ACADEMIC,
-          doi: paper.doi,
-          isPeerReviewed: paper.isPeerReviewed,
-          hasRetractionsOrCorrections: paper.hasRetractionsOrCorrections,
-          publisherCredibilityScore: 0.88,
-          lifecycleStatus: paper.hasRetractionsOrCorrections
-            ? SourceLifecycle.REJECTED
-            : SourceLifecycle.ASSESSED,
-        })
-        .returning();
-
-      const textBody = `${paper.title}. Penulis: ${paper.authors.join(', ')} (${paper.publicationYear || 'N/A'}). Jurnal: ${paper.journalTitle || ''}. ${paper.abstractSnippet || ''}`;
-      const [sv] = await db
-        .insert(sourceVersions)
-        .values({
-          sourceId: s.id,
-          contentHash: WebDiscoveryConnector.hashContent(textBody),
-          title: paper.title,
-          extractedText: textBody,
-          httpStatus: 200,
-        })
-        .returning();
-
-      const assessment = await SourceCredibilityAssessor.assessSource(
-        {
-          url: paper.url,
-          domain: 'crossref.org',
-          title: paper.title,
-          extractedText: textBody,
-          publisherType: PublisherType.ACADEMIC,
-          doi: paper.doi,
-          isPeerReviewed: paper.isPeerReviewed,
-          hasRetractions: paper.hasRetractionsOrCorrections,
-        },
-        plan.mainTopic
+        }))
       );
 
-      await db.insert(sourceAssessments).values({
-        sourceId: s.id,
-        substantiveScore: assessment.substantiveScore,
-        methodologyScore: assessment.methodologyScore,
-        recencyScore: assessment.recencyScore,
-        overallScore: assessment.overallScore,
-        assessmentReason: assessment.assessmentReason,
-        isAccepted: assessment.isAccepted,
+      // 3. TAHAP 2: Multi-Source Discovery (Internal Knowledge + Web + Academic Crossref)
+      await repo.updateJobStatus(jobId, ResearchJobStatus.SEARCHING);
+
+      await emit('Mengambil regulasi internal daerah & arsip diskursus berita...', 22);
+      const internalKnowledge = await InternalKnowledgeConnector.retrieveInternalKnowledge({
+        queryEmbedding: input.queryEmbedding,
+        targetRegion: input.targetRegion,
+        policySector: plan.internalRetrievalPlan.mediaSector,
+        keywords: plan.internalRetrievalPlan.mediaKeywords,
+        maxRegulations: 3,
+        maxNews: 4,
       });
 
-      await db
-        .update(sources)
-        .set({ lifecycleStatus: assessment.lifecycleStatus })
-        .where(eq(sources.id, s.id));
+      await emit('Menelusuri publikasi ilmiah bereputasi (Crossref DOI) & tautan web...', 32);
+      const academicPapers = plan.academicQueries && plan.academicQueries.length > 0
+        ? await AcademicDiscoveryConnector.searchCrossref(plan.academicQueries[0], 3)
+        : [];
 
-      await db.insert(researchJobSources).values({
-        researchJobId: jobId,
-        sourceId: s.id,
-        relevanceScore: assessment.overallScore,
-        queryUsed: plan.academicQueries[0] || 'Academic Query',
-      });
+      const webCandidates = input.providedUrls && input.providedUrls.length > 0
+        ? await WebDiscoveryConnector.fetchMultipleUrls(input.providedUrls)
+        : [];
 
-      evaluatedSources.push({
-        sourceId: s.id,
-        versionId: sv.id,
-        title: paper.title,
-        url: paper.url,
-        publisherName: paper.journalTitle || 'Jurnal Akademik',
-        extractedText: textBody,
-        isAccepted: assessment.isAccepted,
-      });
-    }
+      // 4. TAHAP 3: Source Registry, Deduplication & Credibility Assessment
+      await repo.updateJobStatus(jobId, ResearchJobStatus.EVALUATING);
 
-    // Proses D: Asesmen dan Registrasi Tautan Web Eksternal
-    for (const web of webCandidates) {
-      const [s] = await db
-        .insert(sources)
-        .values({
-          url: web.url,
-          canonicalUrl: web.canonicalUrl,
-          sourceType: SourceType.EXTERNAL_WEB,
-          publisherName: web.publisherName,
-          publisherType: PublisherType.MEDIA,
-          lifecycleStatus: SourceLifecycle.FETCHED,
-        })
-        .returning();
+      await emit('Menilai substansi, kesegaran & integritas metodologi sumber...', 42);
 
-      const [sv] = await db
-        .insert(sourceVersions)
-        .values({
-          sourceId: s.id,
-          contentHash: web.contentHash,
-          title: web.title,
-          rawContent: web.rawContent,
-          extractedText: web.extractedText,
-          httpStatus: web.httpStatus,
-        })
-        .returning();
+      const evaluatedSources: RegisteredSourceItem[] = [];
 
-      const assessment = await SourceCredibilityAssessor.assessSource(
-        {
-          url: web.url,
-          domain: web.domain,
-          title: web.title,
-          extractedText: web.extractedText,
-          publisherType: PublisherType.MEDIA,
-        },
-        plan.mainTopic
-      );
-
-      await db.insert(sourceAssessments).values({
-        sourceId: s.id,
-        substantiveScore: assessment.substantiveScore,
-        methodologyScore: assessment.methodologyScore,
-        recencyScore: assessment.recencyScore,
-        overallScore: assessment.overallScore,
-        assessmentReason: assessment.assessmentReason,
-        isAccepted: assessment.isAccepted,
-      });
-
-      await db
-        .update(sources)
-        .set({ lifecycleStatus: assessment.lifecycleStatus })
-        .where(eq(sources.id, s.id));
-
-      await db.insert(researchJobSources).values({
-        researchJobId: jobId,
-        sourceId: s.id,
-        relevanceScore: assessment.overallScore,
-        queryUsed: 'User Supplied URL',
-      });
-
-      evaluatedSources.push({
-        sourceId: s.id,
-        versionId: sv.id,
-        title: web.title,
-        url: web.url,
-        publisherName: web.publisherName || web.domain,
-        extractedText: web.extractedText,
-        isAccepted: assessment.isAccepted,
-      });
-    }
-
-    // Proses E: Registrasi Dokumen Lampiran Pengguna (User Attached Documents / Reses / Dokumen Lapangan)
-    if (input.attachedDocuments && input.attachedDocuments.length > 0) {
-      for (const doc of input.attachedDocuments) {
-        if (!doc.extractedContent || doc.extractedContent.trim().length === 0) continue;
-
-        const [s] = await db
-          .insert(sources)
-          .values({
-            url: `attachment://${encodeURIComponent(doc.name)}`,
-            canonicalUrl: `attachment://${encodeURIComponent(doc.name)}`,
-            sourceType: SourceType.INTERNAL_REGULATION,
-            publisherName: `Lampiran Lapangan / Dokumen (${doc.name})`,
-            publisherType: PublisherType.GOVERNMENT,
-            publisherCredibilityScore: 0.98,
-            lifecycleStatus: SourceLifecycle.VERIFIED,
-          })
-          .returning();
-
-        const [sv] = await db
-          .insert(sourceVersions)
-          .values({
-            sourceId: s.id,
-            contentHash: WebDiscoveryConnector.hashContent(doc.extractedContent),
-            title: doc.name,
-            extractedText: doc.extractedContent,
-            httpStatus: 200,
-          })
-          .returning();
-
-        await db.insert(researchJobSources).values({
-          researchJobId: jobId,
-          sourceId: s.id,
-          relevanceScore: 0.98,
-          queryUsed: 'User Attachment Ingestion',
-        });
-
-        evaluatedSources.push({
-          sourceId: s.id,
-          versionId: sv.id,
-          title: doc.name,
-          url: s.url,
-          publisherName: `Lampiran Lapangan / Dokumen (${doc.name})`,
-          extractedText: doc.extractedContent,
-          isAccepted: true,
-        });
+      // Proses A: Registrasi Sumber Regulasi Internal (Atomik dalam DB transaction via repo)
+      if (internalKnowledge.regulations.length > 0) {
+        const regSources = await repo.saveRegulationSources(jobId, internalKnowledge.regulations);
+        evaluatedSources.push(...regSources);
       }
-    }
 
-    // 5. TAHAP 4: Claim & Evidence Extraction
-    await db
-      .update(researchJobs)
-      .set({ status: ResearchJobStatus.EXTRACTING, updatedAt: new Date() })
-      .where(eq(researchJobs.id, jobId));
+      // Proses B: Registrasi Sumber Berita Internal (media_discourses, atomik dalam DB transaction via repo)
+      if (internalKnowledge.news.length > 0) {
+        const newsSources = await repo.saveNewsSources(jobId, internalKnowledge.news);
+        evaluatedSources.push(...newsSources);
+      }
 
-    await emit('Mengekstrak klaim kebijakan & bukti kutipan verbatim...', 58);
+      // Proses C: Asesmen dan Registrasi Paper Akademik Crossref
+      for (const paper of academicPapers) {
+        const textBody = `${paper.title}. Penulis: ${paper.authors.join(', ')} (${paper.publicationYear || 'N/A'}). Jurnal: ${paper.journalTitle || ''}. ${paper.abstractSnippet || ''}`;
 
-    const acceptedSources = evaluatedSources.filter((s) => s.isAccepted);
-    const extractedClaims = await ClaimEvidenceExtractor.extractClaimsAndEvidence(
-      plan.mainTopic,
-      insertedQuestions.map((q, idx) => ({ index: idx + 1, question: q.question })),
-      acceptedSources
-    );
+        // Asesmen via AI dilakukan di luar transaksi agar tidak menahan connection pool DB
+        const assessment = await SourceCredibilityAssessor.assessSource(
+          {
+            url: paper.url,
+            domain: 'crossref.org',
+            title: paper.title,
+            extractedText: textBody,
+            publisherType: PublisherType.ACADEMIC,
+            doi: paper.doi,
+            isPeerReviewed: paper.isPeerReviewed,
+            hasRetractions: paper.hasRetractionsOrCorrections,
+          },
+          plan.mainTopic
+        );
 
-    // Simpan claims dan evidence_spans ke DB
-    const evidenceCountPerQuestion: Record<string, number> = {};
-    const evidenceIdMap = new Map<string, string>(); // 'EV-1' -> database uuid
-    const evidenceDetailMap = new Map<string, { id: string; quote: string; context: string }>();
-    let spanCounter = 1;
+        // Penulisan multi-tabel sources + sourceVersions + sourceAssessments + researchJobSources secara atomik via repo
+        const savedItem = await repo.saveAcademicSource(
+          jobId,
+          paper,
+          assessment,
+          plan.academicQueries[0] || 'Academic Query'
+        );
+        evaluatedSources.push(savedItem);
+      }
 
-    for (const c of extractedClaims) {
-      // Petakan ke researchQuestionId
-      const targetQuestion =
-        c.questionIndex && c.questionIndex > 0 && c.questionIndex <= insertedQuestions.length
-          ? insertedQuestions[c.questionIndex - 1]
-          : insertedQuestions[0];
+      // Proses D: Asesmen dan Registrasi Tautan Web Eksternal
+      for (const web of webCandidates) {
+        // Asesmen via AI dilakukan di luar transaksi
+        const assessment = await SourceCredibilityAssessor.assessSource(
+          {
+            url: web.url,
+            domain: web.domain,
+            title: web.title,
+            extractedText: web.extractedText,
+            publisherType: PublisherType.MEDIA,
+          },
+          plan.mainTopic
+        );
 
-      const [claimRow] = await db
-        .insert(claims)
-        .values({
-          researchJobId: jobId,
-          researchQuestionId: targetQuestion?.id,
-          claimStatement: c.claimStatement,
-          status: c.status,
-          confidenceScore: c.confidenceScore,
-        })
-        .returning();
+        // Penulisan multi-tabel sources + sourceVersions + sourceAssessments + researchJobSources secara atomik via repo
+        const savedItem = await repo.saveWebSource(jobId, web, assessment);
+        evaluatedSources.push(savedItem);
+      }
 
-      for (const ev of c.evidenceItems) {
-        const shortToken = `EV-${spanCounter++}`;
-        const [evSpan] = await db
-          .insert(evidenceSpans)
-          .values({
-            sourceId: ev.sourceId,
-            verbatimQuote: ev.verbatimQuote,
-            contextSnippet: ev.contextSnippet,
-            sectionOrPage: ev.sectionOrPage,
-            confidenceScore: 0.95,
-            isVerified: true,
-          })
-          .returning();
-
-        evidenceIdMap.set(shortToken, evSpan.id);
-        evidenceDetailMap.set(shortToken, {
-          id: evSpan.id,
-          quote: ev.verbatimQuote,
-          context: ev.contextSnippet,
-        });
-
-        await db.insert(claimEvidence).values({
-          claimId: claimRow.id,
-          evidenceSpanId: evSpan.id,
-          supportType: ev.supportType,
-          relationshipExplanation: ev.relationshipExplanation,
-        });
-
-        if (targetQuestion) {
-          evidenceCountPerQuestion[targetQuestion.id] =
-            (evidenceCountPerQuestion[targetQuestion.id] || 0) + 1;
+      // Proses E: Registrasi Dokumen Lampiran Pengguna (User Attached Documents / Reses / Dokumen Lapangan)
+      if (input.attachedDocuments && input.attachedDocuments.length > 0) {
+        for (const doc of input.attachedDocuments) {
+          if (!doc.extractedContent || doc.extractedContent.trim().length === 0) continue;
+          const savedItem = await repo.saveAttachmentSource(jobId, doc);
+          evaluatedSources.push(savedItem);
         }
       }
-    }
 
-    // 6. TAHAP 5: Backend Deterministic Gate -> Evidence Sufficient?
-    await emit('Memeriksa kecukupan bukti secara deterministik di backend...', 72);
+      // 5. TAHAP 4: Claim & Evidence Extraction
+      await repo.updateJobStatus(jobId, ResearchJobStatus.EXTRACTING);
 
-    const totalEvidenceSpansCount = evidenceIdMap.size;
-    const sufficiencyResult = DeterministicQualityGates.verifyEvidenceSufficiency(
-      insertedQuestions,
-      evidenceCountPerQuestion,
-      totalEvidenceSpansCount
-    );
+      await emit('Mengekstrak klaim kebijakan & bukti kutipan verbatim...', 58);
 
-    await db
-      .update(researchJobs)
-      .set({
-        evidenceSufficient: sufficiencyResult.isSufficient,
-        summaryReport: sufficiencyResult.gapAnalysisReason || 'Bukti riset mencukupi.',
-        updatedAt: new Date(),
-      })
-      .where(eq(researchJobs.id, jobId));
-
-    // 7. TAHAP 6: Rakit Grounded Evidence Capsule Berindeks
-    const evidenceCapsuleLines: string[] = [];
-    evidenceCapsuleLines.push(`=== MANIFEST BUKTI TERVERIFIKASI POLARIS (GROUNDING RESMI) ===`);
-    evidenceCapsuleLines.push(`TOPIK RISET: ${plan.mainTopic}`);
-    evidenceCapsuleLines.push(`WILAYAH SASARAN: ${input.targetRegion}\n`);
-
-    evidenceCapsuleLines.push(`--- DAFTAR BUKTI BERSERTIFIKAT (SITASI RESMI) ---`);
-    for (const [token, detail] of evidenceDetailMap.entries()) {
-      evidenceCapsuleLines.push(
-        `[${token}] (ID: ${detail.id}) - Kutipan: "${detail.quote}" (Konteks: ${detail.context})`
+      const acceptedSources = evaluatedSources.filter((s) => s.isAccepted);
+      const extractedClaims = await ClaimEvidenceExtractor.extractClaimsAndEvidence(
+        plan.mainTopic,
+        insertedQuestions.map((q, idx) => ({ index: idx + 1, question: q.question })),
+        acceptedSources
       );
+
+      // Simpan claims, evidence_spans, dan claim_evidence secara atomik dalam satu DB transaction via repo
+      const {
+        evidenceCountPerQuestion,
+        evidenceIdMap,
+        evidenceDetailMap,
+      } = await repo.saveClaimsAndEvidence({
+        jobId,
+        claims: extractedClaims,
+        insertedQuestions,
+      });
+
+      // 6. TAHAP 5: Backend Deterministic Gate -> Evidence Sufficient?
+      await emit('Memeriksa kecukupan bukti secara deterministik di backend...', 72);
+
+      const totalEvidenceSpansCount = evidenceIdMap.size;
+      const sufficiencyResult = DeterministicQualityGates.verifyEvidenceSufficiency(
+        insertedQuestions,
+        evidenceCountPerQuestion,
+        totalEvidenceSpansCount
+      );
+
+      await repo.updateJobSufficiency(
+        jobId,
+        sufficiencyResult.isSufficient,
+        sufficiencyResult.gapAnalysisReason || 'Bukti riset mencukupi.'
+      );
+
+      // 7. TAHAP 6: Rakit Grounded Evidence Capsule Berindeks
+      const evidenceCapsuleLines: string[] = [];
+      evidenceCapsuleLines.push(`=== MANIFEST BUKTI TERVERIFIKASI POLARIS (GROUNDING RESMI) ===`);
+      evidenceCapsuleLines.push(`TOPIK RISET: ${plan.mainTopic}`);
+      evidenceCapsuleLines.push(`WILAYAH SASARAN: ${input.targetRegion}\n`);
+
+      evidenceCapsuleLines.push(`--- DAFTAR BUKTI BERSERTIFIKAT (SITASI RESMI) ---`);
+      for (const [token, detail] of evidenceDetailMap.entries()) {
+        evidenceCapsuleLines.push(
+          `[${token}] (ID: ${detail.id}) - Kutipan: "${detail.quote}" (Konteks: ${detail.context})`
+        );
+      }
+
+      evidenceCapsuleLines.push(`\n--- DAFTAR SUMBER RUJUKAN RESMI ---`);
+      for (const src of acceptedSources) {
+        evidenceCapsuleLines.push(`- [${src.publisherName}] ${src.title}: ${src.url}`);
+      }
+      evidenceCapsuleLines.push(`===========================================================`);
+
+      const groundedContextText = evidenceCapsuleLines.join('\n');
+
+      await emit('Siklus riset otonom selesai. Siap diteruskan ke Evidence-Grounded Writer.', 85);
+
+      return {
+        jobId,
+        mainTopic: plan.mainTopic,
+        evidenceSufficient: sufficiencyResult.isSufficient,
+        qcPassed: false, // Menunggu tahap penulisan dan QC gate
+        totalSourcesEvaluated: evaluatedSources.length,
+        verifiedSourcesCount: acceptedSources.length,
+        totalEvidenceSpans: totalEvidenceSpansCount,
+        claimsCount: extractedClaims.length,
+        groundedContextText,
+        evidenceIdMap,
+      };
+    } catch (error: any) {
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      if (jobId) {
+        try {
+          await repo.markJobFailed(jobId, errorMessage, {
+            stack: error instanceof Error ? error.stack : undefined,
+          });
+        } catch (dbUpdateError) {
+          console.error(
+            `[AutonomousResearchOrchestrator] Gagal memperbarui status research job ${jobId} ke FAILED:`,
+            dbUpdateError
+          );
+        }
+      }
+      throw error;
     }
-
-    evidenceCapsuleLines.push(`\n--- DAFTAR SUMBER RUJUKAN RESMI ---`);
-    for (const src of acceptedSources) {
-      evidenceCapsuleLines.push(`- [${src.publisherName}] ${src.title}: ${src.url}`);
-    }
-    evidenceCapsuleLines.push(`===========================================================`);
-
-    const groundedContextText = evidenceCapsuleLines.join('\n');
-
-    await emit('Siklus riset otonom selesai. Siap diteruskan ke Evidence-Grounded Writer.', 85);
-
-    return {
-      jobId,
-      mainTopic: plan.mainTopic,
-      evidenceSufficient: sufficiencyResult.isSufficient,
-      qcPassed: false, // Menunggu tahap penulisan dan QC gate
-      totalSourcesEvaluated: evaluatedSources.length,
-      verifiedSourcesCount: acceptedSources.length,
-      totalEvidenceSpans: totalEvidenceSpansCount,
-      claimsCount: extractedClaims.length,
-      groundedContextText,
-      evidenceIdMap,
-    };
   }
 }

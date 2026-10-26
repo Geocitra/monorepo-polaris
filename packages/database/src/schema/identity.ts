@@ -1,5 +1,5 @@
 import { pgTable, uuid, varchar, timestamp, text, boolean, integer, jsonb, unique } from 'drizzle-orm/pg-core';
-import { legislativeLevelEnum, operatorAssignmentStatusEnum } from './enums.js';
+import { legislativeLevelEnum, operatorAssignmentStatusEnum, superadminRoleEnum } from './enums.js';
 
 export const electoralDistricts = pgTable('electoral_districts', {
   id: uuid('id').defaultRandom().primaryKey(),
@@ -11,6 +11,30 @@ export const electoralDistricts = pgTable('electoral_districts', {
   createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
 });
 
+export const masterPoliticalParties = pgTable('master_political_parties', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  code: varchar('code', { length: 30 }).notNull().unique(),
+  name: varchar('name', { length: 150 }).notNull(),
+  ballotNumber: integer('ballot_number'),
+  primaryColor: varchar('primary_color', { length: 20 }).notNull(),
+  secondaryColor: varchar('secondary_color', { length: 20 }),
+  logoUrl: text('logo_url'),
+  description: text('description'),
+  isActive: boolean('is_active').default(true).notNull(),
+  createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
+});
+
+export const masterCommissions = pgTable('master_commissions', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  legislativeLevel: legislativeLevelEnum('legislative_level').notNull(),
+  code: varchar('code', { length: 50 }).notNull(),
+  name: varchar('name', { length: 150 }).notNull(),
+  focusAreas: text('focus_areas').array(),
+  partnerMinistries: text('partner_ministries').array(),
+  createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+});
+
 export const tenantMembers = pgTable('tenant_members', {
   id: uuid('id').defaultRandom().primaryKey(),
   email: varchar('email', { length: 255 }).notNull().unique(),
@@ -18,11 +42,12 @@ export const tenantMembers = pgTable('tenant_members', {
   fullName: varchar('full_name', { length: 150 }).notNull(),
   phoneNumber: varchar('phone_number', { length: 30 }).notNull(),
   partyAffiliation: varchar('party_affiliation', { length: 100 }),
+  politicalPartyId: uuid('political_party_id').references(() => masterPoliticalParties.id, { onDelete: 'set null' }),
   legislativeLevel: legislativeLevelEnum('legislative_level').notNull(),
   electoralDistrictId: uuid('electoral_district_id').references(() => electoralDistricts.id, { onDelete: 'restrict' }),
   customDapilName: varchar('custom_dapil_name', { length: 100 }),
   personalCoverage: text('personal_coverage').array().default([]),
-  commissionId: uuid('commission_id'),
+  commissionId: uuid('commission_id').references(() => masterCommissions.id, { onDelete: 'set null' }),
   commissionName: varchar('commission_name', { length: 150 }),
   photoUrl: text('photo_url'),
   photoGallery: text('photo_gallery').array().default([]),
@@ -57,36 +82,12 @@ export const systemAdmins = pgTable('system_admins', {
   email: varchar('email', { length: 255 }).notNull().unique(),
   passwordHash: varchar('password_hash', { length: 255 }).notNull(),
   fullName: varchar('full_name', { length: 150 }).notNull(),
-  role: varchar('role', { length: 50 }).default('SUPERADMIN').notNull(),
+  role: superadminRoleEnum('role').default('SUPERADMIN').notNull(),
   isActive: boolean('is_active').default(true).notNull(),
   avatarUrl: text('avatar_url'),
   lastLoginAt: timestamp('last_login_at', { withTimezone: true }),
   createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
   updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
-});
-
-export const masterPoliticalParties = pgTable('master_political_parties', {
-  id: uuid('id').defaultRandom().primaryKey(),
-  code: varchar('code', { length: 30 }).notNull().unique(),
-  name: varchar('name', { length: 150 }).notNull(),
-  ballotNumber: integer('ballot_number'),
-  primaryColor: varchar('primary_color', { length: 20 }).notNull(),
-  secondaryColor: varchar('secondary_color', { length: 20 }),
-  logoUrl: text('logo_url'),
-  description: text('description'),
-  isActive: boolean('is_active').default(true).notNull(),
-  createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
-  updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
-});
-
-export const masterCommissions = pgTable('master_commissions', {
-  id: uuid('id').defaultRandom().primaryKey(),
-  legislativeLevel: legislativeLevelEnum('legislative_level').notNull(),
-  code: varchar('code', { length: 50 }).notNull(),
-  name: varchar('name', { length: 150 }).notNull(),
-  focusAreas: text('focus_areas').array(),
-  partnerMinistries: text('partner_ministries').array(),
-  createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
 });
 
 export const tenantActivityLogs = pgTable('tenant_activity_logs', {

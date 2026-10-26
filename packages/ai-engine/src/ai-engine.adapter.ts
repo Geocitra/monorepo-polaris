@@ -259,12 +259,14 @@ export class OpenAIAIEngineAdapter implements ILLMProviderPort {
     compiledPrompt: CompiledPosterPrompt;
     canonicalTraceId: string;
   }> {
-    const blueprint = PosterBlueprintSelector.selectBestBlueprint({
+    const blueprint = await PosterBlueprintSelector.selectBestBlueprintAsync({
       topic: params.topic,
       forcedArchetype: params.forcedArchetype,
       excludeBlueprintId: params.excludeBlueprintId,
       forcedBrandHex: params.tenantBrandHex,
     });
+
+    const activeProvider = getActiveImageProvider();
 
     const compiledPrompt = await PosterPromptCompiler.compileScenePrompt({
       topic: params.topic,
@@ -272,6 +274,7 @@ export class OpenAIAIEngineAdapter implements ILLMProviderPort {
       compositionMode: params.compositionMode,
       blueprint,
       tenantBrandHex: params.tenantBrandHex,
+      imageProvider: activeProvider,
     });
 
     const targetSize =
@@ -279,7 +282,6 @@ export class OpenAIAIEngineAdapter implements ILLMProviderPort {
         ? '1024x1792'
         : '1024x1024';
 
-    const activeProvider = getActiveImageProvider();
     let imageResult: { temporaryImageUrl: string; canonicalTraceId: string };
 
     if (activeProvider === 'GOOGLE_IMAGEN') {
@@ -291,7 +293,9 @@ export class OpenAIAIEngineAdapter implements ILLMProviderPort {
           prompt: compiledPrompt.englishPrompt,
           aspectRatio: (compiledPrompt.aspectRatio as any) || '4:5',
           tenantId: params.tenantId,
-          stylePromptSuffix: blueprint.scenePromptHint,
+          stylePromptSuffix: blueprint.scenePromptHint
+            ? PosterPromptCompiler.sanitizeImageGenerationPrompt(blueprint.scenePromptHint)
+            : undefined,
           imageNegativeAllow: blueprint.fixedConstraints?.imageNegativeAllow,
         });
       } catch (googleError: any) {

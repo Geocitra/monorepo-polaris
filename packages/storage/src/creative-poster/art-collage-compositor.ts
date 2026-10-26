@@ -51,6 +51,9 @@ export interface ComposedArtCollageResult {
   blendModeUsed: 'multiply' | 'over';
 }
 
+/**
+ * @deprecated Legacy Satori-based collage compositor. Production 100% uses ChromiumPosterCompositor.
+ */
 export class ArtCollageCompositor {
   /**
    * Mengukur luminansi rata-rata pada area kanvas tertentu

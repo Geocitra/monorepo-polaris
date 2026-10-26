@@ -45,7 +45,7 @@ export class StudioController {
     @CurrentTenant() user: AuthenticatedTenantPayload,
     @Body() dto: GenerateArticleRequestDto
   ) {
-    return await this.studioService.generateNewContentPackage(user.tenantId, dto);
+    return await this.studioService.generateNewContentPackage(user.tenantId, dto, user);
   }
 
   // Parafrase & Penyempurnaan Prompt Cerdas menggunakan Gemini Flash Lite (Ultra-Cepat & Hemat)
@@ -120,7 +120,7 @@ export class StudioController {
     @CurrentTenant() user: AuthenticatedTenantPayload,
     @Param('id') id: string
   ) {
-    return await this.studioService.publishArticle(user.tenantId, id);
+    return await this.studioService.publishArticle(user.tenantId, id, user);
   }
 
   @Post('articles/:id/unpublish')

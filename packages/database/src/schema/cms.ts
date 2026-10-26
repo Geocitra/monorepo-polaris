@@ -1,6 +1,6 @@
 import { pgTable, uuid, varchar, text, boolean, timestamp, unique, jsonb, integer, index } from 'drizzle-orm/pg-core';
 import { tenantMembers } from './identity.js';
-import { socialPlatformEnum } from './enums.js';
+import { docTypeEnum, socialPlatformEnum } from './enums.js';
 
 export const portalConfigs = pgTable('portal_configs', {
   id: uuid('id').defaultRandom().primaryKey(),
@@ -37,7 +37,7 @@ export const portalDocuments = pgTable('portal_documents', {
   id: uuid('id').defaultRandom().primaryKey(),
   portalId: uuid('portal_id').notNull().references(() => portalConfigs.id, { onDelete: 'cascade' }),
   title: varchar('title', { length: 255 }).notNull(),
-  docType: varchar('doc_type', { length: 50 }).default('REPORT_TRIWULAN').notNull(),
+  docType: docTypeEnum('doc_type').default('REPORT_TRIWULAN').notNull(),
   description: text('description'),
   fileUrl: text('file_url').notNull(),
   fileSizeBytes: integer('file_size_bytes'),

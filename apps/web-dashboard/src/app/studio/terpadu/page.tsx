@@ -149,7 +149,7 @@ function KampanyeTerpaduContent() {
           {
             id: `msg-${sessionId}-2`,
             role: 'assistant',
-            text: `Draf konten awal (Versi v1) telah berhasil dibuat! Meliputi naskah kajian artikel, poster visual DALL-E, dan materi siaran media sosial (WhatsApp & Instagram). Anda dapat memberikan instruksi revisi lanjutan di bilah chat Co-Pilot ini.`,
+            text: `Draf konten awal (Versi v1) telah berhasil dibuat! Meliputi naskah kajian artikel, poster visual editorial, dan materi siaran media sosial (WhatsApp & Instagram). Anda dapat memberikan instruksi revisi lanjutan di bilah chat Co-Pilot ini.`,
             timestamp: fallbackResult.publication.createdAt || new Date().toISOString(),
             versionGenerated: 1,
           },
@@ -673,7 +673,7 @@ function KampanyeTerpaduContent() {
       toast({
         type: 'success',
         title: 'Materi Lengkap Siap!',
-        description: 'Seluruh naskah artikel, poster visual DALL-E, dan paket media sosial telah selesai.',
+        description: 'Seluruh naskah artikel, poster visual editorial, dan paket media sosial telah selesai.',
       });
 
       const updatedBilling = await ApiClient.request<any>('/billing/status');

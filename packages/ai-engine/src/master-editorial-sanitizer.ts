@@ -145,13 +145,10 @@ export class MasterEditorialSanitizer {
    */
   public static removeOxfordComma(rawText: string): string {
     if (!rawText || typeof rawText !== 'string') return '';
-    let text = rawText;
-
-    text = text.replace(/([a-zA-Z0-9\)])\s*,\s+dan\s+([a-zA-Z0-9\(])/g, '$1 dan $2');
-    text = text.replace(/([a-zA-Z0-9\)])\s*,\s+serta\s+([a-zA-Z0-9\(])/g, '$1 serta $2');
-    text = text.replace(/([a-zA-Z0-9\)])\s*,\s+atau\s+([a-zA-Z0-9\(])/g, '$1 atau $2');
-
-    return text;
+    return rawText.replace(
+      /([a-zA-Z0-9\)])\s*,\s+(dan|serta|atau)\s+([a-zA-Z0-9\(])/gi,
+      '$1 $2 $3'
+    );
   }
 
   /**

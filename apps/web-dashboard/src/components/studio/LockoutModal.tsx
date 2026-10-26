@@ -38,7 +38,7 @@ export function LockoutModal({
           </div>
           <div className="flex items-center gap-2 text-slate-700 font-semibold">
             <CheckCircle2 className="h-4 w-4 text-emerald-600 shrink-0" />
-            <span>Desain Poster Visual DALL-E 3 Resolusi Tinggi</span>
+            <span>Desain Poster Visual Editorial Resolusi Tinggi</span>
           </div>
           <div className="flex items-center gap-2 text-slate-700 font-semibold">
             <CheckCircle2 className="h-4 w-4 text-emerald-600 shrink-0" />

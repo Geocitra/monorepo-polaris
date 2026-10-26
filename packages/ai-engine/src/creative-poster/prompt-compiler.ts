@@ -14,6 +14,7 @@ import { resolveHarmoniousPalette, getRandomHarmoniousPalette } from './palettes
 import { TwoStageArticleEngine } from '../two-stage-article.engine.js';
 import { MasterEditorialSanitizer } from '../master-editorial-sanitizer.js';
 import { CompositionPlanner } from './composition-planner.js';
+import { getActiveImageProvider, ImageGeneratorProvider } from '../config/image-provider.config.js';
 
 export interface CompilePosterPromptOptions {
   topic: string;
@@ -21,6 +22,7 @@ export interface CompilePosterPromptOptions {
   blueprint: PreAnalyzedPosterBlueprint;
   compositionMode?: SubjectCompositionMode;
   tenantBrandHex?: string;
+  imageProvider?: ImageGeneratorProvider;
 }
 
 /**
@@ -522,16 +524,6 @@ Keluarkan output HANYA dalam format JSON murni:
     return copy;
   }
 
-  private static smartTruncate(text: string, maxChars: number, addEllipsis = true): string {
-    const clean = text.trim();
-    if (clean.length <= maxChars) return clean;
-    const limit = addEllipsis ? Math.max(3, maxChars - 3) : maxChars;
-    const sliced = clean.slice(0, limit);
-    const lastSpace = sliced.lastIndexOf(' ');
-    const safeText = lastSpace > limit * 0.6 ? sliced.slice(0, lastSpace) : sliced;
-    return addEllipsis ? `${safeText.trim()}...` : safeText.trim();
-  }
-
   /**
    * TAHAP 2: Mengompilasi Prompt Kolase Visual (100% Tanpa Teks, Siap Di-overlay Satori)
    * Polymorphic Art Direction per Arketipe Desain
@@ -853,7 +845,8 @@ ${zeroMandate}
     }
 
     const { width, height } = blueprint.slotManifest.canvas;
-    const isPreCrop916 = blueprint.aspectRatio === '4:5';
+    const activeProvider = options.imageProvider || getActiveImageProvider();
+    const isPreCrop916 = blueprint.aspectRatio === '4:5' && activeProvider === 'OPENAI_DALLE';
     const compositionPlan = CompositionPlanner.planComposition({
       blueprint,
       copy: synthesizedCopy,

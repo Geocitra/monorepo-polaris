@@ -184,6 +184,8 @@ export class IdentityAuthService {
       sub: result.member.id,
       email: result.member.email,
       subdomainSlug: result.subdomain,
+      mustChangePassword: false,
+      role: 'MEMBER',
     };
 
     const accessToken = await this.jwtService.signAsync(payload);

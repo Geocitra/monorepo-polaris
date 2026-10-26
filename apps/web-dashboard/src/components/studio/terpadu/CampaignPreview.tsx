@@ -43,6 +43,7 @@ import {
   RotateCw,
 } from 'lucide-react';
 import { ApiClient } from '@/lib/api-client';
+import { downloadImageFile } from '@/lib/utils';
 import { InstagramPublishProgressModal } from '@/components/studio/InstagramPublishProgressModal';
 import { ThreadsPublishProgressModal } from '@/components/studio/ThreadsPublishProgressModal';
 
@@ -114,6 +115,26 @@ export function CampaignPreview({
   const [isDraggingFocal, setIsDraggingFocal] = useState(false);
   const [dragStartY, setDragStartY] = useState(0);
   const [dragStartFocal, setDragStartFocal] = useState(50);
+  const [downloadingPoster, setDownloadingPoster] = useState(false);
+
+  async function handleDownloadPosterImage(customName?: string) {
+    const poster = selectedPosterUrl || generatedResult?.posterUrl;
+    if (!poster) return;
+    setDownloadingPoster(true);
+    const filename = customName || `${(generatedResult?.title || 'Poster_Kebijakan').replace(/[^a-zA-Z0-9]/g, '_').slice(0, 35)}_HD.jpg`;
+    try {
+      await downloadImageFile(poster, filename);
+      toast({
+        type: 'success',
+        title: 'Poster Berhasil Diunduh',
+        description: 'Berkas gambar resolusi tinggi telah tersimpan di perangkat Anda.',
+      });
+    } catch {
+      window.open(poster, '_blank');
+    } finally {
+      setDownloadingPoster(false);
+    }
+  }
 
   async function handleRegeneratePoster() {
     const publicationId = generatedResult?.publication?.id;
@@ -851,16 +872,15 @@ export function CampaignPreview({
                         <span className="font-extrabold text-[11px] bg-slate-900/90 px-3 py-1.5 rounded-xl backdrop-blur-md border border-slate-700">
                           Visual Sintesis AI
                         </span>
-                        <a
-                          href={selectedPosterUrl || generatedResult?.posterUrl}
-                          download
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-extrabold text-xs shadow-md transition-colors"
+                        <button
+                          type="button"
+                          onClick={() => handleDownloadPosterImage()}
+                          disabled={downloadingPoster}
+                          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-extrabold text-xs shadow-md transition-colors cursor-pointer disabled:opacity-60"
                         >
-                          <Download className="h-3.5 w-3.5" />
-                          <span>Unduh HD</span>
-                        </a>
+                          {downloadingPoster ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Download className="h-3.5 w-3.5" />}
+                          <span>{downloadingPoster ? 'Mengunduh...' : 'Unduh HD'}</span>
+                        </button>
                       </div>
                     </>
                   ) : (regeneratingPoster || isBackgroundRenderingPoster) ? (
@@ -926,16 +946,15 @@ export function CampaignPreview({
                       <span className="font-bold text-xs bg-slate-900/90 px-3 py-1.5 rounded-xl backdrop-blur-md border border-slate-700">
                         Resolusi Penuh (Format Berita &amp; Media)
                       </span>
-                      <a
-                        href={selectedPosterUrl || generatedResult?.posterUrl}
-                        download
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-extrabold text-xs shadow-md transition-colors"
+                      <button
+                        type="button"
+                        onClick={() => handleDownloadPosterImage()}
+                        disabled={downloadingPoster}
+                        className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-extrabold text-xs shadow-md transition-colors cursor-pointer disabled:opacity-60"
                       >
-                        <Download className="h-4 w-4" />
-                        <span>Unduh Berkas Asli</span>
-                      </a>
+                        {downloadingPoster ? <Loader2 className="h-4 w-4 animate-spin" /> : <Download className="h-4 w-4" />}
+                        <span>{downloadingPoster ? 'Mengunduh...' : 'Unduh Berkas Asli'}</span>
+                      </button>
                     </div>
                   </>
                 ) : (regeneratingPoster || isBackgroundRenderingPoster) ? (
@@ -1537,16 +1556,15 @@ export function CampaignPreview({
                   <span className="text-slate-600 dark:text-slate-400 font-medium">
                     Lampirkan poster dokumen resolusi penuh ke grup chat:
                   </span>
-                  <a
-                    href={selectedPosterUrl || generatedResult?.posterUrl}
-                    download="poster-kebijakan-dewan.png"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="inline-flex items-center gap-1 text-emerald-700 dark:text-emerald-400 font-extrabold hover:underline"
+                  <button
+                    type="button"
+                    onClick={() => handleDownloadPosterImage('poster-kebijakan-dewan.png')}
+                    disabled={downloadingPoster}
+                    className="inline-flex items-center gap-1 text-emerald-700 dark:text-emerald-400 font-extrabold hover:underline cursor-pointer disabled:opacity-60"
                   >
-                    <Download className="h-3.5 w-3.5" />
-                    <span>Unduh Poster A4</span>
-                  </a>
+                    {downloadingPoster ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Download className="h-3.5 w-3.5" />}
+                    <span>{downloadingPoster ? 'Mengunduh...' : 'Unduh Poster A4'}</span>
+                  </button>
                 </div>
               )}
             </div>

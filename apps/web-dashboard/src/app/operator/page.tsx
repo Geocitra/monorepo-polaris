@@ -43,8 +43,18 @@ import {
   Image as ImageIcon,
   BookOpen,
   RotateCcw,
+  Maximize2,
+  Minimize2,
 } from 'lucide-react';
-import { WRITING_STYLES, type WritingStyle, type LengthTarget } from '@/components/studio/artikel/WritingStyleSelector';
+import {
+  WritingStyleSelector,
+  WRITING_STYLES,
+  type WritingStyle,
+  type LengthTarget,
+} from '@/components/studio/artikel/WritingStyleSelector';
+import { VisualDocumentCanvas } from '@/components/studio/artikel/VisualDocumentCanvas';
+import { TiptapExecutiveEditor } from '@/components/studio/artikel/TiptapExecutiveEditor';
+import { downloadImageFile } from '@/lib/utils';
 
 export interface AttachedFileItem {
   id: string;
@@ -224,12 +234,15 @@ export default function OperatorCockpitPage() {
   const [generatedResult, setGeneratedResult] = useState<GeneratedFullResult | null>(null);
   const [resultTab, setResultTab] = useState<'article' | 'poster' | 'social'>('article');
   const [isEditingArticle, setIsEditingArticle] = useState(false);
+  const [isWide, setIsWide] = useState(true);
+  const [zoom, setZoom] = useState<number>(100);
   const [editedTitle, setEditedTitle] = useState('');
   const [editedBody, setEditedBody] = useState('');
   const [savingDraft, setSavingDraft] = useState(false);
   const [publishingArticle, setPublishingArticle] = useState(false);
   const [publishedUrl, setPublishedUrl] = useState<string | null>(null);
   const [regeneratingPoster, setRegeneratingPoster] = useState(false);
+  const [downloadingPoster, setDownloadingPoster] = useState(false);
   const [copiedWa, setCopiedWa] = useState(false);
   const [copiedArticle, setCopiedArticle] = useState(false);
   const [copiedIg, setCopiedIg] = useState(false);
@@ -349,13 +362,21 @@ export default function OperatorCockpitPage() {
       setLoadingCanvasArticleId(articleId);
       const detail = await AdminApiClient.request<any>(`/studio/articles/${articleId}`);
       if (detail?.article) {
+        const rawBody = detail.article.bodyContentMarkdown || '';
+        const bodyWithTitle = rawBody.startsWith('# ')
+          ? rawBody
+          : (detail.article.title ? `# ${detail.article.title}\n\n${rawBody}` : rawBody);
+
         setGeneratedResult({
-          publication: detail.article,
+          publication: {
+            ...detail.article,
+            bodyContentMarkdown: bodyWithTitle,
+          },
           posterUrl: detail.asset?.cdnPublicUrl || detail.asset?.r2StorageUrl || '',
           socialPack: detail.socialPack,
         });
         setEditedTitle(detail.article.title);
-        setEditedBody(detail.article.bodyContentMarkdown || '');
+        setEditedBody(bodyWithTitle);
         setResultTab('article');
         setActiveTab('CONTENT');
         setStatusNotice(`✅ Naskah "${detail.article.title}" berhasil dimuat ke Kanvas.`);
@@ -520,29 +541,43 @@ export default function OperatorCockpitPage() {
       }
 
       if (finalArticle) {
+        const rawBody = finalArticle.bodyContentMarkdown || '';
+        const bodyWithTitle = rawBody.startsWith('# ')
+          ? rawBody
+          : (finalArticle.title ? `# ${finalArticle.title}\n\n${rawBody}` : rawBody);
+
         setGeneratedResult({
-          publication: finalArticle,
+          publication: {
+            ...finalArticle,
+            bodyContentMarkdown: bodyWithTitle,
+          },
           posterUrl: finalPosterUrl,
           socialPack: finalSocialPack,
         });
         setEditedTitle(finalArticle.title);
-        setEditedBody(finalArticle.bodyContentMarkdown || '');
+        setEditedBody(bodyWithTitle);
         setResultTab('article');
-        setStatusNotice('✅ Naskah Berita & Poster Visual AI berhasil disintesis!');
+        setStatusNotice('✅ Naskah Kebijakan & Poster Visual berhasil disintesis!');
       } else {
+        const fallbackTitle = res?.title || topicInput.trim();
+        const rawFallbackBody = res?.bodyContentMarkdown || res?.excerpt || topicInput.trim();
+        const fallbackWithTitle = rawFallbackBody.startsWith('# ')
+          ? rawFallbackBody
+          : `# ${fallbackTitle}\n\n${rawFallbackBody}`;
+
         setGeneratedResult({
           publication: {
             id: res?.id || 'res-id',
-            title: res?.title || topicInput.trim(),
-            bodyContentMarkdown: res?.bodyContentMarkdown || res?.excerpt || topicInput.trim(),
+            title: fallbackTitle,
+            bodyContentMarkdown: fallbackWithTitle,
             excerpt: res?.excerpt || topicInput.trim(),
             status: 'DRAFT',
           },
           posterUrl: res?.posterUrl || '',
           socialPack: res?.socialPack,
         });
-        setEditedTitle(res?.title || topicInput.trim());
-        setEditedBody(res?.bodyContentMarkdown || res?.excerpt || topicInput.trim());
+        setEditedTitle(fallbackTitle);
+        setEditedBody(fallbackWithTitle);
         setStatusNotice('✅ Draf awal berhasil disintesis!');
       }
 
@@ -563,10 +598,15 @@ export default function OperatorCockpitPage() {
     if (!generatedResult?.publication?.id) return;
     setSavingDraft(true);
     try {
+      const derivedTitle =
+        editedTitle ||
+        editedBody.split('\n')[0].replace(/^#\s*/, '').trim() ||
+        generatedResult.publication.title;
+
       await AdminApiClient.request(`/studio/articles/${generatedResult.publication.id}`, {
         method: 'PUT',
         body: JSON.stringify({
-          title: editedTitle,
+          title: derivedTitle,
           bodyContentMarkdown: editedBody,
         }),
       });
@@ -576,13 +616,13 @@ export default function OperatorCockpitPage() {
               ...prev,
               publication: {
                 ...prev.publication,
-                title: editedTitle,
+                title: derivedTitle,
                 bodyContentMarkdown: editedBody,
               },
             }
           : null
       );
-      setIsEditingArticle(false);
+      setEditedTitle(derivedTitle);
       alert('Perubahan naskah berhasil disimpan.');
     } catch (err: any) {
       alert(`Gagal menyimpan: ${err.message}`);
@@ -613,7 +653,7 @@ export default function OperatorCockpitPage() {
           : null
       );
       loadAssignments();
-      alert('Artikel berhasil diterbitkan langsung ke Portal Berita Publik!');
+      alert('Naskah berhasil diterbitkan langsung ke Portal Resmi Tokoh!');
     } catch (err: any) {
       alert(`Gagal menerbitkan: ${err.message}`);
     } finally {
@@ -653,6 +693,20 @@ export default function OperatorCockpitPage() {
     }
   };
 
+  // Handler Unduh Poster Gambar HD (Direct Local Device Download)
+  const handleDownloadPoster = async () => {
+    if (!generatedResult?.posterUrl) return;
+    setDownloadingPoster(true);
+    const safeName = (selectedDewan?.fullName || 'Tokoh_Polaris').replace(/\s+/g, '_');
+    try {
+      await downloadImageFile(generatedResult.posterUrl, `${safeName}_Poster_HD.jpg`);
+    } catch {
+      window.open(generatedResult.posterUrl, '_blank');
+    } finally {
+      setDownloadingPoster(false);
+    }
+  };
+
   // Handler Salin WhatsApp, Artikel, dan Instagram
   const handleCopyWa = () => {
     if (!generatedResult) return;
@@ -668,7 +722,10 @@ export default function OperatorCockpitPage() {
 
   const handleCopyArticle = () => {
     if (!generatedResult) return;
-    const full = `# ${editedTitle || generatedResult.publication.title}\n\n${editedBody || generatedResult.publication.bodyContentMarkdown}`;
+    const body = editedBody || generatedResult.publication.bodyContentMarkdown || '';
+    const full = body.startsWith('# ')
+      ? body
+      : `# ${editedTitle || generatedResult.publication.title}\n\n${body}`;
     navigator.clipboard.writeText(full);
     setCopiedArticle(true);
     setTimeout(() => setCopiedArticle(false), 2500);
@@ -1229,7 +1286,7 @@ export default function OperatorCockpitPage() {
                         <div className="p-2.5 rounded-xl bg-blue-50/80 dark:bg-blue-950/40 border border-blue-200 dark:border-blue-900/60 text-blue-900 dark:text-blue-200 text-xs flex items-center gap-2">
                           <Globe className="w-4 h-4 text-blue-600 shrink-0" />
                           <span className="text-[11px] font-bold">
-                            Tautan web berita terdeteksi — Polaris AI akan otomatis menyerap isi berita sebagai rujukan faktual.
+                            Tautan rujukan terdeteksi — Polaris AI akan otomatis menyerap isi dokumen/artikel sebagai rujukan faktual.
                           </span>
                         </div>
                       )}
@@ -1387,101 +1444,13 @@ export default function OperatorCockpitPage() {
                     </div>
 
                     {/* 3. TARGET PANJANG NASKAH & 4 GAYA BAHASA RESMI POLARIS */}
-                    <div className="space-y-4 pt-2 border-t border-slate-100 dark:border-slate-800">
-                      {/* Pilihan Panjang Naskah */}
-                      <div className="space-y-1.5">
-                        <label className="text-xs font-black uppercase tracking-wider text-slate-800 dark:text-slate-200 block">
-                          3. Target Kedalaman Naskah Berita
-                        </label>
-                        <div className="flex flex-wrap gap-2">
-                          {(
-                            [
-                              { id: 'SHORT', name: 'Ringkas', words: '~750 kata', desc: 'Rilis pers cepat & padat' },
-                              { id: 'MEDIUM', name: 'Standar', words: '~1.500 kata', desc: 'Artikel opini kebijakan berbobot' },
-                              { id: 'LONG', name: 'Policy Paper', words: '~3.000 kata', desc: 'Kajian mendalam regulasi & APBD' },
-                            ] as const
-                          ).map((item) => (
-                            <button
-                              key={item.id}
-                              type="button"
-                              onClick={() => setSelectedLength(item.id)}
-                              className={`px-3.5 py-2 rounded-xl text-xs font-bold transition flex items-center gap-2 cursor-pointer border ${
-                                selectedLength === item.id
-                                  ? 'bg-indigo-600 text-white border-indigo-600 shadow-sm'
-                                  : 'bg-slate-50 dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-300 hover:border-slate-300'
-                              }`}
-                            >
-                              <span>{item.name}</span>
-                              <span className={`text-[10px] font-normal ${selectedLength === item.id ? 'text-indigo-100' : 'text-slate-400'}`}>
-                                ({item.words})
-                              </span>
-                            </button>
-                          ))}
-                        </div>
-                      </div>
-
-                      {/* 4 Gaya Bahasa Resmi POLARIS */}
-                      <div className="space-y-2">
-                        <div className="flex items-center justify-between">
-                          <label className="text-xs font-black uppercase tracking-wider text-slate-800 dark:text-slate-200">
-                            4. Pilih Gaya Bahasa Kebijakan (4 Gaya Resmi POLARIS)
-                          </label>
-                          <span className="text-[11px] text-indigo-600 dark:text-indigo-400 font-bold">
-                            Gaya Terpilih: {WRITING_STYLES[selectedStyle].name}
-                          </span>
-                        </div>
-
-                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
-                          {(Object.keys(WRITING_STYLES) as WritingStyle[]).map((styleKey) => {
-                            const cfg = WRITING_STYLES[styleKey];
-                            const Icon = cfg.icon;
-                            const isSelected = selectedStyle === styleKey;
-
-                            return (
-                              <button
-                                key={styleKey}
-                                type="button"
-                                onClick={() => setSelectedStyle(styleKey)}
-                                className={`p-3.5 rounded-xl border text-left transition-all cursor-pointer flex flex-col justify-between space-y-2 ${
-                                  isSelected
-                                    ? 'border-indigo-600 bg-indigo-50/70 dark:bg-indigo-950/40 ring-2 ring-indigo-500/30 text-indigo-950 dark:text-indigo-200 shadow-sm'
-                                    : 'border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-300 hover:border-slate-300 dark:hover:border-slate-700'
-                                }`}
-                              >
-                                <div className="flex items-center justify-between">
-                                  <div className="flex items-center space-x-2">
-                                    <div
-                                      className={`w-8 h-8 rounded-lg flex items-center justify-center ${
-                                        isSelected ? 'bg-indigo-600 text-white' : 'bg-slate-100 dark:bg-slate-800 text-slate-500'
-                                      }`}
-                                    >
-                                      <Icon className="w-4 h-4" />
-                                    </div>
-                                    <span className="text-xs font-black">{cfg.name}</span>
-                                  </div>
-                                  <span
-                                    className={`text-[9.5px] font-bold px-1.5 py-0.5 rounded ${
-                                      isSelected
-                                        ? 'bg-indigo-200 dark:bg-indigo-800 text-indigo-900 dark:text-indigo-200'
-                                        : 'bg-slate-100 dark:bg-slate-800 text-slate-500'
-                                    }`}
-                                  >
-                                    {cfg.badge}
-                                  </span>
-                                </div>
-
-                                <p className="text-[11px] text-slate-500 dark:text-slate-400 line-clamp-2 leading-relaxed">
-                                  {cfg.focus}
-                                </p>
-
-                                <div className="text-[10px] text-slate-400 dark:text-slate-500 pt-1 border-t border-slate-100 dark:border-slate-800/80 truncate">
-                                  Tone: {cfg.tone.split(',')[0]}
-                                </div>
-                              </button>
-                            );
-                          })}
-                        </div>
-                      </div>
+                    <div className="pt-2 border-t border-slate-100 dark:border-slate-800">
+                      <WritingStyleSelector
+                        selectedLength={selectedLength}
+                        onLengthChange={setSelectedLength}
+                        selectedStyle={selectedStyle}
+                        onStyleChange={setSelectedStyle}
+                      />
                     </div>
 
                     {/* 4. TOMBOL GENERATE UTAMA DENGAN INDIKATOR LANGKAH */}
@@ -1491,8 +1460,8 @@ export default function OperatorCockpitPage() {
                           <RefreshCw className="w-4 h-4 animate-spin text-indigo-600" />
                           <span>
                             {generationStep === 1 && 'Tahap 1/3: Menganalisis konstituen & isu daerah...'}
-                            {generationStep === 2 && 'Tahap 2/3: Menyintesis naskah berita & bukti kebijakan...'}
-                            {generationStep >= 3 && 'Tahap 3/3: Merender poster visual AI HD (DALL-E 3)...'}
+                            {generationStep === 2 && 'Tahap 2/3: Menyintesis naskah & rujukan kebijakan...'}
+                            {generationStep >= 3 && 'Tahap 3/3: Merender poster visual editorial...'}
                           </span>
                         </div>
                       ) : (
@@ -1526,7 +1495,7 @@ export default function OperatorCockpitPage() {
                         ) : (
                           <>
                             <Sparkles className="w-4 h-4" />
-                            <span>Buat Berita & Poster Visual Otomatis</span>
+                            <span>Sintesis Naskah & Poster Visual</span>
                           </>
                         )}
                       </button>
@@ -1570,7 +1539,7 @@ export default function OperatorCockpitPage() {
                     </div>
                   </div>
 
-                  {/* 3 SUB-TAB KANVAS: NASKAH BERITA, POSTER VISUAL, & WHATSAPP/MEDSOS */}
+                  {/* 3 SUB-TAB KANVAS: NASKAH KEBIJAKAN, POSTER VISUAL, & WHATSAPP/MEDSOS */}
                   <div className="flex items-center gap-2 border-b border-slate-100 dark:border-slate-800 pb-3">
                     <button
                       type="button"
@@ -1582,7 +1551,7 @@ export default function OperatorCockpitPage() {
                       }`}
                     >
                       <FileText className="w-4 h-4" />
-                      <span>Naskah Berita Utuh</span>
+                      <span>Naskah Kebijakan Utuh</span>
                     </button>
 
                     <button
@@ -1595,7 +1564,7 @@ export default function OperatorCockpitPage() {
                       }`}
                     >
                       <ImageIcon className="w-4 h-4" />
-                      <span>Visual AI Poster (DALL-E 3)</span>
+                      <span>Visual Poster Editorial</span>
                       {generatedResult.posterUrl && (
                         <span className="w-2 h-2 rounded-full bg-emerald-500" />
                       )}
@@ -1615,99 +1584,134 @@ export default function OperatorCockpitPage() {
                     </button>
                   </div>
 
-                  {/* SUB-TAB 1: NASKAH BERITA UTUH (PREVIEW & EDIT MODE) */}
+                  {/* SUB-TAB 1: NASKAH KEBIJAKAN UTUH (MODULAR PARLEMEN A4 & TIPTAP WYSIWYG) */}
                   {resultTab === 'article' && (
                     <div className="space-y-4">
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-2 text-xs font-bold text-slate-500">
-                          <BookOpen className="w-4 h-4 text-indigo-500" />
-                          <span>Format Berita Resmi Siap Tayang</span>
-                        </div>
-
-                        <div className="flex items-center gap-2">
+                      {/* HEADER KANVAS NASKAH (SINKRON DENGAN STUDIO ANGGOTA DEWAN) */}
+                      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-3 rounded-2xl bg-slate-50 dark:bg-slate-900/60 border border-slate-200 dark:border-slate-800">
+                        <div className="flex items-center gap-1 bg-white dark:bg-slate-900 p-1 rounded-xl border border-slate-200 dark:border-slate-800 shadow-2xs">
                           <button
                             type="button"
-                            onClick={() => setIsEditingArticle(!isEditingArticle)}
-                            className="px-3 py-1.5 rounded-lg border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800 text-xs font-bold text-indigo-600 dark:text-indigo-400 transition flex items-center gap-1.5 cursor-pointer"
+                            onClick={() => setIsEditingArticle(false)}
+                            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                              !isEditingArticle
+                                ? 'bg-indigo-600 text-white shadow-xs'
+                                : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+                            }`}
+                          >
+                            <Eye className="w-3.5 h-3.5" />
+                            <span>Pratinjau Dokumen (A4)</span>
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setIsEditingArticle(true)}
+                            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                              isEditingArticle
+                                ? 'bg-indigo-600 text-white shadow-xs'
+                                : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+                            }`}
                           >
                             <Edit3 className="w-3.5 h-3.5" />
-                            <span>{isEditingArticle ? 'Batal Edit' : 'Edit Naskah'}</span>
+                            <span>Sunting Naskah Langsung</span>
+                          </button>
+                        </div>
+
+                        <div className="flex items-center gap-2 flex-wrap">
+                          {/* TOGGLE LEBAR KANVAS */}
+                          <button
+                            type="button"
+                            onClick={() => setIsWide(!isWide)}
+                            className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-300 hover:border-indigo-500 hover:text-indigo-600 dark:hover:text-indigo-400 shadow-2xs transition-all cursor-pointer"
+                            title={isWide ? 'Mode Dokumen Standar' : 'Kanvas Luas'}
+                          >
+                            {isWide ? <Minimize2 className="w-3.5 h-3.5" /> : <Maximize2 className="w-3.5 h-3.5" />}
+                            <span className="hidden sm:inline">{isWide ? 'Standar' : 'Luas'}</span>
                           </button>
 
+                          {/* SALIN NASKAH */}
                           <button
                             type="button"
                             onClick={handleCopyArticle}
-                            className="px-3 py-1.5 rounded-lg bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 text-xs font-bold text-slate-700 dark:text-slate-200 transition flex items-center gap-1.5 cursor-pointer"
+                            className="px-3 py-1.5 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 hover:bg-slate-100 dark:hover:bg-slate-800 text-xs font-bold text-slate-700 dark:text-slate-200 transition flex items-center gap-1.5 cursor-pointer shadow-2xs"
                           >
                             {copiedArticle ? <CheckCheck className="w-3.5 h-3.5 text-emerald-600" /> : <Copy className="w-3.5 h-3.5" />}
                             <span>{copiedArticle ? 'Tersalin!' : 'Salin Naskah'}</span>
                           </button>
+
+                          {/* SIMPAN PERUBAHAN */}
+                          <button
+                            type="button"
+                            disabled={savingDraft}
+                            onClick={handleSaveEditedArticle}
+                            className="px-3.5 py-1.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold transition flex items-center gap-1.5 cursor-pointer shadow-xs disabled:opacity-50"
+                          >
+                            {savingDraft ? <RefreshCw className="w-3.5 h-3.5 animate-spin" /> : <Save className="w-3.5 h-3.5" />}
+                            <span>Simpan</span>
+                          </button>
                         </div>
                       </div>
 
-                      {/* KONTEN NASKAH */}
-                      {!isEditingArticle ? (
-                        <div className="p-6 rounded-2xl bg-slate-50 dark:bg-slate-900/60 border border-slate-200 dark:border-slate-800 space-y-4">
-                          <h2 className="text-xl font-black text-slate-900 dark:text-white leading-snug">
-                            {editedTitle || generatedResult.publication.title}
-                          </h2>
-                          <div className="text-xs font-semibold text-slate-500 border-b border-slate-200 dark:border-slate-800 pb-3">
-                            Rilis Media • {selectedDewan.fullName} ({selectedDewan.partyAffiliation || 'Fraksi Parlemen'}) • Dapil {selectedDewan.customDapilName || 'Terdaftar'}
-                          </div>
-                          <div className="text-xs sm:text-sm text-slate-800 dark:text-slate-200 leading-relaxed space-y-3 whitespace-pre-line font-serif">
-                            {editedBody || generatedResult.publication.bodyContentMarkdown}
-                          </div>
-                        </div>
-                      ) : (
-                        <div className="space-y-3 p-5 rounded-2xl bg-slate-50 dark:bg-slate-900/60 border border-slate-200 dark:border-slate-800">
-                          <div>
-                            <label className="text-xs font-bold text-slate-700 dark:text-slate-300 block mb-1">
-                              Judul Berita
-                            </label>
-                            <input
-                              type="text"
-                              value={editedTitle}
-                              onChange={(e) => setEditedTitle(e.target.value)}
-                              className="w-full p-3 text-xs font-bold rounded-xl bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 text-slate-900 dark:text-white"
+                      {/* KONTEN DOKUMEN: PRATINJAU DOKUMEN A4 vs TIPTAP WYSIWYG EDITOR */}
+                      <div className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-slate-100/50 dark:bg-slate-950/40 p-2 sm:p-4 overflow-hidden">
+                        {!isEditingArticle ? (
+                          <VisualDocumentCanvas
+                            content={
+                              editedBody.startsWith('# ')
+                                ? editedBody
+                                : (editedTitle ? `# ${editedTitle}\n\n${editedBody}` : (generatedResult.publication.bodyContentMarkdown || ''))
+                            }
+                            onContentChange={(newContent) => {
+                              setEditedBody(newContent);
+                              const firstLine = newContent.split('\n')[0].replace(/^#\s*/, '').trim();
+                              if (firstLine) setEditedTitle(firstLine);
+                            }}
+                            selectedStyle={selectedStyle}
+                            wordCount={
+                              (editedBody || generatedResult.publication.bodyContentMarkdown || '')
+                                .split(/\s+/)
+                                .filter(Boolean).length
+                            }
+                            authorName={selectedDewan.fullName}
+                            partyName={selectedDewan.partyAffiliation || 'Fraksi Parlemen'}
+                            isSaving={savingDraft}
+                            isWide={isWide}
+                            zoom={zoom}
+                          />
+                        ) : (
+                          <div className="space-y-4">
+                            <div className="p-3 rounded-xl bg-indigo-50/80 dark:bg-indigo-950/40 border border-indigo-200 dark:border-indigo-800 text-xs flex items-center justify-between">
+                              <span className="font-bold text-indigo-950 dark:text-indigo-200 flex items-center gap-1.5">
+                                <Edit3 className="w-3.5 h-3.5 text-indigo-600" /> Mode Editor Eksekutif Tiptap (Toolbar tabel, grafik, & format siap digunakan)
+                              </span>
+                              <span className="text-[11px] text-slate-500">
+                                Klik tombol Simpan setelah menyunting
+                              </span>
+                            </div>
+                            <TiptapExecutiveEditor
+                              content={
+                                editedBody.startsWith('# ')
+                                  ? editedBody
+                                  : (editedTitle ? `# ${editedTitle}\n\n${editedBody}` : (generatedResult.publication.bodyContentMarkdown || ''))
+                              }
+                              onContentChange={(newContent) => {
+                                setEditedBody(newContent);
+                                const firstLine = newContent.split('\n')[0].replace(/^#\s*/, '').trim();
+                                if (firstLine) setEditedTitle(firstLine);
+                              }}
+                              selectedStyle={selectedStyle}
+                              authorName={selectedDewan.fullName}
+                              partyName={selectedDewan.partyAffiliation || 'Fraksi Parlemen'}
+                              isSaving={savingDraft}
+                              isWide={isWide}
+                              zoom={zoom}
                             />
                           </div>
-
-                          <div>
-                            <label className="text-xs font-bold text-slate-700 dark:text-slate-300 block mb-1">
-                              Isi Naskah Berita (Markdown)
-                            </label>
-                            <textarea
-                              rows={12}
-                              value={editedBody}
-                              onChange={(e) => setEditedBody(e.target.value)}
-                              className="w-full p-3.5 text-xs rounded-xl bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 text-slate-900 dark:text-white font-mono leading-relaxed"
-                            />
-                          </div>
-
-                          <div className="flex items-center justify-end gap-2 pt-2">
-                            <button
-                              type="button"
-                              onClick={() => setIsEditingArticle(false)}
-                              className="px-4 py-2 rounded-xl text-xs font-bold text-slate-500 hover:bg-slate-200 transition cursor-pointer"
-                            >
-                              Batal
-                            </button>
-                            <button
-                              type="button"
-                              disabled={savingDraft}
-                              onClick={handleSaveEditedArticle}
-                              className="px-5 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold transition flex items-center gap-1.5 cursor-pointer shadow-sm"
-                            >
-                              {savingDraft ? <RefreshCw className="w-3.5 h-3.5 animate-spin" /> : <Save className="w-3.5 h-3.5" />}
-                              <span>Simpan Perubahan</span>
-                            </button>
-                          </div>
-                        </div>
-                      )}
+                        )}
+                      </div>
                     </div>
                   )}
 
-                  {/* SUB-TAB 2: POSTER VISUAL AI (DALL-E 3) */}
+                  {/* SUB-TAB 2: POSTER VISUAL EDITORIAL */}
                   {resultTab === 'poster' && (
                     <div className="space-y-4">
                       {generatedResult.posterUrl ? (
@@ -1716,21 +1720,24 @@ export default function OperatorCockpitPage() {
                             <div className="flex items-center gap-2">
                               <Sparkles className="w-4 h-4 text-indigo-500" />
                               <span className="text-xs font-bold text-slate-800 dark:text-slate-200">
-                                Poster Visual AI Beresolusi Tinggi • Branding {selectedDewan.fullName}
+                                Poster Visual Editorial • Branding {selectedDewan.fullName}
                               </span>
                             </div>
 
                             <div className="flex items-center gap-2">
-                              <a
-                                href={generatedResult.posterUrl}
-                                download={`${selectedDewan.fullName.replace(/\s+/g, '_')}_Poster.jpg`}
-                                target="_blank"
-                                rel="noreferrer"
-                                className="px-3.5 py-1.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold transition flex items-center gap-1.5 cursor-pointer shadow-xs"
+                              <button
+                                type="button"
+                                disabled={downloadingPoster}
+                                onClick={handleDownloadPoster}
+                                className="px-3.5 py-1.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold transition flex items-center gap-1.5 cursor-pointer shadow-xs disabled:opacity-60"
                               >
-                                <Download className="w-3.5 h-3.5" />
-                                <span>Unduh Gambar HD</span>
-                              </a>
+                                {downloadingPoster ? (
+                                  <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+                                ) : (
+                                  <Download className="w-3.5 h-3.5" />
+                                )}
+                                <span>{downloadingPoster ? 'Mengunduh...' : 'Unduh Gambar HD'}</span>
+                              </button>
 
                               <button
                                 type="button"
@@ -1760,10 +1767,10 @@ export default function OperatorCockpitPage() {
                         <div className="p-8 text-center rounded-2xl border-2 border-dashed border-slate-200 dark:border-slate-800 space-y-3">
                           <ImageIcon className="w-8 h-8 text-slate-400 mx-auto" />
                           <h4 className="text-sm font-bold text-slate-800 dark:text-slate-200">
-                            Poster Visual AI Sedang Diproses
+                            Poster Visual Editorial Sedang Diproses
                           </h4>
                           <p className="text-xs text-slate-500 max-w-md mx-auto">
-                            DALL-E 3 sedang merender poster visual di antrean latar belakang. Anda dapat mengklik tombol di bawah untuk menyegarkan tampilan.
+                            Sistem sedang merender poster visual editorial di antrean latar belakang. Anda dapat mengklik tombol di bawah untuk menyegarkan tampilan.
                           </p>
                           <button
                             type="button"
@@ -1921,7 +1928,7 @@ export default function OperatorCockpitPage() {
           )}
 
           {/* ===================================================================== */}
-          {/* TAB: ARSIP NASKAH & DRAF BERITA TOKOH (KATALOG LENGKAP)               */}
+          {/* TAB: ARSIP NASKAH & DRAF KEBIJAKAN TOKOH (KATALOG LENGKAP)            */}
           {/* ===================================================================== */}
           {activeTab === 'ARTICLES' && (
             <div className="bg-white dark:bg-[#0B0F19] rounded-2xl p-6 border border-slate-200 dark:border-slate-800 shadow-sm space-y-6 animate-in fade-in duration-150">
@@ -1932,7 +1939,7 @@ export default function OperatorCockpitPage() {
                     <span>Arsip & Draf Naskah: {selectedDewan.fullName}</span>
                   </h4>
                   <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-                    Daftar seluruh karya berita, draf, dan publikasi AI yang tersimpan di profil dewan ini.
+                    Daftar seluruh naskah kebijakan, rilis, dan draf yang tersimpan di profil dewan ini.
                   </p>
                 </div>
 

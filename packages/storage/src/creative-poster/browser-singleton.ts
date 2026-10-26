@@ -1,4 +1,4 @@
-import { chromium, type Browser, type BrowserContext } from 'playwright-core';
+import { chromium, type Browser, type BrowserContext, type Page } from 'playwright-core';
 
 export interface RenderHtmlOptions {
   width?: number;
@@ -62,13 +62,14 @@ export class BrowserSingleton {
     const browser = await this.getBrowser();
 
     let context: BrowserContext | null = null;
+    let page: Page | null = null;
     try {
       context = await browser.newContext({
         viewport: { width, height },
         deviceScaleFactor: 1,
       });
 
-      const page = await context.newPage();
+      page = await context.newPage();
       page.setDefaultTimeout(timeoutMs);
 
       await page.setContent(html, { waitUntil: 'domcontentloaded' });
@@ -88,6 +89,9 @@ export class BrowserSingleton {
 
       return Buffer.from(screenshotBuffer);
     } finally {
+      if (page) {
+        await page.close().catch(() => {});
+      }
       if (context) {
         await context.close().catch(() => {});
       }

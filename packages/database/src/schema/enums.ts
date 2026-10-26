@@ -76,6 +76,11 @@ export const docTypeEnum = pgEnum('doc_type_enum', [
   'RPJMD',
   'BPS_STATISTIC',
   'NOTULA_SIDANG',
+  'REPORT_TRIWULAN',
+  'DRAFT_RUU',
+  'BULETIN',
+  'KAJIAN_AKADEMIS',
+  'OTHER',
 ]);
 
 export const legalStatusEnum = pgEnum('legal_status_enum', [

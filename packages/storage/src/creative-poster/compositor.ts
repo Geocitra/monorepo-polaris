@@ -45,6 +45,10 @@ import { buildBroadsheetNewspaperLayout } from './layouts/broadsheet-newspaper.l
 import { buildTechnicalGridCalloutLayout } from './layouts/technical-grid-callout.layout.js';
 
 
+/**
+ * @deprecated Satori-based compositor. Satori has limited CSS/font capabilities and is no longer used in production.
+ * Production has transitioned 100% to ChromiumPosterCompositor (Playwright/Chromium).
+ */
 export class CreativePosterCompositor {
   /**
    * Helper publik untuk mengekspor SVG Sobekan Kertas (Backward Compatibility)

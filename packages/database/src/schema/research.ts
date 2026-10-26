@@ -1,4 +1,4 @@
-import { pgTable, uuid, varchar, text, integer, real, timestamp, boolean, jsonb, index, check } from 'drizzle-orm/pg-core';
+import { pgTable, uuid, varchar, text, integer, real, timestamp, boolean, jsonb, index, check, unique, uniqueIndex } from 'drizzle-orm/pg-core';
 import { sql } from 'drizzle-orm';
 import { tenantMembers } from './identity.js';
 import {
@@ -55,7 +55,7 @@ export const researchQuestions = pgTable('research_questions', {
  */
 export const sources = pgTable('sources', {
   id: uuid('id').defaultRandom().primaryKey(),
-  url: text('url').notNull(),
+  url: text('url').notNull().unique(),
   canonicalUrl: text('canonical_url'),
   sourceType: sourceTypeEnum('source_type').notNull(),
   publisherName: varchar('publisher_name', { length: 255 }),
@@ -70,6 +70,7 @@ export const sources = pgTable('sources', {
   createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
 }, (t) => ({
   urlIdx: index('idx_sources_url').on(t.url),
+  canonicalUrlIdx: uniqueIndex('idx_sources_canonical_url').on(t.canonicalUrl),
   lifecycleIdx: index('idx_sources_lifecycle').on(t.lifecycleStatus),
 }));
 
@@ -85,6 +86,7 @@ export const researchJobSources = pgTable('research_job_sources', {
   createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
 }, (t) => ({
   jobSourceIdx: index('idx_research_job_sources_pair').on(t.researchJobId, t.sourceId),
+  unqJobSource: unique().on(t.researchJobId, t.sourceId),
 }));
 
 /**
@@ -102,6 +104,7 @@ export const sourceVersions = pgTable('source_versions', {
   createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
 }, (t) => ({
   sourceHashIdx: index('idx_source_versions_source_hash').on(t.sourceId, t.contentHash),
+  unqSourceContent: unique().on(t.sourceId, t.contentHash),
 }));
 
 /**

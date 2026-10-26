@@ -193,4 +193,71 @@ describe('POLARIS Creative Poster Engine', () => {
       expect(clamped.length).toBeLessThanOrEqual(86);
     });
   });
+
+  describe('Fase 3: Crop Compensation Dinamis Berdasarkan Image Provider', () => {
+    it('harus TIDAK menerapkan kompensasi +12% jika provider adalah GOOGLE_IMAGEN (native 4:5)', async () => {
+      vi.spyOn(PosterPromptCompiler, 'synthesizeEditorialCopyAndVisuals').mockResolvedValueOnce({
+        layoutVariant: 'TOP_BANNER',
+        headerPlacement: 'top',
+        cardArrangement: 'stacked',
+        colorMood: 'EMERALD',
+        primaryAccent: '#EA580C',
+        secondaryAccent: '#FB923C',
+        mainBannerTitle: 'JUDUL UJI COBA',
+        blocks: {},
+      });
+
+      const compiled = await PosterPromptCompiler.compileScenePrompt({
+        topic: 'Modernisasi sistem irigasi persawahan berkelanjutan di pedesaan',
+        blueprint: POSTER_BLUEPRINT_CATALOG[0],
+        imageProvider: 'GOOGLE_IMAGEN',
+      });
+
+      // Pada Google Imagen, upper clearance adalah native 35% dan bottom 22%, bukan 47% dan 34%
+      expect(compiled.englishPrompt).toContain('The upper 35% of the canvas MUST be an uncluttered');
+      expect(compiled.englishPrompt).toContain('The bottom 22% MUST provide a quiet');
+      expect(compiled.englishPrompt).not.toContain('The upper 47% of the canvas');
+      expect(compiled.englishPrompt).not.toContain('The bottom 34% MUST provide a quiet');
+    });
+
+    it('harus menerapkan kompensasi +12% jika provider adalah OPENAI_DALLE (pre-crop 9:16 -> 4:5)', async () => {
+      vi.spyOn(PosterPromptCompiler, 'synthesizeEditorialCopyAndVisuals').mockResolvedValueOnce({
+        layoutVariant: 'TOP_BANNER',
+        headerPlacement: 'top',
+        cardArrangement: 'stacked',
+        colorMood: 'EMERALD',
+        primaryAccent: '#EA580C',
+        secondaryAccent: '#FB923C',
+        mainBannerTitle: 'JUDUL UJI COBA',
+        blocks: {},
+      });
+
+      const compiled = await PosterPromptCompiler.compileScenePrompt({
+        topic: 'Modernisasi sistem irigasi persawahan berkelanjutan di pedesaan',
+        blueprint: POSTER_BLUEPRINT_CATALOG[0],
+        imageProvider: 'OPENAI_DALLE',
+      });
+
+      // Pada DALL-E, upper clearance dikompensasi +12% menjadi 47% (35% + 12%) dan bottom menjadi 34% (22% + 12%)
+      expect(compiled.englishPrompt).toContain('The upper 47% of the canvas MUST be an uncluttered');
+      expect(compiled.englishPrompt).toContain('The bottom 34% MUST provide a quiet');
+    });
+
+    it('harus membuang blueprint VIRAL_ONLY ketika topik bertema krisis, bencana, atau duka (Tone Guard)', () => {
+      const crisisTopics = [
+        'Bencana banjir bandang dan tanah longsor di kawasan pegunungan',
+        'Duka cita mendalam atas wafatnya tokoh daerah',
+        'Krisis darurat kesehatan dan evakuasi korban kebakaran',
+      ];
+
+      for (const topic of crisisTopics) {
+        // Uji berulang untuk memastikan pool yang tersaring tidak pernah menghasilkan VIRAL_ONLY
+        for (let i = 0; i < 5; i++) {
+          const selected = PosterBlueprintSelector.selectBestBlueprint({ topic });
+          expect(selected.fixedConstraints?.toneSafety).not.toBe('VIRAL_ONLY');
+        }
+      }
+    });
+  });
 });
+

@@ -15,7 +15,6 @@ import { OpenAIAIEngineAdapter, AiTelemetryService } from '@polaris/ai-engine';
 import {
   CloudflareR2StorageAdapter,
   CreativePosterCompositor,
-  ArtCollageCompositor,
   ChromiumPosterCompositor,
 } from '@polaris/storage';
 import { ContentStatus, AssetType } from '@polaris/shared-types';
@@ -212,36 +211,18 @@ export class StudioInfographicGenerationHandler {
           );
 
           let composed: { buffer: Buffer; sizeBytes: number; detectedLuminance: number; blendModeUsed: string };
-          try {
-            composed = await ChromiumPosterCompositor.compose({
-              canvasBuffer: artCollage.imageBuffer,
-              copy: artCollage.copy,
-              zones: artCollage.layout,
-              palette: {
-                accentHex: artCollage.mutation.palette.accentHex,
-                secondaryHex: artCollage.mutation.palette.secondaryHex,
-              },
-              signature: memberSignature,
-              editionTag: `POLARIS // ${dapilName.toUpperCase()}`,
-              textToneHint: artCollage.layout.textTone,
-            });
-          } catch (chromErr: any) {
-            console.warn(
-              `[StudioInfographic] Chromium compositor gagal (${chromErr.message}), fallback ke Sharp compositor...`
-            );
-            composed = await ArtCollageCompositor.compose({
-              canvasBuffer: artCollage.imageBuffer,
-              copy: artCollage.copy,
-              zones: artCollage.layout,
-              palette: {
-                accentHex: artCollage.mutation.palette.accentHex,
-                secondaryHex: artCollage.mutation.palette.secondaryHex,
-              },
-              signature: memberSignature,
-              editionTag: `POLARIS // ${dapilName.toUpperCase()}`,
-              textToneHint: artCollage.layout.textTone,
-            });
-          }
+          composed = await ChromiumPosterCompositor.compose({
+            canvasBuffer: artCollage.imageBuffer,
+            copy: artCollage.copy,
+            zones: artCollage.layout,
+            palette: {
+              accentHex: artCollage.mutation.palette.accentHex,
+              secondaryHex: artCollage.mutation.palette.secondaryHex,
+            },
+            signature: memberSignature,
+            editionTag: `POLARIS // ${dapilName.toUpperCase()}`,
+            textToneHint: artCollage.layout.textTone,
+          });
 
           posterBuffer = composed.buffer;
           posterSizeBytes = composed.sizeBytes;
@@ -364,6 +345,15 @@ export class StudioInfographicGenerationHandler {
 
       // 7. Simpan ke database
       await withTenantContext(tenantId, async (tx) => {
+        await tx
+          .delete(mediaAssets)
+          .where(
+            and(
+              eq(mediaAssets.publicationId, publicationId),
+              eq(mediaAssets.assetType, AssetType.DALLE_POSTER)
+            )
+          );
+
         await tx.insert(mediaAssets).values({
           publicationId,
           assetType: AssetType.DALLE_POSTER,

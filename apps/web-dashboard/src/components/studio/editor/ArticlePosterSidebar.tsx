@@ -1,6 +1,7 @@
 'use client';
 
-import { ExternalLink, LoaderCircle, RotateCw } from 'lucide-react';
+import { ExternalLink, LoaderCircle, RotateCw, Download } from 'lucide-react';
+import { downloadImageFile } from '@/lib/utils';
 
 interface ArticlePosterSidebarProps {
   posterUrl: string | null;
@@ -21,14 +22,23 @@ export function ArticlePosterSidebar({ posterUrl, title, isRegenerating, onRegen
           <img src={posterUrl} alt={title} className="w-full object-cover max-h-[320px]" />
           <div className="p-3 bg-slate-50 dark:bg-slate-800/80 border-t border-slate-100 dark:border-slate-800 flex justify-between items-center text-xs">
             <span className="text-slate-500 dark:text-slate-300 text-[10px]">Cloudflare R2 WebP</span>
-            <a
-              href={posterUrl}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="text-blue-600 dark:text-blue-400 font-bold hover:underline flex items-center gap-1 text-[11px]"
-            >
-              Buka Resolusi Penuh <ExternalLink className="h-3 w-3" />
-            </a>
+            <div className="flex items-center gap-2.5">
+              <button
+                type="button"
+                onClick={() => downloadImageFile(posterUrl, `${(title || 'Poster_Kebijakan').replace(/[^a-zA-Z0-9]/g, '_').slice(0, 35)}.webp`)}
+                className="text-blue-600 dark:text-blue-400 font-bold hover:underline flex items-center gap-1 text-[11px] cursor-pointer"
+              >
+                <Download className="h-3 w-3" /> Unduh
+              </button>
+              <a
+                href={posterUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200 font-medium flex items-center gap-1 text-[11px]"
+              >
+                Buka <ExternalLink className="h-3 w-3" />
+              </a>
+            </div>
           </div>
         </div>
       ) : (

@@ -1,6 +1,7 @@
 import { GoogleGenAI } from '@google/genai';
 import { googleGenAiClient } from '../client.js';
 import { AiTelemetryService } from '../telemetry/ai-telemetry.service.js';
+import { sanitizeImageGenerationPrompt } from '../creative-poster/prompt-compiler.js';
 
 export interface GenerateGoogleImagenParams {
   prompt: string;
@@ -58,9 +59,10 @@ export class GoogleImagenAdapter {
     });
 
     try {
-      // Prompt conditioning adaptif sesuai gaya blueprint
+      // Prompt conditioning adaptif sesuai gaya blueprint yang disanitasi
       const defaultSuffix = 'editorial lighting, authentic atmosphere, high visual depth, clean empty negative space';
-      const suffix = params.stylePromptSuffix || defaultSuffix;
+      const rawSuffix = params.stylePromptSuffix || defaultSuffix;
+      const suffix = sanitizeImageGenerationPrompt(rawSuffix);
       const refinedPrompt = `${params.prompt}, ${suffix}`;
       let temporaryImageUrl: string | undefined;
 
@@ -114,10 +116,17 @@ export class GoogleImagenAdapter {
           ? process.env.GOOGLE_IMAGE_MODEL
           : 'gemini-3.1-flash-image';
 
+      // Selaraskan larangan Jalur 1 agar menghormati elemen yang diizinkan (allowed: banner, frame, border)
+      const forbiddenLayoutTerms = ['UI cards', 'boxes', 'graphic layout templates'];
+      if (!allowed.includes('frame')) forbiddenLayoutTerms.push('frames');
+      if (!allowed.includes('banner')) forbiddenLayoutTerms.push('banners');
+      if (!allowed.includes('border')) forbiddenLayoutTerms.push('borders');
+      const forbiddenLayoutStr = forbiddenLayoutTerms.join(', ');
+
       try {
         const contentResponse = await this.client.models.generateContent({
           model: studioImageModel,
-          contents: `${refinedPrompt}. Visual aspect ratio: ${aspectRatio}. Generate a pure, textless photograph or illustration artwork only. DO NOT design a poster, DO NOT draw any UI cards, boxes, frames, banners, or graphic layout templates, and DO NOT render any letters, words, numbers, or hex color codes anywhere in the image. Strict negative constraint: clean background, no text, no typography, no words, no human portrait in center, no double subjects.`,
+          contents: `${refinedPrompt}. Visual aspect ratio: ${aspectRatio}. Generate a pure, textless photograph or illustration artwork only. DO NOT design a poster, DO NOT draw any ${forbiddenLayoutStr}, and DO NOT render any letters, words, numbers, or hex color codes anywhere in the image. Strict negative constraint: clean background, no text, no typography, no words, no human portrait in center, no double subjects.`,
         });
 
         const parts = contentResponse.candidates?.[0]?.content?.parts || [];

@@ -75,13 +75,8 @@ export class PosterBlueprintSelector {
       );
 
     if (isCrisisOrGrave && pool.length > 4) {
-      // Buang template pop/komedi yang tidak pantas untuk isu berduka/kritis
-      const popTemplateIds = [
-        'TPL-11-CREATIVE-POP-COLLAGE',
-        'TPL-18-POP-ZINE-COLLAGE',
-        'TPL-22-POP-CULTURE-COMMENTARY',
-      ];
-      const safePool = pool.filter((b) => !popTemplateIds.includes(b.id));
+      // Buang template pop/komedi/viral yang tidak pantas untuk isu berduka/kritis secara dinamis
+      const safePool = pool.filter((b) => b.fixedConstraints?.toneSafety !== 'VIRAL_ONLY');
       if (safePool.length > 0) {
         pool = safePool;
       }

@@ -159,35 +159,18 @@ export class StudioPosterRegenerationHandler {
             ? `${member.fullName} — ${member.commissionName || 'KOMISI DPR RI'} // ${dapilName}`
             : `ANGGOTA DEWAN // ${dapilName}`;
 
-          let composed: { buffer: Buffer; sizeBytes: number; detectedLuminance: number; blendModeUsed: string };
-          try {
-            composed = await ChromiumPosterCompositor.compose({
-              canvasBuffer: artCollage.imageBuffer,
-              copy: artCollage.copy,
-              zones: artCollage.layout,
-              palette: {
-                accentHex: artCollage.mutation.palette.accentHex,
-                secondaryHex: artCollage.mutation.palette.secondaryHex,
-              },
-              signature: memberSignature,
-              editionTag: `POLARIS // ${dapilName.toUpperCase()}`,
-              textToneHint: artCollage.layout.textTone,
-            });
-          } catch (chromErr: any) {
-            console.warn(`[StudioPosterRegen] Chromium compositor gagal (${chromErr.message}), fallback ke Sharp compositor...`);
-            composed = await ArtCollageCompositor.compose({
-              canvasBuffer: artCollage.imageBuffer,
-              copy: artCollage.copy,
-              zones: artCollage.layout,
-              palette: {
-                accentHex: artCollage.mutation.palette.accentHex,
-                secondaryHex: artCollage.mutation.palette.secondaryHex,
-              },
-              signature: memberSignature,
-              editionTag: `POLARIS // ${dapilName.toUpperCase()}`,
-              textToneHint: artCollage.layout.textTone,
-            });
-          }
+          const composed = await ChromiumPosterCompositor.compose({
+            canvasBuffer: artCollage.imageBuffer,
+            copy: artCollage.copy,
+            zones: artCollage.layout,
+            palette: {
+              accentHex: artCollage.mutation.palette.accentHex,
+              secondaryHex: artCollage.mutation.palette.secondaryHex,
+            },
+            signature: memberSignature,
+            editionTag: `POLARIS // ${dapilName.toUpperCase()}`,
+            textToneHint: artCollage.layout.textTone,
+          });
 
           posterBuffer = composed.buffer;
           posterSizeBytes = composed.sizeBytes;

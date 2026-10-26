@@ -44,7 +44,7 @@ export class CmsDocumentVaultService {
       .values({
         portalId: portal.id,
         title: dto.title,
-        docType: dto.docType || 'REPORT_TRIWULAN',
+        docType: (dto.docType as any) || 'REPORT_TRIWULAN',
         description: dto.description || null,
         fileUrl: dto.fileUrl,
         fileSizeBytes: dto.fileSizeBytes || null,

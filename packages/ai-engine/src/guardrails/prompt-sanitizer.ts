@@ -12,7 +12,8 @@ export class PromptSanitizer {
     private static readonly INJECTION_PATTERNS: RegExp[] = [
         /ignore\s+(all\s+)?(previous\s+)?instructions/i,
         /abaikan\s+(semua\s+)?(instruksi|perintah|aturan)/i,
-        /dan\s+mode/i,
+        /\b(enable|activate|enter|masuk|aktifkan)\s+dan\s+mode\b/i,
+        /\bDAN\s+mode\b/,
         /jailbreak/i,
         /pretend\s+you\s+are/i,
         /bertindaklah\s+sebagai/i,

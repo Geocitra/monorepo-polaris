@@ -339,7 +339,7 @@ export function TerpaduSessionDrawer({
                 Hapus riwayat konten ini?
               </p>
               <p className="text-red-700 dark:text-red-300/80 leading-relaxed">
-                Naskah artikel, poster DALL-E, dan paket media sosial untuk topik ini akan dihapus dari riwayat studio Anda.
+                Naskah artikel, poster visual, dan paket media sosial untuk topik ini akan dihapus dari riwayat studio Anda.
               </p>
             </div>
           </div>

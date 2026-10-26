@@ -127,7 +127,17 @@ export class StudioArticleService {
     return { message: 'Draf artikel berhasil diperbarui.' };
   }
 
-  async publishArticle(tenantId: string, articleId: string) {
+  async publishArticle(
+    tenantId: string,
+    articleId: string,
+    caller?: { isOperator?: boolean; canDirectPublish?: boolean }
+  ) {
+    if (caller?.isOperator && !caller.canDirectPublish) {
+      throw new ForbiddenException(
+        'Akses Ditolak: Anda tidak memiliki izin untuk mempublikasikan artikel secara langsung (canDirectPublish: false). Artikel harus ditinjau dan disetujui oleh Anggota Dewan.'
+      );
+    }
+
     const [sub] = await db
       .select({ status: subscriptions.status })
       .from(subscriptions)

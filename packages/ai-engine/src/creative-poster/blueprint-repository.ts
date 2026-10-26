@@ -1,11 +1,28 @@
 import { db, posterReferenceBlueprints, eq } from '@polaris/database';
+import { IPosterBlueprintRepositoryPort } from '@polaris/core-domain';
 import { POSTER_BLUEPRINT_CATALOG } from './catalog.js';
 import { PreAnalyzedPosterBlueprint } from './types.js';
 
-export class PosterBlueprintRepository {
+export class PosterBlueprintRepository implements IPosterBlueprintRepositoryPort<PreAnalyzedPosterBlueprint> {
   private static cachedCatalog: PreAnalyzedPosterBlueprint[] | null = null;
   private static lastCachedAt: number = 0;
   private static CACHE_TTL_MS = 60_000; // 60 detik
+  private static customRepository?: IPosterBlueprintRepositoryPort<PreAnalyzedPosterBlueprint>;
+
+  /**
+   * Menyuntikkan repository port kustom (Dependency Injection / DIP).
+   */
+  public static setRepository(repository: IPosterBlueprintRepositoryPort<PreAnalyzedPosterBlueprint>): void {
+    this.customRepository = repository;
+    this.cachedCatalog = null;
+    this.lastCachedAt = 0;
+  }
+
+  public static clearRepository(): void {
+    this.customRepository = undefined;
+    this.cachedCatalog = null;
+    this.lastCachedAt = 0;
+  }
 
   /**
    * Mengambil katalog blueprint aktif.
@@ -13,6 +30,10 @@ export class PosterBlueprintRepository {
    * Wajib aman (resilient) dengan graceful fallback ke katalog statis jika DB belum siap/migrasi belum berjalan.
    */
   public static async getActiveCatalog(customDb?: any): Promise<PreAnalyzedPosterBlueprint[]> {
+    if (this.customRepository) {
+      return this.customRepository.getActiveCatalog(customDb);
+    }
+
     const database = customDb || db;
     const now = Date.now();
     if (this.cachedCatalog && now - this.lastCachedAt < this.CACHE_TTL_MS) {
@@ -72,6 +93,10 @@ export class PosterBlueprintRepository {
   public static async saveDraftBlueprint(
     blueprint: PreAnalyzedPosterBlueprint
   ): Promise<void> {
+    if (this.customRepository) {
+      return this.customRepository.saveDraftBlueprint(blueprint);
+    }
+
     try {
       await db
         .insert(posterReferenceBlueprints)
@@ -181,5 +206,15 @@ export class PosterBlueprintRepository {
   public static clearCache(): void {
     this.cachedCatalog = null;
     this.lastCachedAt = 0;
+    this.customRepository = undefined;
+  }
+
+  // Instance methods untuk mengimplementasikan IPosterBlueprintRepositoryPort
+  public async getActiveCatalog(customDb?: any): Promise<PreAnalyzedPosterBlueprint[]> {
+    return PosterBlueprintRepository.getActiveCatalog(customDb);
+  }
+
+  public async saveDraftBlueprint(blueprint: PreAnalyzedPosterBlueprint): Promise<void> {
+    return PosterBlueprintRepository.saveDraftBlueprint(blueprint);
   }
 }

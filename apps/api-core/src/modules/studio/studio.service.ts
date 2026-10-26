@@ -37,9 +37,12 @@ export class StudioService {
     return await this.radarService.getTrendingDapilTopics(tenantId);
   }
 
-  // --- Domain: Generasi Konten Asinkron & Antrean ---
-  async generateNewContentPackage(tenantId: string, dto: GenerateArticleRequestDto) {
-    return await this.generatorService.generateNewContentPackage(tenantId, dto);
+  async generateNewContentPackage(
+    tenantId: string,
+    dto: GenerateArticleRequestDto,
+    caller?: { isOperator?: boolean; operatorId?: string }
+  ) {
+    return await this.generatorService.generateNewContentPackage(tenantId, dto, caller);
   }
 
   async getJobStatus(jobId: string, tenantId: string) {
@@ -63,8 +66,12 @@ export class StudioService {
     return await this.articleService.updateDraftArticle(tenantId, articleId, dto);
   }
 
-  async publishArticle(tenantId: string, articleId: string) {
-    return await this.articleService.publishArticle(tenantId, articleId);
+  async publishArticle(
+    tenantId: string,
+    articleId: string,
+    caller?: { isOperator?: boolean; canDirectPublish?: boolean }
+  ) {
+    return await this.articleService.publishArticle(tenantId, articleId, caller);
   }
 
   async unpublishArticle(tenantId: string, articleId: string) {

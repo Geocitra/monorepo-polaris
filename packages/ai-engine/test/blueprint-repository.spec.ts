@@ -117,4 +117,32 @@ describe('PosterBlueprintRepository', () => {
     expect(result.success).toBe(true);
     expect(result.seededCount).toBe(POSTER_BLUEPRINT_CATALOG.length);
   });
+
+  it('harus memprioritaskan implementasi IPosterBlueprintRepositoryPort yang disuntikkan (Dependency Injection)', async () => {
+    const mockCustomCatalog = [
+      {
+        ...POSTER_BLUEPRINT_CATALOG[0],
+        id: 'INJECTED-CUSTOM-01',
+        name: 'Injected Custom Blueprint',
+      },
+    ];
+
+    const mockPortRepository = {
+      getActiveCatalog: vi.fn().mockResolvedValue(mockCustomCatalog),
+      saveDraftBlueprint: vi.fn().mockResolvedValue(undefined),
+    };
+
+    // Inject custom repository
+    PosterBlueprintRepository.setRepository(mockPortRepository);
+
+    const catalog = await PosterBlueprintRepository.getActiveCatalog();
+
+    expect(mockPortRepository.getActiveCatalog).toHaveBeenCalled();
+    expect(catalog).toEqual(mockCustomCatalog);
+    expect(catalog[0].id).toBe('INJECTED-CUSTOM-01');
+
+    // Bersihkan repositori kustom
+    PosterBlueprintRepository.clearRepository();
+  });
 });
+

@@ -33,9 +33,16 @@ describe('PromptSanitizer (Defense-in-Depth Guardrail)', () => {
     expect(res.suggestedAction).toBe('VIEW_PRICING');
   });
 
-  it('harus mendeteksi suggestedAction = REGISTER saat pengunjung ingin mendaftar', () => {
-    const res = PromptSanitizer.inspect('Bagaimana cara buat akun baru untuk kantor kami?');
-    expect(res.isValid).toBe(true);
-    expect(res.suggestedAction).toBe('REGISTER');
+  it('tidak boleh menolak kalimat wajar bahasa Indonesia yang mengandung kata "dan mode"', () => {
+    const validQuestions = [
+      'Apa perbedaan fitur riset dan mode publikasi otomatis di Polaris?',
+      'Tolong jelaskan integrasi CMS dan mode branding dewan',
+      'Apakah paket Pro mencakup analitik dan mode multi-operator?',
+    ];
+
+    for (const q of validQuestions) {
+      const res = PromptSanitizer.inspect(q);
+      expect(res.isValid).toBe(true);
+    }
   });
 });

@@ -20,7 +20,7 @@ import {
   withTenantContext,
 } from '@polaris/database';
 import { ContentPublication, SubdomainSlug, CanonicalUrl } from '@polaris/core-domain';
-import { ContentStatus, SubscriptionStatus } from '@polaris/shared-types';
+import { ContentStatus, SubscriptionStatus, ContentCreationContext } from '@polaris/shared-types';
 import { GenerateArticleRequestDto } from '../dto/studio.dto.js';
 import { RedisService } from '../../redis/redis.service.js';
 import { UrlScraperService } from '../url-scraper.service.js';
@@ -53,7 +53,11 @@ export class StudioGeneratorService implements OnModuleDestroy {
     if (this.redisClient.status !== 'end') await this.redisClient.quit();
   }
 
-  async generateNewContentPackage(tenantId: string, dto: GenerateArticleRequestDto) {
+  async generateNewContentPackage(
+    tenantId: string,
+    dto: GenerateArticleRequestDto,
+    caller?: { isOperator?: boolean; operatorId?: string }
+  ) {
     const jobId = randomUUID();
     const publication = await withTenantContext(tenantId, async (tx) => {
       const [sub] = await tx
@@ -134,6 +138,8 @@ export class StudioGeneratorService implements OnModuleDestroy {
           wordCount: 0,
           status: ContentStatus.GENERATING,
           canonicalUrl: canonicalUrlObj.getValue(),
+          createdByOperatorId: caller?.isOperator && caller.operatorId ? caller.operatorId : null,
+          createdContext: caller?.isOperator ? ContentCreationContext.OPERATOR : ContentCreationContext.MEMBER,
         })
         .returning();
 
@@ -191,6 +197,7 @@ export class StudioGeneratorService implements OnModuleDestroy {
           writingStyle: dto.writingStyle,
           externalUrls: allUrls,
           attachments: dto.attachments,
+          operatorId: caller?.isOperator ? caller.operatorId : undefined,
         },
         {
           jobId,

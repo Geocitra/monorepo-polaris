@@ -10,7 +10,7 @@ import {
   MaxLength
 } from 'class-validator';
 import { Type } from 'class-transformer';
-import { SocialPlatform } from '@polaris/shared-types';
+import { SocialPlatform, DocType } from '@polaris/shared-types';
 
 export class SocialLinkItemDto {
   @IsEnum(SocialPlatform, { message: 'Platform media sosial tidak valid.' })
@@ -74,10 +74,9 @@ export class CreatePortalDocumentRequestDto {
   @MaxLength(255)
   title!: string;
 
-  @IsString()
-  @IsNotEmpty()
-  @MaxLength(50)
-  docType: string = 'REPORT_TRIWULAN';
+  @IsOptional()
+  @IsEnum(DocType, { message: 'Tipe dokumen tidak valid.' })
+  docType?: DocType = DocType.REPORT_TRIWULAN;
 
   @IsOptional()
   @IsString()
