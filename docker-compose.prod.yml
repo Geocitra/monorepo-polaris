@@ -15,7 +15,8 @@ volumes:
 services:
   # =========================================================================
   # 1. DATABASE KERNEL: POSTGRESQL 16 + PGVECTOR
-  # Port 5432 TIDAK DIEKSPOS KE HOST PUBLIK (Hanya internal bridge network)
+  # Port 5432 TIDAK DIEKSPOS KE HOST (Hanya internal bridge network polaris_prod_net)
+  # Aman 100% dan tidak akan bentrok dengan database edaily di host!
   # =========================================================================
   postgres:
     image: pgvector/pgvector:pg16
@@ -38,12 +39,12 @@ services:
     deploy:
       resources:
         limits:
-          cpus: '2.0'
-          memory: 2048M
+          cpus: '1.0'
+          memory: 350M
 
   # =========================================================================
   # 2. CACHING & QUEUE BUS: REDIS 7
-  # Port 6379 TIDAK DIEKSPOS KE HOST PUBLIK
+  # Port 6379 TIDAK DIEKSPOS KE HOST (Hanya internal bridge network)
   # =========================================================================
   redis:
     image: redis:7-alpine
@@ -62,8 +63,8 @@ services:
     deploy:
       resources:
         limits:
-          cpus: '1.0'
-          memory: 512M
+          cpus: '0.5'
+          memory: 64M
 
   # =========================================================================
   # 3. BACKEND API CORE: NESTJS MODULAR APPLICATION
@@ -89,13 +90,12 @@ services:
     networks:
       - polaris_prod_net
     ports:
-      # Hanya bind ke localhost (127.0.0.1) agar reverse proxy Caddy/Nginx bisa mengakses
-      - "127.0.0.1:4000:4000"
+      - "0.0.0.0:4000:4000"
     deploy:
       resources:
         limits:
-          cpus: '1.5'
-          memory: 1024M
+          cpus: '1.0'
+          memory: 300M
 
   # =========================================================================
   # 4. HEADLESS BACKGROUND WORKER: BULLMQ PROCESSORS & CRON
@@ -124,11 +124,12 @@ services:
     deploy:
       resources:
         limits:
-          cpus: '1.5'
-          memory: 1024M
+          cpus: '0.5'
+          memory: 200M
 
   # =========================================================================
   # 5. PRIVATE EXECUTIVE WORKSPACE: NEXT.JS STANDALONE DASHBOARD
+  # Port host di-mapping ke 3002 (karena port 3000 sudah dipakai edaily-renderer)
   # =========================================================================
   web-dashboard:
     build:
@@ -141,20 +142,23 @@ services:
     environment:
       - NODE_ENV=production
       - PORT=3000
+      - INTERNAL_API_URL=http://api-core:4000
+      - NEXT_PUBLIC_API_URL=${NEXT_PUBLIC_API_URL:-http://localhost:4000/api/v1}
     depends_on:
       - api-core
     networks:
       - polaris_prod_net
     ports:
-      - "127.0.0.1:3000:3000"
+      - "0.0.0.0:3002:3000"
     deploy:
       resources:
         limits:
           cpus: '1.0'
-          memory: 512M
+          memory: 350M
 
   # =========================================================================
   # 6. PUBLIC CIVIC MICROSITE: NEXT.JS STANDALONE PORTAL
+  # Port host di-mapping ke 3001
   # =========================================================================
   web-portal:
     build:
@@ -167,14 +171,16 @@ services:
     environment:
       - NODE_ENV=production
       - PORT=3001
+      - INTERNAL_API_URL=http://api-core:4000
+      - NEXT_PUBLIC_API_URL=${NEXT_PUBLIC_API_URL:-http://localhost:4000/api/v1}
     depends_on:
       - api-core
     networks:
       - polaris_prod_net
     ports:
-      - "127.0.0.1:3001:3001"
+      - "0.0.0.0:3001:3001"
     deploy:
       resources:
         limits:
           cpus: '1.0'
-          memory: 512M
+          memory: 350M
