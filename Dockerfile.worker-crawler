@@ -40,6 +40,7 @@ FROM node:22-alpine AS runner
 WORKDIR /app
 
 ENV NODE_ENV=production
+ENV NODE_PATH=/app/node_modules:/app/apps/worker-crawler/node_modules
 
 RUN addgroup --system --gid 1001 nodejs && \
     adduser --system --uid 1001 nodejs
@@ -49,6 +50,7 @@ COPY --from=builder /app/pnpm-workspace.yaml ./pnpm-workspace.yaml
 COPY --from=builder /app/node_modules ./node_modules
 COPY --from=builder /app/packages ./packages
 COPY --from=builder /app/apps/worker-crawler/package.json ./apps/worker-crawler/package.json
+COPY --from=builder /app/apps/worker-crawler/node_modules ./apps/worker-crawler/node_modules
 COPY --from=builder /app/apps/worker-crawler/dist ./apps/worker-crawler/dist
 
 USER nodejs
