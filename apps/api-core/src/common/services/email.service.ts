@@ -12,7 +12,7 @@ export class EmailService {
 
   private initTransporter() {
     const host = process.env.SMTP_HOST || 'smtp.gmail.com';
-    const port = Number(process.env.SMTP_PORT) || 465;
+    const port = Number(process.env.SMTP_PORT) || 587;
     const user = process.env.SMTP_USER;
     const pass = process.env.SMTP_PASS;
 
@@ -25,6 +25,9 @@ export class EmailService {
           user,
           pass,
         },
+        connectionTimeout: 6000,
+        greetingTimeout: 6000,
+        socketTimeout: 8000,
       });
       this.logger.log(`SMTP Mailer initialized using ${host}:${port} (${user})`);
     } else {
@@ -103,7 +106,8 @@ export class EmailService {
     } catch (err: any) {
       this.logger.error(`[EmailOTP-Error] Gagal mengirim email ke ${to}: ${err.message}`);
       this.logger.warn(`[EmailOTP-FALLBACK] Kode OTP darurat untuk ${to}: [ ${otpCode} ]`);
-      throw new Error(`Gagal mengirimkan email verifikasi: ${err.message}`);
+      // Kembalikan fallback graceful agar request 2FA tidak melempar HTTP 500
+      return { success: false, fallback: true, error: err.message };
     }
   }
 

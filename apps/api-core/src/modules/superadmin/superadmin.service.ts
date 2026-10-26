@@ -99,13 +99,15 @@ export class SuperadminService {
       attempts: 0,
     });
 
-    await this.emailService.sendOtpEmail(cleanEmail, otpCode, admin.fullName);
+    const emailResult = await this.emailService.sendOtpEmail(cleanEmail, otpCode, admin.fullName);
 
     return {
       step: '2FA_REQUIRED',
       requireOtp: true,
       email: cleanEmail,
-      message: `Kredensial valid. Kode OTP verifikasi 2FA telah dikirimkan ke email ${cleanEmail}.`,
+      message: (emailResult as any)?.fallback
+        ? `Kredensial valid. Kode OTP darurat untuk ${cleanEmail} tercatat di terminal/konsol backend.`
+        : `Kredensial valid. Kode OTP verifikasi 2FA telah dikirimkan ke email ${cleanEmail}.`,
     };
   }
 
@@ -149,10 +151,12 @@ export class SuperadminService {
     });
 
     // Kirim email lewat SMTP transport (Gmail smtpgeocitra@gmail.com)
-    await this.emailService.sendOtpEmail(cleanEmail, otpCode, admin.fullName);
+    const emailResult = await this.emailService.sendOtpEmail(cleanEmail, otpCode, admin.fullName);
 
     return {
-      message: `Kode otorisasi 6-digit berhasil dikirimkan ke inbox email ${cleanEmail}.`,
+      message: (emailResult as any)?.fallback
+        ? `Kode OTP darurat tercatat di konsol server backend.`
+        : `Kode otorisasi 6-digit berhasil dikirimkan ke inbox email ${cleanEmail}.`,
       expiresInMinutes: 5,
     };
   }

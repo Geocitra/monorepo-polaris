@@ -65,3 +65,34 @@ export class UpdateDraftArticleDto {
   @IsString()
   bodyContentMarkdown?: string;
 }
+
+export class PublishInfographicDto {
+  @IsString()
+  @IsNotEmpty({ message: 'Judul infografis wajib diisi.' })
+  title!: string;
+
+  @IsString()
+  @IsNotEmpty({ message: 'URL visual gambar infografis wajib diisi.' })
+  imageUrl!: string;
+
+  @IsOptional()
+  @IsString()
+  caption?: string;
+
+  @IsOptional()
+  @IsString()
+  prompt?: string;
+
+  @IsOptional()
+  @IsString()
+  aspectRatio?: string;
+
+  @IsOptional()
+  @IsString()
+  style?: string;
+
+  @IsOptional()
+  @IsString()
+  publicationId?: string;
+}
+

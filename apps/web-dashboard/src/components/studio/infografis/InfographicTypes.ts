@@ -12,6 +12,9 @@ export interface InfographicIteration {
   style: VisualStyle;
   aspectRatio: AspectRatio;
   source: 'INITIAL' | 'REFINE' | 'RESTORE';
+  publicationId?: string;
+  isPublished?: boolean;
+  publishedUrl?: string;
 }
 
 export interface InfographicSession {

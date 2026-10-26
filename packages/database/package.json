@@ -11,7 +11,9 @@
     "check-types": "tsc --noEmit",
     "clean": "rimraf dist",
     "db:generate": "drizzle-kit generate",
-    "db:migrate": "drizzle-kit migrate"
+    "db:migrate": "node ../../scripts/db-migrate.mjs",
+    "db:seed": "node ../../scripts/db-seed.mjs",
+    "db:setup": "node ../../scripts/db-setup.mjs"
   },
   "dependencies": {
     "@polaris/shared-types": "workspace:*",

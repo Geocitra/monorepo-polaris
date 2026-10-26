@@ -1,7 +1,9 @@
 import { notFound } from 'next/navigation';
 import { fetchPortalData } from '@/lib/api';
-import { Navbar } from '@/components/layout/navbar';
-import { Footer } from '@/components/layout/footer';
+import { generateDynamicThemeCss } from '@/lib/dynamicThemeCss';
+
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
 
 export default async function TenantLayout({
   children,
@@ -17,30 +19,30 @@ export default async function TenantLayout({
     notFound();
   }
 
-  const { theme, member } = portalData;
+  const { theme } = portalData;
+  const primaryColor = theme.primaryHexColor || '#1890FF';
+  const dynamicCss = generateDynamicThemeCss(primaryColor);
 
   return (
     <div
+      data-polaris-theme="true"
       style={
         {
-          '--portal-primary': theme.primaryHexColor,
-          '--portal-secondary': theme.secondaryHexColor,
-          '--portal-font': theme.fontFamily,
+          '--portal-primary': primaryColor,
+          '--portal-secondary': theme.secondaryHexColor || '#001529',
+          '--portal-font': theme.fontFamily || 'Inter, sans-serif',
         } as React.CSSProperties
       }
       className="flex min-h-screen flex-col relative"
     >
-      <Navbar
-        subdomain={subdomain}
-        officialName={member.fullName}
-        partyAffiliation={member.partyAffiliation}
-      />
+      {dynamicCss && (
+        <style
+          dangerouslySetInnerHTML={{
+            __html: dynamicCss,
+          }}
+        />
+      )}
       <main className="flex-1">{children}</main>
-      <Footer
-        officialName={member.fullName}
-        dapilName={member.dapilName}
-        partyAffiliation={member.partyAffiliation}
-      />
     </div>
   );
 }

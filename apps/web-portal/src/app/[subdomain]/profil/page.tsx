@@ -2,8 +2,61 @@ import { notFound } from 'next/navigation';
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import { fetchPortalData } from '@/lib/api';
+import { PortalTemplateId } from '@polaris/shared-types';
+
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
+import { ParliamentShell } from '@/components/templates/polaris-insight/ParliamentShell';
+import { BoldTypographyShell, BoldProfileClient } from '@/components/templates/bold-typography';
+import { DarkModernShell, DarkModernProfileClient } from '@/components/templates/dark-modern';
+import { NeonGlowShell, NeonGlowProfileClient } from '@/components/templates/neon-glow';
+import { CleanEditorialShell, CleanEditorialProfileClient } from '@/components/templates/clean-editorial';
+import { CreativeWarmShell, CreativeWarmProfileClient } from '@/components/templates/creative-warm';
+import { WarmPortfolioShell, WarmPortfolioProfileClient } from '@/components/templates/warm-portfolio';
+import { MidnightGoldShell, MidnightGoldProfileClient } from '@/components/templates/midnight-gold';
+import { EmeraldTechShell, EmeraldTechProfileClient } from '@/components/templates/emerald-tech';
+import { QurifolioShell, QurifolioProfileClient } from '@/components/templates/qurifolio';
+import { AmberPortfolioShell, AmberPortfolioProfileClient } from '@/components/templates/amber-portfolio';
+import { MidnightLimeShell, MidnightLimeProfileClient } from '@/components/templates/midnight-lime';
+import { PlatinumSlateShell, PlatinumSlateProfileClient } from '@/components/templates/platinum-slate';
+import { NayaEditorialShell, NayaEditorialProfileClient } from '@/components/templates/naya-editorial';
+import { CrimsonNoirShell, CrimsonNoirProfileClient } from '@/components/templates/crimson-noir';
+import { GoldenSplitShell, GoldenSplitProfileClient } from '@/components/templates/golden-split';
+import { BlushEditorialShell, BlushEditorialProfileClient } from '@/components/templates/blush-editorial';
+import { FoliobloxShell, FoliobloxProfileClient } from '@/components/templates/folioblox';
+import { StudioEditorialShell, StudioEditorialProfileClient } from '@/components/templates/studio-editorial';
+import { CreatixLimeShell, CreatixLimeProfileClient } from '@/components/templates/creatix-lime';
+import { ParichayAmberProfileClient } from '@/components/templates/parichay-amber';
+import { OrixVioletProfileClient } from '@/components/templates/orix-violet';
+import { AgethaRubyProfileClient } from '@/components/templates/agetha-ruby';
+import { WashoskiCyanProfileClient } from '@/components/templates/washoski-cyan';
+import { ArikNoirProfileClient } from '@/components/templates/arik-noir';
+import { AnivioxEmeraldProfileClient } from '@/components/templates/aniviox-emerald';
+import { LailaSakuraProfileClient } from '@/components/templates/laila-sakura';
+import { NexoraVioletProfileClient } from '@/components/templates/nexora-violet';
+import { XenonMintProfileClient } from '@/components/templates/xenon-mint';
+import { TiaraBurgundyProfileClient } from '@/components/templates/tiara-burgundy';
+
 import { PortalPhotoGallery } from '@/components/profile/PortalPhotoGallery';
-import { ShieldCheck, MapPin, Building2, BookOpen, BarChart3, ArrowRight, Award, Compass, HeartHandshake } from 'lucide-react';
+import {
+  ShieldCheck,
+  MapPin,
+  Building2,
+  BookOpen,
+  BarChart3,
+  ArrowRight,
+  Award,
+  Compass,
+  HeartHandshake,
+  GraduationCap,
+  Briefcase,
+  CheckCircle2,
+  Calendar,
+  Users,
+  FileText,
+  Clock,
+  Sparkles,
+} from 'lucide-react';
 
 export async function generateMetadata({
   params,
@@ -16,142 +69,869 @@ export async function generateMetadata({
 
   return {
     title: `Profil & Rekam Jejak - ${data.member.fullName}`,
-    description: `Biografi resmi, daerah pemilihan, dan visi pengabdian kenegaraan ${data.member.fullName}.`,
+    description: `Biografi resmi, daerah pemilihan, visi pengabdian, dan rekam jejak kenegaraan ${data.member.fullName}.`,
   };
 }
 
 export default async function DewanProfilePage({
   params,
+  searchParams,
 }: {
   params: Promise<{ subdomain: string }>;
+  searchParams?: Promise<{ preview_template?: string; preview_color?: string }>;
 }) {
   const { subdomain } = await params;
+  const sp = searchParams ? await searchParams : {};
   const data = await fetchPortalData(subdomain);
   if (!data) notFound();
 
   const { member, theme } = data;
-  const photoUrl = theme.officialPhotoUrl || '/images/avatar-dewan-budi.jpg';
-  const party = member.partyAffiliation || 'Golkar';
-  const dapil = member.dapilName || member.customDapil || 'Jawa Barat I';
+  const effectiveTheme = {
+    ...theme,
+    ...(sp.preview_template ? { layoutTemplateId: sp.preview_template } : {}),
+    ...(sp.preview_color ? { primaryHexColor: sp.preview_color } : {}),
+  };
+  const templateId = effectiveTheme?.layoutTemplateId || PortalTemplateId.POLARIS_INSIGHT;
+
+  const officialFullName =
+    member?.fullName ||
+    theme?.officialFullName ||
+    'Dr. Ir. Sangsoro Mowo Berkah, M.Sc.';
+  const photoUrl =
+    theme?.officialPhotoUrl ||
+    member?.photoUrl ||
+    '/images/dewan-standing-full.png';
+  const party = member?.partyAffiliation || 'Fraksi Parlemen';
+  const dapil =
+    member?.dapilName || member?.customDapilName || member?.customDapil || 'Jawa Barat I';
+
+  if (templateId === PortalTemplateId.BOLD_TYPOGRAPHY || templateId === 'bold-typography') {
+    return (
+      <BoldTypographyShell
+        member={member}
+        theme={effectiveTheme}
+        subdomain={subdomain}
+        activePage="profil"
+        breadcrumbTitle="Profil Dewan"
+        pageBadge="Pejabat Publik Terverifikasi • DPR RI"
+        pageTitle="Profil & Rekam Jejak Dewan"
+        pageSubtitle={`Biografi resmi, visi pengabdian kenegaraan, mandat keparlemenan, dan dedikasi perjuangan aspirasi masyarakat di Daerah Pemilihan ${dapil}.`}
+      >
+        <BoldProfileClient member={member} theme={effectiveTheme} subdomain={subdomain} />
+      </BoldTypographyShell>
+    );
+  }
+
+  if (templateId === PortalTemplateId.DARK_MODERN || templateId === 'dark-modern') {
+    return (
+      <DarkModernShell
+        member={member}
+        theme={effectiveTheme}
+        subdomain={subdomain}
+        activePage="profil"
+        breadcrumbTitle="Profil Dewan"
+        pageBadge="Pejabat Publik Terverifikasi • DPR RI"
+        pageTitle="Profil & Rekam Jejak Dewan"
+        pageSubtitle={`Biografi resmi, visi pengabdian kenegaraan, mandat keparlemenan, dan dedikasi perjuangan aspirasi masyarakat di Daerah Pemilihan ${dapil}.`}
+      >
+        <DarkModernProfileClient member={member} theme={effectiveTheme} subdomain={subdomain} />
+      </DarkModernShell>
+    );
+  }
+
+  if (templateId === PortalTemplateId.NEON_GLOW || templateId === 'neon-glow') {
+    return (
+      <NeonGlowShell
+        member={member}
+        theme={effectiveTheme}
+        subdomain={subdomain}
+        activePage="profil"
+        breadcrumbTitle="Profil Dewan"
+        pageBadge="Pejabat Publik Terverifikasi • DPR RI"
+        pageTitle="Profil & Rekam Jejak Dewan"
+        pageSubtitle={`Biografi resmi, visi pengabdian kenegaraan, mandat keparlemenan, dan dedikasi perjuangan aspirasi masyarakat di Daerah Pemilihan ${dapil}.`}
+      >
+        <NeonGlowProfileClient member={member} theme={effectiveTheme} subdomain={subdomain} />
+      </NeonGlowShell>
+    );
+  }
+
+  if (templateId === PortalTemplateId.CLEAN_EDITORIAL || templateId === 'clean-editorial') {
+    return (
+      <CleanEditorialShell
+        member={member}
+        theme={effectiveTheme}
+        subdomain={subdomain}
+        activePage="profil"
+        breadcrumbTitle="Profil Dewan"
+        pageBadge="PROFIL LEGISLATIF"
+        pageTitle="Profil & Rekam Jejak Dewan"
+        pageSubtitle={`Biografi resmi, visi pengabdian kenegaraan, mandat keparlemenan, dan dedikasi perjuangan aspirasi masyarakat di Daerah Pemilihan ${dapil}.`}
+      >
+        <CleanEditorialProfileClient member={member} theme={effectiveTheme} subdomain={subdomain} />
+      </CleanEditorialShell>
+    );
+  }
+
+  if (templateId === PortalTemplateId.CREATIVE_WARM || templateId === 'creative-warm') {
+    return (
+      <CreativeWarmShell
+        member={member}
+        theme={effectiveTheme}
+        subdomain={subdomain}
+        activePage="profil"
+        breadcrumbTitle="Profil Dewan"
+        pageBadge="Profil & Rekam Jejak"
+        pageTitle="Profil & Rekam Jejak Dewan"
+        pageSubtitle={`Biografi resmi, visi pengabdian kenegaraan, mandat keparlemenan, dan dedikasi perjuangan aspirasi masyarakat di Daerah Pemilihan ${dapil}.`}
+      >
+        <CreativeWarmProfileClient member={member} theme={effectiveTheme} subdomain={subdomain} />
+      </CreativeWarmShell>
+    );
+  }
+
+  if (templateId === PortalTemplateId.FOLIOBLOX || templateId === 'folioblox') {
+    return (
+      <FoliobloxShell
+        member={member}
+        theme={effectiveTheme}
+        subdomain={subdomain}
+        activePage="profil"
+        breadcrumbTitle="Profil Dewan"
+        pageBadge="Profil & Rekam Jejak Resmi"
+        pageTitle="Profil & Rekam Jejak Dewan"
+        pageSubtitle={`Biografi resmi, visi pengabdian kenegaraan, mandat keparlemenan, dan dedikasi perjuangan aspirasi masyarakat di Daerah Pemilihan ${dapil}.`}
+      >
+        <FoliobloxProfileClient member={member} theme={effectiveTheme} subdomain={subdomain} />
+      </FoliobloxShell>
+    );
+  }
+
+  if (templateId === PortalTemplateId.STUDIO_EDITORIAL || templateId === 'studio-editorial') {
+    return (
+      <StudioEditorialShell
+        member={member}
+        theme={effectiveTheme}
+        subdomain={subdomain}
+        activePage="profil"
+        breadcrumbTitle="Tentang & Rekam Jejak"
+        pageBadge="TENTANG PENGABDIAN"
+        pageTitle="Profil & Rekam Jejak Dewan"
+        pageSubtitle={`Biografi resmi, visi pengabdian kenegaraan, mandat keparlemenan, dan dedikasi perjuangan aspirasi masyarakat di Daerah Pemilihan ${dapil}.`}
+      >
+        <StudioEditorialProfileClient member={member} theme={effectiveTheme} subdomain={subdomain} />
+      </StudioEditorialShell>
+    );
+  }
+
+  if (
+    templateId === PortalTemplateId.WARM_PORTFOLIO ||
+    templateId === 'warm-portfolio'
+  ) {
+    return (
+      <WarmPortfolioShell
+        member={member}
+        theme={effectiveTheme}
+        subdomain={subdomain}
+        activePage="profil"
+        breadcrumbTitle="Profil Dewan"
+        pageBadge="Profil & Rekam Jejak Resmi"
+        pageTitle="Profil & Rekam Jejak Dewan"
+        pageSubtitle={`Biografi resmi, visi pengabdian kenegaraan, mandat keparlemenan, dan dedikasi perjuangan aspirasi masyarakat di Daerah Pemilihan ${dapil}.`}
+      >
+        <WarmPortfolioProfileClient member={member} theme={effectiveTheme} subdomain={subdomain} />
+      </WarmPortfolioShell>
+    );
+  }
+
+  if (templateId === PortalTemplateId.CRIMSON_NOIR || templateId === 'crimson-noir') {
+    return (
+      <CrimsonNoirShell
+        member={member}
+        theme={effectiveTheme}
+        subdomain={subdomain}
+        activePage="profil"
+        breadcrumbTitle="Profil"
+        pageBadge="Kenali Lebih Dekat"
+        pageTitle="Profil & Rekam Jejak"
+        pageSubtitle={`Biografi resmi, mandat keparlemenan, dan perjalanan pengabdian untuk masyarakat Daerah Pemilihan ${dapil}.`}
+      >
+        <CrimsonNoirProfileClient member={member} theme={effectiveTheme} subdomain={subdomain} />
+      </CrimsonNoirShell>
+    );
+  }
+
+  if (templateId === PortalTemplateId.GOLDEN_SPLIT || templateId === 'golden-split') {
+    return (
+      <GoldenSplitShell
+        member={member}
+        theme={effectiveTheme}
+        subdomain={subdomain}
+        activePage="profil"
+        breadcrumbTitle="Profil"
+        pageBadge="Profil Legislator"
+        pageTitle="Profil & Rekam Jejak Pengabdian"
+        pageSubtitle={`Mengenal lebih dekat dedikasi, amanah keparlemenan, dan komitmen perjuangan aspirasi masyarakat di Daerah Pemilihan ${dapil}.`}
+      >
+        <GoldenSplitProfileClient member={member} theme={effectiveTheme} subdomain={subdomain} />
+      </GoldenSplitShell>
+    );
+  }
+
+  if (templateId === PortalTemplateId.BLUSH_EDITORIAL || templateId === 'blush-editorial') {
+    return (
+      <BlushEditorialShell
+        member={member}
+        theme={effectiveTheme}
+        subdomain={subdomain}
+        activePage="profil"
+        breadcrumbTitle="Profil"
+        pageBadge="Profil Legislator"
+        pageTitle="Profil & Dedikasi Pengabdian"
+        pageSubtitle={`Biografi resmi, mandat keparlemenan, dan perjalanan pengabdian kenegaraan untuk masyarakat di Daerah Pemilihan ${dapil}.`}
+      >
+        <BlushEditorialProfileClient member={member} theme={effectiveTheme} subdomain={subdomain} />
+      </BlushEditorialShell>
+    );
+  }
+
+  if (templateId === PortalTemplateId.PARICHAY_AMBER || templateId === 'parichay-amber') {
+    return (
+      <ParichayAmberProfileClient
+        member={member}
+        theme={effectiveTheme}
+        subdomain={subdomain}
+      />
+    );
+  }
+
+  if (templateId === PortalTemplateId.ORIX_VIOLET || templateId === 'orix-violet') {
+    return (
+      <OrixVioletProfileClient
+        member={member}
+        theme={effectiveTheme}
+        subdomain={subdomain}
+      />
+    );
+  }
+
+  if (templateId === PortalTemplateId.AGETHA_RUBY || templateId === 'agetha-ruby') {
+    return (
+      <AgethaRubyProfileClient
+        member={member}
+        theme={effectiveTheme}
+        subdomain={subdomain}
+      />
+    );
+  }
+
+  if (templateId === PortalTemplateId.WASHOSKI_CYAN || templateId === 'washoski-cyan') {
+    return (
+      <WashoskiCyanProfileClient
+        member={member}
+        theme={effectiveTheme}
+        subdomain={subdomain}
+      />
+    );
+  }
+
+  if (templateId === PortalTemplateId.ARIK_NOIR || templateId === 'arik-noir') {
+    return (
+      <ArikNoirProfileClient
+        member={member}
+        theme={effectiveTheme}
+        subdomain={subdomain}
+      />
+    );
+  }
+
+  if (templateId === PortalTemplateId.ANIVIOX_EMERALD || templateId === 'aniviox-emerald') {
+    return (
+      <AnivioxEmeraldProfileClient
+        member={member}
+        theme={effectiveTheme}
+        subdomain={subdomain}
+      />
+    );
+  }
+
+  if (templateId === PortalTemplateId.LAILA_SAKURA || templateId === 'laila-sakura') {
+    return (
+      <LailaSakuraProfileClient
+        member={member}
+        theme={effectiveTheme}
+        subdomain={subdomain}
+      />
+    );
+  }
+
+  if (templateId === PortalTemplateId.NEXORA_VIOLET || templateId === 'nexora-violet') {
+    return (
+      <NexoraVioletProfileClient
+        member={member}
+        theme={effectiveTheme}
+        subdomain={subdomain}
+      />
+    );
+  }
+
+  if (templateId === PortalTemplateId.XENON_MINT || templateId === 'xenon-mint') {
+    return (
+      <XenonMintProfileClient
+        member={member}
+        theme={effectiveTheme}
+        subdomain={subdomain}
+      />
+    );
+  }
+
+  if (templateId === (PortalTemplateId as any).TIARA_BURGUNDY || templateId === 'tiara-burgundy') {
+    return (
+      <TiaraBurgundyProfileClient
+        member={member}
+        theme={effectiveTheme}
+        subdomain={subdomain}
+      />
+    );
+  }
+
+
+  if (
+    templateId === PortalTemplateId.NAYA_EDITORIAL ||
+    templateId === 'naya-editorial' ||
+    templateId === 'naya-digital'
+  ) {
+    return (
+      <NayaEditorialShell
+        member={member}
+        theme={effectiveTheme}
+        subdomain={subdomain}
+        activePage="profil"
+        breadcrumbTitle="Profil Dewan"
+        pageBadge="Profil & Rekam Jejak Resmi"
+        pageTitle="Profil & Rekam Jejak Dewan"
+        pageSubtitle={`Biografi resmi, visi pengabdian kenegaraan, mandat keparlemenan, dan dedikasi perjuangan aspirasi masyarakat di Daerah Pemilihan ${dapil}.`}
+      >
+        <NayaEditorialProfileClient member={member} theme={effectiveTheme} subdomain={subdomain} />
+      </NayaEditorialShell>
+    );
+  }
+
+  if (templateId === PortalTemplateId.MIDNIGHT_GOLD || templateId === 'midnight-gold') {
+    return (
+      <MidnightGoldShell
+        member={member}
+        theme={effectiveTheme}
+        subdomain={subdomain}
+        activePage="profil"
+        breadcrumbTitle="Profil Dewan"
+        pageBadge="Biografi & Rekam Jejak Resmi"
+        pageTitle="Profil & Rekam Jejak Dewan"
+        pageSubtitle={`Biografi resmi, visi pengabdian kenegaraan, mandat keparlemenan, dan dedikasi perjuangan aspirasi masyarakat di Daerah Pemilihan ${dapil}.`}
+      >
+        <MidnightGoldProfileClient member={member} theme={effectiveTheme} subdomain={subdomain} />
+      </MidnightGoldShell>
+    );
+  }
+
+  if (templateId === PortalTemplateId.EMERALD_TECH || templateId === 'emerald-tech') {
+    return (
+      <EmeraldTechShell
+        member={member}
+        theme={effectiveTheme}
+        subdomain={subdomain}
+        activePage="profil"
+        breadcrumbTitle="Profil Dewan"
+        pageBadge="Profil & Rekam Jejak Resmi"
+        pageTitle="Profil & Rekam Jejak Dewan"
+        pageSubtitle={`Biografi resmi, visi pengabdian kenegaraan, mandat keparlemenan, dan dedikasi perjuangan aspirasi masyarakat di Daerah Pemilihan ${dapil}.`}
+      >
+        <EmeraldTechProfileClient member={member} theme={effectiveTheme} subdomain={subdomain} />
+      </EmeraldTechShell>
+    );
+  }
+
+  if (templateId === PortalTemplateId.QURIFOLIO || templateId === 'qurifolio') {
+    return (
+      <QurifolioShell
+        member={member}
+        theme={effectiveTheme}
+        subdomain={subdomain}
+        activePage="profil"
+        breadcrumbTitle="Tentang"
+        pageBadge={`PROFIL ${officialFullName.toUpperCase()}`}
+        pageTitle="Dedikasi Kami Mengawal Aspirasi & Kesejahteraan Rakyat."
+        pageSubtitle={`Biografi resmi, visi pengabdian kenegaraan, mandat keparlemenan, dan rekam jejak dedikasi perjuangan masyarakat di Daerah Pemilihan ${dapil}.`}
+      >
+        <QurifolioProfileClient member={member} theme={effectiveTheme} subdomain={subdomain} />
+      </QurifolioShell>
+    );
+  }
+
+  if (templateId === PortalTemplateId.AMBER_PORTFOLIO || templateId === 'amber-portfolio') {
+    return (
+      <AmberPortfolioShell
+        member={member}
+        theme={effectiveTheme}
+        subdomain={subdomain}
+        activePage="profil"
+        breadcrumbTitle="Profil Dewan"
+        pageBadge={`PROFIL ${officialFullName.toUpperCase()}`}
+        pageTitle="Profil & Rekam Jejak Pengabdian"
+        pageSubtitle={`Biografi resmi, visi pengabdian kenegaraan, mandat keparlemenan, dan dedikasi perjuangan aspirasi masyarakat di Daerah Pemilihan ${dapil}.`}
+      >
+        <AmberPortfolioProfileClient member={member} theme={effectiveTheme} subdomain={subdomain} />
+      </AmberPortfolioShell>
+    );
+  }
+
+  if (templateId === PortalTemplateId.CREATIX_LIME || templateId === 'creatix-lime') {
+    return (
+      <CreatixLimeShell
+        member={member}
+        theme={effectiveTheme}
+        subdomain={subdomain}
+        activePage="profil"
+        breadcrumbTitle="Profil Dewan"
+        pageBadge="Mandat & Transparansi Publik"
+        pageTitle="Profil & Rekam Jejak Pengabdian"
+        pageSubtitle={`Biografi resmi, visi pengabdian kenegaraan, mandat keparlemenan, dan dedikasi perjuangan aspirasi masyarakat di Daerah Pemilihan ${dapil}.`}
+      >
+        <CreatixLimeProfileClient member={member} theme={effectiveTheme} subdomain={subdomain} />
+      </CreatixLimeShell>
+    );
+  }
+
+  if (
+    templateId === PortalTemplateId.MIDNIGHT_LIME ||
+    templateId === 'midnight-lime'
+  ) {
+    return (
+      <MidnightLimeShell
+        member={member}
+        theme={effectiveTheme}
+        subdomain={subdomain}
+        activePage="profil"
+        breadcrumbTitle="Profil Dewan"
+        pageBadge={`PROFIL ${officialFullName.toUpperCase()}`}
+        pageTitle="Profil & Rekam Jejak Pengabdian"
+        pageSubtitle={`Biografi resmi, visi pengabdian kenegaraan, mandat keparlemenan, dan dedikasi perjuangan aspirasi masyarakat di Daerah Pemilihan ${dapil}.`}
+      >
+        <MidnightLimeProfileClient member={member} theme={effectiveTheme} subdomain={subdomain} />
+      </MidnightLimeShell>
+    );
+  }
+
+  if (templateId === PortalTemplateId.PLATINUM_SLATE || templateId === 'platinum-slate') {
+    return (
+      <PlatinumSlateShell
+        member={member}
+        theme={effectiveTheme}
+        subdomain={subdomain}
+        activePage="profil"
+        breadcrumbTitle="Profil Dewan"
+        pageBadge={`PROFIL ${officialFullName.toUpperCase()}`}
+        pageTitle="Profil & Rekam Jejak Pengabdian"
+        pageSubtitle={`Biografi resmi, visi pengabdian kenegaraan, mandat keparlemenan, dan dedikasi perjuangan aspirasi masyarakat di Daerah Pemilihan ${dapil}.`}
+      >
+        <PlatinumSlateProfileClient member={member} theme={effectiveTheme} subdomain={subdomain} />
+      </PlatinumSlateShell>
+    );
+  }
 
   return (
-    <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8 space-y-12">
-      {/* HEADER HERO PROFIL */}
-      <section className="relative rounded-3xl overflow-hidden bg-gradient-to-br from-[#ebf3f9] via-slate-50 to-white border border-slate-200 p-8 sm:p-12 shadow-sm">
-        <div className="flex flex-col md:flex-row items-center md:items-start gap-8 md:gap-12">
-          {/* Foto Resmi Berwibawa */}
-          <div className="relative shrink-0">
-            <div className="h-64 w-52 sm:h-80 sm:w-64 rounded-2xl overflow-hidden shadow-2xl border-4 border-white bg-slate-900 aspect-[3/4]">
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img
-                src={photoUrl}
-                alt={member.fullName}
-                className="h-full w-full object-cover object-top"
-              />
+    <ParliamentShell
+      member={member}
+      theme={theme}
+      subdomain={subdomain}
+      activePage="profil"
+      breadcrumbTitle="Profil Dewan"
+      pageBadge="Pejabat Publik Terverifikasi • DPR RI"
+      pageTitle="Profil & Rekam Jejak Dewan"
+      pageSubtitle={`Biografi resmi, visi pengabdian kenegaraan, mandat keparlemenan, dan dedikasi perjuangan aspirasi masyarakat di Daerah Pemilihan ${dapil}.`}
+    >
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10 sm:py-14 space-y-12">
+        {/* ========================================================= */}
+        {/* SECTION 1: EXECUTIVE BIO CARD (Persis Kemewahan Negarawan) */}
+        {/* ========================================================= */}
+        <section className="rounded-3xl bg-white border border-slate-200/90 shadow-[0_10px_30px_-10px_rgba(0,0,0,0.06)] overflow-hidden">
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-center p-6 sm:p-10 lg:p-12">
+            {/* Kolom Kiri: Foto Resmi Berwibawa */}
+            <div className="lg:col-span-4 flex justify-center">
+              <div className="relative w-full max-w-[280px] sm:max-w-[320px] aspect-[3/4] rounded-2xl overflow-hidden shadow-2xl border-4 border-white bg-slate-900 group">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src={photoUrl}
+                  alt={officialFullName}
+                  className="w-full h-full object-cover object-top filter contrast-[1.03] group-hover:scale-102 transition-transform duration-500"
+                />
+                <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent pointer-events-none" />
+
+                {/* Badge Verifikasi Kenegaraan */}
+                <div className="absolute top-3.5 right-3.5 bg-[#96702c] text-white p-2 rounded-xl shadow-lg border border-amber-300/40">
+                  <ShieldCheck className="w-5 h-5 text-white" />
+                </div>
+
+                {/* Label DPR RI di Bawah Foto */}
+                <div className="absolute bottom-3.5 left-3.5 right-3.5 bg-black/60 backdrop-blur-md border border-white/20 rounded-xl px-3 py-2 text-white">
+                  <div className="text-[10px] font-bold uppercase tracking-wider text-amber-300">
+                    Mandat Perwakilan Rakyat
+                  </div>
+                  <div className="text-xs font-black truncate">
+                    DPR RI • Dapil {dapil}
+                  </div>
+                </div>
+              </div>
             </div>
-            <div className="absolute top-3 right-3 bg-amber-500 text-white p-1.5 rounded-full shadow-md">
-              <ShieldCheck className="w-4 h-4" />
+
+            {/* Kolom Kanan: Identitas & Visi Kenegaraan */}
+            <div className="lg:col-span-8 space-y-5 text-left">
+              {/* Badge Identitas Parlemen */}
+              <div className="flex flex-wrap items-center gap-2">
+                <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-amber-50 text-[#96702c] text-xs font-bold border border-amber-200/80">
+                  <Award className="w-3.5 h-3.5 text-[#96702c]" />
+                  <span>Wakil Rakyat Terpilih • Fraksi {party}</span>
+                </span>
+                <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-slate-100 text-slate-700 text-xs font-semibold">
+                  <MapPin className="w-3.5 h-3.5 text-slate-500" />
+                  <span>Dapil {dapil}</span>
+                </span>
+              </div>
+
+              {/* Nama Lengkap & Gelar */}
+              <div className="space-y-1.5">
+                <h2 className="text-2xl sm:text-3xl lg:text-4xl font-black text-slate-900 tracking-tight">
+                  {officialFullName}
+                </h2>
+                <p className="text-sm sm:text-base font-bold text-[#96702c] flex items-center gap-2">
+                  <Building2 className="w-4 h-4 shrink-0 text-[#96702c]" />
+                  <span>Anggota Dewan Perwakilan Rakyat Republik Indonesia</span>
+                </p>
+              </div>
+
+              {/* Visi Pernyataan Sikap (Ivory Blockquote dengan Aksen Gold) */}
+              <div className="relative p-5 rounded-2xl bg-[#FBF9F5] border-l-4 border-[#96702c] border-y border-r border-amber-100/60 text-slate-700 space-y-2">
+                <div className="text-[10px] font-black uppercase tracking-widest text-[#96702c]">
+                  Visi & Komitmen Pengabdian
+                </div>
+                <p className="text-xs sm:text-sm italic leading-relaxed text-slate-800">
+                  &ldquo;
+                  {theme?.bioBiography ||
+                    'Mendedikasikan seluruh amanah rakyat untuk memperjuangkan keadilan sosial, mendorong pemerataan infrastruktur ekonomi di daerah pemilihan, dan menegakkan fungsi pengawasan anggaran yang transparan dan akuntabel demi kesejahteraan bersama.'}
+                  &rdquo;
+                </p>
+              </div>
+
+              {/* Counter Ribbon (Pencapaian Kinerja Parlemen) */}
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 pt-2">
+                <div className="p-3 rounded-xl bg-slate-50 border border-slate-100">
+                  <div className="text-[10px] font-semibold text-slate-500">Kehadiran Rapat</div>
+                  <div className="text-base sm:text-lg font-black text-slate-900 mt-0.5">100%</div>
+                  <div className="text-[9px] text-emerald-600 font-bold">Paripurna & Komisi</div>
+                </div>
+
+                <div className="p-3 rounded-xl bg-slate-50 border border-slate-100">
+                  <div className="text-[10px] font-semibold text-slate-500">Telaah Regulasi</div>
+                  <div className="text-base sm:text-lg font-black text-slate-900 mt-0.5">14 RUU</div>
+                  <div className="text-[9px] text-[#96702c] font-bold">Inisiasi & Masukan</div>
+                </div>
+
+                <div className="p-3 rounded-xl bg-slate-50 border border-slate-100">
+                  <div className="text-[10px] font-semibold text-slate-500">Kunjungan Dapil</div>
+                  <div className="text-base sm:text-lg font-black text-slate-900 mt-0.5">48+ Titik</div>
+                  <div className="text-[9px] text-slate-600 font-bold">Reses & Sosialisasi</div>
+                </div>
+
+                <div className="p-3 rounded-xl bg-slate-50 border border-slate-100">
+                  <div className="text-[10px] font-semibold text-slate-500">Advokasi Warga</div>
+                  <div className="text-base sm:text-lg font-black text-slate-900 mt-0.5">1.200+</div>
+                  <div className="text-[9px] text-emerald-600 font-bold">Aspirasi Tuntas</div>
+                </div>
+              </div>
+
+              {/* Quick Navigation Buttons */}
+              <div className="pt-2 flex flex-wrap items-center gap-3">
+                <Link
+                  href="/artikel"
+                  className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold transition shadow-sm"
+                >
+                  <BookOpen className="w-3.5 h-3.5 text-amber-400" />
+                  <span>Katalog Artikel Kebijakan</span>
+                  <ArrowRight className="w-3.5 h-3.5 ml-0.5" />
+                </Link>
+
+                <Link
+                  href="/infografis"
+                  className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-amber-50 hover:bg-amber-100/80 text-[#96702c] border border-amber-200/80 text-xs font-bold transition"
+                >
+                  <BarChart3 className="w-3.5 h-3.5 text-[#96702c]" />
+                  <span>Lihat Infografis Kinerja</span>
+                </Link>
+
+                <Link
+                  href="/kontak"
+                  className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-white hover:bg-slate-50 text-slate-700 border border-slate-200 text-xs font-bold transition"
+                >
+                  <span>Kontak Staf Ahli</span>
+                </Link>
+              </div>
             </div>
           </div>
+        </section>
 
-          {/* Identitas & Tagline Kenegaraan */}
-          <div className="space-y-4 text-center md:text-left flex-1">
-            <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-amber-500/10 text-amber-900 text-xs font-bold border border-amber-500/20">
-              <Award className="w-3.5 h-3.5 text-amber-600" />
-              <span>Pejabat Publik Terverifikasi • Fraksi {party}</span>
+        {/* ========================================================= */}
+        {/* SECTION 2: TIGA PILAR KOMITMEN PENGABDIAN                 */}
+        {/* ========================================================= */}
+        <section className="space-y-6">
+          <div className="border-b border-slate-200 pb-3 flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <h2 className="text-xl sm:text-2xl font-black text-slate-900 tracking-tight uppercase">
+                Pilar Fokus Pengabdian
+              </h2>
+              <span className="w-8 h-0.5 bg-[#96702c] rounded-full" />
             </div>
+            <span className="text-xs font-semibold text-slate-500">
+              Prinsip Kerja Parlemen
+            </span>
+          </div>
 
-            <div className="space-y-1">
-              <h1 className="text-3xl sm:text-4xl lg:text-5xl font-black text-slate-900 tracking-tight">
-                {member.fullName}
-              </h1>
-              <p className="text-sm sm:text-base font-bold text-amber-800 flex items-center justify-center md:justify-start gap-1.5">
-                <MapPin className="w-4 h-4 shrink-0 text-amber-600" />
-                <span>
-                  Daerah Pemilihan {dapil} ({member.provinceName || 'Indonesia'})
-                </span>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            {/* Pilar 1 */}
+            <div className="p-6 sm:p-7 rounded-2xl bg-white border border-slate-200/90 shadow-xs hover:border-[#96702c]/60 hover:shadow-md transition-all space-y-4">
+              <div className="w-12 h-12 rounded-2xl bg-amber-50 text-[#96702c] border border-amber-200/60 flex items-center justify-center font-black">
+                <Compass className="w-6 h-6 text-[#96702c]" />
+              </div>
+              <div className="space-y-1">
+                <div className="text-[10px] font-bold text-[#96702c] uppercase tracking-wider">
+                  Fungsi Legislasi
+                </div>
+                <h3 className="text-base sm:text-lg font-bold text-slate-900">
+                  Legislasikan Solusi Nyata
+                </h3>
+              </div>
+              <p className="text-xs text-slate-600 leading-relaxed">
+                Mengawal penyusunan regulasi dan undang-undang yang berpihak pada pertumbuhan ekonomi lokal, penyederhanaan perizinan UMKM, perlindungan tenaga kerja, dan kepastian hukum yang adil bagi seluruh masyarakat.
               </p>
             </div>
 
-            <p className="text-xs sm:text-sm text-slate-600 leading-relaxed max-w-3xl pt-2">
-              {theme.bioBiography ||
-                'Mendedikasikan amanah rakyat untuk memperjuangkan keadilan sosial, akselerasi ekonomi daerah, dan transparansi legislasi kenegaraan demi kemaslahatan seluruh lapisan masyarakat.'}
-            </p>
+            {/* Pilar 2 */}
+            <div className="p-6 sm:p-7 rounded-2xl bg-white border border-slate-200/90 shadow-xs hover:border-[#96702c]/60 hover:shadow-md transition-all space-y-4">
+              <div className="w-12 h-12 rounded-2xl bg-amber-50 text-[#96702c] border border-amber-200/60 flex items-center justify-center font-black">
+                <Building2 className="w-6 h-6 text-[#96702c]" />
+              </div>
+              <div className="space-y-1">
+                <div className="text-[10px] font-bold text-[#96702c] uppercase tracking-wider">
+                  Fungsi Anggaran
+                </div>
+                <h3 className="text-base sm:text-lg font-bold text-slate-900">
+                  Pengawasan Anggaran Transparan
+                </h3>
+              </div>
+              <p className="text-xs text-slate-600 leading-relaxed">
+                Meneliti dan memastikan setiap alokasi APBN dan transfer ke daerah terealisasi secara tepat sasaran, bebas dari inefisiensi, serta benar-benar dirasakan manfaatnya melalui proyek infrastruktur jalan, sanitasi, dan fasilitas umum di Dapil.
+              </p>
+            </div>
 
-            {/* Quick Action Navigation */}
-            <div className="pt-4 flex flex-wrap items-center justify-center md:justify-start gap-3">
+            {/* Pilar 3 */}
+            <div className="p-6 sm:p-7 rounded-2xl bg-white border border-slate-200/90 shadow-xs hover:border-[#96702c]/60 hover:shadow-md transition-all space-y-4">
+              <div className="w-12 h-12 rounded-2xl bg-amber-50 text-[#96702c] border border-amber-200/60 flex items-center justify-center font-black">
+                <HeartHandshake className="w-6 h-6 text-[#96702c]" />
+              </div>
+              <div className="space-y-1">
+                <div className="text-[10px] font-bold text-[#96702c] uppercase tracking-wider">
+                  Fungsi Representasi
+                </div>
+                <h3 className="text-base sm:text-lg font-bold text-slate-900">
+                  Pendampingan Konstituen Berkelanjutan
+                </h3>
+              </div>
+              <p className="text-xs text-slate-600 leading-relaxed">
+                Menjaga interaksi langsung bersama warga di akar rumput melalui agenda reses reguler, forum rembug desa, bantuan kemanusiaan darurat, serta advokasi langsung masalah agraria dan sosial kemasyarakatan.
+              </p>
+            </div>
+          </div>
+        </section>
+
+        {/* ========================================================= */}
+        {/* SECTION 3: REKAM JEJAK PENDIDIKAN & KARIR PUBLIK          */}
+        {/* ========================================================= */}
+        <section className="space-y-6">
+          <div className="border-b border-slate-200 pb-3 flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <h2 className="text-xl sm:text-2xl font-black text-slate-900 tracking-tight uppercase">
+                Riwayat Pengabdian &amp; Pendidikan
+              </h2>
+              <span className="w-8 h-0.5 bg-[#96702c] rounded-full" />
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            {/* Kartu Riwayat Pendidikan */}
+            <div className="p-6 sm:p-8 rounded-2xl bg-[#FBF9F5] border border-amber-100/80 shadow-xs space-y-5">
+              <div className="flex items-center gap-3 pb-3 border-b border-amber-200/60">
+                <div className="w-9 h-9 rounded-xl bg-amber-50 text-[#96702c] flex items-center justify-center font-bold">
+                  <GraduationCap className="w-5 h-5 text-[#96702c]" />
+                </div>
+                <div>
+                  <h3 className="text-sm font-bold text-slate-900 uppercase tracking-wide">
+                    Riwayat Pendidikan Formal
+                  </h3>
+                  <p className="text-[11px] text-slate-500">Latar belakang keilmuan & kepakaran</p>
+                </div>
+              </div>
+
+              <div className="space-y-4">
+                <div className="flex items-start gap-3">
+                  <div className="w-2 h-2 rounded-full bg-[#96702c] mt-1.5 shrink-0" />
+                  <div>
+                    <div className="text-xs font-bold text-slate-900">
+                      Doktor (S3) Kebijakan Publik &amp; Tata Kelola
+                    </div>
+                    <div className="text-[11px] text-[#96702c] font-semibold">
+                      Universitas Indonesia • Lulus dengan Predikat Pujian
+                    </div>
+                  </div>
+                </div>
+
+                <div className="flex items-start gap-3">
+                  <div className="w-2 h-2 rounded-full bg-[#96702c] mt-1.5 shrink-0" />
+                  <div>
+                    <div className="text-xs font-bold text-slate-900">
+                      Master of Science (M.Sc.) Perencanaan Pembangunan
+                    </div>
+                    <div className="text-[11px] text-[#96702c] font-semibold">
+                      National University / Program Pascasarjana Terakreditasi
+                    </div>
+                  </div>
+                </div>
+
+                <div className="flex items-start gap-3">
+                  <div className="w-2 h-2 rounded-full bg-[#96702c] mt-1.5 shrink-0" />
+                  <div>
+                    <div className="text-xs font-bold text-slate-900">
+                      Sarjana Teknik (S.T. / Ir.) Infrastruktur Sipil
+                    </div>
+                    <div className="text-[11px] text-[#96702c] font-semibold">
+                      Institut Teknologi Terkemuka Indonesia
+                    </div>
+                  </div>
+                </div>
+
+                <div className="flex items-start gap-3">
+                  <div className="w-2 h-2 rounded-full bg-[#96702c] mt-1.5 shrink-0" />
+                  <div>
+                    <div className="text-xs font-bold text-slate-900">
+                      Pendidikan Kepemimpinan Nasional (Lemhannas RI)
+                    </div>
+                    <div className="text-[11px] text-[#96702c] font-semibold">
+                      Lembaga Ketahanan Nasional Republik Indonesia
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Kartu Penugasan Parlemen & Organisasi */}
+            <div className="p-6 sm:p-8 rounded-2xl bg-[#FBF9F5] border border-amber-100/80 shadow-xs space-y-5">
+              <div className="flex items-center gap-3 pb-3 border-b border-amber-200/60">
+                <div className="w-9 h-9 rounded-xl bg-amber-50 text-[#96702c] flex items-center justify-center font-bold">
+                  <Briefcase className="w-5 h-5 text-[#96702c]" />
+                </div>
+                <div>
+                  <h3 className="text-sm font-bold text-slate-900 uppercase tracking-wide">
+                    Penugasan Parlemen &amp; Pengabdian
+                  </h3>
+                  <p className="text-[11px] text-slate-500">Alat kelengkapan dewan & rekam jejak amanah</p>
+                </div>
+              </div>
+
+              <div className="space-y-4">
+                <div className="flex items-start gap-3">
+                  <div className="w-2 h-2 rounded-full bg-[#96702c] mt-1.5 shrink-0" />
+                  <div>
+                    <div className="text-xs font-bold text-slate-900">
+                      Anggota Dewan Perwakilan Rakyat RI (DPR RI)
+                    </div>
+                    <div className="text-[11px] text-[#96702c] font-semibold">
+                      Periode 2024 – 2029 • Fraksi {party}
+                    </div>
+                  </div>
+                </div>
+
+                <div className="flex items-start gap-3">
+                  <div className="w-2 h-2 rounded-full bg-[#96702c] mt-1.5 shrink-0" />
+                  <div>
+                    <div className="text-xs font-bold text-slate-900">
+                      Anggota Komisi V (Infrastruktur &amp; Perhubungan)
+                    </div>
+                    <div className="text-[11px] text-[#96702c] font-semibold">
+                      Mengawal program konektivitas jalur logistik & bedah rumah rakyat
+                    </div>
+                  </div>
+                </div>
+
+                <div className="flex items-start gap-3">
+                  <div className="w-2 h-2 rounded-full bg-[#96702c] mt-1.5 shrink-0" />
+                  <div>
+                    <div className="text-xs font-bold text-slate-900">
+                      Anggota Badan Anggaran (Banggar) DPR RI
+                    </div>
+                    <div className="text-[11px] text-[#96702c] font-semibold">
+                      Pengawasan efektivitas belanja subsidi pupuk, pendidikan & kesehatan
+                    </div>
+                  </div>
+                </div>
+
+                <div className="flex items-start gap-3">
+                  <div className="w-2 h-2 rounded-full bg-[#96702c] mt-1.5 shrink-0" />
+                  <div>
+                    <div className="text-xs font-bold text-slate-900">
+                      Ketua Yayasan Pemberdayaan Ekonomi Konstituen
+                    </div>
+                    <div className="text-[11px] text-[#96702c] font-semibold">
+                      Program inkubasi 250+ wirausaha muda dan UMKM lokal
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        {/* ========================================================= */}
+        {/* SECTION 4: DOKUMENTASI KEGIATAN & FOTO PRIBADI            */}
+        {/* ========================================================= */}
+        {member?.photoGallery && member.photoGallery.length > 0 && (
+          <PortalPhotoGallery photos={member.photoGallery} memberName={officialFullName} />
+        )}
+
+        {/* ========================================================= */}
+        {/* SECTION 5: CALL TO ACTION ASPIRASI WARGA                  */}
+        {/* ========================================================= */}
+        <section className="rounded-3xl bg-gradient-to-r from-slate-950 via-[#0B1528] to-slate-900 text-white p-8 sm:p-12 border border-slate-800 shadow-2xl">
+          <div className="max-w-3xl space-y-4">
+            <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-[#96702c]/20 text-amber-300 border border-[#96702c]/40 text-xs font-bold">
+              <Sparkles className="w-3.5 h-3.5 text-amber-400" />
+              <span>Saluran Aspirasi Langsung Konstituen</span>
+            </div>
+            <h3 className="text-2xl sm:text-3xl font-black text-white tracking-tight">
+              Ingin Menyampaikan Masukan Langsung Kepada {officialFullName}?
+            </h3>
+            <p className="text-xs sm:text-sm text-slate-300 leading-relaxed">
+              Tim sekretariat dan staf ahli dewan siap menerima laporan permasalahan jalan, bantuan sosial, pupuk subsidi, atau usulan perbaikan layanan publik di wilayah Anda.
+            </p>
+            <div className="pt-2 flex flex-wrap items-center gap-3">
               <Link
-                href="/artikel"
-                className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold transition shadow-sm"
+                href="/kontak"
+                className="inline-flex items-center gap-2 px-6 py-3 rounded-xl bg-[#96702c] hover:bg-[#805f24] text-white text-xs font-bold uppercase tracking-wider transition-all shadow-md"
               >
-                <BookOpen className="w-3.5 h-3.5 text-amber-400" />
-                <span>Katalog Artikel Kebijakan</span>
-                <ArrowRight className="w-3.5 h-3.5 ml-1" />
-              </Link>
-              <Link
-                href="/infografis"
-                className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-white hover:bg-slate-50 text-slate-800 border border-slate-200 text-xs font-bold transition shadow-xs"
-              >
-                <BarChart3 className="w-3.5 h-3.5 text-amber-600" />
-                <span>Lihat Infografis Kinerja</span>
+                <span>Buka Kanal Kontak &amp; Aspirasi</span>
+                <ArrowRight className="w-4 h-4" />
               </Link>
             </div>
           </div>
-        </div>
-      </section>
-
-      {/* TIGA PILAR KOMITMEN PENGABDIAN */}
-      <section className="space-y-6">
-        <div className="border-b border-slate-200 pb-3 flex items-center gap-3">
-          <h2 className="text-xl sm:text-2xl font-black text-slate-900 tracking-tight uppercase">
-            Pilar Fokus Pengabdian
-          </h2>
-          <span className="w-8 h-0.5 bg-slate-400 rounded-full" />
-        </div>
-
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          <div className="p-6 rounded-2xl bg-white border border-slate-200/90 shadow-xs space-y-3">
-            <div className="w-10 h-10 rounded-xl bg-amber-500/10 text-amber-700 flex items-center justify-center font-black">
-              <Compass className="w-5 h-5 text-amber-600" />
-            </div>
-            <h3 className="text-base font-bold text-slate-900">
-              Legislasikan Solusi Nyata
-            </h3>
-            <p className="text-xs text-slate-500 leading-relaxed">
-              Mengawal perancangan peraturan daerah dan regulasi perundang-undangan yang berpihak pada kemudahan berusaha, perlindungan UMKM, dan kepastian hukum masyarakat.
-            </p>
-          </div>
-
-          <div className="p-6 rounded-2xl bg-white border border-slate-200/90 shadow-xs space-y-3">
-            <div className="w-10 h-10 rounded-xl bg-blue-500/10 text-blue-700 flex items-center justify-center font-black">
-              <Building2 className="w-5 h-5 text-blue-600" />
-            </div>
-            <h3 className="text-base font-bold text-slate-900">
-              Pengawasan Anggaran Transparan
-            </h3>
-            <p className="text-xs text-slate-500 leading-relaxed">
-              Memastikan setiap rupiah anggaran belanja daerah terserap tepat sasaran untuk infrastruktur jalan, fasilitas kesehatan prima, dan sarana pendidikan di wilayah pemilihan.
-            </p>
-          </div>
-
-          <div className="p-6 rounded-2xl bg-white border border-slate-200/90 shadow-xs space-y-3">
-            <div className="w-10 h-10 rounded-xl bg-emerald-500/10 text-emerald-700 flex items-center justify-center font-black">
-              <HeartHandshake className="w-5 h-5 text-emerald-600" />
-            </div>
-            <h3 className="text-base font-bold text-slate-900">
-              Pendampingan Konstituen Berkelanjutan
-            </h3>
-            <p className="text-xs text-slate-500 leading-relaxed">
-              Menjaga tali silaturahmi yang kokoh dengan masyarakat akar rumput, tokoh komunitas, dan pemuda melalui dialog berkala dan kehadiran langsung di tengah warga.
-            </p>
-          </div>
-        </div>
-      </section>
-
-      {/* KATALOG FOTO PRIBADI & DOKUMENTASI DEWAN */}
-      {member?.photoGallery && member.photoGallery.length > 0 && (
-        <PortalPhotoGallery photos={member.photoGallery} memberName={member.fullName} />
-      )}
-    </div>
+        </section>
+      </div>
+    </ParliamentShell>
   );
 }

@@ -46,13 +46,22 @@ export function ForcePasswordChangeModal({ isOpen, onSuccess }: ForcePasswordCha
     setLoading(true);
 
     try {
-      await ApiClient.request('/auth/force-change-password', {
+      const res = await ApiClient.request<{ accessToken?: string; user?: any }>('/auth/force-change-password', {
         method: 'POST',
         body: JSON.stringify({
           currentPassword,
           newPassword,
         }),
       });
+
+      if (res?.accessToken) {
+        ApiClient.setToken(res.accessToken);
+        if (res.user) {
+          try {
+            localStorage.setItem('polaris_user', JSON.stringify(res.user));
+          } catch {}
+        }
+      }
 
       setSuccess(true);
       setTimeout(() => {

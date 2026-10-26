@@ -16,6 +16,12 @@ const config: Config = {
       },
       fontFamily: {
         sans: ['var(--portal-font, Inter)', 'sans-serif'],
+        jakarta: ['"Plus Jakarta Sans"', 'Inter', 'sans-serif'],
+        outfit: ['"Outfit"', '"Plus Jakarta Sans"', 'sans-serif'],
+        bebas: ['"Bebas Neue"', 'Impact', 'sans-serif'],
+        script: ['Caveat', 'cursive'],
+        serif: ['"Playfair Display"', 'Georgia', 'serif'],
+        cormorant: ['"Cormorant Garamond"', '"Playfair Display"', 'Georgia', 'serif'],
       },
     },
   },

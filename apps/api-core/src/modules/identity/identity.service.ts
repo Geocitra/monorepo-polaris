@@ -253,13 +253,15 @@ export class IdentityService {
       attempts: 0,
     });
 
-    await this.emailService.sendOtpEmail(cleanEmail, otpCode, member.fullName);
+    const emailResult = await this.emailService.sendOtpEmail(cleanEmail, otpCode, member.fullName);
 
     return {
       step: '2FA_REQUIRED',
       requireOtp: true,
       email: cleanEmail,
-      message: 'Kredensial terverifikasi. Kode OTP 2FA telah dikirimkan ke kotak masuk email Anda.',
+      message: (emailResult as any)?.fallback
+        ? 'Kredensial valid. Layanan email terkendala; gunakan kode OTP darurat yang tertera di konsol backend.'
+        : 'Kredensial terverifikasi. Kode OTP 2FA telah dikirimkan ke kotak masuk email Anda.',
     };
   }
 
@@ -296,10 +298,12 @@ export class IdentityService {
       attempts: 0,
     });
 
-    await this.emailService.sendOtpEmail(cleanEmail, otpCode, member.fullName);
+    const emailResult = await this.emailService.sendOtpEmail(cleanEmail, otpCode, member.fullName);
 
     return {
-      message: 'Kode OTP 6-digit berhasil dikirimkan ke email Anda. Berlaku selama 5 menit.',
+      message: (emailResult as any)?.fallback
+        ? 'Kode OTP darurat tercatat di konsol server. Berlaku selama 5 menit.'
+        : 'Kode OTP 6-digit berhasil dikirimkan ke email Anda. Berlaku selama 5 menit.',
       email: cleanEmail,
     };
   }
@@ -718,6 +722,11 @@ export class IdentityService {
     const [member] = await db
       .select({
         id: tenantMembers.id,
+        email: tenantMembers.email,
+        username: tenantMembers.username,
+        fullName: tenantMembers.fullName,
+        partyAffiliation: tenantMembers.partyAffiliation,
+        legislativeLevel: tenantMembers.legislativeLevel,
         passwordHash: tenantMembers.passwordHash,
       })
       .from(tenantMembers)
@@ -749,8 +758,37 @@ export class IdentityService {
       })
       .where(eq(tenantMembers.id, tenantId));
 
+    const [portal] = await db
+      .select({ subdomainSlug: portalConfigs.subdomainSlug })
+      .from(portalConfigs)
+      .where(eq(portalConfigs.tenantId, tenantId))
+      .limit(1);
+
+    const subdomainSlug = portal?.subdomainSlug || '';
+
+    const payload = {
+      sub: member.id,
+      email: member.email,
+      subdomainSlug,
+      mustChangePassword: false,
+      role: 'MEMBER',
+    };
+
+    const accessToken = await this.jwtService.signAsync(payload);
+
     return {
       success: true,
+      accessToken,
+      user: {
+        id: member.id,
+        email: member.email,
+        username: member.username,
+        fullName: member.fullName,
+        partyAffiliation: member.partyAffiliation,
+        subdomain: subdomainSlug,
+        mustChangePassword: false,
+        legislativeLevel: member.legislativeLevel as any,
+      },
       message: 'Kata sandi akun Anda berhasil diperbarui. Akses dashboard telah dibuka penuh.',
     };
   }
@@ -762,6 +800,11 @@ export class IdentityService {
     const [member] = await db
       .select({
         id: tenantMembers.id,
+        email: tenantMembers.email,
+        username: tenantMembers.username,
+        fullName: tenantMembers.fullName,
+        partyAffiliation: tenantMembers.partyAffiliation,
+        legislativeLevel: tenantMembers.legislativeLevel,
         passwordHash: tenantMembers.passwordHash,
       })
       .from(tenantMembers)
@@ -810,8 +853,37 @@ export class IdentityService {
       this.logger.warn(`Gagal mencatat log perubahan password: ${err.message}`);
     }
 
+    const [portal] = await db
+      .select({ subdomainSlug: portalConfigs.subdomainSlug })
+      .from(portalConfigs)
+      .where(eq(portalConfigs.tenantId, tenantId))
+      .limit(1);
+
+    const subdomainSlug = portal?.subdomainSlug || '';
+
+    const payload = {
+      sub: member.id,
+      email: member.email,
+      subdomainSlug,
+      mustChangePassword: false,
+      role: 'MEMBER',
+    };
+
+    const accessToken = await this.jwtService.signAsync(payload);
+
     return {
       success: true,
+      accessToken,
+      user: {
+        id: member.id,
+        email: member.email,
+        username: member.username,
+        fullName: member.fullName,
+        partyAffiliation: member.partyAffiliation,
+        subdomain: subdomainSlug,
+        mustChangePassword: false,
+        legislativeLevel: member.legislativeLevel as any,
+      },
       message: 'Kata sandi akun Anda berhasil diperbarui.',
       passwordChangedAt: now.toISOString(),
     };

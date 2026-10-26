@@ -217,16 +217,18 @@ export function PricingPlanGrid({
                           Bebas Ganti Layout Tematik Eksklusif:
                         </span>
                         <ul className="text-[11px] text-slate-500 dark:text-slate-400 pl-2 space-y-0.5 list-disc list-inside">
-                          <li>Editorial Prestige (Jurnal Kebijakan)</li>
-                          <li>Baliho Hero Karismatik (Visual Masif)</li>
-                          <li>Newsroom Press Brief (Siaran Pers)</li>
+                          <li>POLARIS Aurora (Executive Dark)</li>
+                          <li>POLARIS Antares (Advokasi Bold)</li>
+                          <li>POLARIS Nova (Futuristik Cyber)</li>
+                          <li>POLARIS Terra (Kerakyatan Hangat)</li>
+                          <li>Dan 9 layout tematik eksekutif lainnya</li>
                         </ul>
                       </div>
                     </div>
                   ) : (
                     <div className="flex items-start gap-2">
                       <Check className="h-4 w-4 text-slate-600 dark:text-slate-400 shrink-0 mt-0.5 stroke-[2.5]" />
-                      <span>Tata Letak Standar Parlemen (Responsif & Elegan)</span>
+                      <span>Tata Letak Standar POLARIS Aurora (Responsif)</span>
                     </div>
                   )}
 

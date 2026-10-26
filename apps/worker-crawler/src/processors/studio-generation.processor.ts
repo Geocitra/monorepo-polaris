@@ -145,9 +145,15 @@ export class StudioGenerationProcessor {
         console.warn(`[StudioProcessor] Query embedding gagal: ${err.message}`);
       }
 
-      const similarChunks = queryVector
-        ? await findSimilarKnowledgeChunks(queryVector, 3, targetRegion, 0.60)
-        : [];
+      let similarChunks: any[] = [];
+      if (queryVector) {
+        try {
+          similarChunks = await findSimilarKnowledgeChunks(queryVector, 3, targetRegion, 0.60);
+        } catch (vectorErr: any) {
+          console.warn(`[StudioProcessor] Pencarian regulasi serupa dilewati: ${vectorErr?.message || vectorErr}`);
+          similarChunks = [];
+        }
+      }
 
       const contextPayload = ContextCapsuleBuilder.assembleContext({
         regionName: `${dapilName} (${targetRegion})`,

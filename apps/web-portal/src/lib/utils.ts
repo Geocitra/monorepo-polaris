@@ -8,6 +8,9 @@ export function cn(...inputs: ClassValue[]) {
 export function formatDateIndonesian(dateString?: string | Date | null): string {
   if (!dateString) return '';
   const date = new Date(dateString);
+  if (isNaN(date.getTime())) {
+    return typeof dateString === 'string' ? dateString : '';
+  }
   return new Intl.DateTimeFormat('id-ID', {
     day: 'numeric',
     month: 'long',

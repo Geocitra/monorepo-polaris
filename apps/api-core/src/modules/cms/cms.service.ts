@@ -9,7 +9,7 @@ import {
 import * as crypto from 'crypto';
 import * as dns from 'dns/promises';
 import ipaddr from 'ipaddr.js';
-import { eq, or, and, desc } from 'drizzle-orm';
+import { eq, or, and, desc, inArray } from 'drizzle-orm';
 import {
   db,
   portalConfigs,
@@ -26,7 +26,7 @@ import {
   subscriptions,
 } from '@polaris/database';
 import { SubdomainSlug, HexColor } from '@polaris/core-domain';
-import { ContentStatus, SubscriptionStatus, PlanTier } from '@polaris/shared-types';
+import { ContentStatus, SubscriptionStatus, PlanTier, AssetType } from '@polaris/shared-types';
 import { UpdateThemeSettingsDto, UpdateDomainConfigDto, CreatePortalDocumentRequestDto } from './dto/cms.dto.js';
 
 @Injectable()
@@ -222,8 +222,8 @@ export class CmsService {
         updatedAt: new Date(),
       };
       if (dto.fontFamily !== undefined) updateData.fontFamily = dto.fontFamily;
-      if (dto.heroBannerUrl !== undefined) updateData.heroBannerUrl = dto.heroBannerUrl;
-      if (dto.officialPhotoUrl !== undefined) updateData.officialPhotoUrl = dto.officialPhotoUrl;
+      if (dto.heroBannerUrl !== undefined) updateData.heroBannerUrl = dto.heroBannerUrl && dto.heroBannerUrl.trim() ? dto.heroBannerUrl.trim() : null;
+      if (dto.officialPhotoUrl !== undefined) updateData.officialPhotoUrl = dto.officialPhotoUrl && dto.officialPhotoUrl.trim() ? dto.officialPhotoUrl.trim() : null;
       if (dto.headlineTagline !== undefined) updateData.headlineTagline = dto.headlineTagline;
       if (dto.bioBiography !== undefined) updateData.bioBiography = dto.bioBiography;
 
@@ -629,12 +629,13 @@ export class CmsService {
       .from(socialLinks)
       .where(eq(socialLinks.portalId, portal.id));
 
-    const recentArticles = await db
+    const publishedArticles = await db
       .select({
         id: contentPublications.id,
         title: contentPublications.title,
         slug: contentPublications.slug,
         excerpt: contentPublications.excerpt,
+        bodyContentMarkdown: contentPublications.bodyContentMarkdown,
         commentCount: contentPublications.commentCount,
         publishedAt: contentPublications.publishedAt,
         canonicalUrl: contentPublications.canonicalUrl,
@@ -648,6 +649,48 @@ export class CmsService {
       )
       .orderBy(desc(contentPublications.publishedAt))
       .limit(50);
+
+    const articleIds = publishedArticles.map((a) => a.id);
+    const mediaMap = new Map<string, { cdnPublicUrl: string; assetType: string }>();
+    if (articleIds.length > 0) {
+      const medias = await db
+        .select({
+          publicationId: mediaAssets.publicationId,
+          cdnPublicUrl: mediaAssets.cdnPublicUrl,
+          assetType: mediaAssets.assetType,
+        })
+        .from(mediaAssets)
+        .where(
+          and(
+            inArray(mediaAssets.publicationId, articleIds),
+            inArray(mediaAssets.assetType, [AssetType.DALLE_POSTER, AssetType.INFOGRAPHIC_PNG, AssetType.HEADER_IMAGE])
+          )
+        );
+      for (const m of medias) {
+        if (!mediaMap.has(m.publicationId)) {
+          mediaMap.set(m.publicationId, { cdnPublicUrl: m.cdnPublicUrl, assetType: m.assetType });
+        }
+      }
+    }
+
+    const allPublications = publishedArticles.map((a) => {
+      const media = mediaMap.get(a.id);
+      return {
+        ...a,
+        posterUrl: media?.cdnPublicUrl || null,
+        featuredImageUrl: media?.cdnPublicUrl || null,
+        assetType: media?.assetType || null,
+      };
+    });
+
+    // Pisahkan secara tegas antara Artikel dan Infografis agar tidak bercampur di template
+    const isInfographic = (item: any) =>
+      item.assetType === 'INFOGRAPHIC_PNG' ||
+      (typeof item.slug === 'string' && item.slug.toLowerCase().startsWith('infografis-')) ||
+      (typeof item.title === 'string' && item.title.toLowerCase().startsWith('infografis:'));
+
+    const recentInfographics = allPublications.filter(isInfographic);
+    const recentArticles = allPublications.filter((item) => !isInfographic(item));
 
     const documents = await db
       .select({
@@ -700,6 +743,7 @@ export class CmsService {
       },
       socialLinks: socials,
       recentArticles,
+      recentInfographics,
       documents,
     };
   }
