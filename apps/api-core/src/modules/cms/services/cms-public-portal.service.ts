@@ -64,6 +64,9 @@ export class CmsPublicPortalService {
         dapilId: tenantMembers.electoralDistrictId,
         customDapil: tenantMembers.customDapilName,
         personalCoverage: tenantMembers.personalCoverage,
+        education: tenantMembers.education,
+        courses: tenantMembers.courses,
+        issueInterests: tenantMembers.issueInterests,
       })
       .from(tenantMembers)
       .where(eq(tenantMembers.id, portal.tenantId))
@@ -230,7 +233,7 @@ export class CmsPublicPortalService {
         headlineTagline: theme?.headlineTagline,
         bioBiography: theme?.bioBiography,
         layoutTemplateId: resolvedLayout,
-        layoutSchema: isPremiumTier ? theme?.layoutSchema : null,
+        layoutSchema: theme?.layoutSchema || null,
       },
       socialLinks: socials,
       recentArticles,

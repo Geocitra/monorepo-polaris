@@ -610,16 +610,24 @@ export default async function DewanProfilePage({
               </div>
 
               {/* Visi Pernyataan Sikap (Ivory Blockquote dengan Aksen Gold) */}
-              <div className="relative p-5 rounded-2xl bg-[#FBF9F5] border-l-4 border-[#96702c] border-y border-r border-amber-100/60 text-slate-700 space-y-2">
-                <div className="text-[10px] font-black uppercase tracking-widest text-[#96702c]">
-                  Visi & Komitmen Pengabdian
+              <div className="relative p-5 sm:p-6 rounded-2xl bg-[#FBF9F5] border-l-4 border-[#96702c] border-y border-r border-amber-100/60 text-slate-700 space-y-3">
+                <div className="text-[10px] font-black uppercase tracking-widest text-[#96702c] flex items-center gap-1.5">
+                  <Sparkles className="w-3.5 h-3.5 text-amber-500" />
+                  <span>Visi &amp; Komitmen Pengabdian</span>
                 </div>
-                <p className="text-xs sm:text-sm italic leading-relaxed text-slate-800">
-                  &ldquo;
-                  {theme?.bioBiography ||
-                    'Mendedikasikan seluruh amanah rakyat untuk memperjuangkan keadilan sosial, mendorong pemerataan infrastruktur ekonomi di daerah pemilihan, dan menegakkan fungsi pengawasan anggaran yang transparan dan akuntabel demi kesejahteraan bersama.'}
-                  &rdquo;
-                </p>
+                {theme?.bioBiography ? (
+                  <div className="space-y-3 text-xs sm:text-sm leading-relaxed text-slate-800">
+                    {theme.bioBiography.split('\n\n').filter(Boolean).map((para: string, idx: number) => (
+                      <p key={idx}>{para.trim()}</p>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="text-xs sm:text-sm italic leading-relaxed text-slate-800">
+                    &ldquo;
+                    Mendedikasikan seluruh amanah rakyat untuk memperjuangkan keadilan sosial, mendorong pemerataan infrastruktur ekonomi di daerah pemilihan, dan menegakkan fungsi pengawasan anggaran yang transparan dan akuntabel demi kesejahteraan bersama.
+                    &rdquo;
+                  </p>
+                )}
               </div>
 
               {/* Counter Ribbon (Pencapaian Kinerja Parlemen) */}
@@ -682,221 +690,300 @@ export default async function DewanProfilePage({
         {/* ========================================================= */}
         {/* SECTION 2: TIGA PILAR KOMITMEN PENGABDIAN                 */}
         {/* ========================================================= */}
-        <section className="space-y-6">
-          <div className="border-b border-slate-200 pb-3 flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <h2 className="text-xl sm:text-2xl font-black text-slate-900 tracking-tight uppercase">
-                Pilar Fokus Pengabdian
-              </h2>
-              <span className="w-8 h-0.5 bg-[#96702c] rounded-full" />
-            </div>
-            <span className="text-xs font-semibold text-slate-500">
-              Prinsip Kerja Parlemen
-            </span>
-          </div>
+        {/* ========================================================= */}
+        {/* SECTION 2: TIGA PILAR KOMITMEN PENGABDIAN                 */}
+        {/* ========================================================= */}
+        {(() => {
+          const visionPillars =
+            Array.isArray(theme?.layoutSchema?.visionMission) &&
+            theme.layoutSchema.visionMission.length > 0
+              ? theme.layoutSchema.visionMission
+              : [
+                  {
+                    title: 'Fungsi Legislasi',
+                    subtitle: 'Legislasikan Solusi Nyata',
+                    description:
+                      'Mengawal penyusunan regulasi dan undang-undang yang berpihak pada pertumbuhan ekonomi lokal, penyederhanaan perizinan UMKM, perlindungan tenaga kerja, dan kepastian hukum yang adil bagi seluruh masyarakat.',
+                  },
+                  {
+                    title: 'Fungsi Anggaran',
+                    subtitle: 'Pengawasan Anggaran Transparan',
+                    description:
+                      'Meneliti dan memastikan setiap alokasi APBN dan transfer ke daerah terealisasi secara tepat sasaran, bebas dari inefisiensi, serta benar-benar dirasakan manfaatnya melalui proyek infrastruktur jalan, sanitasi, dan fasilitas umum di Dapil.',
+                  },
+                  {
+                    title: 'Fungsi Representasi',
+                    subtitle: 'Pendampingan Konstituen Berkelanjutan',
+                    description:
+                      'Menjaga interaksi langsung bersama warga di akar rumput melalui agenda reses reguler, forum rembug desa, bantuan kemanusiaan darurat, serta advokasi langsung masalah agraria dan sosial kemasyarakatan.',
+                  },
+                ];
 
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            {/* Pilar 1 */}
-            <div className="p-6 sm:p-7 rounded-2xl bg-white border border-slate-200/90 shadow-xs hover:border-[#96702c]/60 hover:shadow-md transition-all space-y-4">
-              <div className="w-12 h-12 rounded-2xl bg-amber-50 text-[#96702c] border border-amber-200/60 flex items-center justify-center font-black">
-                <Compass className="w-6 h-6 text-[#96702c]" />
-              </div>
-              <div className="space-y-1">
-                <div className="text-[10px] font-bold text-[#96702c] uppercase tracking-wider">
-                  Fungsi Legislasi
-                </div>
-                <h3 className="text-base sm:text-lg font-bold text-slate-900">
-                  Legislasikan Solusi Nyata
-                </h3>
-              </div>
-              <p className="text-xs text-slate-600 leading-relaxed">
-                Mengawal penyusunan regulasi dan undang-undang yang berpihak pada pertumbuhan ekonomi lokal, penyederhanaan perizinan UMKM, perlindungan tenaga kerja, dan kepastian hukum yang adil bagi seluruh masyarakat.
-              </p>
-            </div>
+          const pillarIcons = [Compass, Building2, HeartHandshake];
 
-            {/* Pilar 2 */}
-            <div className="p-6 sm:p-7 rounded-2xl bg-white border border-slate-200/90 shadow-xs hover:border-[#96702c]/60 hover:shadow-md transition-all space-y-4">
-              <div className="w-12 h-12 rounded-2xl bg-amber-50 text-[#96702c] border border-amber-200/60 flex items-center justify-center font-black">
-                <Building2 className="w-6 h-6 text-[#96702c]" />
-              </div>
-              <div className="space-y-1">
-                <div className="text-[10px] font-bold text-[#96702c] uppercase tracking-wider">
-                  Fungsi Anggaran
+          return (
+            <section className="space-y-6">
+              <div className="border-b border-slate-200 pb-3 flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <h2 className="text-xl sm:text-2xl font-black text-slate-900 tracking-tight uppercase">
+                    Pilar Fokus Pengabdian
+                  </h2>
+                  <span className="w-8 h-0.5 bg-[#96702c] rounded-full" />
                 </div>
-                <h3 className="text-base sm:text-lg font-bold text-slate-900">
-                  Pengawasan Anggaran Transparan
-                </h3>
+                <span className="text-xs font-semibold text-slate-500">
+                  Prinsip Kerja Parlemen
+                </span>
               </div>
-              <p className="text-xs text-slate-600 leading-relaxed">
-                Meneliti dan memastikan setiap alokasi APBN dan transfer ke daerah terealisasi secara tepat sasaran, bebas dari inefisiensi, serta benar-benar dirasakan manfaatnya melalui proyek infrastruktur jalan, sanitasi, dan fasilitas umum di Dapil.
-              </p>
-            </div>
 
-            {/* Pilar 3 */}
-            <div className="p-6 sm:p-7 rounded-2xl bg-white border border-slate-200/90 shadow-xs hover:border-[#96702c]/60 hover:shadow-md transition-all space-y-4">
-              <div className="w-12 h-12 rounded-2xl bg-amber-50 text-[#96702c] border border-amber-200/60 flex items-center justify-center font-black">
-                <HeartHandshake className="w-6 h-6 text-[#96702c]" />
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                {visionPillars.map((pillar: any, pIdx: number) => {
+                  const IconComp = pillarIcons[pIdx % pillarIcons.length] || Compass;
+                  return (
+                    <div
+                      key={pIdx}
+                      className="p-6 sm:p-7 rounded-2xl bg-white border border-slate-200/90 shadow-xs hover:border-[#96702c]/60 hover:shadow-md transition-all space-y-4"
+                    >
+                      <div className="w-12 h-12 rounded-2xl bg-amber-50 text-[#96702c] border border-amber-200/60 flex items-center justify-center font-black">
+                        <IconComp className="w-6 h-6 text-[#96702c]" />
+                      </div>
+                      <div className="space-y-1">
+                        <div className="text-[10px] font-bold text-[#96702c] uppercase tracking-wider">
+                          {pillar.title}
+                        </div>
+                        <h3 className="text-base sm:text-lg font-bold text-slate-900">
+                          {pillar.subtitle || pillar.title}
+                        </h3>
+                      </div>
+                      <p className="text-xs text-slate-600 leading-relaxed">
+                        {pillar.description}
+                      </p>
+                    </div>
+                  );
+                })}
               </div>
-              <div className="space-y-1">
-                <div className="text-[10px] font-bold text-[#96702c] uppercase tracking-wider">
-                  Fungsi Representasi
-                </div>
-                <h3 className="text-base sm:text-lg font-bold text-slate-900">
-                  Pendampingan Konstituen Berkelanjutan
-                </h3>
-              </div>
-              <p className="text-xs text-slate-600 leading-relaxed">
-                Menjaga interaksi langsung bersama warga di akar rumput melalui agenda reses reguler, forum rembug desa, bantuan kemanusiaan darurat, serta advokasi langsung masalah agraria dan sosial kemasyarakatan.
-              </p>
-            </div>
-          </div>
-        </section>
+            </section>
+          );
+        })()}
 
         {/* ========================================================= */}
         {/* SECTION 3: REKAM JEJAK PENDIDIKAN & KARIR PUBLIK          */}
         {/* ========================================================= */}
-        <section className="space-y-6">
-          <div className="border-b border-slate-200 pb-3 flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <h2 className="text-xl sm:text-2xl font-black text-slate-900 tracking-tight uppercase">
-                Riwayat Pengabdian &amp; Pendidikan
-              </h2>
-              <span className="w-8 h-0.5 bg-[#96702c] rounded-full" />
-            </div>
-          </div>
+        {(() => {
+          const formalEduList = member?.education
+            ? member.education
+                .split(/[\n,;]+/)
+                .map((s: string) => s.trim())
+                .filter(Boolean)
+            : [];
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            {/* Kartu Riwayat Pendidikan */}
-            <div className="p-6 sm:p-8 rounded-2xl bg-[#FBF9F5] border border-amber-100/80 shadow-xs space-y-5">
-              <div className="flex items-center gap-3 pb-3 border-b border-amber-200/60">
-                <div className="w-9 h-9 rounded-xl bg-amber-50 text-[#96702c] flex items-center justify-center font-bold">
-                  <GraduationCap className="w-5 h-5 text-[#96702c]" />
-                </div>
-                <div>
-                  <h3 className="text-sm font-bold text-slate-900 uppercase tracking-wide">
-                    Riwayat Pendidikan Formal
-                  </h3>
-                  <p className="text-[11px] text-slate-500">Latar belakang keilmuan & kepakaran</p>
+          const customCareers =
+            Array.isArray(theme?.layoutSchema?.careers) &&
+            theme.layoutSchema.careers.length > 0
+              ? theme.layoutSchema.careers
+              : null;
+
+          return (
+            <section className="space-y-6">
+              <div className="border-b border-slate-200 pb-3 flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <h2 className="text-xl sm:text-2xl font-black text-slate-900 tracking-tight uppercase">
+                    Riwayat Pengabdian &amp; Pendidikan
+                  </h2>
+                  <span className="w-8 h-0.5 bg-[#96702c] rounded-full" />
                 </div>
               </div>
 
-              <div className="space-y-4">
-                <div className="flex items-start gap-3">
-                  <div className="w-2 h-2 rounded-full bg-[#96702c] mt-1.5 shrink-0" />
-                  <div>
-                    <div className="text-xs font-bold text-slate-900">
-                      Doktor (S3) Kebijakan Publik &amp; Tata Kelola
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                {/* Kartu Riwayat Pendidikan */}
+                <div className="p-6 sm:p-8 rounded-2xl bg-[#FBF9F5] border border-amber-100/80 shadow-xs space-y-5">
+                  <div className="flex items-center gap-3 pb-3 border-b border-amber-200/60">
+                    <div className="w-9 h-9 rounded-xl bg-amber-50 text-[#96702c] flex items-center justify-center font-bold">
+                      <GraduationCap className="w-5 h-5 text-[#96702c]" />
                     </div>
-                    <div className="text-[11px] text-[#96702c] font-semibold">
-                      Universitas Indonesia • Lulus dengan Predikat Pujian
+                    <div>
+                      <h3 className="text-sm font-bold text-slate-900 uppercase tracking-wide">
+                        Riwayat Pendidikan Formal
+                      </h3>
+                      <p className="text-[11px] text-slate-500">Latar belakang keilmuan &amp; kepakaran</p>
                     </div>
+                  </div>
+
+                  <div className="space-y-4">
+                    {formalEduList.length > 0 ? (
+                      formalEduList.map((edu: string, idx: number) => (
+                        <div key={idx} className="flex items-start gap-3">
+                          <div className="w-2 h-2 rounded-full bg-[#96702c] mt-1.5 shrink-0" />
+                          <div>
+                            <div className="text-xs font-bold text-slate-900">{edu}</div>
+                            <div className="text-[11px] text-[#96702c] font-semibold">
+                              Kredensial Pendidikan Terverifikasi
+                            </div>
+                          </div>
+                        </div>
+                      ))
+                    ) : (
+                      <>
+                        <div className="flex items-start gap-3">
+                          <div className="w-2 h-2 rounded-full bg-[#96702c] mt-1.5 shrink-0" />
+                          <div>
+                            <div className="text-xs font-bold text-slate-900">
+                              Doktor (S3) Kebijakan Publik &amp; Tata Kelola
+                            </div>
+                            <div className="text-[11px] text-[#96702c] font-semibold">
+                              Universitas Indonesia • Lulus dengan Predikat Pujian
+                            </div>
+                          </div>
+                        </div>
+
+                        <div className="flex items-start gap-3">
+                          <div className="w-2 h-2 rounded-full bg-[#96702c] mt-1.5 shrink-0" />
+                          <div>
+                            <div className="text-xs font-bold text-slate-900">
+                              Master of Science (M.Sc.) Perencanaan Pembangunan
+                            </div>
+                            <div className="text-[11px] text-[#96702c] font-semibold">
+                              National University / Program Pascasarjana Terakreditasi
+                            </div>
+                          </div>
+                        </div>
+
+                        <div className="flex items-start gap-3">
+                          <div className="w-2 h-2 rounded-full bg-[#96702c] mt-1.5 shrink-0" />
+                          <div>
+                            <div className="text-xs font-bold text-slate-900">
+                              Sarjana Teknik (S.T. / Ir.) Infrastruktur Sipil
+                            </div>
+                            <div className="text-[11px] text-[#96702c] font-semibold">
+                              Institut Teknologi Terkemuka Indonesia
+                            </div>
+                          </div>
+                        </div>
+
+                        <div className="flex items-start gap-3">
+                          <div className="w-2 h-2 rounded-full bg-[#96702c] mt-1.5 shrink-0" />
+                          <div>
+                            <div className="text-xs font-bold text-slate-900">
+                              Pendidikan Kepemimpinan Nasional (Lemhannas RI)
+                            </div>
+                            <div className="text-[11px] text-[#96702c] font-semibold">
+                              Lembaga Ketahanan Nasional Republik Indonesia
+                            </div>
+                          </div>
+                        </div>
+                      </>
+                    )}
+
+                    {member?.courses && member.courses.length > 0 && (
+                      <div className="pt-2 border-t border-amber-200/40">
+                        <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wide block mb-1.5">
+                          Pelatihan &amp; Sertifikasi Keparlemenan:
+                        </span>
+                        <div className="flex flex-wrap gap-1.5">
+                          {member.courses.map((course: string, cIdx: number) => (
+                            <span
+                              key={cIdx}
+                              className="px-2 py-0.5 rounded-md bg-amber-50 text-[#96702c] border border-amber-200/80 text-[10px] font-semibold"
+                            >
+                              {course}
+                            </span>
+                          ))}
+                        </div>
+                      </div>
+                    )}
                   </div>
                 </div>
 
-                <div className="flex items-start gap-3">
-                  <div className="w-2 h-2 rounded-full bg-[#96702c] mt-1.5 shrink-0" />
-                  <div>
-                    <div className="text-xs font-bold text-slate-900">
-                      Master of Science (M.Sc.) Perencanaan Pembangunan
+                {/* Kartu Penugasan Parlemen & Organisasi */}
+                <div className="p-6 sm:p-8 rounded-2xl bg-[#FBF9F5] border border-amber-100/80 shadow-xs space-y-5">
+                  <div className="flex items-center gap-3 pb-3 border-b border-amber-200/60">
+                    <div className="w-9 h-9 rounded-xl bg-amber-50 text-[#96702c] flex items-center justify-center font-bold">
+                      <Briefcase className="w-5 h-5 text-[#96702c]" />
                     </div>
-                    <div className="text-[11px] text-[#96702c] font-semibold">
-                      National University / Program Pascasarjana Terakreditasi
-                    </div>
-                  </div>
-                </div>
-
-                <div className="flex items-start gap-3">
-                  <div className="w-2 h-2 rounded-full bg-[#96702c] mt-1.5 shrink-0" />
-                  <div>
-                    <div className="text-xs font-bold text-slate-900">
-                      Sarjana Teknik (S.T. / Ir.) Infrastruktur Sipil
-                    </div>
-                    <div className="text-[11px] text-[#96702c] font-semibold">
-                      Institut Teknologi Terkemuka Indonesia
+                    <div>
+                      <h3 className="text-sm font-bold text-slate-900 uppercase tracking-wide">
+                        Penugasan Parlemen &amp; Pengabdian
+                      </h3>
+                      <p className="text-[11px] text-slate-500">Alat kelengkapan dewan &amp; rekam jejak amanah</p>
                     </div>
                   </div>
-                </div>
 
-                <div className="flex items-start gap-3">
-                  <div className="w-2 h-2 rounded-full bg-[#96702c] mt-1.5 shrink-0" />
-                  <div>
-                    <div className="text-xs font-bold text-slate-900">
-                      Pendidikan Kepemimpinan Nasional (Lemhannas RI)
-                    </div>
-                    <div className="text-[11px] text-[#96702c] font-semibold">
-                      Lembaga Ketahanan Nasional Republik Indonesia
-                    </div>
+                  <div className="space-y-4">
+                    {customCareers && customCareers.length > 0 ? (
+                      customCareers.map((cItem: any, idx: number) => (
+                        <div key={idx} className="flex items-start gap-3">
+                          <div className="w-2 h-2 rounded-full bg-[#96702c] mt-1.5 shrink-0" />
+                          <div>
+                            <div className="text-xs font-bold text-slate-900">{cItem.role}</div>
+                            {cItem.period && (
+                              <div className="text-[11px] text-[#96702c] font-semibold">
+                                {cItem.period}
+                              </div>
+                            )}
+                            {cItem.description && (
+                              <p className="text-[11px] text-slate-600 mt-0.5 leading-relaxed">
+                                {cItem.description}
+                              </p>
+                            )}
+                          </div>
+                        </div>
+                      ))
+                    ) : (
+                      <>
+                        <div className="flex items-start gap-3">
+                          <div className="w-2 h-2 rounded-full bg-[#96702c] mt-1.5 shrink-0" />
+                          <div>
+                            <div className="text-xs font-bold text-slate-900">
+                              Anggota Dewan Perwakilan Rakyat RI (DPR RI)
+                            </div>
+                            <div className="text-[11px] text-[#96702c] font-semibold">
+                              Periode 2024 – 2029 • Fraksi {party}
+                            </div>
+                          </div>
+                        </div>
+
+                        <div className="flex items-start gap-3">
+                          <div className="w-2 h-2 rounded-full bg-[#96702c] mt-1.5 shrink-0" />
+                          <div>
+                            <div className="text-xs font-bold text-slate-900">
+                              Anggota Komisi V (Infrastruktur &amp; Perhubungan)
+                            </div>
+                            <div className="text-[11px] text-[#96702c] font-semibold">
+                              Mengawal program konektivitas jalur logistik &amp; bedah rumah rakyat
+                            </div>
+                          </div>
+                        </div>
+
+                        <div className="flex items-start gap-3">
+                          <div className="w-2 h-2 rounded-full bg-[#96702c] mt-1.5 shrink-0" />
+                          <div>
+                            <div className="text-xs font-bold text-slate-900">
+                              Anggota Badan Anggaran (Banggar) DPR RI
+                            </div>
+                            <div className="text-[11px] text-[#96702c] font-semibold">
+                              Pengawasan efektivitas belanja subsidi pupuk, pendidikan &amp; kesehatan
+                            </div>
+                          </div>
+                        </div>
+
+                        <div className="flex items-start gap-3">
+                          <div className="w-2 h-2 rounded-full bg-[#96702c] mt-1.5 shrink-0" />
+                          <div>
+                            <div className="text-xs font-bold text-slate-900">
+                              Ketua Yayasan Pemberdayaan Ekonomi Konstituen
+                            </div>
+                            <div className="text-[11px] text-[#96702c] font-semibold">
+                              Program inkubasi 250+ wirausaha muda dan UMKM lokal
+                            </div>
+                          </div>
+                        </div>
+                      </>
+                    )}
                   </div>
                 </div>
               </div>
-            </div>
-
-            {/* Kartu Penugasan Parlemen & Organisasi */}
-            <div className="p-6 sm:p-8 rounded-2xl bg-[#FBF9F5] border border-amber-100/80 shadow-xs space-y-5">
-              <div className="flex items-center gap-3 pb-3 border-b border-amber-200/60">
-                <div className="w-9 h-9 rounded-xl bg-amber-50 text-[#96702c] flex items-center justify-center font-bold">
-                  <Briefcase className="w-5 h-5 text-[#96702c]" />
-                </div>
-                <div>
-                  <h3 className="text-sm font-bold text-slate-900 uppercase tracking-wide">
-                    Penugasan Parlemen &amp; Pengabdian
-                  </h3>
-                  <p className="text-[11px] text-slate-500">Alat kelengkapan dewan & rekam jejak amanah</p>
-                </div>
-              </div>
-
-              <div className="space-y-4">
-                <div className="flex items-start gap-3">
-                  <div className="w-2 h-2 rounded-full bg-[#96702c] mt-1.5 shrink-0" />
-                  <div>
-                    <div className="text-xs font-bold text-slate-900">
-                      Anggota Dewan Perwakilan Rakyat RI (DPR RI)
-                    </div>
-                    <div className="text-[11px] text-[#96702c] font-semibold">
-                      Periode 2024 – 2029 • Fraksi {party}
-                    </div>
-                  </div>
-                </div>
-
-                <div className="flex items-start gap-3">
-                  <div className="w-2 h-2 rounded-full bg-[#96702c] mt-1.5 shrink-0" />
-                  <div>
-                    <div className="text-xs font-bold text-slate-900">
-                      Anggota Komisi V (Infrastruktur &amp; Perhubungan)
-                    </div>
-                    <div className="text-[11px] text-[#96702c] font-semibold">
-                      Mengawal program konektivitas jalur logistik & bedah rumah rakyat
-                    </div>
-                  </div>
-                </div>
-
-                <div className="flex items-start gap-3">
-                  <div className="w-2 h-2 rounded-full bg-[#96702c] mt-1.5 shrink-0" />
-                  <div>
-                    <div className="text-xs font-bold text-slate-900">
-                      Anggota Badan Anggaran (Banggar) DPR RI
-                    </div>
-                    <div className="text-[11px] text-[#96702c] font-semibold">
-                      Pengawasan efektivitas belanja subsidi pupuk, pendidikan & kesehatan
-                    </div>
-                  </div>
-                </div>
-
-                <div className="flex items-start gap-3">
-                  <div className="w-2 h-2 rounded-full bg-[#96702c] mt-1.5 shrink-0" />
-                  <div>
-                    <div className="text-xs font-bold text-slate-900">
-                      Ketua Yayasan Pemberdayaan Ekonomi Konstituen
-                    </div>
-                    <div className="text-[11px] text-[#96702c] font-semibold">
-                      Program inkubasi 250+ wirausaha muda dan UMKM lokal
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-        </section>
+            </section>
+          );
+        })()}
 
         {/* ========================================================= */}
         {/* SECTION 4: DOKUMENTASI KEGIATAN & FOTO PRIBADI            */}

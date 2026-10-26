@@ -54,6 +54,9 @@ function BrandingContent() {
   const [subdomainSlug, setSubdomainSlug] = useState('');
   const [customDomain, setCustomDomain] = useState('');
   const [layoutTemplateId, setLayoutTemplateId] = useState('standard-default');
+  const [visionMission, setVisionMission] = useState<any[]>([]);
+  const [careers, setCareers] = useState<any[]>([]);
+  const [layoutSchema, setLayoutSchema] = useState<any>(null);
 
   useEffect(() => {
     async function loadConfig() {
@@ -74,6 +77,15 @@ function BrandingContent() {
           setHeadlineTagline(portalData.theme.headlineTagline || '');
           setBioBiography(portalData.theme.bioBiography || '');
           setLayoutTemplateId(portalData.theme.layoutTemplateId || 'standard-default');
+
+          const schema = portalData.theme.layoutSchema || {};
+          setLayoutSchema(schema);
+          if (Array.isArray(schema.visionMission) && schema.visionMission.length > 0) {
+            setVisionMission(schema.visionMission);
+          }
+          if (Array.isArray(schema.careers) && schema.careers.length > 0) {
+            setCareers(schema.careers);
+          }
         } else if (p?.photoUrl) {
           setOfficialPhotoUrl(p.photoUrl);
         }
@@ -107,6 +119,13 @@ function BrandingContent() {
 
     try {
       const photoToSave = (officialPhotoUrl || profile?.photoUrl || '').trim();
+      const updatedSchema = {
+        ...(layoutSchema || {}),
+        templatePreset: layoutTemplateId,
+        visionMission,
+        careers,
+      };
+
       await ApiClient.request<any>('/cms/theme', {
         method: 'PUT',
         body: JSON.stringify({
@@ -117,6 +136,7 @@ function BrandingContent() {
           officialPhotoUrl: photoToSave,
           headlineTagline,
           bioBiography,
+          layoutSchema: updatedSchema,
         }),
       });
 
@@ -452,6 +472,12 @@ function BrandingContent() {
                     saving={saving}
                     onSubmit={handleSave}
                     partyPresets={PARTY_COLOR_PRESETS}
+                    visionMission={visionMission}
+                    onVisionMissionChange={setVisionMission}
+                    careers={careers}
+                    onCareersChange={setCareers}
+                    profileEducation={profile?.education}
+                    profileCourses={profile?.courses}
                   />
                 </div>
 

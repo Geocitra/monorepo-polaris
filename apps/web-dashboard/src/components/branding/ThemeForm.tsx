@@ -25,6 +25,13 @@ import {
   ChevronRight,
   Info,
   Camera,
+  Compass,
+  Briefcase,
+  GraduationCap,
+  Plus,
+  Trash2,
+  HelpCircle,
+  Lightbulb,
 } from 'lucide-react';
 import { ColorPicker } from '@/components/ui/color-picker';
 import { cn } from '@/lib/utils';
@@ -69,6 +76,18 @@ export const DEFAULT_WEBSITE_COLORS = {
 
 export type FormSectionTab = 'colors' | 'templates' | 'profile' | 'domain' | 'all';
 
+export interface VisionMissionItem {
+  title: string;
+  subtitle?: string;
+  description: string;
+}
+
+export interface CareerItem {
+  role: string;
+  period?: string;
+  description: string;
+}
+
 interface ThemeFormProps {
   primaryColor: string;
   onPrimaryColorChange: (val: string) => void;
@@ -92,6 +111,12 @@ interface ThemeFormProps {
   saving: boolean;
   onSubmit: (e: React.FormEvent) => void;
   partyPresets?: ColorPalette[];
+  visionMission?: VisionMissionItem[];
+  onVisionMissionChange?: (items: VisionMissionItem[]) => void;
+  careers?: CareerItem[];
+  onCareersChange?: (items: CareerItem[]) => void;
+  profileEducation?: string;
+  profileCourses?: string[];
 }
 
 export function ThemeForm({
@@ -116,11 +141,62 @@ export function ThemeForm({
   isUnpaid,
   saving,
   onSubmit,
+  visionMission,
+  onVisionMissionChange,
+  careers,
+  onCareersChange,
+  profileEducation,
+  profileCourses,
 }: ThemeFormProps) {
   const [activeTab, setActiveTab] = useState<FormSectionTab>('colors');
   const [showCustomPicker, setShowCustomPicker] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const effectivePhoto = officialPhotoUrl || profilePhotoUrl || '';
+
+  const defaultVisionMission: VisionMissionItem[] = useMemo(() => [
+    {
+      title: 'Fungsi Legislasi',
+      subtitle: 'Legislasikan Solusi Nyata',
+      description: 'Mengawal penyusunan regulasi yang berpihak pada kesejahteraan rakyat, UMKM, dan kepastian hukum.',
+    },
+    {
+      title: 'Fungsi Anggaran',
+      subtitle: 'Pengawasan Anggaran Transparan',
+      description: 'Memastikan alokasi belanja anggaran terealisasi tepat sasaran dan bebas dari inefisiensi.',
+    },
+    {
+      title: 'Fungsi Representasi',
+      subtitle: 'Pendampingan Konstituen Berkelanjutan',
+      description: 'Menjaga interaksi langsung bersama warga melalui reses reguler dan advokasi aspirasi.',
+    },
+  ], []);
+
+  const currentVisionMission = visionMission && visionMission.length > 0 ? visionMission : defaultVisionMission;
+  const currentCareers = careers || [];
+
+  const handleUpdatePillar = (index: number, field: keyof VisionMissionItem, val: string) => {
+    const updated = currentVisionMission.map((item, i) => (i === index ? { ...item, [field]: val } : item));
+    onVisionMissionChange?.(updated);
+  };
+
+  const handleAddCareer = () => {
+    const newCareer: CareerItem = {
+      role: 'Penugasan / Jabatan Baru',
+      period: '2024 – Sekarang',
+      description: 'Deskripsi tugas, alat kelengkapan dewan, atau rekam jejak...',
+    };
+    onCareersChange?.([...currentCareers, newCareer]);
+  };
+
+  const handleUpdateCareer = (index: number, field: keyof CareerItem, val: string) => {
+    const updated = currentCareers.map((item, i) => (i === index ? { ...item, [field]: val } : item));
+    onCareersChange?.(updated);
+  };
+
+  const handleRemoveCareer = (index: number) => {
+    const updated = currentCareers.filter((_, i) => i !== index);
+    onCareersChange?.(updated);
+  };
 
   useEffect(() => {
     if (!officialPhotoUrl && profilePhotoUrl) {
@@ -549,28 +625,264 @@ export function ThemeForm({
           </p>
         </div>
 
-        {/* BIOGRAFI SINGKAT DEWAN */}
-        <div className="space-y-1.5 pt-3 border-t border-slate-200/60 dark:border-slate-800">
+        {/* BIOGRAFI & NARASI PENGABDIAN DEWAN */}
+        <div className="space-y-2 pt-3 border-t border-slate-200/60 dark:border-slate-800">
           <div className="flex items-center justify-between">
             <label className="text-xs font-bold text-slate-800 dark:text-slate-200 flex items-center gap-1.5 uppercase tracking-wide">
               <FileText className="h-3.5 w-3.5 text-blue-500" />
-              <span>Biografi Singkat Dewan</span>
+              <span>Biografi & Narasi Pengabdian Dewan</span>
             </label>
-            <span className="text-[10px] text-slate-400 font-mono">
-              {bioBiography.length} karakter
-            </span>
+            <div className="flex items-center gap-2 text-[10px] text-slate-400 font-mono">
+              <span>{bioBiography.split('\n\n').filter((p) => p.trim()).length || 1} Paragraf</span>
+              <span>•</span>
+              <span>{bioBiography.length} karakter</span>
+            </div>
           </div>
           <textarea
-            rows={3}
+            rows={5}
             required
-            placeholder="Riwayat pengabdian, komisi, fokus perjuangan legislasi, dan latar belakang profesional..."
+            placeholder="Tuliskan latar belakang pendidikan, nilai perjuangan, kisah pengabdian, dan komitmen legislasi Anda... (Tekan Enter 2x untuk membuat paragraf baru yang rapi di website)."
             value={bioBiography}
             onChange={(e) => onBioBiographyChange(e.target.value)}
-            className="block w-full rounded-xl border border-slate-200 dark:border-slate-700/80 bg-white dark:bg-slate-900 p-3 text-xs sm:text-sm text-slate-900 dark:text-white placeholder:text-slate-400 focus:border-blue-600 focus:bg-white focus:outline-none focus:ring-1 focus:ring-blue-600 transition-all shadow-2xs resize-y"
+            className="block w-full rounded-xl border border-slate-200 dark:border-slate-700/80 bg-white dark:bg-slate-900 p-3.5 text-xs sm:text-sm text-slate-900 dark:text-white placeholder:text-slate-400 focus:border-blue-600 focus:bg-white focus:outline-none focus:ring-1 focus:ring-blue-600 transition-all shadow-2xs resize-y leading-relaxed font-sans"
           />
-          <p className="text-[10.5px] text-slate-500 dark:text-slate-400">
-            Ringkasan profil narasi dewan untuk mengedukasi konstituen mengenai rekam jejak Anda.
-          </p>
+          <div className="flex items-center gap-1.5 p-2 rounded-lg bg-blue-50/70 dark:bg-blue-950/40 border border-blue-100 dark:border-blue-900/50 text-blue-700 dark:text-blue-300 text-[11px]">
+            <Lightbulb className="w-3.5 h-3.5 shrink-0 text-blue-600 dark:text-blue-400" />
+            <span>
+              <strong>Tips Penulisan Parlemen:</strong> Pisahkan antar-paragraf dengan menekan <em>Enter 2 kali</em> agar di website publik otomatis tampil berjarak rapi dan mudah dibaca oleh warga.
+            </span>
+          </div>
+        </div>
+      </div>
+
+      {/* ─── PILAR FOKUS & KOMITMEN PENGABDIAN (3 PILAR PARLEMEN) ─── */}
+      <div className="p-4 rounded-2xl border border-slate-200/80 dark:border-slate-800 bg-slate-50/60 dark:bg-slate-900/40 space-y-3.5">
+        <div className="flex items-center justify-between border-b border-slate-200/60 dark:border-slate-800 pb-2.5">
+          <div>
+            <h4 className="text-xs font-bold text-slate-800 dark:text-slate-200 flex items-center gap-1.5 uppercase tracking-wide">
+              <Compass className="h-3.5 w-3.5 text-amber-500" />
+              <span>3 Pilar Fokus Pengabdian Parlemen</span>
+            </h4>
+            <p className="text-[10.5px] text-slate-500 dark:text-slate-400 mt-0.5">
+              Ditampilkan secara elegan dalam kartu 3 pilar komitmen pada halaman Profil publik dewan.
+            </p>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 gap-3">
+          {currentVisionMission.map((pillar, idx) => (
+            <div
+              key={idx}
+              className="p-3.5 rounded-xl border border-slate-200/70 dark:border-slate-800 bg-white dark:bg-slate-900 space-y-2 shadow-2xs"
+            >
+              <div className="flex items-center justify-between">
+                <span className="text-[10px] font-black uppercase tracking-wider text-amber-600 dark:text-amber-400 flex items-center gap-1.5">
+                  <span className="w-4 h-4 rounded-full bg-amber-100 dark:bg-amber-950/80 text-amber-700 dark:text-amber-300 flex items-center justify-center text-[9px] font-bold">
+                    {idx + 1}
+                  </span>
+                  <span>Pilar Ke-{idx + 1}</span>
+                </span>
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                <div>
+                  <label className="text-[10px] font-bold text-slate-600 dark:text-slate-400 uppercase block mb-1">
+                    Label Fungsi
+                  </label>
+                  <input
+                    type="text"
+                    value={pillar.title}
+                    onChange={(e) => handleUpdatePillar(idx, 'title', e.target.value)}
+                    placeholder="Contoh: Fungsi Legislasi"
+                    className="w-full rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 px-2.5 py-1.5 text-xs text-slate-900 dark:text-white font-medium focus:border-blue-600 focus:outline-none"
+                  />
+                </div>
+                <div>
+                  <label className="text-[10px] font-bold text-slate-600 dark:text-slate-400 uppercase block mb-1">
+                    Judul Komitmen
+                  </label>
+                  <input
+                    type="text"
+                    value={pillar.subtitle || ''}
+                    onChange={(e) => handleUpdatePillar(idx, 'subtitle', e.target.value)}
+                    placeholder="Contoh: Legislasikan Solusi Nyata"
+                    className="w-full rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 px-2.5 py-1.5 text-xs text-slate-900 dark:text-white font-medium focus:border-blue-600 focus:outline-none"
+                  />
+                </div>
+              </div>
+              <div>
+                <label className="text-[10px] font-bold text-slate-600 dark:text-slate-400 uppercase block mb-1">
+                  Uraian Perjuangan
+                </label>
+                <textarea
+                  rows={2}
+                  value={pillar.description}
+                  onChange={(e) => handleUpdatePillar(idx, 'description', e.target.value)}
+                  placeholder="Uraian komitmen nyata Anda untuk fungsi ini..."
+                  className="w-full rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 px-2.5 py-1.5 text-xs text-slate-900 dark:text-white font-normal focus:border-blue-600 focus:outline-none resize-none"
+                />
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* ─── RIWAYAT PENUGASAN & REKAM JEJAK KARIR (DINAMIS) ─── */}
+      <div className="p-4 rounded-2xl border border-slate-200/80 dark:border-slate-800 bg-slate-50/60 dark:bg-slate-900/40 space-y-3.5">
+        <div className="flex items-center justify-between border-b border-slate-200/60 dark:border-slate-800 pb-2.5">
+          <div>
+            <h4 className="text-xs font-bold text-slate-800 dark:text-slate-200 flex items-center gap-1.5 uppercase tracking-wide">
+              <Briefcase className="h-3.5 w-3.5 text-blue-500" />
+              <span>Penugasan Parlemen & Rekam Jejak Amanah</span>
+            </h4>
+            <p className="text-[10.5px] text-slate-500 dark:text-slate-400 mt-0.5">
+              Daftar amanah komisi, badan kelengkapan, organisasi, atau inisiatif sosial dewan.
+            </p>
+          </div>
+          <Button
+            type="button"
+            size="sm"
+            onClick={handleAddCareer}
+            className="bg-blue-600 hover:bg-blue-700 text-white text-[11px] font-bold h-7 px-2.5 rounded-lg gap-1 cursor-pointer shadow-2xs"
+          >
+            <Plus className="w-3 h-3" />
+            <span>Tambah Jabatan</span>
+          </Button>
+        </div>
+
+        {currentCareers.length === 0 ? (
+          <div className="p-4 rounded-xl border border-dashed border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-center space-y-1">
+            <p className="text-xs font-semibold text-slate-600 dark:text-slate-300">
+              Belum ada riwayat penugasan kustom ditambahkan.
+            </p>
+            <p className="text-[11px] text-slate-400">
+              Website publik saat ini akan menampilkan penugasan komisi & fraksi resmi secara otomatis.
+            </p>
+            <div className="pt-1">
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={handleAddCareer}
+                className="text-xs font-bold gap-1 cursor-pointer h-7 text-blue-600 border-blue-200 hover:bg-blue-50"
+              >
+                <Plus className="w-3 h-3" />
+                <span>Tambah Penugasan Pertama</span>
+              </Button>
+            </div>
+          </div>
+        ) : (
+          <div className="space-y-2.5">
+            {currentCareers.map((item, idx) => (
+              <div
+                key={idx}
+                className="p-3 rounded-xl border border-slate-200/70 dark:border-slate-800 bg-white dark:bg-slate-900 space-y-2 shadow-2xs"
+              >
+                <div className="flex items-center justify-between gap-2">
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
+                    Penugasan #{idx + 1}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => handleRemoveCareer(idx)}
+                    className="p-1 rounded text-slate-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-950/50 transition-colors cursor-pointer"
+                    title="Hapus Penugasan Ini"
+                  >
+                    <Trash2 className="w-3.5 h-3.5" />
+                  </button>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                  <div className="sm:col-span-2">
+                    <label className="text-[10px] font-bold text-slate-600 dark:text-slate-400 uppercase block mb-0.5">
+                      Nama Jabatan / Amanah
+                    </label>
+                    <input
+                      type="text"
+                      value={item.role}
+                      onChange={(e) => handleUpdateCareer(idx, 'role', e.target.value)}
+                      placeholder="Contoh: Anggota Komisi V (Infrastruktur)"
+                      className="w-full rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 px-2.5 py-1.5 text-xs text-slate-900 dark:text-white font-medium focus:border-blue-600 focus:outline-none"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-[10px] font-bold text-slate-600 dark:text-slate-400 uppercase block mb-0.5">
+                      Periode
+                    </label>
+                    <input
+                      type="text"
+                      value={item.period || ''}
+                      onChange={(e) => handleUpdateCareer(idx, 'period', e.target.value)}
+                      placeholder="2024 – 2029"
+                      className="w-full rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 px-2.5 py-1.5 text-xs text-slate-900 dark:text-white font-medium focus:border-blue-600 focus:outline-none"
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <label className="text-[10px] font-bold text-slate-600 dark:text-slate-400 uppercase block mb-0.5">
+                    Keterangan Tanggung Jawab / Rekam Jejak
+                  </label>
+                  <input
+                    type="text"
+                    value={item.description}
+                    onChange={(e) => handleUpdateCareer(idx, 'description', e.target.value)}
+                    placeholder="Contoh: Mengawal program konektivitas jalur logistik & bedah rumah rakyat"
+                    className="w-full rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 px-2.5 py-1.5 text-xs text-slate-900 dark:text-white focus:border-blue-600 focus:outline-none"
+                  />
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
+      {/* ─── KREDENSIAL PENDIDIKAN & KURSUS RESMI (TERINTEGRASI) ─── */}
+      <div className="p-4 rounded-2xl border border-slate-200/80 dark:border-slate-800 bg-slate-50/60 dark:bg-slate-900/40 space-y-3">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-1.5">
+            <GraduationCap className="h-4 w-4 text-emerald-500" />
+            <h4 className="text-xs font-bold text-slate-800 dark:text-slate-200 uppercase tracking-wide">
+              Kredensial Pendidikan Formal & Kursus
+            </h4>
+          </div>
+          <Link
+            href="/profile"
+            className="inline-flex items-center gap-1 text-[11px] font-bold text-blue-600 hover:text-blue-700 dark:text-blue-400"
+          >
+            <span>Ubah di Menu Profil</span>
+            <ExternalLink className="w-3 h-3" />
+          </Link>
+        </div>
+
+        <div className="p-3 rounded-xl border border-slate-200/70 dark:border-slate-800 bg-white dark:bg-slate-900 space-y-2">
+          <div>
+            <span className="text-[10px] font-bold text-slate-400 uppercase block">
+              Pendidikan Terdaftar
+            </span>
+            <p className="text-xs font-semibold text-slate-800 dark:text-slate-200 mt-0.5">
+              {profileEducation || (
+                <span className="text-slate-400 italic">Belum mengisi riwayat pendidikan resmi.</span>
+              )}
+            </p>
+          </div>
+
+          {profileCourses && profileCourses.length > 0 && (
+            <div className="pt-2 border-t border-slate-100 dark:border-slate-800">
+              <span className="text-[10px] font-bold text-slate-400 uppercase block mb-1">
+                Diklat & Kursus Parlemen
+              </span>
+              <div className="flex flex-wrap gap-1">
+                {profileCourses.map((c, i) => (
+                  <span
+                    key={i}
+                    className="inline-flex items-center px-2 py-0.5 rounded-md bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800 text-[10px] font-medium"
+                  >
+                    {c}
+                  </span>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
       </div>
     </div>
