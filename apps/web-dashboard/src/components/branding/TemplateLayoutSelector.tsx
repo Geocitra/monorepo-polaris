@@ -482,14 +482,14 @@ export function TemplateLayoutSelector({
       ) : viewMode === 'detailed' ? (
         /* ─── DETAILED CARDS VIEW (1 COLUMN IN SIDEBAR: ALWAYS SPACIOUS & NO TRUNCATION) ─── */
         <div className="grid grid-cols-1 gap-3 max-h-[520px] overflow-y-auto pr-1">
-          {filteredTemplates.map((tpl) => {
+          {filteredTemplates.map((tpl, idx) => {
             const Icon = tpl.icon;
             const isSelected = selectedTemplateId === tpl.id;
             const isLocked = tpl.isPremium && !isPremiumUnlocked;
 
             return (
               <div
-                key={tpl.id}
+                key={tpl.id || `tpl-detail-${idx}`}
                 onClick={() => handleSelect(tpl)}
                 className={cn(
                   'relative p-3.5 rounded-2xl border-2 transition-all cursor-pointer flex flex-col justify-between select-none group',
@@ -573,14 +573,14 @@ export function TemplateLayoutSelector({
       ) : (
         /* ─── COMPACT GRID VIEW (2 COLUMNS IN SIDEBAR) ─── */
         <div className="grid grid-cols-2 gap-2 max-h-[520px] overflow-y-auto pr-1">
-          {filteredTemplates.map((tpl) => {
+          {filteredTemplates.map((tpl, idx) => {
             const Icon = tpl.icon;
             const isSelected = selectedTemplateId === tpl.id;
             const isLocked = tpl.isPremium && !isPremiumUnlocked;
 
             return (
               <div
-                key={tpl.id}
+                key={tpl.id ? `compact-${tpl.id}` : `tpl-compact-${idx}`}
                 onClick={() => handleSelect(tpl)}
                 className={cn(
                   'relative p-2.5 rounded-xl border transition-all cursor-pointer flex flex-col justify-between text-left group',
