@@ -434,14 +434,26 @@ export class BillingService {
   }
 
   async getBillingStatus(tenantId: string): Promise<BillingStatusDto> {
-    const [sub] = await db
+    let [sub] = await db
       .select()
       .from(subscriptions)
       .where(eq(subscriptions.tenantId, tenantId))
       .limit(1);
 
     if (!sub) {
-      throw new NotFoundException('Data langganan tidak ditemukan.');
+      const now = new Date();
+      const [newSub] = await db
+        .insert(subscriptions)
+        .values({
+          tenantId,
+          planTier: PlanTier.PRO,
+          status: SubscriptionStatus.ACTIVE,
+          currentPeriodStart: now,
+          currentPeriodEnd: new Date(now.getTime() + 365 * 24 * 60 * 60 * 1000),
+        })
+        .onConflictDoNothing()
+        .returning();
+      sub = newSub || (await db.select().from(subscriptions).where(eq(subscriptions.tenantId, tenantId)).limit(1))[0];
     }
 
     const currentMonth = new Date().toISOString().slice(0, 7);
@@ -502,7 +514,7 @@ export class BillingService {
 
     if (member?.legislativeLevel) {
       // Ambil SELURUH matriks aktif untuk level ini (3 Tier x 3 Siklus = 9 baris)
-      const allMatrices = await db
+      let allMatrices = await db
         .select()
         .from(subscriptionPriceMatrices)
         .where(
@@ -511,6 +523,19 @@ export class BillingService {
             eq(subscriptionPriceMatrices.isActive, true)
           )
         );
+
+      // Fallback jika belum ada matriks harga spesifik untuk level baru (eksekutif/tokoh publik)
+      if (allMatrices.length === 0) {
+        allMatrices = await db
+          .select()
+          .from(subscriptionPriceMatrices)
+          .where(
+            and(
+              eq(subscriptionPriceMatrices.legislativeLevel, 'DPRD_PROVINSI'),
+              eq(subscriptionPriceMatrices.isActive, true)
+            )
+          );
+      }
 
       const targetTier = (sub.planTier || 'PRO') as any;
       let priceRecords = allMatrices.filter((m) => m.planTier === targetTier);
