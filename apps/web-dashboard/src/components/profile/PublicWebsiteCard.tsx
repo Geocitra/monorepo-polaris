@@ -5,12 +5,14 @@ import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Globe, ExternalLink } from 'lucide-react';
 
+import { getPortalUrl } from '@/lib/urls';
+
 interface PublicWebsiteCardProps {
   subdomain?: string;
 }
 
 export function PublicWebsiteCard({ subdomain }: PublicWebsiteCardProps) {
-  const publicPortalUrl = subdomain ? `http://${subdomain}.localhost:3001` : '#';
+  const publicPortalUrl = subdomain ? getPortalUrl(subdomain) : '#';
 
   return (
     <Card className="p-3.5 sm:p-4 space-y-2.5 shadow-2xs border-slate-200 bg-white rounded-xl">

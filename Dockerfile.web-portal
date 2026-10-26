@@ -25,8 +25,10 @@ RUN pnpm install --frozen-lockfile
 FROM dependencies AS builder
 ARG NEXT_PUBLIC_API_URL="https://api.polarismedia.id/api/v1"
 ARG NEXT_PUBLIC_ROOT_DOMAIN="polarismedia.id"
+ARG NEXT_PUBLIC_DASHBOARD_URL="https://app.polarismedia.id"
 ENV NEXT_PUBLIC_API_URL=$NEXT_PUBLIC_API_URL
 ENV NEXT_PUBLIC_ROOT_DOMAIN=$NEXT_PUBLIC_ROOT_DOMAIN
+ENV NEXT_PUBLIC_DASHBOARD_URL=$NEXT_PUBLIC_DASHBOARD_URL
 
 COPY packages/shared-types/ ./packages/shared-types/
 COPY apps/web-portal/ ./apps/web-portal/
@@ -56,6 +58,6 @@ USER nextjs
 EXPOSE 3001
 
 HEALTHCHECK --interval=30s --timeout=5s --start-period=15s --retries=3 \
-  CMD wget --no-verbose --tries=1 --spider http://localhost:3001 || exit 1
+  CMD wget --no-verbose --tries=1 -O /dev/null http://127.0.0.1:3001 || exit 1
 
 CMD ["node", "apps/web-portal/server.js"]

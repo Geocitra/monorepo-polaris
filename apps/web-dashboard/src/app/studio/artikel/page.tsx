@@ -7,6 +7,7 @@ import { ApiClient } from '@/lib/api-client';
 import { Sidebar } from '@/components/layout/sidebar';
 import { Topbar } from '@/components/layout/topbar';
 import { Button } from '@/components/ui/button';
+import { getPortalUrl } from '@/lib/urls';
 import { useToast } from '@/components/ui/toast';
 import {
   FileText,
@@ -673,9 +674,7 @@ function AIArticleStudioContent() {
         }),
       });
 
-      const portalDomain = profile?.subdomain
-        ? `http://${profile.subdomain}.localhost:3001`
-        : 'http://localhost:3001';
+      const portalDomain = getPortalUrl(profile?.subdomain);
       const cleanSlug = 'kajian-kebijakan-publik';
       setPublishedUrl(`${portalDomain}/artikel/${cleanSlug}`);
 

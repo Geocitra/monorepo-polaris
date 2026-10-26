@@ -16,6 +16,7 @@ import { ThemeForm } from '@/components/branding/ThemeForm';
 import { DeviceSimulator } from '@/components/branding/DeviceSimulator';
 import { DashboardThemeCustomizer } from '@/components/branding/DashboardThemeCustomizer';
 import { Card } from '@/components/ui/card';
+import { getPortalUrl } from '@/lib/urls';
 
 const PARTY_COLOR_PRESETS = [
   { name: 'Golkar', primary: '#F5B800', secondary: '#001529' },
@@ -167,9 +168,7 @@ function BrandingContent() {
   }
 
   const isUnpaid = billing?.subscriptionStatus !== 'ACTIVE';
-  const previewBaseUrl = subdomainSlug
-    ? `http://${subdomainSlug}.localhost:3001`
-    : 'http://default-portal.localhost:3001';
+  const previewBaseUrl = getPortalUrl(subdomainSlug || 'default-portal');
   const previewUrl = `${previewBaseUrl}?preview_template=${encodeURIComponent(layoutTemplateId)}&preview_color=${encodeURIComponent(primaryColor)}`;
 
   const handleLayoutTemplateChange = (newTemplateId: string) => {

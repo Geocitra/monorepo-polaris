@@ -18,6 +18,7 @@ import {
   Database,
 } from 'lucide-react';
 import { ApiClient } from '@/lib/api-client';
+import { getPortalUrl, getRootDomain } from '@/lib/urls';
 import { cn } from '@/lib/utils';
 
 const navItems = [
@@ -163,7 +164,7 @@ export function Sidebar({ subdomain }: { subdomain?: string }) {
       >
         {subdomain && !collapsed && (
           <a
-            href={`http://${subdomain}.localhost:3001`}
+            href={getPortalUrl(subdomain)}
             target="_blank"
             rel="noopener noreferrer"
             className="flex items-center justify-between px-3 py-2 rounded-xl text-xs font-bold transition-colors"
@@ -174,7 +175,7 @@ export function Sidebar({ subdomain }: { subdomain?: string }) {
           >
             <span className="flex items-center gap-2 truncate">
               <Globe className="h-3.5 w-3.5 shrink-0" style={{ color: 'var(--sidebar-brand-accent)' }} />
-              <span className="truncate font-mono">{subdomain}.polaris.id</span>
+              <span className="truncate font-mono">{subdomain}.{getRootDomain()}</span>
             </span>
             <span className="text-[10px] font-extrabold" style={{ color: 'var(--sidebar-brand-accent)' }}>Buka</span>
           </a>

@@ -8,8 +8,9 @@ import { ApiClient } from '@/lib/api-client';
 import { ArrowLeft, CheckCircle2 } from 'lucide-react';
 import { TwoFactorLoginForm } from '@/components/auth/TwoFactorLoginForm';
 import { PolarisLogo } from '@/components/auth/PolarisLogo';
+import { getLandingPageUrl } from '@/lib/urls';
 
-const LANDING_PAGE_URL = process.env.NEXT_PUBLIC_PORTAL_URL || 'http://localhost:3001';
+const LANDING_PAGE_URL = getLandingPageUrl();
 
 function LoginFormContent() {
   const router = useRouter();

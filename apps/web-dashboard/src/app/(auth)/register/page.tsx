@@ -5,8 +5,9 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { ArrowLeft, ShieldCheck, FileCheck, Users, Sparkles, Building2, ExternalLink } from 'lucide-react';
 import { PolarisLogo } from '@/components/auth/PolarisLogo';
+import { getLandingPageUrl } from '@/lib/urls';
 
-const LANDING_PAGE_URL = process.env.NEXT_PUBLIC_PORTAL_URL || 'http://localhost:3001';
+const LANDING_PAGE_URL = getLandingPageUrl();
 
 function EnterpriseRegisterGate() {
   return (

@@ -28,6 +28,7 @@ import {
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
+import { getPortalUrl } from '@/lib/urls';
 import { PUBLIC_OFFICE_ROLE_OPTIONS } from './profile-constants';
 import { InstagramConnectionCard } from '@/components/social/InstagramConnectionCard';
 import { ThreadsConnectionCard } from '@/components/social/ThreadsConnectionCard';
@@ -106,7 +107,7 @@ export function ProfilePreviewView({
   }
 
   const age = calculateAge(birthDate);
-  const portalUrl = subdomain ? `http://${subdomain}.localhost:3001` : '#';
+  const portalUrl = subdomain ? getPortalUrl(subdomain) : '#';
 
   const [lightboxIndex, setLightboxIndex] = useState<number | null>(null);
 

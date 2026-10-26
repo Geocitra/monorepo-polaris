@@ -7,6 +7,7 @@ import { ApiClient } from '@/lib/api-client';
 import { Sidebar } from '@/components/layout/sidebar';
 import { Topbar } from '@/components/layout/topbar';
 import { Button } from '@/components/ui/button';
+import { getPortalUrl } from '@/lib/urls';
 import { useToast } from '@/components/ui/toast';
 import {
   ArrowLeft,
@@ -549,15 +550,7 @@ export default function InfografisStudioPage() {
         }),
       });
 
-      const portalHost =
-        typeof window !== 'undefined' &&
-        (window.location.hostname === 'localhost' || window.location.hostname.endsWith('.localhost'))
-          ? profile?.subdomain
-            ? `http://${profile.subdomain}.localhost:3001`
-            : 'http://localhost:3001'
-          : profile?.subdomain
-            ? `https://${profile.subdomain}.polaris.id`
-            : 'https://polaris.id';
+      const portalHost = getPortalUrl(profile?.subdomain);
 
       const finalUrl = res?.slug
         ? `${portalHost}/artikel/${res.slug}`

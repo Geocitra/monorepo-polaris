@@ -23,6 +23,7 @@ import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 
 import { ThemeForm } from '@/components/branding/ThemeForm';
+import { getPortalUrl } from '@/lib/urls';
 import { DeviceSimulator } from '@/components/branding/DeviceSimulator';
 import { TEMPLATE_LAYOUTS } from '@/components/branding/TemplateLayoutSelector';
 
@@ -171,9 +172,7 @@ function WebsiteStudioContent() {
   }
 
   const isUnpaid = billing?.subscriptionStatus !== 'ACTIVE';
-  const previewBaseUrl = subdomainSlug
-    ? `http://${subdomainSlug}.localhost:3001`
-    : 'http://default-portal.localhost:3001';
+  const previewBaseUrl = getPortalUrl(subdomainSlug || 'default-portal');
   const previewUrl = `${previewBaseUrl}?preview_template=${encodeURIComponent(layoutTemplateId)}&preview_color=${encodeURIComponent(primaryColor)}`;
 
   const handleLayoutTemplateChange = (newTemplateId: string) => {

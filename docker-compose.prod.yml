@@ -138,6 +138,7 @@ services:
       args:
         - NEXT_PUBLIC_API_URL=${NEXT_PUBLIC_API_URL:-https://api.polarismedia.id/api/v1}
         - NEXT_PUBLIC_ROOT_DOMAIN=${NEXT_PUBLIC_ROOT_DOMAIN:-polarismedia.id}
+        - NEXT_PUBLIC_PORTAL_URL=${NEXT_PUBLIC_PORTAL_URL:-https://polarismedia.id}
     container_name: polaris_prod_web_dashboard
     restart: unless-stopped
     env_file:
@@ -148,6 +149,7 @@ services:
       - INTERNAL_API_URL=http://api-core:4000
       - NEXT_PUBLIC_API_URL=${NEXT_PUBLIC_API_URL:-https://api.polarismedia.id/api/v1}
       - NEXT_PUBLIC_ROOT_DOMAIN=${NEXT_PUBLIC_ROOT_DOMAIN:-polarismedia.id}
+      - NEXT_PUBLIC_PORTAL_URL=${NEXT_PUBLIC_PORTAL_URL:-https://polarismedia.id}
     depends_on:
       - api-core
     networks:
@@ -171,6 +173,7 @@ services:
       args:
         - NEXT_PUBLIC_API_URL=${NEXT_PUBLIC_API_URL:-https://api.polarismedia.id/api/v1}
         - NEXT_PUBLIC_ROOT_DOMAIN=${NEXT_PUBLIC_ROOT_DOMAIN:-polarismedia.id}
+        - NEXT_PUBLIC_DASHBOARD_URL=${NEXT_PUBLIC_DASHBOARD_URL:-https://app.polarismedia.id}
     container_name: polaris_prod_web_portal
     restart: unless-stopped
     env_file:
@@ -181,6 +184,7 @@ services:
       - INTERNAL_API_URL=http://api-core:4000
       - NEXT_PUBLIC_API_URL=${NEXT_PUBLIC_API_URL:-https://api.polarismedia.id/api/v1}
       - NEXT_PUBLIC_ROOT_DOMAIN=${NEXT_PUBLIC_ROOT_DOMAIN:-polarismedia.id}
+      - NEXT_PUBLIC_DASHBOARD_URL=${NEXT_PUBLIC_DASHBOARD_URL:-https://app.polarismedia.id}
     depends_on:
       - api-core
     networks:

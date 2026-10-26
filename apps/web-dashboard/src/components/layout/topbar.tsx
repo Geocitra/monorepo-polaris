@@ -23,6 +23,7 @@ import {
 } from 'lucide-react';
 import { ApiClient } from '@/lib/api-client';
 import { useTheme } from '@/contexts/ThemeContext';
+import { getPortalUrl, getRootDomain } from '@/lib/urls';
 import { QuotaBadge } from './quota-badge';
 import { cn, formatDateIndonesian } from '@/lib/utils';
 import { ExpiryAlertModal } from '@/components/billing/ExpiryAlertModal';
@@ -272,7 +273,7 @@ export function Topbar({
             <div className="pt-4 space-y-2" style={{ borderTop: '1px solid var(--sidebar-border)' }}>
               {subdomain && (
                 <a
-                  href={`http://${subdomain}.localhost:3001`}
+                  href={getPortalUrl(subdomain)}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="flex items-center justify-between px-3 py-2 rounded-xl text-xs font-bold transition-colors"
@@ -283,7 +284,7 @@ export function Topbar({
                 >
                   <span className="flex items-center gap-1.5 truncate">
                     <Globe className="h-3.5 w-3.5 shrink-0" style={{ color: 'var(--sidebar-brand-accent)' }} />
-                    <span className="truncate">{subdomain}.polaris.id</span>
+                    <span className="truncate">{subdomain}.{getRootDomain()}</span>
                   </span>
                   <span className="text-[10px] font-extrabold" style={{ color: 'var(--sidebar-brand-accent)' }}>Buka</span>
                 </a>

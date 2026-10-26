@@ -9,6 +9,7 @@ import { useToast } from '@/components/ui/toast';
 import { BookOpen, Plus, Loader2, ArrowLeft } from 'lucide-react';
 import { ArticleFilters } from '@/components/studio/library/ArticleFilters';
 import { ArticleTable } from '@/components/studio/library/ArticleTable';
+import { getPortalUrl } from '@/lib/urls';
 
 export default function ArticleLibraryPage() {
   const { toast } = useToast();
@@ -97,9 +98,7 @@ export default function ArticleLibraryPage() {
     return matchesFilter && matchesSearch;
   });
 
-  const portalDomain = profile?.subdomain
-    ? `http://${profile.subdomain}.localhost:3001`
-    : 'http://localhost:3001';
+  const portalDomain = getPortalUrl(profile?.subdomain);
 
   return (
     <div className="flex min-h-screen bg-slate-100/70 dark:bg-[#070A12] text-slate-900 dark:text-slate-100 font-sans theme-transition">
