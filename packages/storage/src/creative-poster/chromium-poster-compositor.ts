@@ -52,6 +52,7 @@ export interface ChromiumPosterComposeParams {
   };
   signature?: string;
   editionTag?: string;
+  headerTag?: string;
   textToneHint?: 'LIGHT' | 'DARK';
   archetype?: string;
 }
@@ -74,6 +75,7 @@ export class ChromiumPosterCompositor {
       palette = {},
       signature = 'POLARIS // REPUBLIK INDONESIA',
       editionTag = 'POLARIS // EDISI KHUSUS',
+      headerTag,
       textToneHint,
     } = params;
 
@@ -107,7 +109,6 @@ export class ChromiumPosterCompositor {
     const hlLeft = Math.round(hl.x * 1080);
     const hlWidth = Math.round(hl.w * 1080);
 
-    const bdTop = Math.round(bd.y * 1350);
     const bdLeft = Math.round(bd.x * 1080);
     const bdWidth = Math.round(bd.w * 1080);
 
@@ -115,9 +116,16 @@ export class ChromiumPosterCompositor {
     const ftLeft = Math.round(ft.x * 1080);
     const ftWidth = Math.round(ft.w * 1080);
 
+    // Unified Editorial Column bounds (mencegah collision antar elemen 100%):
+    const flowLeft = Math.max(40, Math.min(hlLeft, bdLeft));
+    const flowTop = hlTop;
+    const rawFlowWidth = Math.round(Math.max(hlWidth, bdWidth));
+    const safeFlowWidth = Math.min(rawFlowWidth, 1040 - flowLeft);
+    const flowMaxHeight = Math.max(250, ftTop - flowTop - 20);
+
     // Dynamic Font Sizing berdasarkan panjang judul
     const headlineText = (copy.headline || 'ADVOKASI PUBLIK').toUpperCase();
-    const titleFontSize = headlineText.length > 28 ? 64 : headlineText.length > 18 ? 78 : 92;
+    const titleFontSize = headlineText.length > 28 ? 64 : headlineText.length > 18 ? 76 : 90;
 
     const bgMime =
       meta.format === 'png' ? 'image/png' : meta.format === 'jpeg' ? 'image/jpeg' : 'image/webp';
@@ -128,11 +136,11 @@ export class ChromiumPosterCompositor {
     const pointsHtml = (copy.points || [])
       .map(
         (p: ChromiumPosterPoint) => `
-        <div style="margin-bottom: 14px; display: flex; flex-direction: column;">
-          <div style="font-size: 15px; font-weight: 800; color: ${accentColor}; letter-spacing: 1.5px; text-transform: uppercase; margin-bottom: 2px;">
+        <div class="point-item">
+          <div class="point-label">
             ✦ ${esc(p.label)}
           </div>
-          <div style="font-size: 18px; line-height: 1.35; color: ${secondaryColor}; font-weight: 500;">
+          <div class="point-text">
             ${esc(p.text)}
           </div>
         </div>
@@ -195,22 +203,24 @@ export class ChromiumPosterCompositor {
       text-shadow: ${textShadow};
     }
 
-    /* Headline Area */
-    .headline-zone {
+    /* Unified Editorial Flow Column: Menjamin teks tidak bertumpuk */
+    .editorial-flow-zone {
       position: absolute;
-      top: ${hlTop}px;
-      left: ${hlLeft}px;
-      width: ${hlWidth}px;
+      top: ${flowTop}px;
+      left: ${flowLeft}px;
+      width: ${safeFlowWidth}px;
+      max-height: ${flowMaxHeight}px;
+      box-sizing: border-box;
       display: flex;
       flex-direction: column;
       text-shadow: ${textShadow};
     }
 
     .kicker {
-      font-size: 16px;
+      font-size: 15px;
       font-weight: 800;
       color: ${accentColor};
-      letter-spacing: 3px;
+      letter-spacing: 2.5px;
       text-transform: uppercase;
       margin-bottom: 6px;
     }
@@ -222,37 +232,56 @@ export class ChromiumPosterCompositor {
       color: ${primaryColor};
       letter-spacing: 1.5px;
       margin-bottom: 12px;
+      word-break: break-word;
     }
 
     .deck {
       font-family: 'Playfair Display', serif;
-      font-size: 22px;
+      font-size: 21px;
       line-height: 1.35;
       color: ${secondaryColor};
       font-style: italic;
       font-weight: 500;
-      max-width: 95%;
+      max-width: 96%;
+      margin-bottom: 16px;
     }
 
-    /* Body Editorial Zone */
-    .body-zone {
-      position: absolute;
-      top: ${bdTop}px;
-      left: ${bdLeft}px;
-      width: ${bdWidth}px;
+    .points-container {
       display: flex;
       flex-direction: column;
-      text-shadow: ${textShadow};
+      gap: 12px;
+      margin-bottom: 12px;
+    }
+
+    .point-item {
+      display: flex;
+      flex-direction: column;
+    }
+
+    .point-label {
+      font-size: 14px;
+      font-weight: 800;
+      color: ${accentColor};
+      letter-spacing: 1.5px;
+      text-transform: uppercase;
+      margin-bottom: 2px;
+    }
+
+    .point-text {
+      font-size: 17px;
+      line-height: 1.35;
+      color: ${secondaryColor};
+      font-weight: 500;
     }
 
     .closing-line {
-      font-size: 17px;
+      font-size: 16px;
       font-weight: 700;
       color: ${accentColor};
-      margin-top: 6px;
+      margin-top: 4px;
       border-left: 3px solid ${accentColor};
       padding-left: 12px;
-      line-height: 1.3;
+      line-height: 1.35;
     }
 
     /* Footer Zone */
@@ -289,17 +318,16 @@ export class ChromiumPosterCompositor {
   <div class="ink-layer">
     <div class="edition-tag">
       <span>${esc(editionTag)}</span>
-      <span>DOKUMEN ADVOKASI PUBLIK // PARLEMEN</span>
+      <span>${esc(headerTag || 'DOKUMEN ADVOKASI PUBLIK')}</span>
     </div>
 
-    <div class="headline-zone">
-      <div class="kicker">${esc(copy.kicker || 'PROGRAM KERJA LEGISLATIF')}</div>
+    <div class="editorial-flow-zone">
+      <div class="kicker">${esc(copy.kicker || 'TELAAH KEBIJAKAN')}</div>
       <div class="headline">${esc(headlineText)}</div>
       ${copy.deck ? `<div class="deck">${esc(copy.deck)}</div>` : ''}
-    </div>
-
-    <div class="body-zone">
-      ${pointsHtml}
+      <div class="points-container">
+        ${pointsHtml}
+      </div>
       ${copy.closingLine ? `<div class="closing-line">${esc(copy.closingLine)}</div>` : ''}
     </div>
 
@@ -308,6 +336,30 @@ export class ChromiumPosterCompositor {
       <div class="official-badge">OFFICIAL ADVOCACY // 2026</div>
     </div>
   </div>
+
+  <script>
+    (function() {
+      function fitEditorialFlow() {
+        const flow = document.querySelector('.editorial-flow-zone');
+        if (!flow) return;
+        flow.style.transform = 'none';
+        flow.style.width = '${safeFlowWidth}px';
+
+        const maxH = ${flowMaxHeight};
+        const baseW = ${safeFlowWidth};
+        if (flow.scrollHeight > maxH) {
+          const ratio = Math.max(0.65, (maxH / flow.scrollHeight) * 0.98);
+          flow.style.transform = 'scale(' + ratio + ')';
+          flow.style.transformOrigin = 'top left';
+          flow.style.width = (baseW / ratio) + 'px';
+        }
+      }
+      fitEditorialFlow();
+      if (document.fonts) {
+        document.fonts.ready.then(fitEditorialFlow);
+      }
+    })();
+  </script>
 </body>
 </html>`;
 

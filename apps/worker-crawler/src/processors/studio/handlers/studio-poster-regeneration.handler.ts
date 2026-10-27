@@ -63,6 +63,7 @@ export class StudioPosterRegenerationHandler {
           customDapil: tenantMembers.customDapilName,
           photoUrl: tenantMembers.photoUrl,
           commissionName: tenantMembers.commissionName,
+          legislativeLevel: tenantMembers.legislativeLevel,
         })
         .from(tenantMembers)
         .where(eq(tenantMembers.id, tenantId))
@@ -140,9 +141,7 @@ export class StudioPosterRegenerationHandler {
         variationKey: `${publicationId}:regen:${Date.now()}`,
       });
 
-      const memberSignature = member?.fullName
-        ? `${member.fullName} — ${member.commissionName || 'KOMISI DPR RI'} // ${dapilName}`
-        : `ANGGOTA DEWAN // ${dapilName}`;
+      const roleIdentity = StudioContextHelper.resolveSignatureAndHeader(member, dapilName);
 
       await StudioContextHelper.emitProgress(
         tenantId,
@@ -159,8 +158,9 @@ export class StudioPosterRegenerationHandler {
           accentHex: artCollage.mutation.palette.accentHex,
           secondaryHex: artCollage.mutation.palette.secondaryHex,
         },
-        signature: memberSignature,
-        editionTag: `POLARIS // ${dapilName.toUpperCase()}`,
+        signature: roleIdentity.signature,
+        headerTag: roleIdentity.headerTag,
+        editionTag: roleIdentity.editionTag,
         textToneHint: artCollage.layout.textTone,
         archetype: artCollage.archetype,
       });

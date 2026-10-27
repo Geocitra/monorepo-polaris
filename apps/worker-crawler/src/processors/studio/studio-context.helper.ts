@@ -42,6 +42,97 @@ export class StudioContextHelper {
     return resolvedBrandHex;
   }
 
+  /**
+   * Adaptive Role Profiling: Menghasilkan signature, headerTag, dan editionTag yang tepat
+   * sesuai level jabatan (Tokoh Publik, Kepala Daerah, DPD, DPR/DPRD) tanpa em-dash
+   * dan tanpa memaksakan "KOMISI DPR RI" atau "PARLEMEN" ke tokoh publik.
+   */
+  public static resolveSignatureAndHeader(
+    member?: {
+      fullName?: string | null;
+      commissionName?: string | null;
+      legislativeLevel?: string | null;
+      partyAffiliation?: string | null;
+    } | null,
+    dapilName: string = 'Indonesia'
+  ): { signature: string; headerTag: string; editionTag: string } {
+    const name = member?.fullName?.trim() || 'POLARIS // ADVOKASI PUBLIK';
+    const level = member?.legislativeLevel || 'DPR_RI';
+    const cleanDapil =
+      dapilName && dapilName.toLowerCase() !== 'dapil' ? dapilName.toUpperCase() : 'INDONESIA';
+
+    switch (level) {
+      case 'PIMPINAN_LEMBAGA_REKTOR_SWASTA':
+        return {
+          signature: `${name} // TELAAH & OPINI KEBIJAKAN`,
+          headerTag: 'DOKUMEN ANALISIS PUBLIK',
+          editionTag: `POLARIS // ${cleanDapil}`,
+        };
+      case 'KEPALA_DAERAH_GUBERNUR':
+        return {
+          signature: `${name} // GUBERNUR ${cleanDapil}`,
+          headerTag: 'DOKUMEN KEBIJAKAN DAERAH',
+          editionTag: `POLARIS // ${cleanDapil}`,
+        };
+      case 'KEPALA_DAERAH_WALIKOTA_BUPATI':
+        return {
+          signature: `${name} // KEPALA DAERAH ${cleanDapil}`,
+          headerTag: 'DOKUMEN KEBIJAKAN DAERAH',
+          editionTag: `POLARIS // ${cleanDapil}`,
+        };
+      case 'PEJABAT_BIROKRAT_DIRJEN_SEKJEN_OPD':
+        return {
+          signature: `${name} // ${member?.commissionName || 'PELAYANAN PUBLIK'}`,
+          headerTag: 'INFORMASI KEBIJAKAN PUBLIK',
+          editionTag: `POLARIS // ${cleanDapil}`,
+        };
+      case 'DPD_RI':
+        return {
+          signature: `${name} // DPD RI • ${cleanDapil}`,
+          headerTag: 'DOKUMEN ADVOKASI DAERAH',
+          editionTag: `POLARIS // ${cleanDapil}`,
+        };
+      case 'MPR_RI':
+        return {
+          signature: `${name} // MPR RI • ${cleanDapil}`,
+          headerTag: 'DOKUMEN KEBIJAKAN KEBANGSAAN',
+          editionTag: `POLARIS // ${cleanDapil}`,
+        };
+      case 'DPR_RI': {
+        const comm = member?.commissionName ? `${member.commissionName} • ` : '';
+        return {
+          signature: `${name} // ${comm}DPR RI • ${cleanDapil}`,
+          headerTag: 'DOKUMEN ADVOKASI PUBLIK',
+          editionTag: `POLARIS // ${cleanDapil}`,
+        };
+      }
+      case 'DPRD_PROVINSI': {
+        const comm = member?.commissionName ? `${member.commissionName} • ` : '';
+        return {
+          signature: `${name} // ${comm}DPRD PROVINSI • ${cleanDapil}`,
+          headerTag: 'DOKUMEN ADVOKASI PUBLIK',
+          editionTag: `POLARIS // ${cleanDapil}`,
+        };
+      }
+      case 'DPRD_KABUPATEN_KOTA': {
+        const comm = member?.commissionName ? `${member.commissionName} • ` : '';
+        return {
+          signature: `${name} // ${comm}DPRD • ${cleanDapil}`,
+          headerTag: 'DOKUMEN ADVOKASI PUBLIK',
+          editionTag: `POLARIS // ${cleanDapil}`,
+        };
+      }
+      default: {
+        const comm = member?.commissionName ? `${member.commissionName} • ` : '';
+        return {
+          signature: `${name} // ${comm}TELAAH & ADVOKASI KEBIJAKAN`,
+          headerTag: 'DOKUMEN ADVOKASI PUBLIK',
+          editionTag: `POLARIS // ${cleanDapil}`,
+        };
+      }
+    }
+  }
+
   public static async emitProgress(
     tenantId: string,
     jobId: string,

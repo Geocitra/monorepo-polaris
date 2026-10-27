@@ -280,8 +280,12 @@ export class StudioFullGenerationHandler {
                 customTitle: cleanName,
                 dapilCode: member?.customDapil || null,
                 partyAffiliation: member?.partyAffiliation || null,
-                branchType: 'LEGISLATIF',
-                legislativeLevel: (member?.legislativeLevel as any) || 'DPRD_PROVINSI',
+                branchType: member?.legislativeLevel?.startsWith('KEPALA_DAERAH')
+                  ? 'EKSEKUTIF'
+                  : member?.legislativeLevel === 'PIMPINAN_LEMBAGA_REKTOR_SWASTA'
+                    ? 'PUBLIK'
+                    : 'LEGISLATIF',
+                legislativeLevel: (member?.legislativeLevel as any) || null,
                 privacyScope: 'PRIVATE_TENANT',
                 categoryTag: 'DOKUMEN_INTERNAL',
               });
@@ -617,9 +621,7 @@ export class StudioFullGenerationHandler {
             variationKey: `${publicationId}:${jobId}`,
           });
 
-          const memberSignature = member?.fullName
-            ? `${member.fullName} — ${member.commissionName || 'KOMISI DPR RI'} // ${dapilName}`
-            : `ANGGOTA DEWAN // ${dapilName}`;
+          const roleIdentity = StudioContextHelper.resolveSignatureAndHeader(member, dapilName);
 
           const composed = await ChromiumPosterCompositor.compose({
             canvasBuffer: artCollage.imageBuffer,
@@ -629,8 +631,9 @@ export class StudioFullGenerationHandler {
               accentHex: artCollage.mutation.palette.accentHex,
               secondaryHex: artCollage.mutation.palette.secondaryHex,
             },
-            signature: memberSignature,
-            editionTag: `POLARIS // ${dapilName.toUpperCase()}`,
+            signature: roleIdentity.signature,
+            headerTag: roleIdentity.headerTag,
+            editionTag: roleIdentity.editionTag,
             textToneHint: artCollage.layout.textTone,
             archetype: artCollage.archetype,
           });

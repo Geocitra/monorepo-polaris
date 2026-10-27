@@ -312,8 +312,13 @@ function finalizeCopy(raw: Partial<ArtCollageCopy>, topic: string): ArtCollageCo
       text: clampSentence(s(pt.text), COPY_LIMITS.pointText),
     }));
 
+  let sanitizedKicker = s(raw.kicker);
+  sanitizedKicker = sanitizedKicker
+    .replace(/\b(?:catatan|langkah|agenda|fokus|kabar)\s+parlemen\b/gi, 'TELAAH KEBIJAKAN')
+    .replace(/\bparlemen(?:\s+ri)?\b/gi, 'KEBIJAKAN PUBLIK');
+
   return {
-    kicker: clampWords(s(raw.kicker), COPY_LIMITS.kicker).toUpperCase(),
+    kicker: clampWords(sanitizedKicker, COPY_LIMITS.kicker).toUpperCase(),
     headline: clampWords(
       MasterEditorialSanitizer.cleanHeadline(raw.headline || '', topic),
       COPY_LIMITS.headline
@@ -333,17 +338,22 @@ export async function synthesizeArtCollageCopy(params: {
 }): Promise<ArtCollageCopy> {
   const { topic, groundedContext } = params;
 
-  const systemPrompt = `Anda adalah copywriter poster advokasi kebijakan publik untuk anggota DPR/DPRD.
-Tulis teks poster bertopik: "${topic}".
+  const systemPrompt = `Anda adalah copywriter editorial kebijakan publik profesional berstandar tinggi (mengikuti Master Editorial Rules).
+Tulis teks poster ringkas bertopik: "${topic}".
 ${groundedContext ? `\nFAKTA RISET (gunakan angka HANYA jika ada di sini, jangan mengarang angka):\n${groundedContext.slice(0, 1800)}\n` : ''}
-ATURAN:
-- Bahasa Indonesia baku jurnalistik, tegas, berwibawa, pro-warga. Bukan gaya brosur jualan.
-- headline: 2 sampai 4 kata, maks ${COPY_LIMITS.headline} karakter.
-- kicker: label rubrik singkat di atas judul, maks ${COPY_LIMITS.kicker} karakter.
-- deck: 1 kalimat pengantar tuntas, maks ${COPY_LIMITS.deck} karakter.
-- points: TEPAT 2 atau 3 item. label maks ${COPY_LIMITS.pointLabel} karakter, text 1 kalimat tuntas maks ${COPY_LIMITS.pointText} karakter.
-- closingLine: 1 kalimat penutup/ajakan, maks ${COPY_LIMITS.closing} karakter.
-- DILARANG kata "nyata" dan "sekadar". DILARANG em-dash/en-dash. DILARANG Oxford comma.
+PEDOMAN MASTER EDITORIAL RULES (WAJIB DIPATUHI):
+- Bahasa Indonesia baku, modern, matang, berbobot substantif, bukan gaya birokrasi kaku atau brosur jualan.
+- headline: 2 sampai 4 kata spesifik dan kontemporer, maks ${COPY_LIMITS.headline} karakter.
+- kicker: label rubrik ringkas di atas judul (misal: "TELAAH ISU", "KEBIJAKAN KESEHATAN", "INFRASTRUKTUR WILAYAH"), maks ${COPY_LIMITS.kicker} karakter. Jangan mencantumkan "PARLEMEN" atau "LEGISLATIF" jika bukan akun parlemen.
+- deck: 1 kalimat pengantar tuntas yang memperjelas tesis persoalan (bukan mengulang judul), maks ${COPY_LIMITS.deck} karakter.
+- points: TEPAT 2 atau 3 butir analisis konkret. label maks ${COPY_LIMITS.pointLabel} karakter (misal: "AKSES LAYANAN", "KENDALA ANGGARAN", "SOLUSI TEKNIS"), text 1 kalimat analitis tuntas maks ${COPY_LIMITS.pointText} karakter.
+- closingLine: 1 kalimat sintesis arah tindak lanjut terukur, maks ${COPY_LIMITS.closing} karakter. DILARANG membuat slogan motivasional generik seperti "Bersama kita wujudkan...".
+- PANTANGAN MUTLAK:
+  * DILARANG kata "nyata" (ganti dengan "konkret", "terukur", atau data riil).
+  * DILARANG kata "sekadar".
+  * DILARANG tanda baca em dash (—). Gunakan koma, titik, atau tanda kurung.
+  * DILARANG metafora klise AI ("angin segar", "garda terdepan", "tonggak bersejarah", "merajut asa", "sinergi komprehensif").
+  * DILARANG Oxford comma.
 - visualSubject: deskripsi adegan visual dalam BAHASA INGGRIS (maks 40 kata) yang menggambarkan topik yang sama secara konkret di Indonesia (orang anonim, tempat, benda). Tanpa nama tokoh, tanpa teks/papan nama.
 
 Keluarkan JSON murni:
@@ -366,14 +376,14 @@ Keluarkan JSON murni:
     console.warn(`[ArtCollageDirector] Copy AI gagal, memakai fallback deterministik: ${err?.message}`);
     return finalizeCopy(
       {
-        kicker: 'Catatan Advokasi Publik',
+        kicker: 'Telaah Isu Kebijakan',
         headline: clampWords(topic, COPY_LIMITS.headline),
-        deck: `Pengawasan terukur atas isu ${topic} demi perlindungan kepentingan warga.`,
+        deck: `Evaluasi terukur atas tata kelola ${topic} demi kepentingan masyarakat luas.`,
         points: [
-          { label: 'Persoalan', text: `Isu ${topic} berdampak langsung pada kehidupan sehari-hari warga.` },
-          { label: 'Langkah Parlemen', text: 'Mendorong evaluasi anggaran dan pengawasan lapangan secara berkala.' },
+          { label: 'Urgensi Isu', text: `Persoalan ${topic} memerlukan perbaikan tata kelola dan pengawasan terintegrasi.` },
+          { label: 'Arah Solusi', text: 'Penyusunan regulasi komprehensif dan alokasi sumber daya berbasis data lapangan.' },
         ],
-        closingLine: 'Kami kawal hingga tuntas bersama warga.',
+        closingLine: 'Dibutuhkan komitmen konkret untuk perbaikan berkelanjutan.',
         visualSubject: `everyday Indonesian civic life directly related to: ${topic}`,
       },
       topic

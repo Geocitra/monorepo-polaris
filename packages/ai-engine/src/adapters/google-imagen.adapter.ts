@@ -242,7 +242,9 @@ export class GoogleImagenAdapter {
       if (withReference && params.styleReference) {
         parts.push({ inlineData: { mimeType: params.styleReference.mimeType, data: params.styleReference.base64 } });
       }
-      parts.push({ text: params.prompt });
+      parts.push({
+        text: `CRITICAL INSTRUCTION: Do NOT render any text, words, letters, signatures, numbers, typography, headings, or captions anywhere on this image canvas. The artwork must be 100% clean and completely free of written text or signage. The clearing area must remain blank paper.\n\n${params.prompt}`,
+      });
       const res = await this.client!.models.generateContent({
         model: geminiModel,
         contents: [{ role: 'user', parts }],
