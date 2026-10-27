@@ -97,7 +97,7 @@ async function runMigration() {
       EXCEPTION WHEN duplicate_object THEN null; END $$;
 
       DO $$ BEGIN
-        CREATE TYPE social_platform_enum AS ENUM ('INSTAGRAM', 'X_TWITTER', 'TIKTOK', 'YOUTUBE', 'WHATSAPP');
+        CREATE TYPE social_platform_enum AS ENUM ('INSTAGRAM', 'THREADS', 'X_TWITTER', 'TIKTOK', 'YOUTUBE', 'WHATSAPP');
       EXCEPTION WHEN duplicate_object THEN null; END $$;
 
       DO $$ BEGIN

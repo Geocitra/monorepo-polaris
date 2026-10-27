@@ -1,5 +1,26 @@
 import * as crypto from 'node:crypto';
-import postgres from '../packages/database/node_modules/postgres/src/index.js';
+
+let postgres;
+const candidatePaths = [
+  'postgres',
+  './packages/database/node_modules/postgres/src/index.js',
+  '../packages/database/node_modules/postgres/src/index.js',
+  '../../packages/database/node_modules/postgres/src/index.js',
+  '/app/packages/database/node_modules/postgres/src/index.js',
+  '/app/node_modules/postgres/src/index.js',
+];
+
+for (const p of candidatePaths) {
+  try {
+    const mod = await import(p);
+    postgres = mod.default || mod;
+    if (postgres) break;
+  } catch (e) {}
+}
+
+if (!postgres) {
+  throw new Error('Driver postgres tidak ditemukan di candidate paths.');
+}
 
 const ACCOUNTS_CONFIG = [
   {
@@ -77,6 +98,13 @@ async function main() {
   const sql = postgres(connectionString);
 
   console.log('=== POLARIS SOCIAL ACCOUNT LINKER ===');
+
+  try {
+    await sql.unsafe("ALTER TYPE social_platform_enum ADD VALUE IF NOT EXISTS 'THREADS'");
+    console.log('[DB] Enum social_platform_enum dipastikan mendukung THREADS.');
+  } catch (err) {
+    console.warn('[DB Warning] Info enum:', err.message);
+  }
 
   for (const cfg of ACCOUNTS_CONFIG) {
     console.log(`\n--- Memproses Akun: ${cfg.email} (${cfg.fallbackName}) ---`);
