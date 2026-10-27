@@ -64,7 +64,7 @@ export class ArtCollagePosterPipeline {
     /** Mis. jobId/publicationId: membuat mutasi reproducible untuk audit. */
     variationKey?: string;
   }): Promise<ArtCollagePosterResult> {
-    const blueprint = PosterBlueprintSelector.selectBestBlueprint({
+    const blueprint = await PosterBlueprintSelector.selectBestBlueprintAsync({
       topic: params.topic,
       forcedArchetype: params.forcedArchetype,
       excludeBlueprintId: params.excludeBlueprintId,

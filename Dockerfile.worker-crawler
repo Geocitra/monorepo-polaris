@@ -1,11 +1,20 @@
 # =========================================================================
+# POLARIS WORKER-CRAWLER — Chromium-enabled image
+# Base Debian bookworm-slim (glibc): platform resmi yang didukung Playwright.
+# Alpine/musl TIDAK didukung resmi oleh Playwright Chromium, jadi seluruh stage
+# memakai Debian agar binary native (sharp, chromium) konsisten.
+# =========================================================================
+
+# =========================================================================
 # STAGE 1: BASE ENVIRONMENT
 # =========================================================================
-FROM node:22-alpine AS base
+FROM node:22-bookworm-slim AS base
 ENV PNPM_HOME="/pnpm"
 ENV PATH="$PNPM_HOME:$PATH"
 RUN corepack enable && corepack prepare pnpm@10.2.0 --activate
-RUN apk add --no-cache libc6-compat python3 make g++
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends python3 make g++ ca-certificates \
+    && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
 
@@ -35,16 +44,20 @@ COPY assets/ ./assets/
 RUN pnpm --filter @polaris/worker-crawler... build
 
 # =========================================================================
-# STAGE 4: HEADLESS WORKER RUNNER
+# STAGE 4: HEADLESS WORKER RUNNER (+ Chromium)
 # =========================================================================
-FROM node:22-alpine AS runner
+FROM node:22-bookworm-slim AS runner
 WORKDIR /app
 
 ENV NODE_ENV=production
 ENV NODE_PATH=/app/node_modules:/app/apps/worker-crawler/node_modules
+# Lokasi browser Playwright yang bisa dibaca user non-root
+ENV PLAYWRIGHT_BROWSERS_PATH=/ms-playwright
+# Batas render paralel per worker (Chromium ~150-250MB per tab)
+ENV POSTER_RENDER_CONCURRENCY=2
 
-RUN addgroup --system --gid 1001 nodejs && \
-    adduser --system --uid 1001 nodejs
+RUN groupadd --system --gid 1001 nodejs \
+    && useradd --system --uid 1001 --gid nodejs --create-home --home-dir /home/nodejs nodejs
 
 COPY --from=builder /app/package.json ./package.json
 COPY --from=builder /app/pnpm-workspace.yaml ./pnpm-workspace.yaml
@@ -54,6 +67,14 @@ COPY --from=builder /app/assets ./assets
 COPY --from=builder /app/apps/worker-crawler/package.json ./apps/worker-crawler/package.json
 COPY --from=builder /app/apps/worker-crawler/node_modules ./apps/worker-crawler/node_modules
 COPY --from=builder /app/apps/worker-crawler/dist ./apps/worker-crawler/dist
+
+# Install Chromium headless shell yang VERSINYA PERSIS cocok dengan playwright-core
+# terpasang, beserta seluruh dependency OS (--with-deps) + font fallback emoji/CJK.
+RUN node packages/storage/node_modules/playwright-core/cli.js install --with-deps --only-shell chromium \
+    && apt-get update \
+    && apt-get install -y --no-install-recommends fonts-noto-color-emoji fonts-dejavu-core fontconfig \
+    && rm -rf /var/lib/apt/lists/* \
+    && chmod -R o+rx /ms-playwright
 
 USER nodejs
 

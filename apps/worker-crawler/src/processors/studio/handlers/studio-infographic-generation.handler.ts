@@ -11,12 +11,8 @@ import {
   findSimilarKnowledgeChunks,
   withTenantContext,
 } from '@polaris/database';
-import { OpenAIAIEngineAdapter, AiTelemetryService } from '@polaris/ai-engine';
-import {
-  CloudflareR2StorageAdapter,
-  CreativePosterCompositor,
-  ChromiumPosterCompositor,
-} from '@polaris/storage';
+import { OpenAIAIEngineAdapter } from '@polaris/ai-engine';
+import { CloudflareR2StorageAdapter, ChromiumPosterCompositor } from '@polaris/storage';
 import { ContentStatus, AssetType } from '@polaris/shared-types';
 import { AiCostCalculator } from '@polaris/core-domain';
 import { StudioGenerationJobPayload } from '../../../queues/studio.queue.js';
@@ -99,11 +95,8 @@ export class StudioInfographicGenerationHandler {
       const headlineText =
         data.headline ||
         (cleanPrompt.length <= 80 ? cleanPrompt : cleanPrompt.slice(0, 77) + '...');
-      const quoteText = `Transparansi Kebijakan dan Aspirasi Publik // ${dapilName.toUpperCase()}`;
 
       // Keputusan Desain Mutlak: AI tidak merender wajah tokoh dan sistem tidak menaruh foto tokoh pada poster
-      const subjectPhotoBuffer: Buffer | undefined = undefined;
-      const compositionMode: 'PUBLIC_ADVOCACY' = 'PUBLIC_ADVOCACY';
 
       const tenantBrandHex = await StudioContextHelper.resolveTenantBrandColor(
         tenantId,
@@ -179,150 +172,58 @@ export class StudioInfographicGenerationHandler {
         'Merumuskan naskah editorial dan komposisi visual...'
       );
 
-      let posterBuffer: Buffer | null = null;
-      let posterSizeBytes = 0;
-      let promptUsedJson = '';
+      // Pipeline tunggal Chromium — tanpa fallback Satori. Kegagalan dilempar apa adanya.
+      console.log(`[StudioInfographic] Menjalankan Art-Collage Pipeline + Chromium renderer...`);
+      const artCollage = await aiEngine.generateArtCollagePoster({
+        topic: cleanPrompt,
+        groundedContextSummary,
+        forcedArchetype: (data.forcedArchetype as any) || undefined,
+        tenantBrandHex,
+        tenantId,
+        variationKey: `${publicationId}:${jobId}`,
+      });
 
-      const useArtCollageEngine = process.env.POSTER_ENGINE_MODE !== 'legacy';
+      const memberSignature = member?.fullName
+        ? `${member.fullName} — ${member.commissionName || 'KOMISI DPR RI'} // ${dapilName}`
+        : `ANGGOTA DEWAN // ${dapilName}`;
 
-      if (useArtCollageEngine) {
-        try {
-          console.log(
-            `[StudioInfographic] Menjalankan Art-Collage Pipeline v3 (Zero-Box + Vision Locator)...`
-          );
-          const artCollage = await aiEngine.generateArtCollagePoster({
-            topic: cleanPrompt,
-            groundedContextSummary,
-            forcedArchetype: (data.forcedArchetype as any) || undefined,
-            tenantBrandHex,
-            tenantId,
-            variationKey: `${publicationId}:${jobId}`,
-          });
+      await StudioContextHelper.emitProgress(
+        tenantId,
+        jobId,
+        70,
+        'Merender tipografi poster via Chromium...'
+      );
 
-          const memberSignature = member?.fullName
-            ? `${member.fullName} — ${member.commissionName || 'KOMISI DPR RI'} // ${dapilName}`
-            : `ANGGOTA DEWAN // ${dapilName}`;
+      const composed = await ChromiumPosterCompositor.compose({
+        canvasBuffer: artCollage.imageBuffer,
+        copy: artCollage.copy,
+        zones: artCollage.layout,
+        palette: {
+          accentHex: artCollage.mutation.palette.accentHex,
+          secondaryHex: artCollage.mutation.palette.secondaryHex,
+        },
+        signature: memberSignature,
+        editionTag: `POLARIS // ${dapilName.toUpperCase()}`,
+        textToneHint: artCollage.layout.textTone,
+        archetype: artCollage.archetype,
+      });
 
-          await StudioContextHelper.emitProgress(
-            tenantId,
-            jobId,
-            70,
-            'Merender tipografi Chromium Zero-Box tanpa kotak PowerPoint...'
-          );
-
-          let composed: { buffer: Buffer; sizeBytes: number; detectedLuminance: number; blendModeUsed: string };
-          composed = await ChromiumPosterCompositor.compose({
-            canvasBuffer: artCollage.imageBuffer,
-            copy: artCollage.copy,
-            zones: artCollage.layout,
-            palette: {
-              accentHex: artCollage.mutation.palette.accentHex,
-              secondaryHex: artCollage.mutation.palette.secondaryHex,
-            },
-            signature: memberSignature,
-            editionTag: `POLARIS // ${dapilName.toUpperCase()}`,
-            textToneHint: artCollage.layout.textTone,
-          });
-
-          posterBuffer = composed.buffer;
-          posterSizeBytes = composed.sizeBytes;
-          promptUsedJson = JSON.stringify({
-            engine: 'ART_COLLAGE_V3',
-            blueprintId: artCollage.blueprintId,
-            archetype: artCollage.archetype,
-            referenceFile: artCollage.referenceFile,
-            usedStyleReference: artCollage.usedStyleReference,
-            mutation: artCollage.mutation,
-            layout: artCollage.layout,
-            imagePrompt: artCollage.imagePrompt,
-            imageProvider: artCollage.imageProvider,
-            detectedLuminance: composed.detectedLuminance,
-            blendModeUsed: composed.blendModeUsed,
-          });
-        } catch (artCollageErr: any) {
-          console.warn(
-            `[StudioInfographic] Art-Collage engine mengalami kendala (${artCollageErr.message}), beralih ke engine cadangan...`
-          );
-        }
-      }
-
-      // Fallback legacy bila mode legacy dipaksa atau art-collage gagal
-      if (!posterBuffer) {
-        // 3. Generate background visual tanpa teks
-        const backgroundResult = await aiEngine.generateCreativePosterBackground({
-          topic: cleanPrompt,
-          groundedContextSummary,
-          compositionMode,
-          forcedArchetype: (data.forcedArchetype as any) || undefined,
-          tenantBrandHex,
-          tenantId,
-        });
-
-        // 4. Unduh background buffer
-        let backgroundBuffer: Buffer;
-        if (backgroundResult.temporaryImageUrl.startsWith('data:')) {
-          const base64Part = backgroundResult.temporaryImageUrl.split(',')[1] || '';
-          backgroundBuffer = Buffer.from(base64Part, 'base64');
-        } else {
-          const resp = await fetch(backgroundResult.temporaryImageUrl);
-          backgroundBuffer = Buffer.from(await resp.arrayBuffer());
-        }
-
-        await StudioContextHelper.emitProgress(
-          tenantId,
-          jobId,
-          70,
-          'Merender tipografi grafis resolusi tinggi...'
-        );
-
-        // 5. Komposisi deterministik Satori
-        const composedPoster = await CreativePosterCompositor.composePoster({
-          backgroundBuffer,
-          subjectPhotoBuffer,
-          headline: headlineText,
-          quote: quoteText,
-          memberName: member?.fullName || 'ANGGOTA DEWAN',
-          memberTitle: `${member?.commissionName || 'KOMISI DPR RI'} // ${dapilName}`,
-          archetype: backgroundResult.blueprint.archetype,
-          compositionMode,
-          synthesizedCopy: backgroundResult.compiledPrompt.synthesizedCopy,
-          primaryAccentColor:
-            backgroundResult.blueprint.colorPalette.primaryAccent || tenantBrandHex,
-          canvasWidth: backgroundResult.compiledPrompt.canvasDimensions.width,
-          canvasHeight: backgroundResult.compiledPrompt.canvasDimensions.height,
-          editionTag: `POLARIS // ${dapilName.toUpperCase()}`,
-          outputFormat: 'webp',
-          compositionPlan: backgroundResult.compiledPrompt.compositionPlan,
-          enableVisualQA: true,
-          autoHealContrast: true,
-        });
-
-        // Catat metrik evaluasi visual poster ke telemetry
-        if (composedPoster.qaReport) {
-          AiTelemetryService.recordPosterQAMetrics({
-            tenantId,
-            archetype: backgroundResult.blueprint.archetype,
-            score: composedPoster.qaReport.score,
-            passed: composedPoster.qaReport.passed,
-            issues: composedPoster.qaReport.issues,
-            metrics: composedPoster.qaReport.metrics,
-            recommendation: composedPoster.qaReport.recommendation,
-          }).catch((telErr) =>
-            console.warn('[StudioProcessor] QA telemetry write skipped:', telErr?.message)
-          );
-        }
-
-        posterBuffer = composedPoster.buffer;
-        posterSizeBytes = composedPoster.sizeBytes;
-        promptUsedJson = JSON.stringify({
-          blueprintId: backgroundResult.blueprint.id,
-          blueprint: backgroundResult.blueprint.name,
-          archetype: backgroundResult.blueprint.archetype,
-          compositionPlan: backgroundResult.compiledPrompt.compositionPlan,
-          compiledPrompt: backgroundResult.compiledPrompt.englishPrompt,
-          qaReport: composedPoster.qaReport,
-        });
-      }
+      const posterBuffer = composed.buffer;
+      const posterSizeBytes = composed.sizeBytes;
+      const promptUsedJson = JSON.stringify({
+        engine: 'ART_COLLAGE_CHROMIUM',
+        renderer: 'chromium',
+        blueprintId: artCollage.blueprintId,
+        archetype: artCollage.archetype,
+        referenceFile: artCollage.referenceFile,
+        usedStyleReference: artCollage.usedStyleReference,
+        mutation: artCollage.mutation,
+        layout: artCollage.layout,
+        imagePrompt: artCollage.imagePrompt,
+        imageProvider: artCollage.imageProvider,
+        detectedLuminance: composed.detectedLuminance,
+        blendModeUsed: composed.blendModeUsed,
+      });
 
       await StudioContextHelper.emitProgress(tenantId, jobId, 85, 'Menyimpan aset infografis HD...');
 
@@ -332,7 +233,7 @@ export class StudioInfographicGenerationHandler {
       const destPath = `posters/${tenantId}/${Date.now()}-${publicationId}.webp`;
 
       try {
-        const uploadResult = await storageAdapter.uploadBuffer(posterBuffer!, {
+        const uploadResult = await storageAdapter.uploadBuffer(posterBuffer, {
           destinationPath: destPath,
           contentType: 'image/webp',
           contentLength: posterSizeBytes,
@@ -340,7 +241,7 @@ export class StudioInfographicGenerationHandler {
         finalPublicUrl = uploadResult.publicUrl;
       } catch (storageErr) {
         console.warn(`[StudioProcessor] Buffer upload gagal, beralih ke fallback:`, storageErr);
-        finalPublicUrl = `data:image/webp;base64,${posterBuffer!.toString('base64')}`;
+        finalPublicUrl = `data:image/webp;base64,${posterBuffer.toString('base64')}`;
       }
 
       // 7. Simpan ke database

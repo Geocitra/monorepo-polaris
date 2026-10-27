@@ -127,11 +127,14 @@ services:
         condition: service_started
     networks:
       - polaris_prod_net
+    # Chromium butuh /dev/shm lebih besar & init process untuk me-reap zombie child process
+    shm_size: '512mb'
+    init: true
     deploy:
       resources:
         limits:
-          cpus: '0.5'
-          memory: 200M
+          cpus: '1.0'
+          memory: 1G
 
   # =========================================================================
   # 5. PRIVATE EXECUTIVE WORKSPACE: NEXT.JS STANDALONE DASHBOARD

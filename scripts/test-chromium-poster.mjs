@@ -1,5 +1,5 @@
 import fs from 'node:fs/promises';
-import { ChromiumPosterCompositor } from '../packages/storage/dist/index.mjs';
+import { ChromiumPosterCompositor, BrowserSingleton } from '../packages/storage/dist/index.mjs';
 
 async function test() {
   console.log('Testing ChromiumPosterCompositor...');
@@ -49,6 +49,7 @@ async function test() {
 
   await fs.writeFile('uploads/test_renders/test_chromium_output.webp', result.buffer);
   console.log('Saved to uploads/test_renders/test_chromium_output.webp');
+  await BrowserSingleton.close();
 }
 
 test().catch(console.error);

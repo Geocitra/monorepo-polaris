@@ -35,3 +35,4 @@ export * from './layouts/art-collage-overlay.layout.js';
 export * from './art-collage-compositor.js';
 export * from './browser-singleton.js';
 export * from './chromium-poster-compositor.js';
+export * from './chromium-font-face.js';

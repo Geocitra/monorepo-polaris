@@ -1,5 +1,21 @@
 import sharp from 'sharp';
 import { BrowserSingleton } from './browser-singleton.js';
+import { ChromiumFontFace } from './chromium-font-face.js';
+
+/** Escape teks dinamis (hasil AI / input user) sebelum disisipkan ke HTML. */
+function esc(value: unknown): string {
+  return String(value ?? '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
+/** Validasi warna hex agar nilai dari AI tidak bisa menyuntik CSS. */
+function safeHex(value: string | undefined, fallback: string): string {
+  return value && /^#[0-9a-fA-F]{3,8}$/.test(value) ? value : fallback;
+}
 
 export interface ChromiumPosterPoint {
   label: string;
@@ -62,7 +78,10 @@ export class ChromiumPosterCompositor {
     } = params;
 
     // 1. Deteksi Luminansi Rata-rata Kanvas menggunakan Sharp
-    const stats = await sharp(canvasBuffer).stats();
+    const [stats, meta] = await Promise.all([
+      sharp(canvasBuffer).stats(),
+      sharp(canvasBuffer).metadata(),
+    ]);
     const [r, g, b] = stats.channels.map((c) => c.mean);
     const luminance = 0.299 * r + 0.587 * g + 0.114 * b;
 
@@ -73,8 +92,8 @@ export class ChromiumPosterCompositor {
     const blendModeUsed: 'multiply' | 'normal' = isLightPaper ? 'multiply' : 'normal';
 
     const primaryColor = isLightPaper ? '#111827' : '#FFFFFF';
-    const accentColor = palette.accentHex || (isLightPaper ? '#DC2626' : '#FBBF24');
-    const secondaryColor = palette.secondaryHex || (isLightPaper ? '#4B5563' : '#E2E8F0');
+    const accentColor = safeHex(palette.accentHex, isLightPaper ? '#DC2626' : '#FBBF24');
+    const secondaryColor = safeHex(palette.secondaryHex, isLightPaper ? '#4B5563' : '#E2E8F0');
     const textShadow = isLightPaper
       ? 'none'
       : '0 2px 14px rgba(0, 0, 0, 0.85), 0 1px 3px rgba(0, 0, 0, 0.9)';
@@ -100,18 +119,21 @@ export class ChromiumPosterCompositor {
     const headlineText = (copy.headline || 'ADVOKASI PUBLIK').toUpperCase();
     const titleFontSize = headlineText.length > 28 ? 64 : headlineText.length > 18 ? 78 : 92;
 
-    const bgBase64 = `data:image/webp;base64,${canvasBuffer.toString('base64')}`;
+    const bgMime =
+      meta.format === 'png' ? 'image/png' : meta.format === 'jpeg' ? 'image/jpeg' : 'image/webp';
+    const bgBase64 = `data:${bgMime};base64,${canvasBuffer.toString('base64')}`;
+    const fontFaceCss = await ChromiumFontFace.getCss();
 
-    // Bangun poin-poin HTML dinamis
+    // Bangun poin-poin HTML dinamis (semua teks di-escape)
     const pointsHtml = (copy.points || [])
       .map(
         (p: ChromiumPosterPoint) => `
         <div style="margin-bottom: 14px; display: flex; flex-direction: column;">
           <div style="font-size: 15px; font-weight: 800; color: ${accentColor}; letter-spacing: 1.5px; text-transform: uppercase; margin-bottom: 2px;">
-            ✦ ${p.label}
+            ✦ ${esc(p.label)}
           </div>
           <div style="font-size: 18px; line-height: 1.35; color: ${secondaryColor}; font-weight: 500;">
-            ${p.text}
+            ${esc(p.text)}
           </div>
         </div>
       `
@@ -123,7 +145,7 @@ export class ChromiumPosterCompositor {
 <head>
   <meta charset="utf-8">
   <style>
-    @import url('https://fonts.googleapis.com/css2?family=Anton&family=Bebas+Neue&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Playfair+Display:ital,wght@0,600;0,700;1,500&display=swap');
+    ${fontFaceCss}
 
     * {
       box-sizing: border-box;
@@ -266,23 +288,23 @@ export class ChromiumPosterCompositor {
 <body>
   <div class="ink-layer">
     <div class="edition-tag">
-      <span>${editionTag}</span>
+      <span>${esc(editionTag)}</span>
       <span>DOKUMEN ADVOKASI PUBLIK // PARLEMEN</span>
     </div>
 
     <div class="headline-zone">
-      <div class="kicker">${copy.kicker || 'PROGRAM KERJA LEGISLATIF'}</div>
-      <div class="headline">${headlineText}</div>
-      ${copy.deck ? `<div class="deck">${copy.deck}</div>` : ''}
+      <div class="kicker">${esc(copy.kicker || 'PROGRAM KERJA LEGISLATIF')}</div>
+      <div class="headline">${esc(headlineText)}</div>
+      ${copy.deck ? `<div class="deck">${esc(copy.deck)}</div>` : ''}
     </div>
 
     <div class="body-zone">
       ${pointsHtml}
-      ${copy.closingLine ? `<div class="closing-line">${copy.closingLine}</div>` : ''}
+      ${copy.closingLine ? `<div class="closing-line">${esc(copy.closingLine)}</div>` : ''}
     </div>
 
     <div class="footer-zone">
-      <div class="signature-title">${signature}</div>
+      <div class="signature-title">${esc(signature)}</div>
       <div class="official-badge">OFFICIAL ADVOCACY // 2026</div>
     </div>
   </div>

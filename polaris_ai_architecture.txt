@@ -81,10 +81,10 @@ Sistem membedah referensi desain menjadi 22 Arketipe Desain Terstruktur:
 ================================================================================
 
 ======================================================================
---- BERKAS: packages/database/src/schema/identity.ts (130 baris, 6.9 KB) ---
+--- BERKAS: packages/database/src/schema/identity.ts (131 baris, 7.1 KB) ---
 ======================================================================
 import { pgTable, uuid, varchar, timestamp, text, boolean, integer, jsonb, unique } from 'drizzle-orm/pg-core';
-import { legislativeLevelEnum, operatorAssignmentStatusEnum } from './enums.js';
+import { legislativeLevelEnum, operatorAssignmentStatusEnum, superadminRoleEnum } from './enums.js';
 
 export const electoralDistricts = pgTable('electoral_districts', {
   id: uuid('id').defaultRandom().primaryKey(),
@@ -96,6 +96,30 @@ export const electoralDistricts = pgTable('electoral_districts', {
   createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
 });
 
+export const masterPoliticalParties = pgTable('master_political_parties', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  code: varchar('code', { length: 30 }).notNull().unique(),
+  name: varchar('name', { length: 150 }).notNull(),
+  ballotNumber: integer('ballot_number'),
+  primaryColor: varchar('primary_color', { length: 20 }).notNull(),
+  secondaryColor: varchar('secondary_color', { length: 20 }),
+  logoUrl: text('logo_url'),
+  description: text('description'),
+  isActive: boolean('is_active').default(true).notNull(),
+  createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
+});
+
+export const masterCommissions = pgTable('master_commissions', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  legislativeLevel: legislativeLevelEnum('legislative_level').notNull(),
+  code: varchar('code', { length: 50 }).notNull(),
+  name: varchar('name', { length: 150 }).notNull(),
+  focusAreas: text('focus_areas').array(),
+  partnerMinistries: text('partner_ministries').array(),
+  createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+});
+
 export const tenantMembers = pgTable('tenant_members', {
   id: uuid('id').defaultRandom().primaryKey(),
   email: varchar('email', { length: 255 }).notNull().unique(),
@@ -103,11 +127,12 @@ export const tenantMembers = pgTable('tenant_members', {
   fullName: varchar('full_name', { length: 150 }).notNull(),
   phoneNumber: varchar('phone_number', { length: 30 }).notNull(),
   partyAffiliation: varchar('party_affiliation', { length: 100 }),
+  politicalPartyId: uuid('political_party_id').references(() => masterPoliticalParties.id, { onDelete: 'set null' }),
   legislativeLevel: legislativeLevelEnum('legislative_level').notNull(),
   electoralDistrictId: uuid('electoral_district_id').references(() => electoralDistricts.id, { onDelete: 'restrict' }),
   customDapilName: varchar('custom_dapil_name', { length: 100 }),
   personalCoverage: text('personal_coverage').array().default([]),
-  commissionId: uuid('commission_id'),
+  commissionId: uuid('commission_id').references(() => masterCommissions.id, { onDelete: 'set null' }),
   commissionName: varchar('commission_name', { length: 150 }),
   photoUrl: text('photo_url'),
   photoGallery: text('photo_gallery').array().default([]),
@@ -142,36 +167,12 @@ export const systemAdmins = pgTable('system_admins', {
   email: varchar('email', { length: 255 }).notNull().unique(),
   passwordHash: varchar('password_hash', { length: 255 }).notNull(),
   fullName: varchar('full_name', { length: 150 }).notNull(),
-  role: varchar('role', { length: 50 }).default('SUPERADMIN').notNull(),
+  role: superadminRoleEnum('role').default('SUPERADMIN').notNull(),
   isActive: boolean('is_active').default(true).notNull(),
   avatarUrl: text('avatar_url'),
   lastLoginAt: timestamp('last_login_at', { withTimezone: true }),
   createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
   updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
-});
-
-export const masterPoliticalParties = pgTable('master_political_parties', {
-  id: uuid('id').defaultRandom().primaryKey(),
-  code: varchar('code', { length: 30 }).notNull().unique(),
-  name: varchar('name', { length: 150 }).notNull(),
-  ballotNumber: integer('ballot_number'),
-  primaryColor: varchar('primary_color', { length: 20 }).notNull(),
-  secondaryColor: varchar('secondary_color', { length: 20 }),
-  logoUrl: text('logo_url'),
-  description: text('description'),
-  isActive: boolean('is_active').default(true).notNull(),
-  createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
-  updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
-});
-
-export const masterCommissions = pgTable('master_commissions', {
-  id: uuid('id').defaultRandom().primaryKey(),
-  legislativeLevel: legislativeLevelEnum('legislative_level').notNull(),
-  code: varchar('code', { length: 50 }).notNull(),
-  name: varchar('name', { length: 150 }).notNull(),
-  focusAreas: text('focus_areas').array(),
-  partnerMinistries: text('partner_ministries').array(),
-  createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
 });
 
 export const tenantActivityLogs = pgTable('tenant_activity_logs', {
@@ -216,10 +217,11 @@ export const operatorAuditLogs = pgTable('operator_audit_logs', {
 
 
 ======================================================================
---- BERKAS: packages/database/src/schema/content.ts (46 baris, 2.5 KB) ---
+--- BERKAS: packages/database/src/schema/content.ts (47 baris, 2.6 KB) ---
 ======================================================================
 import { pgTable, uuid, varchar, text, integer, timestamp, jsonb, bigint, unique } from 'drizzle-orm/pg-core';
 import { tenantMembers, systemAdmins } from './identity.js';
+import { researchJobs } from './research.js';
 import { contentStatusEnum, assetTypeEnum, contentCreationContextEnum } from './enums.js';
 
 export const contentPublications = pgTable('content_publications', {
@@ -233,7 +235,7 @@ export const contentPublications = pgTable('content_publications', {
   status: contentStatusEnum('status').default('DRAFT').notNull(),
   canonicalUrl: text('canonical_url').notNull(),
   commentCount: integer('comment_count').default(0).notNull(),
-  researchJobId: uuid('research_job_id'),
+  researchJobId: uuid('research_job_id').references(() => researchJobs.id, { onDelete: 'set null' }),
   createdByOperatorId: uuid('created_by_operator_id').references(() => systemAdmins.id, { onDelete: 'set null' }),
   createdContext: contentCreationContextEnum('created_context').default('MEMBER').notNull(),
   publishedAt: timestamp('published_at', { withTimezone: true }),
@@ -271,7 +273,7 @@ export const socialSyndicationPacks = pgTable('social_syndication_packs', {
 ======================================================================
 import { pgTable, uuid, varchar, text, boolean, timestamp, unique, jsonb, integer, index } from 'drizzle-orm/pg-core';
 import { tenantMembers } from './identity.js';
-import { socialPlatformEnum } from './enums.js';
+import { docTypeEnum, socialPlatformEnum } from './enums.js';
 
 export const portalConfigs = pgTable('portal_configs', {
   id: uuid('id').defaultRandom().primaryKey(),
@@ -308,7 +310,7 @@ export const portalDocuments = pgTable('portal_documents', {
   id: uuid('id').defaultRandom().primaryKey(),
   portalId: uuid('portal_id').notNull().references(() => portalConfigs.id, { onDelete: 'cascade' }),
   title: varchar('title', { length: 255 }).notNull(),
-  docType: varchar('doc_type', { length: 50 }).default('REPORT_TRIWULAN').notNull(),
+  docType: docTypeEnum('doc_type').default('REPORT_TRIWULAN').notNull(),
   description: text('description'),
   fileUrl: text('file_url').notNull(),
   fileSizeBytes: integer('file_size_bytes'),
@@ -342,9 +344,9 @@ export const portalNewsletterSubscribers = pgTable('portal_newsletter_subscriber
 
 
 ======================================================================
---- BERKAS: packages/database/src/schema/research.ts (180 baris, 8.4 KB) ---
+--- BERKAS: packages/database/src/schema/research.ts (183 baris, 8.7 KB) ---
 ======================================================================
-import { pgTable, uuid, varchar, text, integer, real, timestamp, boolean, jsonb, index, check } from 'drizzle-orm/pg-core';
+import { pgTable, uuid, varchar, text, integer, real, timestamp, boolean, jsonb, index, check, unique, uniqueIndex } from 'drizzle-orm/pg-core';
 import { sql } from 'drizzle-orm';
 import { tenantMembers } from './identity.js';
 import {
@@ -401,7 +403,7 @@ export const researchQuestions = pgTable('research_questions', {
  */
 export const sources = pgTable('sources', {
   id: uuid('id').defaultRandom().primaryKey(),
-  url: text('url').notNull(),
+  url: text('url').notNull().unique(),
   canonicalUrl: text('canonical_url'),
   sourceType: sourceTypeEnum('source_type').notNull(),
   publisherName: varchar('publisher_name', { length: 255 }),
@@ -416,6 +418,7 @@ export const sources = pgTable('sources', {
   createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
 }, (t) => ({
   urlIdx: index('idx_sources_url').on(t.url),
+  canonicalUrlIdx: uniqueIndex('idx_sources_canonical_url').on(t.canonicalUrl),
   lifecycleIdx: index('idx_sources_lifecycle').on(t.lifecycleStatus),
 }));
 
@@ -431,6 +434,7 @@ export const researchJobSources = pgTable('research_job_sources', {
   createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
 }, (t) => ({
   jobSourceIdx: index('idx_research_job_sources_pair').on(t.researchJobId, t.sourceId),
+  unqJobSource: unique().on(t.researchJobId, t.sourceId),
 }));
 
 /**
@@ -448,6 +452,7 @@ export const sourceVersions = pgTable('source_versions', {
   createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
 }, (t) => ({
   sourceHashIdx: index('idx_source_versions_source_hash').on(t.sourceId, t.contentHash),
+  unqSourceContent: unique().on(t.sourceId, t.contentHash),
 }));
 
 /**
@@ -527,7 +532,7 @@ export const researchOutputs = pgTable('research_outputs', {
 
 
 ======================================================================
---- BERKAS: packages/database/src/schema/enums.ts (189 baris, 3.5 KB) ---
+--- BERKAS: packages/database/src/schema/enums.ts (194 baris, 3.6 KB) ---
 ======================================================================
 import { pgEnum } from 'drizzle-orm/pg-core';
 
@@ -607,6 +612,11 @@ export const docTypeEnum = pgEnum('doc_type_enum', [
   'RPJMD',
   'BPS_STATISTIC',
   'NOTULA_SIDANG',
+  'REPORT_TRIWULAN',
+  'DRAFT_RUU',
+  'BULETIN',
+  'KAJIAN_AKADEMIS',
+  'OTHER',
 ]);
 
 export const legalStatusEnum = pgEnum('legal_status_enum', [
@@ -801,11 +811,12 @@ export function getActiveImageProvider(): ImageGeneratorProvider {
 
 
 ======================================================================
---- BERKAS: packages/ai-engine/src/adapters/google-imagen.adapter.ts (306 baris, 10.9 KB) ---
+--- BERKAS: packages/ai-engine/src/adapters/google-imagen.adapter.ts (315 baris, 11.5 KB) ---
 ======================================================================
 import { GoogleGenAI } from '@google/genai';
 import { googleGenAiClient } from '../client.js';
 import { AiTelemetryService } from '../telemetry/ai-telemetry.service.js';
+import { sanitizeImageGenerationPrompt } from '../creative-poster/prompt-compiler.js';
 
 export interface GenerateGoogleImagenParams {
   prompt: string;
@@ -863,9 +874,10 @@ export class GoogleImagenAdapter {
     });
 
     try {
-      // Prompt conditioning adaptif sesuai gaya blueprint
+      // Prompt conditioning adaptif sesuai gaya blueprint yang disanitasi
       const defaultSuffix = 'editorial lighting, authentic atmosphere, high visual depth, clean empty negative space';
-      const suffix = params.stylePromptSuffix || defaultSuffix;
+      const rawSuffix = params.stylePromptSuffix || defaultSuffix;
+      const suffix = sanitizeImageGenerationPrompt(rawSuffix);
       const refinedPrompt = `${params.prompt}, ${suffix}`;
       let temporaryImageUrl: string | undefined;
 
@@ -919,10 +931,17 @@ export class GoogleImagenAdapter {
           ? process.env.GOOGLE_IMAGE_MODEL
           : 'gemini-3.1-flash-image';
 
+      // Selaraskan larangan Jalur 1 agar menghormati elemen yang diizinkan (allowed: banner, frame, border)
+      const forbiddenLayoutTerms = ['UI cards', 'boxes', 'graphic layout templates'];
+      if (!allowed.includes('frame')) forbiddenLayoutTerms.push('frames');
+      if (!allowed.includes('banner')) forbiddenLayoutTerms.push('banners');
+      if (!allowed.includes('border')) forbiddenLayoutTerms.push('borders');
+      const forbiddenLayoutStr = forbiddenLayoutTerms.join(', ');
+
       try {
         const contentResponse = await this.client.models.generateContent({
           model: studioImageModel,
-          contents: `${refinedPrompt}. Visual aspect ratio: ${aspectRatio}. Generate a pure, textless photograph or illustration artwork only. DO NOT design a poster, DO NOT draw any UI cards, boxes, frames, banners, or graphic layout templates, and DO NOT render any letters, words, numbers, or hex color codes anywhere in the image. Strict negative constraint: clean background, no text, no typography, no words, no human portrait in center, no double subjects.`,
+          contents: `${refinedPrompt}. Visual aspect ratio: ${aspectRatio}. Generate a pure, textless photograph or illustration artwork only. DO NOT design a poster, DO NOT draw any ${forbiddenLayoutStr}, and DO NOT render any letters, words, numbers, or hex color codes anywhere in the image. Strict negative constraint: clean background, no text, no typography, no words, no human portrait in center, no double subjects.`,
         });
 
         const parts = contentResponse.candidates?.[0]?.content?.parts || [];
@@ -2580,7 +2599,7 @@ export function resolveHarmoniousPalette(
 
 
 ======================================================================
---- BERKAS: packages/ai-engine/src/creative-poster/selector.ts (160 baris, 6.1 KB) ---
+--- BERKAS: packages/ai-engine/src/creative-poster/selector.ts (155 baris, 6.0 KB) ---
 ======================================================================
 import { POSTER_BLUEPRINT_CATALOG } from './catalog.js';
 import { CreativePosterArchetype, PreAnalyzedPosterBlueprint } from './types.js';
@@ -2659,13 +2678,8 @@ export class PosterBlueprintSelector {
       );
 
     if (isCrisisOrGrave && pool.length > 4) {
-      // Buang template pop/komedi yang tidak pantas untuk isu berduka/kritis
-      const popTemplateIds = [
-        'TPL-11-CREATIVE-POP-COLLAGE',
-        'TPL-18-POP-ZINE-COLLAGE',
-        'TPL-22-POP-CULTURE-COMMENTARY',
-      ];
-      const safePool = pool.filter((b) => !popTemplateIds.includes(b.id));
+      // Buang template pop/komedi/viral yang tidak pantas untuk isu berduka/kritis secara dinamis
+      const safePool = pool.filter((b) => b.fixedConstraints?.toneSafety !== 'VIRAL_ONLY');
       if (safePool.length > 0) {
         pool = safePool;
       }
@@ -2745,16 +2759,33 @@ export class PosterBlueprintSelector {
 
 
 ======================================================================
---- BERKAS: packages/ai-engine/src/creative-poster/blueprint-repository.ts (185 baris, 6.1 KB) ---
+--- BERKAS: packages/ai-engine/src/creative-poster/blueprint-repository.ts (220 baris, 7.3 KB) ---
 ======================================================================
 import { db, posterReferenceBlueprints, eq } from '@polaris/database';
+import { IPosterBlueprintRepositoryPort } from '@polaris/core-domain';
 import { POSTER_BLUEPRINT_CATALOG } from './catalog.js';
 import { PreAnalyzedPosterBlueprint } from './types.js';
 
-export class PosterBlueprintRepository {
+export class PosterBlueprintRepository implements IPosterBlueprintRepositoryPort<PreAnalyzedPosterBlueprint> {
   private static cachedCatalog: PreAnalyzedPosterBlueprint[] | null = null;
   private static lastCachedAt: number = 0;
   private static CACHE_TTL_MS = 60_000; // 60 detik
+  private static customRepository?: IPosterBlueprintRepositoryPort<PreAnalyzedPosterBlueprint>;
+
+  /**
+   * Menyuntikkan repository port kustom (Dependency Injection / DIP).
+   */
+  public static setRepository(repository: IPosterBlueprintRepositoryPort<PreAnalyzedPosterBlueprint>): void {
+    this.customRepository = repository;
+    this.cachedCatalog = null;
+    this.lastCachedAt = 0;
+  }
+
+  public static clearRepository(): void {
+    this.customRepository = undefined;
+    this.cachedCatalog = null;
+    this.lastCachedAt = 0;
+  }
 
   /**
    * Mengambil katalog blueprint aktif.
@@ -2762,6 +2793,10 @@ export class PosterBlueprintRepository {
    * Wajib aman (resilient) dengan graceful fallback ke katalog statis jika DB belum siap/migrasi belum berjalan.
    */
   public static async getActiveCatalog(customDb?: any): Promise<PreAnalyzedPosterBlueprint[]> {
+    if (this.customRepository) {
+      return this.customRepository.getActiveCatalog(customDb);
+    }
+
     const database = customDb || db;
     const now = Date.now();
     if (this.cachedCatalog && now - this.lastCachedAt < this.CACHE_TTL_MS) {
@@ -2821,6 +2856,10 @@ export class PosterBlueprintRepository {
   public static async saveDraftBlueprint(
     blueprint: PreAnalyzedPosterBlueprint
   ): Promise<void> {
+    if (this.customRepository) {
+      return this.customRepository.saveDraftBlueprint(blueprint);
+    }
+
     try {
       await db
         .insert(posterReferenceBlueprints)
@@ -2930,6 +2969,16 @@ export class PosterBlueprintRepository {
   public static clearCache(): void {
     this.cachedCatalog = null;
     this.lastCachedAt = 0;
+    this.customRepository = undefined;
+  }
+
+  // Instance methods untuk mengimplementasikan IPosterBlueprintRepositoryPort
+  public async getActiveCatalog(customDb?: any): Promise<PreAnalyzedPosterBlueprint[]> {
+    return PosterBlueprintRepository.getActiveCatalog(customDb);
+  }
+
+  public async saveDraftBlueprint(blueprint: PreAnalyzedPosterBlueprint): Promise<void> {
+    return PosterBlueprintRepository.saveDraftBlueprint(blueprint);
   }
 }
 
@@ -3489,7 +3538,7 @@ Ekstrak geometri, palet warna, dan blueprint desain sesuai instruksi.`;
 
 
 ======================================================================
---- BERKAS: packages/ai-engine/src/creative-poster/prompt-compiler.ts (883 baris, 44.0 KB) ---
+--- BERKAS: packages/ai-engine/src/creative-poster/prompt-compiler.ts (876 baris, 43.8 KB) ---
 ======================================================================
 import {
   PreAnalyzedPosterBlueprint,
@@ -3507,6 +3556,7 @@ import { resolveHarmoniousPalette, getRandomHarmoniousPalette } from './palettes
 import { TwoStageArticleEngine } from '../two-stage-article.engine.js';
 import { MasterEditorialSanitizer } from '../master-editorial-sanitizer.js';
 import { CompositionPlanner } from './composition-planner.js';
+import { getActiveImageProvider, ImageGeneratorProvider } from '../config/image-provider.config.js';
 
 export interface CompilePosterPromptOptions {
   topic: string;
@@ -3514,6 +3564,7 @@ export interface CompilePosterPromptOptions {
   blueprint: PreAnalyzedPosterBlueprint;
   compositionMode?: SubjectCompositionMode;
   tenantBrandHex?: string;
+  imageProvider?: ImageGeneratorProvider;
 }
 
 /**
@@ -4015,16 +4066,6 @@ Keluarkan output HANYA dalam format JSON murni:
     return copy;
   }
 
-  private static smartTruncate(text: string, maxChars: number, addEllipsis = true): string {
-    const clean = text.trim();
-    if (clean.length <= maxChars) return clean;
-    const limit = addEllipsis ? Math.max(3, maxChars - 3) : maxChars;
-    const sliced = clean.slice(0, limit);
-    const lastSpace = sliced.lastIndexOf(' ');
-    const safeText = lastSpace > limit * 0.6 ? sliced.slice(0, lastSpace) : sliced;
-    return addEllipsis ? `${safeText.trim()}...` : safeText.trim();
-  }
-
   /**
    * TAHAP 2: Mengompilasi Prompt Kolase Visual (100% Tanpa Teks, Siap Di-overlay Satori)
    * Polymorphic Art Direction per Arketipe Desain
@@ -4346,7 +4387,8 @@ ${zeroMandate}
     }
 
     const { width, height } = blueprint.slotManifest.canvas;
-    const isPreCrop916 = blueprint.aspectRatio === '4:5';
+    const activeProvider = options.imageProvider || getActiveImageProvider();
+    const isPreCrop916 = blueprint.aspectRatio === '4:5' && activeProvider === 'OPENAI_DALLE';
     const compositionPlan = CompositionPlanner.planComposition({
       blueprint,
       copy: synthesizedCopy,
@@ -4391,7 +4433,7 @@ export * from './art-collage/index.js';
 
 
 ======================================================================
---- BERKAS: packages/ai-engine/src/master-editorial-sanitizer.ts (212 baris, 7.9 KB) ---
+--- BERKAS: packages/ai-engine/src/master-editorial-sanitizer.ts (209 baris, 7.7 KB) ---
 ======================================================================
 /**
  * Master Editorial Sanitizer (POLARIS AI Pure Fabrication)
@@ -4540,13 +4582,10 @@ export class MasterEditorialSanitizer {
    */
   public static removeOxfordComma(rawText: string): string {
     if (!rawText || typeof rawText !== 'string') return '';
-    let text = rawText;
-
-    text = text.replace(/([a-zA-Z0-9\)])\s*,\s+dan\s+([a-zA-Z0-9\(])/g, '$1 dan $2');
-    text = text.replace(/([a-zA-Z0-9\)])\s*,\s+serta\s+([a-zA-Z0-9\(])/g, '$1 serta $2');
-    text = text.replace(/([a-zA-Z0-9\)])\s*,\s+atau\s+([a-zA-Z0-9\(])/g, '$1 atau $2');
-
-    return text;
+    return rawText.replace(
+      /([a-zA-Z0-9\)])\s*,\s+(dan|serta|atau)\s+([a-zA-Z0-9\(])/gi,
+      '$1 $2 $3'
+    );
   }
 
   /**
@@ -4608,7 +4647,7 @@ export class MasterEditorialSanitizer {
 
 
 ======================================================================
---- BERKAS: packages/ai-engine/src/ai-engine.adapter.ts (517 baris, 17.3 KB) ---
+--- BERKAS: packages/ai-engine/src/ai-engine.adapter.ts (521 baris, 17.4 KB) ---
 ======================================================================
 import {
   ILLMProviderPort,
@@ -4871,12 +4910,14 @@ export class OpenAIAIEngineAdapter implements ILLMProviderPort {
     compiledPrompt: CompiledPosterPrompt;
     canonicalTraceId: string;
   }> {
-    const blueprint = PosterBlueprintSelector.selectBestBlueprint({
+    const blueprint = await PosterBlueprintSelector.selectBestBlueprintAsync({
       topic: params.topic,
       forcedArchetype: params.forcedArchetype,
       excludeBlueprintId: params.excludeBlueprintId,
       forcedBrandHex: params.tenantBrandHex,
     });
+
+    const activeProvider = getActiveImageProvider();
 
     const compiledPrompt = await PosterPromptCompiler.compileScenePrompt({
       topic: params.topic,
@@ -4884,6 +4925,7 @@ export class OpenAIAIEngineAdapter implements ILLMProviderPort {
       compositionMode: params.compositionMode,
       blueprint,
       tenantBrandHex: params.tenantBrandHex,
+      imageProvider: activeProvider,
     });
 
     const targetSize =
@@ -4891,7 +4933,6 @@ export class OpenAIAIEngineAdapter implements ILLMProviderPort {
         ? '1024x1792'
         : '1024x1024';
 
-    const activeProvider = getActiveImageProvider();
     let imageResult: { temporaryImageUrl: string; canonicalTraceId: string };
 
     if (activeProvider === 'GOOGLE_IMAGEN') {
@@ -4903,7 +4944,9 @@ export class OpenAIAIEngineAdapter implements ILLMProviderPort {
           prompt: compiledPrompt.englishPrompt,
           aspectRatio: (compiledPrompt.aspectRatio as any) || '4:5',
           tenantId: params.tenantId,
-          stylePromptSuffix: blueprint.scenePromptHint,
+          stylePromptSuffix: blueprint.scenePromptHint
+            ? PosterPromptCompiler.sanitizeImageGenerationPrompt(blueprint.scenePromptHint)
+            : undefined,
           imageNegativeAllow: blueprint.fixedConstraints?.imageNegativeAllow,
         });
       } catch (googleError: any) {
@@ -5308,7 +5351,7 @@ export const langfuseClient = new Langfuse({
 
 
 ======================================================================
---- BERKAS: packages/ai-engine/src/guardrails/prompt-sanitizer.ts (66 baris, 2.8 KB) ---
+--- BERKAS: packages/ai-engine/src/guardrails/prompt-sanitizer.ts (67 baris, 2.8 KB) ---
 ======================================================================
 export interface SanitizeResult {
     isValid: boolean;
@@ -5324,7 +5367,8 @@ export class PromptSanitizer {
     private static readonly INJECTION_PATTERNS: RegExp[] = [
         /ignore\s+(all\s+)?(previous\s+)?instructions/i,
         /abaikan\s+(semua\s+)?(instruksi|perintah|aturan)/i,
-        /dan\s+mode/i,
+        /\b(enable|activate|enter|masuk|aktifkan)\s+dan\s+mode\b/i,
+        /\bDAN\s+mode\b/,
         /jailbreak/i,
         /pretend\s+you\s+are/i,
         /bertindaklah\s+sebagai/i,
@@ -5445,22 +5489,8 @@ ${newsSection}${webSection}${docSection}${framingSection}${comparisonSection}${w
 ================================================================================
 
 ======================================================================
---- BERKAS: packages/ai-engine/src/research/autonomous-research.orchestrator.ts (579 baris, 19.1 KB) ---
+--- BERKAS: packages/ai-engine/src/research/autonomous-research.orchestrator.ts (311 baris, 11.9 KB) ---
 ======================================================================
-import {
-  db,
-  researchJobs,
-  researchQuestions,
-  sources,
-  researchJobSources,
-  sourceVersions,
-  sourceAssessments,
-  evidenceSpans,
-  claims,
-  claimEvidence,
-  researchOutputs,
-  eq,
-} from '@polaris/database';
 import {
   ResearchJobStatus,
   SourceType,
@@ -5469,9 +5499,14 @@ import {
   ClaimStatus,
   SupportType,
 } from '@polaris/shared-types';
+import {
+  IResearchJobRepositoryPort,
+  RegisteredSourceItem,
+  InsertedResearchQuestion,
+} from '@polaris/core-domain';
 
+import { DrizzleResearchJobRepository } from './research-job.repository.js';
 import { ResearchPlannerEngine, ResearchPlanInput, ResearchPlanOutput } from './research-planner.engine.js';
-
 import { AcademicDiscoveryConnector } from './connectors/academic-discovery.connector.js';
 import { InternalKnowledgeConnector } from './connectors/internal-knowledge.connector.js';
 import { WebDiscoveryConnector } from './connectors/web-discovery.connector.js';
@@ -5488,6 +5523,7 @@ export interface AutonomousResearchJobInput {
   attachedDocuments?: Array<{ name: string; type: string; extractedContent: string }>;
   providedUrls?: string[];
   onProgress?: (step: string, percent: number) => Promise<void> | void;
+  repository?: IResearchJobRepositoryPort;
 }
 
 export interface AutonomousResearchJobResult {
@@ -5504,526 +5540,266 @@ export interface AutonomousResearchJobResult {
 }
 
 export class AutonomousResearchOrchestrator {
+  private static defaultRepository: IResearchJobRepositoryPort = new DrizzleResearchJobRepository();
+
+  /**
+   * Menyuntikkan repository port kustom (Dependency Injection / DIP).
+   */
+  public static setRepository(repository: IResearchJobRepositoryPort): void {
+    this.defaultRepository = repository;
+  }
+
+  public static resetRepository(): void {
+    this.defaultRepository = new DrizzleResearchJobRepository();
+  }
+
+  public static getRepository(): IResearchJobRepositoryPort {
+    return this.defaultRepository;
+  }
+
   /**
    * Menjalankan siklus riset otonom POLARIS secara menyeluruh (End-to-End Autonomous Research)
    */
   public static async executeResearchPipeline(
-    input: AutonomousResearchJobInput
+    input: AutonomousResearchJobInput,
+    customRepo?: IResearchJobRepositoryPort
   ): Promise<AutonomousResearchJobResult> {
+    const repo = customRepo || input.repository || this.defaultRepository;
     const emit = async (msg: string, pct: number) => {
       if (input.onProgress) {
         await input.onProgress(msg, pct);
       }
     };
 
-    // 1. Inisialisasi Job Riset di Basis Data
-    await emit('Menginisialisasi sesi riset otonom di database...', 5);
-    const [job] = await db
-      .insert(researchJobs)
-      .values({
+    let jobId: string | undefined;
+
+    try {
+      // 1. Inisialisasi Job Riset di Basis Data via Repository Port
+      await emit('Menginisialisasi sesi riset otonom di database...', 5);
+      const { id } = await repo.createJob({
         tenantId: input.tenantId,
         topic: input.topic,
         userPrompt: input.userPrompt,
         targetRegion: input.targetRegion,
         status: ResearchJobStatus.PLANNING,
-      })
-      .returning();
+      });
 
-    const jobId = job.id;
+      jobId = id;
 
-    // 2. TAHAP 1: Research Planner (Divide-and-Conquer Questions)
-    await emit('Merumuskan pertanyaan riset kausal & parameter bukti...', 12);
-    const attachedSummary = (input.attachedDocuments || [])
-      .map((d) => `[${d.name}]: ${d.extractedContent.slice(0, 500)}`)
-      .join('\n');
+      // 2. TAHAP 1: Research Planner (Divide-and-Conquer Questions)
+      await emit('Merumuskan pertanyaan riset kausal & parameter bukti...', 12);
+      const attachedSummary = (input.attachedDocuments || [])
+        .map((d) => `[${d.name}]: ${d.extractedContent.slice(0, 500)}`)
+        .join('\n');
 
-    const plan: ResearchPlanOutput = await ResearchPlannerEngine.createPlan({
-      userPrompt: input.userPrompt,
-      targetRegion: input.targetRegion,
-      attachedDocsSummary: attachedSummary,
-      providedUrls: input.providedUrls,
-      tenantId: input.tenantId,
-    });
+      const plan: ResearchPlanOutput = await ResearchPlannerEngine.createPlan({
+        userPrompt: input.userPrompt,
+        targetRegion: input.targetRegion,
+        attachedDocsSummary: attachedSummary,
+        providedUrls: input.providedUrls,
+        tenantId: input.tenantId,
+      });
 
-    // Simpan daftar pertanyaan riset ke tabel research_questions
-    const insertedQuestions: Array<{ id: string; question: string; minRequiredEvidence: number }> = [];
-    for (const q of plan.questions) {
-      const [qRow] = await db
-        .insert(researchQuestions)
-        .values({
-          researchJobId: jobId,
+      // Simpan daftar pertanyaan riset ke tabel research_questions secara atomik via Repository Port
+      const insertedQuestions = await repo.saveQuestions(
+        jobId,
+        plan.questions.map((q) => ({
           question: q.question,
           intentCategory: q.intentCategory,
           temporalBound: q.temporalBound,
           geographicScope: q.geographicScope,
           minRequiredEvidence: q.minRequiredEvidence || 1,
-        })
-        .returning();
-      insertedQuestions.push({
-        id: qRow.id,
-        question: qRow.question,
-        minRequiredEvidence: qRow.minRequiredEvidence,
-      });
-    }
-
-    // 3. TAHAP 2: Multi-Source Discovery (Internal Knowledge + Web + Academic Crossref)
-    await db
-      .update(researchJobs)
-      .set({ status: ResearchJobStatus.SEARCHING, updatedAt: new Date() })
-      .where(eq(researchJobs.id, jobId));
-
-    await emit('Mengambil regulasi internal daerah & arsip diskursus berita...', 22);
-    const internalKnowledge = await InternalKnowledgeConnector.retrieveInternalKnowledge({
-      queryEmbedding: input.queryEmbedding,
-      targetRegion: input.targetRegion,
-      policySector: plan.internalRetrievalPlan.mediaSector,
-      keywords: plan.internalRetrievalPlan.mediaKeywords,
-      maxRegulations: 3,
-      maxNews: 4,
-    });
-
-    await emit('Menelusuri publikasi ilmiah bereputasi (Crossref DOI) & tautan web...', 32);
-    const academicPapers = plan.academicQueries && plan.academicQueries.length > 0
-      ? await AcademicDiscoveryConnector.searchCrossref(plan.academicQueries[0], 3)
-      : [];
-
-    const webCandidates = input.providedUrls && input.providedUrls.length > 0
-      ? await WebDiscoveryConnector.fetchMultipleUrls(input.providedUrls)
-      : [];
-
-    // 4. TAHAP 3: Source Registry, Deduplication & Credibility Assessment
-    await db
-      .update(researchJobs)
-      .set({ status: ResearchJobStatus.EVALUATING, updatedAt: new Date() })
-      .where(eq(researchJobs.id, jobId));
-
-    await emit('Menilai substansi, kesegaran & integritas metodologi sumber...', 42);
-
-    interface RegisteredSourceItem {
-      sourceId: string;
-      versionId: string;
-      title: string;
-      url: string;
-      publisherName: string;
-      extractedText: string;
-      isAccepted: boolean;
-    }
-
-    const evaluatedSources: RegisteredSourceItem[] = [];
-
-    // Proses A: Registrasi Sumber Regulasi Internal
-    for (const reg of internalKnowledge.regulations) {
-      const [s] = await db
-        .insert(sources)
-        .values({
-          url: `internal://regulation/${reg.documentId}`,
-          canonicalUrl: `internal://regulation/${reg.documentId}`,
-          sourceType: SourceType.INTERNAL_REGULATION,
-          publisherName: 'Pemerintah Daerah / JDIH',
-          publisherType: PublisherType.GOVERNMENT,
-          publisherCredibilityScore: 0.95,
-          lifecycleStatus: SourceLifecycle.VERIFIED,
-        })
-        .returning();
-
-      const [sv] = await db
-        .insert(sourceVersions)
-        .values({
-          sourceId: s.id,
-          contentHash: WebDiscoveryConnector.hashContent(reg.chunkContent),
-          title: reg.structuralReference,
-          extractedText: reg.chunkContent,
-          httpStatus: 200,
-        })
-        .returning();
-
-      await db.insert(researchJobSources).values({
-        researchJobId: jobId,
-        sourceId: s.id,
-        relevanceScore: reg.similarityScore,
-        queryUsed: 'Vector HNSW Cosine Search',
-      });
-
-      evaluatedSources.push({
-        sourceId: s.id,
-        versionId: sv.id,
-        title: reg.structuralReference,
-        url: s.url,
-        publisherName: 'JDIH / Regulasi Daerah',
-        extractedText: reg.chunkContent,
-        isAccepted: true,
-      });
-    }
-
-    // Proses B: Registrasi Sumber Berita Internal (media_discourses)
-    for (const news of internalKnowledge.news) {
-      const [s] = await db
-        .insert(sources)
-        .values({
-          url: news.originalUrl,
-          canonicalUrl: news.originalUrl,
-          sourceType: SourceType.INTERNAL_NEWS,
-          publisherName: news.portalName,
-          publisherType: PublisherType.MEDIA,
-          publisherCredibilityScore: 0.80,
-          lifecycleStatus: SourceLifecycle.VERIFIED,
-        })
-        .returning();
-
-      const [sv] = await db
-        .insert(sourceVersions)
-        .values({
-          sourceId: s.id,
-          contentHash: WebDiscoveryConnector.hashContent(news.cleanSummary),
-          title: news.articleTitle,
-          extractedText: news.cleanSummary,
-          httpStatus: 200,
-        })
-        .returning();
-
-      await db.insert(researchJobSources).values({
-        researchJobId: jobId,
-        sourceId: s.id,
-        relevanceScore: 0.80,
-        queryUsed: 'Civic Media Diskursus Filter',
-      });
-
-      evaluatedSources.push({
-        sourceId: s.id,
-        versionId: sv.id,
-        title: news.articleTitle,
-        url: s.url,
-        publisherName: news.portalName,
-        extractedText: news.cleanSummary,
-        isAccepted: true,
-      });
-    }
-
-    // Proses C: Asesmen dan Registrasi Paper Akademik Crossref
-    for (const paper of academicPapers) {
-      const [s] = await db
-        .insert(sources)
-        .values({
-          url: paper.url,
-          canonicalUrl: `https://doi.org/${paper.doi}`,
-          sourceType: SourceType.ACADEMIC_PAPER,
-          publisherName: paper.journalTitle || 'Academic Publisher',
-          publisherType: PublisherType.ACADEMIC,
-          doi: paper.doi,
-          isPeerReviewed: paper.isPeerReviewed,
-          hasRetractionsOrCorrections: paper.hasRetractionsOrCorrections,
-          publisherCredibilityScore: 0.88,
-          lifecycleStatus: paper.hasRetractionsOrCorrections
-            ? SourceLifecycle.REJECTED
-            : SourceLifecycle.ASSESSED,
-        })
-        .returning();
-
-      const textBody = `${paper.title}. Penulis: ${paper.authors.join(', ')} (${paper.publicationYear || 'N/A'}). Jurnal: ${paper.journalTitle || ''}. ${paper.abstractSnippet || ''}`;
-      const [sv] = await db
-        .insert(sourceVersions)
-        .values({
-          sourceId: s.id,
-          contentHash: WebDiscoveryConnector.hashContent(textBody),
-          title: paper.title,
-          extractedText: textBody,
-          httpStatus: 200,
-        })
-        .returning();
-
-      const assessment = await SourceCredibilityAssessor.assessSource(
-        {
-          url: paper.url,
-          domain: 'crossref.org',
-          title: paper.title,
-          extractedText: textBody,
-          publisherType: PublisherType.ACADEMIC,
-          doi: paper.doi,
-          isPeerReviewed: paper.isPeerReviewed,
-          hasRetractions: paper.hasRetractionsOrCorrections,
-        },
-        plan.mainTopic
+        }))
       );
 
-      await db.insert(sourceAssessments).values({
-        sourceId: s.id,
-        substantiveScore: assessment.substantiveScore,
-        methodologyScore: assessment.methodologyScore,
-        recencyScore: assessment.recencyScore,
-        overallScore: assessment.overallScore,
-        assessmentReason: assessment.assessmentReason,
-        isAccepted: assessment.isAccepted,
+      // 3. TAHAP 2: Multi-Source Discovery (Internal Knowledge + Web + Academic Crossref)
+      await repo.updateJobStatus(jobId, ResearchJobStatus.SEARCHING);
+
+      await emit('Mengambil regulasi internal daerah & arsip diskursus berita...', 22);
+      const internalKnowledge = await InternalKnowledgeConnector.retrieveInternalKnowledge({
+        queryEmbedding: input.queryEmbedding,
+        targetRegion: input.targetRegion,
+        policySector: plan.internalRetrievalPlan.mediaSector,
+        keywords: plan.internalRetrievalPlan.mediaKeywords,
+        maxRegulations: 3,
+        maxNews: 4,
       });
 
-      await db
-        .update(sources)
-        .set({ lifecycleStatus: assessment.lifecycleStatus })
-        .where(eq(sources.id, s.id));
+      await emit('Menelusuri publikasi ilmiah bereputasi (Crossref DOI) & tautan web...', 32);
+      const academicPapers = plan.academicQueries && plan.academicQueries.length > 0
+        ? await AcademicDiscoveryConnector.searchCrossref(plan.academicQueries[0], 3)
+        : [];
 
-      await db.insert(researchJobSources).values({
-        researchJobId: jobId,
-        sourceId: s.id,
-        relevanceScore: assessment.overallScore,
-        queryUsed: plan.academicQueries[0] || 'Academic Query',
-      });
+      const webCandidates = input.providedUrls && input.providedUrls.length > 0
+        ? await WebDiscoveryConnector.fetchMultipleUrls(input.providedUrls)
+        : [];
 
-      evaluatedSources.push({
-        sourceId: s.id,
-        versionId: sv.id,
-        title: paper.title,
-        url: paper.url,
-        publisherName: paper.journalTitle || 'Jurnal Akademik',
-        extractedText: textBody,
-        isAccepted: assessment.isAccepted,
-      });
-    }
+      // 4. TAHAP 3: Source Registry, Deduplication & Credibility Assessment
+      await repo.updateJobStatus(jobId, ResearchJobStatus.EVALUATING);
 
-    // Proses D: Asesmen dan Registrasi Tautan Web Eksternal
-    for (const web of webCandidates) {
-      const [s] = await db
-        .insert(sources)
-        .values({
-          url: web.url,
-          canonicalUrl: web.canonicalUrl,
-          sourceType: SourceType.EXTERNAL_WEB,
-          publisherName: web.publisherName,
-          publisherType: PublisherType.MEDIA,
-          lifecycleStatus: SourceLifecycle.FETCHED,
-        })
-        .returning();
+      await emit('Menilai substansi, kesegaran & integritas metodologi sumber...', 42);
 
-      const [sv] = await db
-        .insert(sourceVersions)
-        .values({
-          sourceId: s.id,
-          contentHash: web.contentHash,
-          title: web.title,
-          rawContent: web.rawContent,
-          extractedText: web.extractedText,
-          httpStatus: web.httpStatus,
-        })
-        .returning();
+      const evaluatedSources: RegisteredSourceItem[] = [];
 
-      const assessment = await SourceCredibilityAssessor.assessSource(
-        {
-          url: web.url,
-          domain: web.domain,
-          title: web.title,
-          extractedText: web.extractedText,
-          publisherType: PublisherType.MEDIA,
-        },
-        plan.mainTopic
-      );
-
-      await db.insert(sourceAssessments).values({
-        sourceId: s.id,
-        substantiveScore: assessment.substantiveScore,
-        methodologyScore: assessment.methodologyScore,
-        recencyScore: assessment.recencyScore,
-        overallScore: assessment.overallScore,
-        assessmentReason: assessment.assessmentReason,
-        isAccepted: assessment.isAccepted,
-      });
-
-      await db
-        .update(sources)
-        .set({ lifecycleStatus: assessment.lifecycleStatus })
-        .where(eq(sources.id, s.id));
-
-      await db.insert(researchJobSources).values({
-        researchJobId: jobId,
-        sourceId: s.id,
-        relevanceScore: assessment.overallScore,
-        queryUsed: 'User Supplied URL',
-      });
-
-      evaluatedSources.push({
-        sourceId: s.id,
-        versionId: sv.id,
-        title: web.title,
-        url: web.url,
-        publisherName: web.publisherName || web.domain,
-        extractedText: web.extractedText,
-        isAccepted: assessment.isAccepted,
-      });
-    }
-
-    // Proses E: Registrasi Dokumen Lampiran Pengguna (User Attached Documents / Reses / Dokumen Lapangan)
-    if (input.attachedDocuments && input.attachedDocuments.length > 0) {
-      for (const doc of input.attachedDocuments) {
-        if (!doc.extractedContent || doc.extractedContent.trim().length === 0) continue;
-
-        const [s] = await db
-          .insert(sources)
-          .values({
-            url: `attachment://${encodeURIComponent(doc.name)}`,
-            canonicalUrl: `attachment://${encodeURIComponent(doc.name)}`,
-            sourceType: SourceType.INTERNAL_REGULATION,
-            publisherName: `Lampiran Lapangan / Dokumen (${doc.name})`,
-            publisherType: PublisherType.GOVERNMENT,
-            publisherCredibilityScore: 0.98,
-            lifecycleStatus: SourceLifecycle.VERIFIED,
-          })
-          .returning();
-
-        const [sv] = await db
-          .insert(sourceVersions)
-          .values({
-            sourceId: s.id,
-            contentHash: WebDiscoveryConnector.hashContent(doc.extractedContent),
-            title: doc.name,
-            extractedText: doc.extractedContent,
-            httpStatus: 200,
-          })
-          .returning();
-
-        await db.insert(researchJobSources).values({
-          researchJobId: jobId,
-          sourceId: s.id,
-          relevanceScore: 0.98,
-          queryUsed: 'User Attachment Ingestion',
-        });
-
-        evaluatedSources.push({
-          sourceId: s.id,
-          versionId: sv.id,
-          title: doc.name,
-          url: s.url,
-          publisherName: `Lampiran Lapangan / Dokumen (${doc.name})`,
-          extractedText: doc.extractedContent,
-          isAccepted: true,
-        });
+      // Proses A: Registrasi Sumber Regulasi Internal (Atomik dalam DB transaction via repo)
+      if (internalKnowledge.regulations.length > 0) {
+        const regSources = await repo.saveRegulationSources(jobId, internalKnowledge.regulations);
+        evaluatedSources.push(...regSources);
       }
-    }
 
-    // 5. TAHAP 4: Claim & Evidence Extraction
-    await db
-      .update(researchJobs)
-      .set({ status: ResearchJobStatus.EXTRACTING, updatedAt: new Date() })
-      .where(eq(researchJobs.id, jobId));
+      // Proses B: Registrasi Sumber Berita Internal (media_discourses, atomik dalam DB transaction via repo)
+      if (internalKnowledge.news.length > 0) {
+        const newsSources = await repo.saveNewsSources(jobId, internalKnowledge.news);
+        evaluatedSources.push(...newsSources);
+      }
 
-    await emit('Mengekstrak klaim kebijakan & bukti kutipan verbatim...', 58);
+      // Proses C: Asesmen dan Registrasi Paper Akademik Crossref
+      for (const paper of academicPapers) {
+        const textBody = `${paper.title}. Penulis: ${paper.authors.join(', ')} (${paper.publicationYear || 'N/A'}). Jurnal: ${paper.journalTitle || ''}. ${paper.abstractSnippet || ''}`;
 
-    const acceptedSources = evaluatedSources.filter((s) => s.isAccepted);
-    const extractedClaims = await ClaimEvidenceExtractor.extractClaimsAndEvidence(
-      plan.mainTopic,
-      insertedQuestions.map((q, idx) => ({ index: idx + 1, question: q.question })),
-      acceptedSources
-    );
+        // Asesmen via AI dilakukan di luar transaksi agar tidak menahan connection pool DB
+        const assessment = await SourceCredibilityAssessor.assessSource(
+          {
+            url: paper.url,
+            domain: 'crossref.org',
+            title: paper.title,
+            extractedText: textBody,
+            publisherType: PublisherType.ACADEMIC,
+            doi: paper.doi,
+            isPeerReviewed: paper.isPeerReviewed,
+            hasRetractions: paper.hasRetractionsOrCorrections,
+          },
+          plan.mainTopic
+        );
 
-    // Simpan claims dan evidence_spans ke DB
-    const evidenceCountPerQuestion: Record<string, number> = {};
-    const evidenceIdMap = new Map<string, string>(); // 'EV-1' -> database uuid
-    const evidenceDetailMap = new Map<string, { id: string; quote: string; context: string }>();
-    let spanCounter = 1;
+        // Penulisan multi-tabel sources + sourceVersions + sourceAssessments + researchJobSources secara atomik via repo
+        const savedItem = await repo.saveAcademicSource(
+          jobId,
+          paper,
+          assessment,
+          plan.academicQueries[0] || 'Academic Query'
+        );
+        evaluatedSources.push(savedItem);
+      }
 
-    for (const c of extractedClaims) {
-      // Petakan ke researchQuestionId
-      const targetQuestion =
-        c.questionIndex && c.questionIndex > 0 && c.questionIndex <= insertedQuestions.length
-          ? insertedQuestions[c.questionIndex - 1]
-          : insertedQuestions[0];
+      // Proses D: Asesmen dan Registrasi Tautan Web Eksternal
+      for (const web of webCandidates) {
+        // Asesmen via AI dilakukan di luar transaksi
+        const assessment = await SourceCredibilityAssessor.assessSource(
+          {
+            url: web.url,
+            domain: web.domain,
+            title: web.title,
+            extractedText: web.extractedText,
+            publisherType: PublisherType.MEDIA,
+          },
+          plan.mainTopic
+        );
 
-      const [claimRow] = await db
-        .insert(claims)
-        .values({
-          researchJobId: jobId,
-          researchQuestionId: targetQuestion?.id,
-          claimStatement: c.claimStatement,
-          status: c.status,
-          confidenceScore: c.confidenceScore,
-        })
-        .returning();
+        // Penulisan multi-tabel sources + sourceVersions + sourceAssessments + researchJobSources secara atomik via repo
+        const savedItem = await repo.saveWebSource(jobId, web, assessment);
+        evaluatedSources.push(savedItem);
+      }
 
-      for (const ev of c.evidenceItems) {
-        const shortToken = `EV-${spanCounter++}`;
-        const [evSpan] = await db
-          .insert(evidenceSpans)
-          .values({
-            sourceId: ev.sourceId,
-            verbatimQuote: ev.verbatimQuote,
-            contextSnippet: ev.contextSnippet,
-            sectionOrPage: ev.sectionOrPage,
-            confidenceScore: 0.95,
-            isVerified: true,
-          })
-          .returning();
-
-        evidenceIdMap.set(shortToken, evSpan.id);
-        evidenceDetailMap.set(shortToken, {
-          id: evSpan.id,
-          quote: ev.verbatimQuote,
-          context: ev.contextSnippet,
-        });
-
-        await db.insert(claimEvidence).values({
-          claimId: claimRow.id,
-          evidenceSpanId: evSpan.id,
-          supportType: ev.supportType,
-          relationshipExplanation: ev.relationshipExplanation,
-        });
-
-        if (targetQuestion) {
-          evidenceCountPerQuestion[targetQuestion.id] =
-            (evidenceCountPerQuestion[targetQuestion.id] || 0) + 1;
+      // Proses E: Registrasi Dokumen Lampiran Pengguna (User Attached Documents / Reses / Dokumen Lapangan)
+      if (input.attachedDocuments && input.attachedDocuments.length > 0) {
+        for (const doc of input.attachedDocuments) {
+          if (!doc.extractedContent || doc.extractedContent.trim().length === 0) continue;
+          const savedItem = await repo.saveAttachmentSource(jobId, doc);
+          evaluatedSources.push(savedItem);
         }
       }
-    }
 
-    // 6. TAHAP 5: Backend Deterministic Gate -> Evidence Sufficient?
-    await emit('Memeriksa kecukupan bukti secara deterministik di backend...', 72);
+      // 5. TAHAP 4: Claim & Evidence Extraction
+      await repo.updateJobStatus(jobId, ResearchJobStatus.EXTRACTING);
 
-    const totalEvidenceSpansCount = evidenceIdMap.size;
-    const sufficiencyResult = DeterministicQualityGates.verifyEvidenceSufficiency(
-      insertedQuestions,
-      evidenceCountPerQuestion,
-      totalEvidenceSpansCount
-    );
+      await emit('Mengekstrak klaim kebijakan & bukti kutipan verbatim...', 58);
 
-    await db
-      .update(researchJobs)
-      .set({
-        evidenceSufficient: sufficiencyResult.isSufficient,
-        summaryReport: sufficiencyResult.gapAnalysisReason || 'Bukti riset mencukupi.',
-        updatedAt: new Date(),
-      })
-      .where(eq(researchJobs.id, jobId));
-
-    // 7. TAHAP 6: Rakit Grounded Evidence Capsule Berindeks
-    const evidenceCapsuleLines: string[] = [];
-    evidenceCapsuleLines.push(`=== MANIFEST BUKTI TERVERIFIKASI POLARIS (GROUNDING RESMI) ===`);
-    evidenceCapsuleLines.push(`TOPIK RISET: ${plan.mainTopic}`);
-    evidenceCapsuleLines.push(`WILAYAH SASARAN: ${input.targetRegion}\n`);
-
-    evidenceCapsuleLines.push(`--- DAFTAR BUKTI BERSERTIFIKAT (SITASI RESMI) ---`);
-    for (const [token, detail] of evidenceDetailMap.entries()) {
-      evidenceCapsuleLines.push(
-        `[${token}] (ID: ${detail.id}) - Kutipan: "${detail.quote}" (Konteks: ${detail.context})`
+      const acceptedSources = evaluatedSources.filter((s) => s.isAccepted);
+      const extractedClaims = await ClaimEvidenceExtractor.extractClaimsAndEvidence(
+        plan.mainTopic,
+        insertedQuestions.map((q, idx) => ({ index: idx + 1, question: q.question })),
+        acceptedSources
       );
+
+      // Simpan claims, evidence_spans, dan claim_evidence secara atomik dalam satu DB transaction via repo
+      const {
+        evidenceCountPerQuestion,
+        evidenceIdMap,
+        evidenceDetailMap,
+      } = await repo.saveClaimsAndEvidence({
+        jobId,
+        claims: extractedClaims,
+        insertedQuestions,
+      });
+
+      // 6. TAHAP 5: Backend Deterministic Gate -> Evidence Sufficient?
+      await emit('Memeriksa kecukupan bukti secara deterministik di backend...', 72);
+
+      const totalEvidenceSpansCount = evidenceIdMap.size;
+      const sufficiencyResult = DeterministicQualityGates.verifyEvidenceSufficiency(
+        insertedQuestions,
+        evidenceCountPerQuestion,
+        totalEvidenceSpansCount
+      );
+
+      await repo.updateJobSufficiency(
+        jobId,
+        sufficiencyResult.isSufficient,
+        sufficiencyResult.gapAnalysisReason || 'Bukti riset mencukupi.'
+      );
+
+      // 7. TAHAP 6: Rakit Grounded Evidence Capsule Berindeks
+      const evidenceCapsuleLines: string[] = [];
+      evidenceCapsuleLines.push(`=== MANIFEST BUKTI TERVERIFIKASI POLARIS (GROUNDING RESMI) ===`);
+      evidenceCapsuleLines.push(`TOPIK RISET: ${plan.mainTopic}`);
+      evidenceCapsuleLines.push(`WILAYAH SASARAN: ${input.targetRegion}\n`);
+
+      evidenceCapsuleLines.push(`--- DAFTAR BUKTI BERSERTIFIKAT (SITASI RESMI) ---`);
+      for (const [token, detail] of evidenceDetailMap.entries()) {
+        evidenceCapsuleLines.push(
+          `[${token}] (ID: ${detail.id}) - Kutipan: "${detail.quote}" (Konteks: ${detail.context})`
+        );
+      }
+
+      evidenceCapsuleLines.push(`\n--- DAFTAR SUMBER RUJUKAN RESMI ---`);
+      for (const src of acceptedSources) {
+        evidenceCapsuleLines.push(`- [${src.publisherName}] ${src.title}: ${src.url}`);
+      }
+      evidenceCapsuleLines.push(`===========================================================`);
+
+      const groundedContextText = evidenceCapsuleLines.join('\n');
+
+      await emit('Siklus riset otonom selesai. Siap diteruskan ke Evidence-Grounded Writer.', 85);
+
+      return {
+        jobId,
+        mainTopic: plan.mainTopic,
+        evidenceSufficient: sufficiencyResult.isSufficient,
+        qcPassed: false, // Menunggu tahap penulisan dan QC gate
+        totalSourcesEvaluated: evaluatedSources.length,
+        verifiedSourcesCount: acceptedSources.length,
+        totalEvidenceSpans: totalEvidenceSpansCount,
+        claimsCount: extractedClaims.length,
+        groundedContextText,
+        evidenceIdMap,
+      };
+    } catch (error: any) {
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      if (jobId) {
+        try {
+          await repo.markJobFailed(jobId, errorMessage, {
+            stack: error instanceof Error ? error.stack : undefined,
+          });
+        } catch (dbUpdateError) {
+          console.error(
+            `[AutonomousResearchOrchestrator] Gagal memperbarui status research job ${jobId} ke FAILED:`,
+            dbUpdateError
+          );
+        }
+      }
+      throw error;
     }
-
-    evidenceCapsuleLines.push(`\n--- DAFTAR SUMBER RUJUKAN RESMI ---`);
-    for (const src of acceptedSources) {
-      evidenceCapsuleLines.push(`- [${src.publisherName}] ${src.title}: ${src.url}`);
-    }
-    evidenceCapsuleLines.push(`===========================================================`);
-
-    const groundedContextText = evidenceCapsuleLines.join('\n');
-
-    await emit('Siklus riset otonom selesai. Siap diteruskan ke Evidence-Grounded Writer.', 85);
-
-    return {
-      jobId,
-      mainTopic: plan.mainTopic,
-      evidenceSufficient: sufficiencyResult.isSufficient,
-      qcPassed: false, // Menunggu tahap penulisan dan QC gate
-      totalSourcesEvaluated: evaluatedSources.length,
-      verifiedSourcesCount: acceptedSources.length,
-      totalEvidenceSpans: totalEvidenceSpansCount,
-      claimsCount: extractedClaims.length,
-      groundedContextText,
-      evidenceIdMap,
-    };
   }
 }
 
@@ -13642,7 +13418,7 @@ export function buildArtCollageOverlayLayout(params: ArtCollageOverlayParams): a
 ================================================================================
 
 ======================================================================
---- BERKAS: packages/storage/src/creative-poster/compositor.ts (760 baris, 25.6 KB) ---
+--- BERKAS: packages/storage/src/creative-poster/compositor.ts (764 baris, 25.8 KB) ---
 ======================================================================
 import sharp from 'sharp';
 import satori from 'satori';
@@ -13691,6 +13467,10 @@ import { buildBroadsheetNewspaperLayout } from './layouts/broadsheet-newspaper.l
 import { buildTechnicalGridCalloutLayout } from './layouts/technical-grid-callout.layout.js';
 
 
+/**
+ * @deprecated Satori-based compositor. Satori has limited CSS/font capabilities and is no longer used in production.
+ * Production has transitioned 100% to ChromiumPosterCompositor (Playwright/Chromium).
+ */
 export class CreativePosterCompositor {
   /**
    * Helper publik untuk mengekspor SVG Sobekan Kertas (Backward Compatibility)
@@ -15533,7 +15313,7 @@ export class ZoneSampler {
 
 
 ======================================================================
---- BERKAS: packages/storage/src/creative-poster/core/font-loader.ts (68 baris, 2.6 KB) ---
+--- BERKAS: packages/storage/src/creative-poster/core/font-loader.ts (75 baris, 3.0 KB) ---
 ======================================================================
 import fs from 'fs/promises';
 import path from 'path';
@@ -15553,12 +15333,14 @@ export class FontLoader {
    */
   public static async findFontsDir(): Promise<string> {
     const candidates = [
+      process.env.FONTS_DIR,
       path.resolve(process.cwd(), 'assets/fonts'),
       path.resolve(process.cwd(), '../assets/fonts'),
       path.resolve(process.cwd(), '../../assets/fonts'),
       path.resolve(process.cwd(), '../../../assets/fonts'),
+      '/app/assets/fonts',
       '/home/pc/projects/polaris-platform/assets/fonts',
-    ];
+    ].filter(Boolean) as string[];
 
     for (const dir of candidates) {
       try {
@@ -15580,27 +15362,32 @@ export class FontLoader {
 
     const fontsDir = await this.findFontsDir();
 
-    const [antonData, bebasData, jakartaData, dejavuData, dejavuBoldData] = await Promise.all([
-      fs.readFile(path.join(fontsDir, 'Anton-Regular.ttf')),
-      fs.readFile(path.join(fontsDir, 'BebasNeue-Regular.ttf')),
-      fs.readFile(path.join(fontsDir, 'PlusJakartaSans-SemiBold.ttf')),
-      fs.readFile(path.join(fontsDir, 'DejaVuSerif.ttf')).catch(() => fs.readFile('/usr/share/fonts/truetype/dejavu/DejaVuSerif.ttf')),
-      fs.readFile(path.join(fontsDir, 'DejaVuSerif-Bold.ttf')).catch(() => fs.readFile('/usr/share/fonts/truetype/dejavu/DejaVuSerif-Bold.ttf')),
-    ]);
+    try {
+      const [antonData, bebasData, jakartaData, dejavuData, dejavuBoldData] = await Promise.all([
+        fs.readFile(path.join(fontsDir, 'Anton-Regular.ttf')),
+        fs.readFile(path.join(fontsDir, 'BebasNeue-Regular.ttf')),
+        fs.readFile(path.join(fontsDir, 'PlusJakartaSans-SemiBold.ttf')),
+        fs.readFile(path.join(fontsDir, 'DejaVuSerif.ttf')).catch(() => fs.readFile('/usr/share/fonts/truetype/dejavu/DejaVuSerif.ttf')),
+        fs.readFile(path.join(fontsDir, 'DejaVuSerif-Bold.ttf')).catch(() => fs.readFile('/usr/share/fonts/truetype/dejavu/DejaVuSerif-Bold.ttf')),
+      ]);
 
-    this.fontCache = [
-      { name: 'Anton', data: antonData, weight: 400, style: 'normal' },
-      { name: 'Bebas Neue', data: bebasData, weight: 400, style: 'normal' },
-      // Daftarkan Plus Jakarta Sans di berbagai weight agar Satori tidak pernah gagal mencocokkan
-      { name: 'Plus Jakarta Sans', data: jakartaData, weight: 400, style: 'normal' },
-      { name: 'Plus Jakarta Sans', data: jakartaData, weight: 600, style: 'normal' },
-      { name: 'Plus Jakarta Sans', data: jakartaData, weight: 700, style: 'normal' },
-      // Daftarkan DejaVu Serif untuk typography koran/broadsheet
-      { name: 'DejaVu Serif', data: dejavuData, weight: 400, style: 'normal' },
-      { name: 'DejaVu Serif', data: dejavuBoldData, weight: 700, style: 'normal' },
-    ];
+      this.fontCache = [
+        { name: 'Anton', data: antonData, weight: 400, style: 'normal' },
+        { name: 'Bebas Neue', data: bebasData, weight: 400, style: 'normal' },
+        // Daftarkan Plus Jakarta Sans di berbagai weight agar Satori tidak pernah gagal mencocokkan
+        { name: 'Plus Jakarta Sans', data: jakartaData, weight: 400, style: 'normal' },
+        { name: 'Plus Jakarta Sans', data: jakartaData, weight: 600, style: 'normal' },
+        { name: 'Plus Jakarta Sans', data: jakartaData, weight: 700, style: 'normal' },
+        // Daftarkan DejaVu Serif untuk typography koran/broadsheet
+        { name: 'DejaVu Serif', data: dejavuData, weight: 400, style: 'normal' },
+        { name: 'DejaVu Serif', data: dejavuBoldData, weight: 700, style: 'normal' },
+      ];
 
-    return this.fontCache;
+      return this.fontCache;
+    } catch (err: any) {
+      console.error(`[FontLoader] Gagal memuat font dari direktori: ${fontsDir}. Error: ${err.message}`);
+      throw new Error(`[FontLoader] File font tidak ditemukan di ${fontsDir}. Pastikan folder assets/fonts ter-mount dan memiliki permission 755: ${err.message}`);
+    }
   }
 }
 
@@ -18044,7 +17831,7 @@ export class StudioGenerationProcessor {
 
 
 ======================================================================
---- BERKAS: apps/worker-crawler/src/processors/studio/handlers/studio-poster-regeneration.handler.ts (384 baris, 14.1 KB) ---
+--- BERKAS: apps/worker-crawler/src/processors/studio/handlers/studio-poster-regeneration.handler.ts (367 baris, 13.3 KB) ---
 ======================================================================
 import { Job } from 'bullmq';
 import { and, eq, sql } from 'drizzle-orm';
@@ -18207,35 +17994,18 @@ export class StudioPosterRegenerationHandler {
             ? `${member.fullName} — ${member.commissionName || 'KOMISI DPR RI'} // ${dapilName}`
             : `ANGGOTA DEWAN // ${dapilName}`;
 
-          let composed: { buffer: Buffer; sizeBytes: number; detectedLuminance: number; blendModeUsed: string };
-          try {
-            composed = await ChromiumPosterCompositor.compose({
-              canvasBuffer: artCollage.imageBuffer,
-              copy: artCollage.copy,
-              zones: artCollage.layout,
-              palette: {
-                accentHex: artCollage.mutation.palette.accentHex,
-                secondaryHex: artCollage.mutation.palette.secondaryHex,
-              },
-              signature: memberSignature,
-              editionTag: `POLARIS // ${dapilName.toUpperCase()}`,
-              textToneHint: artCollage.layout.textTone,
-            });
-          } catch (chromErr: any) {
-            console.warn(`[StudioPosterRegen] Chromium compositor gagal (${chromErr.message}), fallback ke Sharp compositor...`);
-            composed = await ArtCollageCompositor.compose({
-              canvasBuffer: artCollage.imageBuffer,
-              copy: artCollage.copy,
-              zones: artCollage.layout,
-              palette: {
-                accentHex: artCollage.mutation.palette.accentHex,
-                secondaryHex: artCollage.mutation.palette.secondaryHex,
-              },
-              signature: memberSignature,
-              editionTag: `POLARIS // ${dapilName.toUpperCase()}`,
-              textToneHint: artCollage.layout.textTone,
-            });
-          }
+          const composed = await ChromiumPosterCompositor.compose({
+            canvasBuffer: artCollage.imageBuffer,
+            copy: artCollage.copy,
+            zones: artCollage.layout,
+            palette: {
+              accentHex: artCollage.mutation.palette.accentHex,
+              secondaryHex: artCollage.mutation.palette.secondaryHex,
+            },
+            signature: memberSignature,
+            editionTag: `POLARIS // ${dapilName.toUpperCase()}`,
+            textToneHint: artCollage.layout.textTone,
+          });
 
           posterBuffer = composed.buffer;
           posterSizeBytes = composed.sizeBytes;
@@ -18433,7 +18203,7 @@ export class StudioPosterRegenerationHandler {
 
 
 ======================================================================
---- BERKAS: apps/worker-crawler/src/processors/studio/handlers/studio-infographic-generation.handler.ts (465 baris, 17.3 KB) ---
+--- BERKAS: apps/worker-crawler/src/processors/studio/handlers/studio-infographic-generation.handler.ts (455 baris, 16.7 KB) ---
 ======================================================================
 import { Job } from 'bullmq';
 import { and, eq, sql } from 'drizzle-orm';
@@ -18452,7 +18222,6 @@ import { OpenAIAIEngineAdapter, AiTelemetryService } from '@polaris/ai-engine';
 import {
   CloudflareR2StorageAdapter,
   CreativePosterCompositor,
-  ArtCollageCompositor,
   ChromiumPosterCompositor,
 } from '@polaris/storage';
 import { ContentStatus, AssetType } from '@polaris/shared-types';
@@ -18649,36 +18418,18 @@ export class StudioInfographicGenerationHandler {
           );
 
           let composed: { buffer: Buffer; sizeBytes: number; detectedLuminance: number; blendModeUsed: string };
-          try {
-            composed = await ChromiumPosterCompositor.compose({
-              canvasBuffer: artCollage.imageBuffer,
-              copy: artCollage.copy,
-              zones: artCollage.layout,
-              palette: {
-                accentHex: artCollage.mutation.palette.accentHex,
-                secondaryHex: artCollage.mutation.palette.secondaryHex,
-              },
-              signature: memberSignature,
-              editionTag: `POLARIS // ${dapilName.toUpperCase()}`,
-              textToneHint: artCollage.layout.textTone,
-            });
-          } catch (chromErr: any) {
-            console.warn(
-              `[StudioInfographic] Chromium compositor gagal (${chromErr.message}), fallback ke Sharp compositor...`
-            );
-            composed = await ArtCollageCompositor.compose({
-              canvasBuffer: artCollage.imageBuffer,
-              copy: artCollage.copy,
-              zones: artCollage.layout,
-              palette: {
-                accentHex: artCollage.mutation.palette.accentHex,
-                secondaryHex: artCollage.mutation.palette.secondaryHex,
-              },
-              signature: memberSignature,
-              editionTag: `POLARIS // ${dapilName.toUpperCase()}`,
-              textToneHint: artCollage.layout.textTone,
-            });
-          }
+          composed = await ChromiumPosterCompositor.compose({
+            canvasBuffer: artCollage.imageBuffer,
+            copy: artCollage.copy,
+            zones: artCollage.layout,
+            palette: {
+              accentHex: artCollage.mutation.palette.accentHex,
+              secondaryHex: artCollage.mutation.palette.secondaryHex,
+            },
+            signature: memberSignature,
+            editionTag: `POLARIS // ${dapilName.toUpperCase()}`,
+            textToneHint: artCollage.layout.textTone,
+          });
 
           posterBuffer = composed.buffer;
           posterSizeBytes = composed.sizeBytes;
@@ -18801,6 +18552,15 @@ export class StudioInfographicGenerationHandler {
 
       // 7. Simpan ke database
       await withTenantContext(tenantId, async (tx) => {
+        await tx
+          .delete(mediaAssets)
+          .where(
+            and(
+              eq(mediaAssets.publicationId, publicationId),
+              eq(mediaAssets.assetType, AssetType.DALLE_POSTER)
+            )
+          );
+
         await tx.insert(mediaAssets).values({
           publicationId,
           assetType: AssetType.DALLE_POSTER,
@@ -18903,7 +18663,7 @@ export class StudioInfographicGenerationHandler {
 
 
 ======================================================================
---- BERKAS: apps/worker-crawler/src/processors/studio/handlers/studio-full-generation.handler.ts (882 baris, 35.1 KB) ---
+--- BERKAS: apps/worker-crawler/src/processors/studio/handlers/studio-full-generation.handler.ts (865 baris, 34.2 KB) ---
 ======================================================================
 import * as crypto from 'crypto';
 import * as path from 'path';
@@ -19545,35 +19305,18 @@ export class StudioFullGenerationHandler {
                 ? `${member.fullName} — ${member.commissionName || 'KOMISI DPR RI'} // ${dapilName}`
                 : `ANGGOTA DEWAN // ${dapilName}`;
 
-              let composed: { buffer: Buffer; sizeBytes: number; detectedLuminance: number; blendModeUsed: string };
-              try {
-                composed = await ChromiumPosterCompositor.compose({
-                  canvasBuffer: artCollage.imageBuffer,
-                  copy: artCollage.copy,
-                  zones: artCollage.layout,
-                  palette: {
-                    accentHex: artCollage.mutation.palette.accentHex,
-                    secondaryHex: artCollage.mutation.palette.secondaryHex,
-                  },
-                  signature: memberSignature,
-                  editionTag: `POLARIS // ${dapilName.toUpperCase()}`,
-                  textToneHint: artCollage.layout.textTone,
-                });
-              } catch (chromErr: any) {
-                console.warn(`[StudioProcessor] Chromium compositor gagal (${chromErr.message}), fallback ke Sharp compositor...`);
-                composed = await ArtCollageCompositor.compose({
-                  canvasBuffer: artCollage.imageBuffer,
-                  copy: artCollage.copy,
-                  zones: artCollage.layout,
-                  palette: {
-                    accentHex: artCollage.mutation.palette.accentHex,
-                    secondaryHex: artCollage.mutation.palette.secondaryHex,
-                  },
-                  signature: memberSignature,
-                  editionTag: `POLARIS // ${dapilName.toUpperCase()}`,
-                  textToneHint: artCollage.layout.textTone,
-                });
-              }
+              const composed = await ChromiumPosterCompositor.compose({
+                canvasBuffer: artCollage.imageBuffer,
+                copy: artCollage.copy,
+                zones: artCollage.layout,
+                palette: {
+                  accentHex: artCollage.mutation.palette.accentHex,
+                  secondaryHex: artCollage.mutation.palette.secondaryHex,
+                },
+                signature: memberSignature,
+                editionTag: `POLARIS // ${dapilName.toUpperCase()}`,
+                textToneHint: artCollage.layout.textTone,
+              });
 
               posterBuffer = composed.buffer;
               posterSizeBytes = composed.sizeBytes;
@@ -19956,7 +19699,7 @@ export const studioGenerationQueue = new Queue<StudioGenerationJobPayload>(
 ================================================================================
 
 ======================================================================
---- BERKAS: apps/api-core/src/modules/studio/studio.controller.ts (187 baris, 5.8 KB) ---
+--- BERKAS: apps/api-core/src/modules/studio/studio.controller.ts (238 baris, 7.3 KB) ---
 ======================================================================
 import {
   Controller,
@@ -19971,7 +19714,12 @@ import {
   UseGuards
 } from '@nestjs/common';
 import { StudioService } from './studio.service.js';
-import { GenerateArticleRequestDto, UpdateDraftArticleDto, UploadArticleImageDto } from './dto/studio.dto.js';
+import {
+  GenerateArticleRequestDto,
+  UpdateDraftArticleDto,
+  UploadArticleImageDto,
+  PublishInfographicDto,
+} from './dto/studio.dto.js';
 import { CurrentTenant, AuthenticatedTenantPayload } from '../../common/decorators/current-tenant.decorator.js';
 import { SubscriptionGuard } from '../../common/guards/subscription.guard.js';
 import { TokenCircuitBreakerGuard } from '../../common/guards/token-circuit-breaker.guard.js';
@@ -20005,7 +19753,7 @@ export class StudioController {
     @CurrentTenant() user: AuthenticatedTenantPayload,
     @Body() dto: GenerateArticleRequestDto
   ) {
-    return await this.studioService.generateNewContentPackage(user.tenantId, dto);
+    return await this.studioService.generateNewContentPackage(user.tenantId, dto, user);
   }
 
   // Parafrase & Penyempurnaan Prompt Cerdas menggunakan Gemini Flash Lite (Ultra-Cepat & Hemat)
@@ -20080,7 +19828,7 @@ export class StudioController {
     @CurrentTenant() user: AuthenticatedTenantPayload,
     @Param('id') id: string
   ) {
-    return await this.studioService.publishArticle(user.tenantId, id);
+    return await this.studioService.publishArticle(user.tenantId, id, user);
   }
 
   @Post('articles/:id/unpublish')
@@ -20143,16 +19891,85 @@ export class StudioController {
   ) {
     return await this.studioService.deleteResearchSource(user.tenantId, id, sourceId);
   }
+
+  // ─── INFOGRAFIS AI PUBLISH & MANAGEMENT ENDPOINTS ───
+  @Post('infographics/publish')
+  @UseGuards(SubscriptionGuard)
+  @HttpCode(HttpStatus.OK)
+  async publishInfographic(
+    @CurrentTenant() user: AuthenticatedTenantPayload,
+    @Body() dto: PublishInfographicDto
+  ) {
+    return await this.studioService.publishInfographic(user.tenantId, dto);
+  }
+
+  @Post('infographics/:id/publish')
+  @UseGuards(SubscriptionGuard)
+  @HttpCode(HttpStatus.OK)
+  async publishInfographicById(
+    @CurrentTenant() user: AuthenticatedTenantPayload,
+    @Param('id') id: string,
+    @Body() dto: Partial<PublishInfographicDto>
+  ) {
+    return await this.studioService.publishInfographic(user.tenantId, { ...dto, publicationId: id } as PublishInfographicDto);
+  }
+
+  @Post('infographics/:id/unpublish')
+  @UseGuards(SubscriptionGuard)
+  @HttpCode(HttpStatus.OK)
+  async unpublishInfographic(
+    @CurrentTenant() user: AuthenticatedTenantPayload,
+    @Param('id') id: string
+  ) {
+    return await this.studioService.unpublishInfographic(user.tenantId, id);
+  }
+
+  @Get('infographics')
+  @HttpCode(HttpStatus.OK)
+  async listInfographics(@CurrentTenant() user: AuthenticatedTenantPayload) {
+    return await this.studioService.listInfographics(user.tenantId);
+  }
+
+  @Get('infographics/:id')
+  @HttpCode(HttpStatus.OK)
+  async getInfographicDetail(
+    @CurrentTenant() user: AuthenticatedTenantPayload,
+    @Param('id') id: string
+  ) {
+    return await this.studioService.getInfographicDetail(user.tenantId, id);
+  }
 }
 
 
-
 ======================================================================
---- BERKAS: apps/api-core/src/modules/studio/studio.service.ts (120 baris, 4.2 KB) ---
+--- BERKAS: apps/api-core/src/modules/studio/studio.service.ts (439 baris, 13.8 KB) ---
 ======================================================================
-import { Injectable, Logger } from '@nestjs/common';
+import {
+  Injectable,
+  Logger,
+  ForbiddenException,
+  NotFoundException,
+} from '@nestjs/common';
+import { randomUUID } from 'node:crypto';
+import { eq, and, desc, inArray } from 'drizzle-orm';
+import {
+  db,
+  contentPublications,
+  mediaAssets,
+  portalConfigs,
+  portalThemeSettings,
+  tenantMembers,
+  subscriptions,
+} from '@polaris/database';
+import { ContentPublication, SubdomainSlug, CanonicalUrl } from '@polaris/core-domain';
+import { ContentStatus, AssetType, SubscriptionStatus } from '@polaris/shared-types';
 import { PromptRefinerService } from '@polaris/ai-engine';
-import { GenerateArticleRequestDto, UpdateDraftArticleDto, UploadArticleImageDto } from './dto/studio.dto.js';
+import {
+  GenerateArticleRequestDto,
+  UpdateDraftArticleDto,
+  UploadArticleImageDto,
+  PublishInfographicDto,
+} from './dto/studio.dto.js';
 import {
   StudioRadarService,
   StudioGeneratorService,
@@ -20168,6 +19985,7 @@ import {
  * - StudioGeneratorService (Antrean BullMQ & Generasi Asinkron)
  * - StudioArticleService (Siklus Hidup Naskah, Publikasi Portal, Upload Foto)
  * - StudioResearchService (Audit Trail Riset, Sitasi, Sumber Terverifikasi)
+ * Serta mengelola siklus hidup publikasi visual infografis dewan.
  */
 @Injectable()
 export class StudioService {
@@ -20189,9 +20007,13 @@ export class StudioService {
     return await this.radarService.getTrendingDapilTopics(tenantId);
   }
 
-  // --- Domain: Generasi Konten Asinkron & Antrean ---
-  async generateNewContentPackage(tenantId: string, dto: GenerateArticleRequestDto) {
-    return await this.generatorService.generateNewContentPackage(tenantId, dto);
+  // --- Domain: Generasi Konten Asinkron BullMQ ---
+  async generateNewContentPackage(
+    tenantId: string,
+    dto: GenerateArticleRequestDto,
+    caller?: { isOperator?: boolean; operatorId?: string }
+  ) {
+    return await this.generatorService.generateNewContentPackage(tenantId, dto, caller);
   }
 
   async getJobStatus(jobId: string, tenantId: string) {
@@ -20215,8 +20037,12 @@ export class StudioService {
     return await this.articleService.updateDraftArticle(tenantId, articleId, dto);
   }
 
-  async publishArticle(tenantId: string, articleId: string) {
-    return await this.articleService.publishArticle(tenantId, articleId);
+  async publishArticle(
+    tenantId: string,
+    articleId: string,
+    caller?: { isOperator?: boolean; canDirectPublish?: boolean }
+  ) {
+    return await this.articleService.publishArticle(tenantId, articleId, caller);
   }
 
   async unpublishArticle(tenantId: string, articleId: string) {
@@ -20269,11 +20095,298 @@ export class StudioService {
       commissionName: dto.commissionName,
     });
   }
+
+  // --- Domain: Infografis Publikasi & Manajemen ---
+  async publishInfographic(tenantId: string, dto: PublishInfographicDto) {
+    const [sub] = await db
+      .select({ status: subscriptions.status })
+      .from(subscriptions)
+      .where(eq(subscriptions.tenantId, tenantId))
+      .limit(1);
+
+    if (!sub || sub.status !== SubscriptionStatus.ACTIVE) {
+      throw new ForbiddenException(
+        'Publikasi ke portal resmi dibatasi: Akun Anda belum diaktivasi. Silakan selesaikan pembayaran lisensi di menu Billing.'
+      );
+    }
+
+    let [portal] = await db
+      .select({
+        subdomainSlug: portalConfigs.subdomainSlug,
+        customDomain: portalConfigs.customDomain,
+        customDomainStatus: portalConfigs.customDomainStatus,
+      })
+      .from(portalConfigs)
+      .where(eq(portalConfigs.tenantId, tenantId))
+      .limit(1);
+
+    let subdomainSlug = portal?.subdomainSlug;
+    if (!subdomainSlug) {
+      const [member] = await db
+        .select({ fullName: tenantMembers.fullName })
+        .from(tenantMembers)
+        .where(eq(tenantMembers.id, tenantId))
+        .limit(1);
+
+      const rawSlug = (member?.fullName || 'wakil-rakyat')
+        .toLowerCase()
+        .replace(/[^a-z0-9]/g, '-')
+        .replace(/-+/g, '-')
+        .slice(0, 30);
+      subdomainSlug = `${rawSlug}-${tenantId.slice(0, 4)}`;
+
+      const [createdPortal] = await db
+        .insert(portalConfigs)
+        .values({
+          tenantId,
+          subdomainSlug,
+          isActive: true,
+          metaTitle: `Portal Resmi ${member?.fullName || 'Wakil Rakyat'}`,
+          metaDescription: 'Portal transparansi kebijakan dan aspirasi konstituen.',
+        })
+        .onConflictDoNothing()
+        .returning();
+
+      if (createdPortal) {
+        await db
+          .insert(portalThemeSettings)
+          .values({
+            portalId: createdPortal.id,
+            primaryHexColor: '#1890ff',
+            secondaryHexColor: '#001529',
+            fontFamily: 'Inter, sans-serif',
+          })
+          .onConflictDoNothing();
+      }
+    }
+
+    // Check if existing publication is being published
+    let existingPublication = null;
+    if (dto.publicationId) {
+      const [found] = await db
+        .select()
+        .from(contentPublications)
+        .where(
+          and(
+            eq(contentPublications.id, dto.publicationId),
+            eq(contentPublications.tenantId, tenantId)
+          )
+        )
+        .limit(1);
+      existingPublication = found;
+    }
+
+    if (existingPublication) {
+      const bodyContentMarkdown =
+        existingPublication.bodyContentMarkdown &&
+        !existingPublication.bodyContentMarkdown.startsWith('# Sedang')
+          ? existingPublication.bodyContentMarkdown
+          : `# ${dto.title}\n\n![${dto.title}](${dto.imageUrl})\n\n${dto.caption || dto.prompt || 'Infografis visualisasi data capaian kebijakan dan akuntabilitas publik.'}\n\n*Dipublikasikan secara resmi melalui Studio Infografis POLARIS.*`;
+
+      await db
+        .update(contentPublications)
+        .set({
+          title: dto.title,
+          status: ContentStatus.PUBLISHED,
+          excerpt: (
+            dto.caption ||
+            dto.prompt ||
+            existingPublication.excerpt ||
+            'Infografis visualisasi data capaian kinerja dan akuntabilitas publik.'
+          ).slice(0, 200),
+          bodyContentMarkdown,
+          publishedAt: existingPublication.publishedAt || new Date(),
+          updatedAt: new Date(),
+        })
+        .where(eq(contentPublications.id, existingPublication.id));
+
+      const [existingMedia] = await db
+        .select()
+        .from(mediaAssets)
+        .where(eq(mediaAssets.publicationId, existingPublication.id))
+        .limit(1);
+
+      if (existingMedia) {
+        await db
+          .update(mediaAssets)
+          .set({
+            cdnPublicUrl: dto.imageUrl,
+            r2StorageUrl: dto.imageUrl,
+            promptUsed: dto.prompt || dto.caption || existingMedia.promptUsed,
+          })
+          .where(eq(mediaAssets.id, existingMedia.id));
+      } else {
+        await db.insert(mediaAssets).values({
+          publicationId: existingPublication.id,
+          assetType: AssetType.INFOGRAPHIC_PNG,
+          r2StorageUrl: dto.imageUrl,
+          cdnPublicUrl: dto.imageUrl,
+          promptUsed: dto.prompt || dto.caption || null,
+          mimeType: 'image/webp',
+          fileSizeBytes: 0,
+        });
+      }
+
+      return {
+        success: true,
+        message: 'Infografis resmi dipublikasikan ke Website Pribadi Dewan.',
+        publicationId: existingPublication.id,
+        slug: existingPublication.slug,
+        canonicalUrl: existingPublication.canonicalUrl,
+        publishedAt: existingPublication.publishedAt || new Date(),
+      };
+    }
+
+    // New Publication
+    const baseSlug = ContentPublication.generateSlug(dto.title.slice(0, 50));
+    const finalSlug = `${baseSlug}-${randomUUID().slice(0, 8)}`;
+    const canonicalUrlObj = new CanonicalUrl(new SubdomainSlug(subdomainSlug!), finalSlug);
+    const canonicalUrl = canonicalUrlObj.getValue();
+
+    const bodyContentMarkdown = `# ${dto.title}\n\n![${dto.title}](${dto.imageUrl})\n\n${dto.caption || dto.prompt || 'Infografis visualisasi data capaian kebijakan dan akuntabilitas publik.'}\n\n*Dipublikasikan secara resmi melalui Studio Infografis POLARIS.*`;
+    const wordCount = bodyContentMarkdown.split(/\s+/).filter(Boolean).length;
+
+    const [pub] = await db
+      .insert(contentPublications)
+      .values({
+        tenantId,
+        title: dto.title,
+        slug: finalSlug,
+        excerpt: (
+          dto.caption ||
+          dto.prompt ||
+          'Infografis visualisasi data capaian kinerja dan akuntabilitas publik.'
+        ).slice(0, 200),
+        bodyContentMarkdown,
+        wordCount,
+        status: ContentStatus.PUBLISHED,
+        canonicalUrl,
+        publishedAt: new Date(),
+      })
+      .returning();
+
+    await db.insert(mediaAssets).values({
+      publicationId: pub.id,
+      assetType: AssetType.INFOGRAPHIC_PNG,
+      r2StorageUrl: dto.imageUrl,
+      cdnPublicUrl: dto.imageUrl,
+      promptUsed: dto.prompt || dto.caption || null,
+      mimeType: 'image/webp',
+      fileSizeBytes: 0,
+    });
+
+    return {
+      success: true,
+      message: 'Infografis resmi dipublikasikan ke Website Pribadi Dewan.',
+      publicationId: pub.id,
+      slug: pub.slug,
+      canonicalUrl: pub.canonicalUrl,
+      publishedAt: pub.publishedAt,
+    };
+  }
+
+  async unpublishInfographic(tenantId: string, id: string) {
+    const [pub] = await db
+      .select()
+      .from(contentPublications)
+      .where(
+        and(
+          eq(contentPublications.id, id),
+          eq(contentPublications.tenantId, tenantId)
+        )
+      )
+      .limit(1);
+
+    if (!pub) {
+      throw new NotFoundException('Infografis tidak ditemukan.');
+    }
+
+    await db
+      .update(contentPublications)
+      .set({
+        status: ContentStatus.UNPUBLISHED,
+        updatedAt: new Date(),
+      })
+      .where(eq(contentPublications.id, pub.id));
+
+    return { message: 'Infografis berhasil ditarik dari tayangan publik (Status: UNPUBLISHED).' };
+  }
+
+  async listInfographics(tenantId: string) {
+    const items = await db
+      .select({
+        id: contentPublications.id,
+        title: contentPublications.title,
+        slug: contentPublications.slug,
+        excerpt: contentPublications.excerpt,
+        status: contentPublications.status,
+        publishedAt: contentPublications.publishedAt,
+        createdAt: contentPublications.createdAt,
+      })
+      .from(contentPublications)
+      .where(eq(contentPublications.tenantId, tenantId))
+      .orderBy(desc(contentPublications.createdAt));
+
+    const pubIds = items.map((i) => i.id);
+    const mediaMap = new Map<string, string>();
+    if (pubIds.length > 0) {
+      const medias = await db
+        .select({
+          publicationId: mediaAssets.publicationId,
+          cdnPublicUrl: mediaAssets.cdnPublicUrl,
+        })
+        .from(mediaAssets)
+        .where(
+          and(
+            inArray(mediaAssets.publicationId, pubIds),
+            inArray(mediaAssets.assetType, [AssetType.INFOGRAPHIC_PNG, AssetType.DALLE_POSTER])
+          )
+        );
+      for (const m of medias) {
+        if (!mediaMap.has(m.publicationId)) {
+          mediaMap.set(m.publicationId, m.cdnPublicUrl);
+        }
+      }
+    }
+
+    return items.map((item) => ({
+      ...item,
+      imageUrl: mediaMap.get(item.id) || null,
+    }));
+  }
+
+  async getInfographicDetail(tenantId: string, id: string) {
+    const [article] = await db
+      .select()
+      .from(contentPublications)
+      .where(
+        and(
+          eq(contentPublications.id, id),
+          eq(contentPublications.tenantId, tenantId)
+        )
+      )
+      .limit(1);
+
+    if (!article) {
+      throw new NotFoundException('Infografis tidak ditemukan.');
+    }
+
+    const [asset] = await db
+      .select()
+      .from(mediaAssets)
+      .where(eq(mediaAssets.publicationId, article.id))
+      .limit(1);
+
+    return {
+      infographic: article,
+      asset,
+    };
+  }
 }
 
 
 ======================================================================
---- BERKAS: apps/api-core/src/modules/studio/dto/studio.dto.ts (98 baris, 1.8 KB) ---
+--- BERKAS: apps/api-core/src/modules/studio/dto/studio.dto.ts (127 baris, 2.3 KB) ---
 ======================================================================
 import { IsString, IsNotEmpty, IsOptional, IsBoolean } from 'class-validator';
 
@@ -20373,6 +20486,35 @@ export class UploadArticleImageDto {
   caption?: string;
 }
 
+export class PublishInfographicDto {
+  @IsString()
+  @IsNotEmpty({ message: 'Judul infografis wajib diisi.' })
+  title!: string;
+
+  @IsString()
+  @IsNotEmpty({ message: 'URL visual gambar infografis wajib diisi.' })
+  imageUrl!: string;
+
+  @IsOptional()
+  @IsString()
+  caption?: string;
+
+  @IsOptional()
+  @IsString()
+  prompt?: string;
+
+  @IsOptional()
+  @IsString()
+  aspectRatio?: string;
+
+  @IsOptional()
+  @IsString()
+  style?: string;
+
+  @IsOptional()
+  @IsString()
+  publicationId?: string;
+}
 
 
 ======================================================================
@@ -20421,7 +20563,7 @@ export class StudioModule {}
 ================================================================================
 
 ======================================================================
---- BERKAS: apps/web-dashboard/src/app/studio/infografis/page.tsx (742 baris, 28.2 KB) ---
+--- BERKAS: apps/web-dashboard/src/app/studio/infografis/page.tsx (784 baris, 29.4 KB) ---
 ======================================================================
 'use client';
 
@@ -20432,6 +20574,7 @@ import { ApiClient } from '@/lib/api-client';
 import { Sidebar } from '@/components/layout/sidebar';
 import { Topbar } from '@/components/layout/topbar';
 import { Button } from '@/components/ui/button';
+import { getPortalUrl } from '@/lib/urls';
 import { useToast } from '@/components/ui/toast';
 import {
   ArrowLeft,
@@ -20598,6 +20741,15 @@ export default function InfografisStudioPage() {
   const currentIteration =
     currentSession?.iterations.find((it) => it.id === currentSession.activeIterationId) ||
     currentSession?.iterations[currentSession.iterations.length - 1];
+
+  // Sinkronisasi status terbitan saat ganti iterasi
+  useEffect(() => {
+    if (currentIteration?.publishedUrl) {
+      setPublishedUrl(currentIteration.publishedUrl);
+    } else {
+      setPublishedUrl(null);
+    }
+  }, [currentIteration?.id, currentIteration?.publishedUrl]);
 
   // Buat Sesi Baru (+ Chat Baru)
   function handleCreateNewSession() {
@@ -20817,6 +20969,7 @@ export default function InfografisStudioPage() {
         style: submittedStyle,
         aspectRatio: submittedAspectRatio,
         source: latestTargetSession.iterations.length === 0 ? 'INITIAL' : 'REFINE',
+        publicationId: publicationId || undefined,
       };
 
       const updated = sessionsRef.current.map((s) => {
@@ -20951,23 +21104,54 @@ export default function InfografisStudioPage() {
 
     setPublishing(true);
     try {
-      await ApiClient.request<any>('/studio/articles/publish', {
+      const res = await ApiClient.request<any>('/studio/infographics/publish', {
         method: 'POST',
         body: JSON.stringify({
           title: currentIteration.title,
-          bodyContentMarkdown: `# ${currentIteration.title}\n\n![${currentIteration.title}](${currentIteration.imageUrl})\n\n*Dipublikasikan melalui Studio Infografis Polaris Gov.*`,
+          imageUrl: currentIteration.imageUrl,
+          caption: currentIteration.caption,
+          prompt: currentIteration.prompt,
+          aspectRatio: currentIteration.aspectRatio,
+          style: currentIteration.style,
+          publicationId: currentIteration.publicationId,
         }),
       });
 
-      const portalDomain = profile?.subdomain
-        ? `http://${profile.subdomain}.localhost:3001`
-        : 'http://localhost:3001';
-      setPublishedUrl(`${portalDomain}/artikel/kesenjangan-digital`);
+      const portalHost = getPortalUrl(profile?.subdomain);
+
+      const finalUrl = res?.slug
+        ? `${portalHost}/artikel/${res.slug}`
+        : (res?.canonicalUrl || `${portalHost}/infografis`);
+
+      setPublishedUrl(finalUrl);
+
+      // Simpan status published di iterasi aktif & localStorage
+      const updated = sessionsRef.current.map((s) => {
+        if (s.id === activeSessionId) {
+          return {
+            ...s,
+            updatedAt: new Date().toISOString(),
+            iterations: s.iterations.map((it) =>
+              it.id === currentIteration.id
+                ? {
+                    ...it,
+                    isPublished: true,
+                    publishedUrl: finalUrl,
+                    publicationId: res?.publicationId || it.publicationId,
+                  }
+                : it
+            ),
+          };
+        }
+        return s;
+      });
+
+      persistSessions(updated);
 
       toast({
         type: 'success',
-        title: 'Infografis Diterbitkan!',
-        description: 'Telah tayang di galeri publik website resmi dewan.',
+        title: 'Infografis Berhasil Diterbitkan!',
+        description: 'Telah tayang resmi di portal publik website anggota dewan.',
       });
     } catch (err: any) {
       toast({
@@ -21316,7 +21500,7 @@ export function PosterCanvas({
               <div className="w-full h-full flex flex-col items-center justify-center p-4 bg-gradient-to-br from-blue-950 to-slate-900 text-slate-300 text-center">
                 <ImageIcon className="h-10 w-10 text-blue-400 mb-2 opacity-80" />
                 <span className="text-xs font-bold text-white">Visual Kanvas Kebijakan</span>
-                <span className="text-[10px] text-slate-400 mt-1">DALL-E 3 High Resolution 300 DPI</span>
+                <span className="text-[10px] text-slate-400 mt-1">High Resolution 300 DPI</span>
               </div>
             )}
             <div className="absolute inset-0 bg-gradient-to-t from-slate-950/80 via-transparent to-transparent pointer-events-none" />
@@ -21888,7 +22072,7 @@ export function InfographicCanvas({
 
 
 ======================================================================
---- BERKAS: apps/web-dashboard/src/components/studio/infografis/InfographicTypes.ts (24 baris, 606 B) ---
+--- BERKAS: apps/web-dashboard/src/components/studio/infografis/InfographicTypes.ts (27 baris, 682 B) ---
 ======================================================================
 export type VisualStyle = 'infographic' | 'poster' | 'photo' | 'illustration';
 export type AspectRatio = '4:5' | '1:1' | '9:16' | '16:9' | '4:3' | '3:4';
@@ -21904,6 +22088,9 @@ export interface InfographicIteration {
   style: VisualStyle;
   aspectRatio: AspectRatio;
   source: 'INITIAL' | 'REFINE' | 'RESTORE';
+  publicationId?: string;
+  isPublished?: boolean;
+  publishedUrl?: string;
 }
 
 export interface InfographicSession {
@@ -21917,11 +22104,12 @@ export interface InfographicSession {
 
 
 ======================================================================
---- BERKAS: apps/web-dashboard/src/components/studio/editor/ArticlePosterSidebar.tsx (55 baris, 2.8 KB) ---
+--- BERKAS: apps/web-dashboard/src/components/studio/editor/ArticlePosterSidebar.tsx (65 baris, 3.4 KB) ---
 ======================================================================
 'use client';
 
-import { ExternalLink, LoaderCircle, RotateCw } from 'lucide-react';
+import { ExternalLink, LoaderCircle, RotateCw, Download } from 'lucide-react';
+import { downloadImageFile } from '@/lib/utils';
 
 interface ArticlePosterSidebarProps {
   posterUrl: string | null;
@@ -21942,14 +22130,23 @@ export function ArticlePosterSidebar({ posterUrl, title, isRegenerating, onRegen
           <img src={posterUrl} alt={title} className="w-full object-cover max-h-[320px]" />
           <div className="p-3 bg-slate-50 dark:bg-slate-800/80 border-t border-slate-100 dark:border-slate-800 flex justify-between items-center text-xs">
             <span className="text-slate-500 dark:text-slate-300 text-[10px]">Cloudflare R2 WebP</span>
-            <a
-              href={posterUrl}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="text-blue-600 dark:text-blue-400 font-bold hover:underline flex items-center gap-1 text-[11px]"
-            >
-              Buka Resolusi Penuh <ExternalLink className="h-3 w-3" />
-            </a>
+            <div className="flex items-center gap-2.5">
+              <button
+                type="button"
+                onClick={() => downloadImageFile(posterUrl, `${(title || 'Poster_Kebijakan').replace(/[^a-zA-Z0-9]/g, '_').slice(0, 35)}.webp`)}
+                className="text-blue-600 dark:text-blue-400 font-bold hover:underline flex items-center gap-1 text-[11px] cursor-pointer"
+              >
+                <Download className="h-3 w-3" /> Unduh
+              </button>
+              <a
+                href={posterUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200 font-medium flex items-center gap-1 text-[11px]"
+              >
+                Buka <ExternalLink className="h-3 w-3" />
+              </a>
+            </div>
           </div>
         </div>
       ) : (
@@ -23261,7 +23458,7 @@ testAllArchetypes().catch(console.error);
 
 
 ======================================================================
---- BERKAS: packages/ai-engine/test/creative-poster.spec.ts (196 baris, 8.5 KB) ---
+--- BERKAS: packages/ai-engine/test/creative-poster.spec.ts (263 baris, 11.5 KB) ---
 ======================================================================
 import { describe, it, expect, vi } from 'vitest';
 import {
@@ -23458,11 +23655,78 @@ describe('POLARIS Creative Poster Engine', () => {
       expect(clamped.length).toBeLessThanOrEqual(86);
     });
   });
+
+  describe('Fase 3: Crop Compensation Dinamis Berdasarkan Image Provider', () => {
+    it('harus TIDAK menerapkan kompensasi +12% jika provider adalah GOOGLE_IMAGEN (native 4:5)', async () => {
+      vi.spyOn(PosterPromptCompiler, 'synthesizeEditorialCopyAndVisuals').mockResolvedValueOnce({
+        layoutVariant: 'TOP_BANNER',
+        headerPlacement: 'top',
+        cardArrangement: 'stacked',
+        colorMood: 'EMERALD',
+        primaryAccent: '#EA580C',
+        secondaryAccent: '#FB923C',
+        mainBannerTitle: 'JUDUL UJI COBA',
+        blocks: {},
+      });
+
+      const compiled = await PosterPromptCompiler.compileScenePrompt({
+        topic: 'Modernisasi sistem irigasi persawahan berkelanjutan di pedesaan',
+        blueprint: POSTER_BLUEPRINT_CATALOG[0],
+        imageProvider: 'GOOGLE_IMAGEN',
+      });
+
+      // Pada Google Imagen, upper clearance adalah native 35% dan bottom 22%, bukan 47% dan 34%
+      expect(compiled.englishPrompt).toContain('The upper 35% of the canvas MUST be an uncluttered');
+      expect(compiled.englishPrompt).toContain('The bottom 22% MUST provide a quiet');
+      expect(compiled.englishPrompt).not.toContain('The upper 47% of the canvas');
+      expect(compiled.englishPrompt).not.toContain('The bottom 34% MUST provide a quiet');
+    });
+
+    it('harus menerapkan kompensasi +12% jika provider adalah OPENAI_DALLE (pre-crop 9:16 -> 4:5)', async () => {
+      vi.spyOn(PosterPromptCompiler, 'synthesizeEditorialCopyAndVisuals').mockResolvedValueOnce({
+        layoutVariant: 'TOP_BANNER',
+        headerPlacement: 'top',
+        cardArrangement: 'stacked',
+        colorMood: 'EMERALD',
+        primaryAccent: '#EA580C',
+        secondaryAccent: '#FB923C',
+        mainBannerTitle: 'JUDUL UJI COBA',
+        blocks: {},
+      });
+
+      const compiled = await PosterPromptCompiler.compileScenePrompt({
+        topic: 'Modernisasi sistem irigasi persawahan berkelanjutan di pedesaan',
+        blueprint: POSTER_BLUEPRINT_CATALOG[0],
+        imageProvider: 'OPENAI_DALLE',
+      });
+
+      // Pada DALL-E, upper clearance dikompensasi +12% menjadi 47% (35% + 12%) dan bottom menjadi 34% (22% + 12%)
+      expect(compiled.englishPrompt).toContain('The upper 47% of the canvas MUST be an uncluttered');
+      expect(compiled.englishPrompt).toContain('The bottom 34% MUST provide a quiet');
+    });
+
+    it('harus membuang blueprint VIRAL_ONLY ketika topik bertema krisis, bencana, atau duka (Tone Guard)', () => {
+      const crisisTopics = [
+        'Bencana banjir bandang dan tanah longsor di kawasan pegunungan',
+        'Duka cita mendalam atas wafatnya tokoh daerah',
+        'Krisis darurat kesehatan dan evakuasi korban kebakaran',
+      ];
+
+      for (const topic of crisisTopics) {
+        // Uji berulang untuk memastikan pool yang tersaring tidak pernah menghasilkan VIRAL_ONLY
+        for (let i = 0; i < 5; i++) {
+          const selected = PosterBlueprintSelector.selectBestBlueprint({ topic });
+          expect(selected.fixedConstraints?.toneSafety).not.toBe('VIRAL_ONLY');
+        }
+      }
+    });
+  });
 });
 
 
+
 ======================================================================
---- BERKAS: packages/ai-engine/test/blueprint-repository.spec.ts (120 baris, 4.3 KB) ---
+--- BERKAS: packages/ai-engine/test/blueprint-repository.spec.ts (148 baris, 5.2 KB) ---
 ======================================================================
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { PosterBlueprintRepository } from '../src/creative-poster/blueprint-repository.js';
@@ -23583,7 +23847,35 @@ describe('PosterBlueprintRepository', () => {
     expect(result.success).toBe(true);
     expect(result.seededCount).toBe(POSTER_BLUEPRINT_CATALOG.length);
   });
+
+  it('harus memprioritaskan implementasi IPosterBlueprintRepositoryPort yang disuntikkan (Dependency Injection)', async () => {
+    const mockCustomCatalog = [
+      {
+        ...POSTER_BLUEPRINT_CATALOG[0],
+        id: 'INJECTED-CUSTOM-01',
+        name: 'Injected Custom Blueprint',
+      },
+    ];
+
+    const mockPortRepository = {
+      getActiveCatalog: vi.fn().mockResolvedValue(mockCustomCatalog),
+      saveDraftBlueprint: vi.fn().mockResolvedValue(undefined),
+    };
+
+    // Inject custom repository
+    PosterBlueprintRepository.setRepository(mockPortRepository);
+
+    const catalog = await PosterBlueprintRepository.getActiveCatalog();
+
+    expect(mockPortRepository.getActiveCatalog).toHaveBeenCalled();
+    expect(catalog).toEqual(mockCustomCatalog);
+    expect(catalog[0].id).toBe('INJECTED-CUSTOM-01');
+
+    // Bersihkan repositori kustom
+    PosterBlueprintRepository.clearRepository();
+  });
 });
+
 
 
 ======================================================================
