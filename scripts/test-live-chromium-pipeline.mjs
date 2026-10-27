@@ -1,6 +1,6 @@
 import fs from 'node:fs/promises';
 import { ArtCollagePosterPipeline } from '../packages/ai-engine/dist/index.js';
-import { ChromiumPosterCompositor } from '../packages/storage/dist/index.mjs';
+import { ChromiumPosterCompositor, BrowserSingleton } from '../packages/storage/dist/index.mjs';
 
 async function testFullPipeline() {
   console.log('--- Running Full Chromium Art-Collage Pipeline ---');
@@ -38,6 +38,7 @@ async function testFullPipeline() {
 
   await fs.writeFile('uploads/test_renders/live_chromium_sukabumi.webp', composed.buffer);
   console.log('Saved to uploads/test_renders/live_chromium_sukabumi.webp');
+  await BrowserSingleton.close();
 }
 
 testFullPipeline().catch(console.error);
