@@ -56,16 +56,19 @@ export class StudioContextHelper {
     } | null,
     dapilName: string = 'Indonesia'
   ): { signature: string; headerTag: string; editionTag: string } {
-    const name = member?.fullName?.trim() || 'POLARIS // ADVOKASI PUBLIK';
-    const level = member?.legislativeLevel || 'DPR_RI';
+    const name = member?.fullName?.trim() || 'POLARIS';
+    const level = member?.legislativeLevel;
     const cleanDapil =
       dapilName && dapilName.toLowerCase() !== 'dapil' ? dapilName.toUpperCase() : 'INDONESIA';
+    const customPosition = member?.commissionName?.trim()
+      ? member.commissionName.trim().toUpperCase()
+      : null;
 
     switch (level) {
       case 'PIMPINAN_LEMBAGA_REKTOR_SWASTA':
         return {
-          signature: `${name} // TELAAH & OPINI KEBIJAKAN`,
-          headerTag: 'DOKUMEN ANALISIS PUBLIK',
+          signature: customPosition ? `${name} // ${customPosition}` : name,
+          headerTag: 'DOKUMEN OPINI PUBLIK',
           editionTag: `POLARIS // ${cleanDapil}`,
         };
       case 'KEPALA_DAERAH_GUBERNUR':
@@ -82,7 +85,7 @@ export class StudioContextHelper {
         };
       case 'PEJABAT_BIROKRAT_DIRJEN_SEKJEN_OPD':
         return {
-          signature: `${name} // ${member?.commissionName || 'PELAYANAN PUBLIK'}`,
+          signature: customPosition ? `${name} // ${customPosition}` : name,
           headerTag: 'INFORMASI KEBIJAKAN PUBLIK',
           editionTag: `POLARIS // ${cleanDapil}`,
         };
@@ -99,7 +102,7 @@ export class StudioContextHelper {
           editionTag: `POLARIS // ${cleanDapil}`,
         };
       case 'DPR_RI': {
-        const comm = member?.commissionName ? `${member.commissionName} • ` : '';
+        const comm = customPosition ? `${customPosition} • ` : '';
         return {
           signature: `${name} // ${comm}DPR RI • ${cleanDapil}`,
           headerTag: 'DOKUMEN ADVOKASI PUBLIK',
@@ -107,7 +110,7 @@ export class StudioContextHelper {
         };
       }
       case 'DPRD_PROVINSI': {
-        const comm = member?.commissionName ? `${member.commissionName} • ` : '';
+        const comm = customPosition ? `${customPosition} • ` : '';
         return {
           signature: `${name} // ${comm}DPRD PROVINSI • ${cleanDapil}`,
           headerTag: 'DOKUMEN ADVOKASI PUBLIK',
@@ -115,21 +118,19 @@ export class StudioContextHelper {
         };
       }
       case 'DPRD_KABUPATEN_KOTA': {
-        const comm = member?.commissionName ? `${member.commissionName} • ` : '';
+        const comm = customPosition ? `${customPosition} • ` : '';
         return {
           signature: `${name} // ${comm}DPRD • ${cleanDapil}`,
           headerTag: 'DOKUMEN ADVOKASI PUBLIK',
           editionTag: `POLARIS // ${cleanDapil}`,
         };
       }
-      default: {
-        const comm = member?.commissionName ? `${member.commissionName} • ` : '';
+      default:
         return {
-          signature: `${name} // ${comm}TELAAH & ADVOKASI KEBIJAKAN`,
-          headerTag: 'DOKUMEN ADVOKASI PUBLIK',
+          signature: customPosition ? `${name} // ${customPosition}` : name,
+          headerTag: 'DOKUMEN ANALISIS PUBLIK',
           editionTag: `POLARIS // ${cleanDapil}`,
         };
-      }
     }
   }
 

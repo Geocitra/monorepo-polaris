@@ -53,6 +53,7 @@ export interface ChromiumPosterComposeParams {
   signature?: string;
   editionTag?: string;
   headerTag?: string;
+  badgeTag?: string;
   textToneHint?: 'LIGHT' | 'DARK';
   archetype?: string;
 }
@@ -76,6 +77,7 @@ export class ChromiumPosterCompositor {
       signature = 'POLARIS // REPUBLIK INDONESIA',
       editionTag = 'POLARIS // EDISI KHUSUS',
       headerTag,
+      badgeTag,
       textToneHint,
     } = params;
 
@@ -131,6 +133,8 @@ export class ChromiumPosterCompositor {
       meta.format === 'png' ? 'image/png' : meta.format === 'jpeg' ? 'image/jpeg' : 'image/webp';
     const bgBase64 = `data:${bgMime};base64,${canvasBuffer.toString('base64')}`;
     const fontFaceCss = await ChromiumFontFace.getCss();
+    const currentYear = new Date().getFullYear();
+    const resolvedBadgeTag = badgeTag || `TELAAH PUBLIK // ${currentYear}`;
 
     // Bangun poin-poin HTML dinamis (semua teks di-escape)
     const pointsHtml = (copy.points || [])
@@ -305,12 +309,11 @@ export class ChromiumPosterCompositor {
       color: ${primaryColor};
     }
 
-    .official-badge {
-      font-size: 12px;
-      font-weight: 800;
-      color: ${accentColor};
+    .footer-year {
+      font-family: 'Bebas Neue', sans-serif;
+      font-size: 24px;
       letter-spacing: 2px;
-      text-transform: uppercase;
+      color: ${accentColor};
     }
   </style>
 </head>
@@ -318,7 +321,7 @@ export class ChromiumPosterCompositor {
   <div class="ink-layer">
     <div class="edition-tag">
       <span>${esc(editionTag)}</span>
-      <span>${esc(headerTag || 'DOKUMEN ADVOKASI PUBLIK')}</span>
+      <span>${esc(headerTag || 'DOKUMEN ANALISIS PUBLIK')}</span>
     </div>
 
     <div class="editorial-flow-zone">
@@ -333,7 +336,7 @@ export class ChromiumPosterCompositor {
 
     <div class="footer-zone">
       <div class="signature-title">${esc(signature)}</div>
-      <div class="official-badge">OFFICIAL ADVOCACY // 2026</div>
+      <div class="footer-year">${currentYear}</div>
     </div>
   </div>
 
