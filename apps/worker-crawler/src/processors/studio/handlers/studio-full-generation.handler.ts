@@ -28,9 +28,16 @@ import {
   DocumentExtractorService,
   ContextualChunkerService,
   DatahubEmbedderService,
+  DocumentClassifierService,
 } from '@polaris/ai-engine';
 import { CloudflareR2StorageAdapter, ChromiumPosterCompositor } from '@polaris/storage';
-import { ContentStatus, AssetType, ResearchJobStatus } from '@polaris/shared-types';
+import {
+  ContentStatus,
+  AssetType,
+  ResearchJobStatus,
+  DatahubPrivacyScope,
+  DatahubCategory,
+} from '@polaris/shared-types';
 import { AiCostCalculator } from '@polaris/core-domain';
 import { StudioGenerationJobPayload } from '../../../queues/studio.queue.js';
 import { StudioContextHelper } from '../studio-context.helper.js';
@@ -90,20 +97,30 @@ export class StudioFullGenerationHandler {
 
       let targetRegion = member?.personalCoverage?.[0] || 'NASIONAL';
       let dapilName = member?.customDapil || 'Dapil';
+      let resolvedDapilCode: string | null = null;
 
       if (member?.dapilId) {
         const [dapil] = await db
-          .select()
+          .select({
+            id: electoralDistricts.id,
+            dapilCode: electoralDistricts.dapilCode,
+            dapilName: electoralDistricts.dapilName,
+            regencyCoverage: electoralDistricts.regencyCoverage,
+          })
           .from(electoralDistricts)
           .where(eq(electoralDistricts.id, member.dapilId))
           .limit(1);
 
         if (dapil) {
+          resolvedDapilCode = dapil.dapilCode;
           if (!member.customDapil) dapilName = dapil.dapilName;
           if (!member.personalCoverage || member.personalCoverage.length === 0) {
             targetRegion = dapil.regencyCoverage?.[0] || 'NASIONAL';
           }
         }
+      }
+      if (!resolvedDapilCode) {
+        resolvedDapilCode = member?.customDapil || null;
       }
 
       // Vektor Grounding Otentik (RAG) untuk Topik
@@ -209,6 +226,20 @@ export class StudioFullGenerationHandler {
 
               targetFileId = newMasterFile.id;
 
+              // Klasifikasi Cerdas Kategori Dokumen (3-Pass AI & Heuristik)
+              let detectedCategory = DatahubCategory.DOKUMEN_INTERNAL;
+              try {
+                const cls = await DocumentClassifierService.classifyDocument(
+                  cleanName,
+                  extractedText
+                );
+                detectedCategory = cls.category;
+              } catch (clsErr: any) {
+                console.warn(
+                  `[StudioProcessor] Gagal klasifikasi dokumen ${cleanName}: ${clsErr.message}`
+                );
+              }
+
               // PEMBEDAAN CHUNKING SISTEM:
               // - Dokumen pendek / Foto OCR (<= 800 kata): Unified Single Context Chunk
               // - Dokumen panjang (Perda, APBD, LKPJ > 800 kata): Contextual Sliding Window Chunking
@@ -224,14 +255,14 @@ export class StudioFullGenerationHandler {
                         ? 'Transkrip & Scene Lapangan'
                         : 'Ringkasan Rilis/Memo',
                     chunkContent: extractedText,
-                    fullChunkText: `[Dokumen: ${cleanName}]\n${extractedText}`,
+                    fullChunkText: `[Kategori: ${detectedCategory}] [Dokumen: ${cleanName}]\n${extractedText}`,
                     tokenCount: Math.ceil(extractedText.length / 4),
                   },
                 ];
               } else {
                 generatedChunks = ContextualChunkerService.chunkDocument(extractedText, {
                   documentTitle: cleanName,
-                  categoryTag: 'DOKUMEN_INTERNAL',
+                  categoryTag: detectedCategory,
                   targetChunkWords: 380,
                   overlapWords: 70,
                 });
@@ -274,11 +305,27 @@ export class StudioFullGenerationHandler {
               .limit(1);
 
             if (!existingRef) {
+              // Jika berkas sudah pernah diunggah sebelumnya (deduplikasi), warisi kategori yang ada
+              let refCategory = DatahubCategory.DOKUMEN_INTERNAL;
+              const [priorRef] = await db
+                .select({ categoryTag: datahubDocumentRefs.categoryTag })
+                .from(datahubDocumentRefs)
+                .where(eq(datahubDocumentRefs.fileId, targetFileId))
+                .limit(1);
+
+              if (priorRef?.categoryTag) {
+                refCategory = priorRef.categoryTag;
+              } else if (fileChunks.length > 0) {
+                const sampleText = fileChunks.map((c) => c.chunkContent).join('\n').slice(0, 3000);
+                const cls = await DocumentClassifierService.classifyDocument(cleanName, sampleText);
+                refCategory = cls.category;
+              }
+
               await db.insert(datahubDocumentRefs).values({
                 fileId: targetFileId,
                 uploadedByTenantId: tenantId, // Hak milik mutlak tokoh dewan binaan yang aktif!
                 customTitle: cleanName,
-                dapilCode: member?.customDapil || null,
+                dapilCode: resolvedDapilCode,
                 partyAffiliation: member?.partyAffiliation || null,
                 branchType: member?.legislativeLevel?.startsWith('KEPALA_DAERAH')
                   ? 'EKSEKUTIF'
@@ -286,8 +333,8 @@ export class StudioFullGenerationHandler {
                     ? 'PUBLIK'
                     : 'LEGISLATIF',
                 legislativeLevel: (member?.legislativeLevel as any) || null,
-                privacyScope: 'PRIVATE_TENANT',
-                categoryTag: 'DOKUMEN_INTERNAL',
+                privacyScope: DatahubPrivacyScope.PRIVATE_TENANT,
+                categoryTag: refCategory,
               });
             }
 

@@ -8,7 +8,6 @@ import {
   StudioResearchService,
 } from './services/index.js';
 import { UrlScraperService } from './url-scraper.service.js';
-import { DocumentParserService } from './document-parser.service.js';
 import { RedisModule } from '../redis/redis.module.js';
 
 @Module({
@@ -21,7 +20,6 @@ import { RedisModule } from '../redis/redis.module.js';
     StudioArticleService,
     StudioResearchService,
     UrlScraperService,
-    DocumentParserService,
   ],
   exports: [
     StudioService,
@@ -30,7 +28,6 @@ import { RedisModule } from '../redis/redis.module.js';
     StudioArticleService,
     StudioResearchService,
     UrlScraperService,
-    DocumentParserService,
   ],
 })
 export class StudioModule {}

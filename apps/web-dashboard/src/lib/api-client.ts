@@ -302,4 +302,37 @@ export class AdminApiClient {
 
     return data as T;
   }
+
+  public static async uploadFormData<T>(endpoint: string, formData: FormData): Promise<T> {
+    const token = this.getToken();
+    const headers: Record<string, string> = {};
+
+    if (token) {
+      headers['Authorization'] = `Bearer ${token}`;
+    }
+
+    const actingTenant = this.getActingTenant();
+    if (actingTenant) {
+      headers['X-Acting-Tenant-Id'] = actingTenant;
+    }
+
+    const response = await fetch(`${API_URL}${endpoint}`, {
+      method: 'POST',
+      headers,
+      body: formData,
+    });
+
+    const data = await this.parseResponseData(response);
+
+    if (!response.ok) {
+      if (response.status === 401 && typeof window !== 'undefined') {
+        this.logout();
+        window.location.href = '/superadmin/login';
+      }
+      const message = ApiClient['normalizeErrorMessage'](data, response.status);
+      throw new Error(message);
+    }
+
+    return data as T;
+  }
 }

@@ -45,6 +45,7 @@ import {
   RotateCcw,
   Maximize2,
   Minimize2,
+  Database,
 } from 'lucide-react';
 import {
   WritingStyleSelector,
@@ -55,6 +56,7 @@ import {
 import { VisualDocumentCanvas } from '@/components/studio/artikel/VisualDocumentCanvas';
 import { TiptapExecutiveEditor } from '@/components/studio/artikel/TiptapExecutiveEditor';
 import { downloadImageFile } from '@/lib/utils';
+import { OperatorKnowledgeTab } from '@/components/operator/OperatorKnowledgeTab';
 
 export interface AttachedFileItem {
   id: string;
@@ -209,7 +211,7 @@ export default function OperatorCockpitPage() {
   // Active Context State
   const [tenantContext, setTenantContext] = useState<TenantContextData | null>(null);
   const [loadingContext, setLoadingContext] = useState(false);
-  const [activeTab, setActiveTab] = useState<'CONTENT' | 'ARTICLES' | 'PROFILE' | 'ASPIRASI' | 'COMMENTS'>('CONTENT');
+  const [activeTab, setActiveTab] = useState<'CONTENT' | 'ARTICLES' | 'KNOWLEDGE' | 'PROFILE' | 'ASPIRASI' | 'COMMENTS'>('CONTENT');
   const [dewanArticles, setDewanArticles] = useState<any[]>([]);
   const [loadingDewanArticles, setLoadingDewanArticles] = useState(false);
   const [articlesFilter, setArticlesFilter] = useState<'ALL' | 'DRAFT' | 'PUBLISHED'>('ALL');
@@ -1153,6 +1155,18 @@ export default function OperatorCockpitPage() {
               </button>
 
               <button
+                onClick={() => setActiveTab('KNOWLEDGE')}
+                className={`flex items-center space-x-2 px-3.5 py-2 rounded-xl text-xs font-bold transition cursor-pointer ${
+                  activeTab === 'KNOWLEDGE'
+                    ? 'bg-indigo-600 text-white shadow-sm'
+                    : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800'
+                }`}
+              >
+                <Database className="w-3.5 h-3.5" />
+                <span>Bank Dokumen & AI</span>
+              </button>
+
+              <button
                 onClick={() => setActiveTab('PROFILE')}
                 className={`flex items-center space-x-2 px-3.5 py-2 rounded-xl text-xs font-bold transition ${
                   activeTab === 'PROFILE'
@@ -2081,6 +2095,19 @@ export default function OperatorCockpitPage() {
                 </div>
               )}
             </div>
+          )}
+
+          {/* ===================================================================== */}
+          {/* TAB: BANK DOKUMEN & PENGETAHUAN AI BINAAN (KNOWLEDGE HUB)            */}
+          {/* ===================================================================== */}
+          {activeTab === 'KNOWLEDGE' && (
+            <OperatorKnowledgeTab
+              assignedTenants={assignments}
+              selectedTenant={selectedDewan || null}
+              onSelectTenant={(t) => {
+                if (t) selectTenant(t.tenantId);
+              }}
+            />
           )}
 
           {/* ===================================================================== */}
