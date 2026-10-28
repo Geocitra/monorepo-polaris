@@ -883,7 +883,7 @@ function KampanyeTerpaduContent() {
               iterationsCount={iterations.length}
               onOpenVersionDrawer={() => setVersionDrawerOpen(true)}
               onResetToNewChat={handleCreateNewSession}
-              authorName={profile?.fullName || 'Anggota Dewan'}
+              authorName={profile?.fullName || 'Tokoh Publik'}
             />
 
             <CampaignPreview
@@ -896,6 +896,8 @@ function KampanyeTerpaduContent() {
               onPublish={handlePublish}
               onUpdateArticleContent={handleUpdateArticleContent}
               isBackgroundRenderingPoster={isBackgroundRenderingPoster}
+              authorName={profile?.fullName || 'Tokoh Publik'}
+              partyAffiliation={profile?.commissionName || profile?.politicalParty || ''}
             />
           </div>
 
