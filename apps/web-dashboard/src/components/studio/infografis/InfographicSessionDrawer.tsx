@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import {
   X,
   Plus,
@@ -15,6 +15,7 @@ import {
 } from 'lucide-react';
 import { InfographicSession } from './InfographicTypes';
 import { formatDateIndonesian } from '@/lib/utils';
+import { Portal } from '@/components/ui/portal';
 
 interface InfographicSessionDrawerProps {
   isOpen: boolean;
@@ -40,6 +41,16 @@ export function InfographicSessionDrawer({
   const [searchQuery, setSearchQuery] = useState('');
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editTitle, setEditTitle] = useState('');
+
+  useEffect(() => {
+    if (isOpen) {
+      const originalOverflow = document.body.style.overflow;
+      document.body.style.overflow = 'hidden';
+      return () => {
+        document.body.style.overflow = originalOverflow;
+      };
+    }
+  }, [isOpen]);
 
   if (!isOpen) return null;
 
@@ -67,12 +78,13 @@ export function InfographicSessionDrawer({
   }
 
   return (
-    <div className="fixed inset-0 z-50 overflow-hidden flex justify-start animate-in fade-in duration-200">
-      {/* Backdrop */}
-      <div
-        className="fixed inset-0 bg-slate-900/40 backdrop-blur-xs transition-opacity"
-        onClick={onClose}
-      />
+    <Portal>
+      <div className="fixed inset-0 !m-0 z-[60] overflow-hidden flex justify-start animate-in fade-in duration-200">
+        {/* Backdrop */}
+        <div
+          className="fixed inset-0 !m-0 bg-slate-900/40 backdrop-blur-xs transition-opacity"
+          onClick={onClose}
+        />
 
       <div className="relative w-full max-w-sm sm:max-w-md bg-white dark:bg-slate-900 shadow-2xl flex flex-col h-full border-r border-slate-200 dark:border-slate-800 z-10">
         {/* HEADER */}
@@ -255,5 +267,6 @@ export function InfographicSessionDrawer({
         </div>
       </div>
     </div>
+    </Portal>
   );
 }

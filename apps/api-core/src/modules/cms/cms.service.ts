@@ -3,6 +3,7 @@ import {
   UpdateThemeSettingsDto,
   UpdateDomainConfigDto,
   CreatePortalDocumentRequestDto,
+  CreateDomainRequestDto,
 } from './dto/cms.dto.js';
 import {
   CmsDomainDnsService,
@@ -51,6 +52,15 @@ export class CmsService {
 
   async checkCustomDomainAllowed(domain?: string): Promise<boolean> {
     return await this.domainDnsService.checkCustomDomainAllowed(domain);
+  }
+
+  // --- Domain: Pengajuan Domain Tenant ---
+  async submitDomainRequest(tenantId: string, dto: CreateDomainRequestDto) {
+    return await this.domainDnsService.submitDomainRequest(tenantId, dto);
+  }
+
+  async getMyDomainRequests(tenantId: string) {
+    return await this.domainDnsService.getMyDomainRequests(tenantId);
   }
 
   // --- Domain: Website Publik Dewan ---

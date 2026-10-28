@@ -1,5 +1,6 @@
 'use client';
 
+import { useEffect } from 'react';
 import {
   History,
   X,
@@ -14,6 +15,7 @@ import {
   ArrowLeft
 } from 'lucide-react';
 import { WritingStyle, WRITING_STYLES } from './WritingStyleSelector';
+import { Portal } from '@/components/ui/portal';
 
 export interface ArticleIteration {
   id: string;
@@ -48,15 +50,26 @@ export function ArticleVersionHistoryDrawer({
   onRestoreVersion,
   onExitPreview,
 }: ArticleVersionHistoryDrawerProps) {
+  useEffect(() => {
+    if (isOpen) {
+      const originalOverflow = document.body.style.overflow;
+      document.body.style.overflow = 'hidden';
+      return () => {
+        document.body.style.overflow = originalOverflow;
+      };
+    }
+  }, [isOpen]);
+
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-50 overflow-hidden flex justify-end">
-      {/* Backdrop */}
-      <div
-        className="fixed inset-0 bg-slate-900/40 backdrop-blur-xs transition-opacity"
-        onClick={onClose}
-      />
+    <Portal>
+      <div className="fixed inset-0 !m-0 z-[60] overflow-hidden flex justify-end">
+        {/* Backdrop */}
+        <div
+          className="fixed inset-0 !m-0 bg-slate-900/40 backdrop-blur-xs transition-opacity"
+          onClick={onClose}
+        />
 
       {/* Drawer Panel */}
       <div className="relative w-full max-w-md bg-white dark:bg-slate-900 h-full shadow-2xl border-l border-slate-200 dark:border-slate-800 flex flex-col z-10 theme-transition">
@@ -240,5 +253,7 @@ export function ArticleVersionHistoryDrawer({
         </div>
       </div>
     </div>
+    </Portal>
   );
 }
+

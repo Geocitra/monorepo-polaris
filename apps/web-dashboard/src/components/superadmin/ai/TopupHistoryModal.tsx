@@ -1,7 +1,8 @@
 'use client';
 
-import React from 'react';
+import React, { useEffect } from 'react';
 import { X, History, Calendar, CreditCard, FileText } from 'lucide-react';
+import { Portal } from '@/components/ui/portal';
 
 interface TopupHistoryItem {
   id: string;
@@ -20,11 +21,22 @@ interface TopupHistoryModalProps {
 }
 
 export function TopupHistoryModal({ isOpen, onClose, histories }: TopupHistoryModalProps) {
+  useEffect(() => {
+    if (isOpen) {
+      const originalOverflow = document.body.style.overflow;
+      document.body.style.overflow = 'hidden';
+      return () => {
+        document.body.style.overflow = originalOverflow;
+      };
+    }
+  }, [isOpen]);
+
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-slate-950/75 backdrop-blur-xs animate-in fade-in duration-200">
-      <div className="w-full max-w-2xl bg-white dark:bg-[#0E131F] rounded-3xl border border-slate-200 dark:border-slate-800 shadow-2xl overflow-hidden flex flex-col max-h-[85vh]">
+    <Portal>
+      <div className="fixed inset-0 !m-0 z-[60] flex items-center justify-center p-3 sm:p-4 bg-slate-900/60 backdrop-blur-sm animate-in fade-in duration-200">
+        <div className="w-full max-w-2xl bg-white dark:bg-[#0E131F] rounded-3xl border border-slate-200 dark:border-slate-800 shadow-2xl overflow-hidden flex flex-col max-h-[85vh]">
         {/* Header */}
         <div className="p-5 sm:p-6 border-b border-slate-100 dark:border-slate-800/80 flex items-center justify-between">
           <div className="flex items-center gap-3">
@@ -56,7 +68,8 @@ export function TopupHistoryModal({ isOpen, onClose, histories }: TopupHistoryMo
             </div>
           ) : (
             <div className="border border-slate-100 dark:border-slate-800 rounded-2xl overflow-hidden">
-              <table className="w-full text-left border-collapse">
+              <div className="overflow-x-auto">
+                <table className="w-full text-left border-collapse min-w-[550px]">
                 <thead>
                   <tr className="bg-slate-50 dark:bg-slate-900/60 text-[10px] font-black uppercase text-slate-400 tracking-wider border-b border-slate-100 dark:border-slate-800">
                     <th className="py-3 px-4">Tanggal & Jam</th>
@@ -101,6 +114,7 @@ export function TopupHistoryModal({ isOpen, onClose, histories }: TopupHistoryMo
                   ))}
                 </tbody>
               </table>
+              </div>
             </div>
           )}
         </div>
@@ -116,5 +130,6 @@ export function TopupHistoryModal({ isOpen, onClose, histories }: TopupHistoryMo
         </div>
       </div>
     </div>
+    </Portal>
   );
 }

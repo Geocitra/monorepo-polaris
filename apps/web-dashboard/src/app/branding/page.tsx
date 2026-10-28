@@ -263,11 +263,11 @@ function BrandingContent() {
           </div>
 
           {/* TAB SWITCHER */}
-          <div className="flex items-center gap-1 bg-slate-100 dark:bg-slate-800 rounded-xl p-1 w-fit">
+          <div className="flex items-center gap-1 bg-slate-100 dark:bg-slate-800 rounded-xl p-1 w-fit max-w-full overflow-x-auto scrollbar-none">
             <button
               type="button"
               onClick={() => setActiveTab('dashboard')}
-              className={`flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-bold transition-all ${
+              className={`shrink-0 whitespace-nowrap flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-bold transition-all cursor-pointer ${
                 activeTab === 'dashboard'
                   ? 'bg-white dark:bg-slate-900 text-slate-900 dark:text-white shadow-sm'
                   : 'text-slate-500 hover:text-slate-700 dark:hover:text-slate-300'
@@ -278,7 +278,7 @@ function BrandingContent() {
             </button>
             <Link
               href="/branding/website"
-              className="flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-bold transition-all text-slate-600 hover:text-blue-600 dark:text-slate-400 dark:hover:text-white hover:bg-white dark:hover:bg-slate-900 shadow-2xs group"
+              className="shrink-0 whitespace-nowrap flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-bold transition-all text-slate-600 hover:text-blue-600 dark:text-slate-400 dark:hover:text-white hover:bg-white dark:hover:bg-slate-900 shadow-2xs group cursor-pointer"
               title="Buka Halaman Penuh Studio Website Publik"
             >
               <Monitor className="h-3.5 w-3.5 text-blue-500 group-hover:scale-110 transition-transform" />
@@ -290,7 +290,7 @@ function BrandingContent() {
             <button
               type="button"
               onClick={() => setActiveTab('instagram')}
-              className={`flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-bold transition-all ${
+              className={`shrink-0 whitespace-nowrap flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-bold transition-all cursor-pointer ${
                 activeTab === 'instagram'
                   ? 'bg-gradient-to-r from-purple-600 to-rose-600 text-white shadow-sm'
                   : 'text-slate-500 hover:text-slate-700 dark:hover:text-slate-300'
@@ -302,7 +302,7 @@ function BrandingContent() {
             <button
               type="button"
               onClick={() => setActiveTab('threads')}
-              className={`flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-bold transition-all ${
+              className={`shrink-0 whitespace-nowrap flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-bold transition-all cursor-pointer ${
                 activeTab === 'threads'
                   ? 'bg-slate-900 dark:bg-white text-white dark:text-slate-900 shadow-sm'
                   : 'text-slate-500 hover:text-slate-700 dark:hover:text-slate-300'

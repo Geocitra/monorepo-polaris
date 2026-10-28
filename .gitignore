@@ -44,4 +44,8 @@ apps/web-dashboard/public/uploads
 apps/web-portal/public/uploads
 apps/api-core/uploads/
 
+# Scratch & Dev tools
+scratch/
+
+
 

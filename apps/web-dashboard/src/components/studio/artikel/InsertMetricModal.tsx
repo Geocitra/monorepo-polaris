@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Editor } from '@tiptap/react';
 import {
   TrendingUp,
@@ -12,6 +12,7 @@ import {
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/components/ui/toast';
+import { Portal } from '@/components/ui/portal';
 
 interface InsertMetricModalProps {
   isOpen: boolean;
@@ -33,6 +34,16 @@ export function InsertMetricModal({
   const [description, setDescription] = useState(
     'Berdasarkan audit serapan pada kios tani resmi di 12 kecamatan wilayah dapil.'
   );
+
+  useEffect(() => {
+    if (isOpen) {
+      const originalOverflow = document.body.style.overflow;
+      document.body.style.overflow = 'hidden';
+      return () => {
+        document.body.style.overflow = originalOverflow;
+      };
+    }
+  }, [isOpen]);
 
   if (!isOpen) return null;
 
@@ -87,8 +98,9 @@ export function InsertMetricModal({
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/70 backdrop-blur-xs animate-in fade-in duration-200">
-      <div className="w-full max-w-lg bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh]">
+    <Portal>
+      <div className="fixed inset-0 !m-0 z-[60] flex items-center justify-center p-3 sm:p-4 bg-slate-900/60 backdrop-blur-sm animate-in fade-in duration-200">
+        <div className="w-full max-w-lg bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh]">
         {/* MODAL HEADER */}
         <div className="p-5 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between">
           <div className="flex items-center gap-2.5">
@@ -192,7 +204,7 @@ export function InsertMetricModal({
             <label className="text-[11px] font-bold text-slate-700 dark:text-slate-300 block">
               Arah Tren & Garis Indikator:
             </label>
-            <div className="grid grid-cols-3 gap-2">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
               <button
                 type="button"
                 onClick={() => {
@@ -291,5 +303,6 @@ export function InsertMetricModal({
         </div>
       </div>
     </div>
+    </Portal>
   );
 }

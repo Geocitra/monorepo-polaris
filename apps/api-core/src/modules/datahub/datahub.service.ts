@@ -627,7 +627,11 @@ export class DatahubService {
     if (isSuperadmin && !query?.tenantId) {
       conditions.push(sql`1=1`);
     } else {
-      conditions.push(sql`ref.uploaded_by_tenant_id = ANY(${assignedTenantIds}::uuid[])`);
+      const idList = sql.join(
+        assignedTenantIds.map((id) => sql`${id}::uuid`),
+        sql`, `
+      );
+      conditions.push(sql`ref.uploaded_by_tenant_id IN (${idList})`);
     }
 
     if (query?.search && query.search.trim()) {
@@ -712,13 +716,18 @@ export class DatahubService {
       }
     }
 
+    const idList = sql.join(
+      assignedTenantIds.map((id) => sql`${id}::uuid`),
+      sql`, `
+    );
+
     const tenantCondition = isSuperadmin
       ? sql`1=1`
-      : sql`ref.uploaded_by_tenant_id = ANY(${assignedTenantIds}::uuid[])`;
+      : sql`ref.uploaded_by_tenant_id IN (${idList})`;
 
     const tenantConditionSub = isSuperadmin
       ? sql`1=1`
-      : sql`sub_ref.uploaded_by_tenant_id = ANY(${assignedTenantIds}::uuid[])`;
+      : sql`sub_ref.uploaded_by_tenant_id IN (${idList})`;
 
     const [stats] = await db.execute(sql`
       SELECT 

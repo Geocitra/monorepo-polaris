@@ -103,3 +103,21 @@ export interface CommissionItem {
   focusAreas: string[] | null;
   partnerMinistries: string[] | null;
 }
+
+export interface DomainRequestRow {
+  id: string;
+  tenantId: string;
+  requestType: 'SUBDOMAIN' | 'CUSTOM_DOMAIN';
+  requestedDomain: string;
+  currentDomain: string | null;
+  status: 'PENDING_REVIEW' | 'APPROVED' | 'REJECTED';
+  adminNotes: string | null;
+  reviewedBy: string | null;
+  reviewedAt: string | null;
+  createdAt: string;
+  updatedAt: string;
+  tenantName?: string;
+  tenantEmail?: string;
+  partyAffiliation?: string;
+}
+

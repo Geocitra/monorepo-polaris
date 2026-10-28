@@ -6,7 +6,7 @@ import {
   Logger,
 } from '@nestjs/common';
 import { randomUUID } from 'node:crypto';
-import { eq, and, desc } from 'drizzle-orm';
+import { eq, and, desc, inArray } from 'drizzle-orm';
 import {
   db,
   contentPublications,
@@ -22,7 +22,7 @@ export class StudioArticleService {
   private readonly logger = new Logger(StudioArticleService.name);
 
   async listArticles(tenantId: string) {
-    return await db
+    const items = await db
       .select({
         id: contentPublications.id,
         title: contentPublications.title,
@@ -36,6 +36,68 @@ export class StudioArticleService {
       .from(contentPublications)
       .where(eq(contentPublications.tenantId, tenantId))
       .orderBy(desc(contentPublications.createdAt));
+
+    if (items.length === 0) {
+      return [];
+    }
+
+    const pubIds = items.map((i) => i.id);
+
+    // Query media assets dan pack sosial secara paralel (Zero N+1)
+    const [medias, socials] = await Promise.all([
+      db
+        .select({
+          publicationId: mediaAssets.publicationId,
+          cdnPublicUrl: mediaAssets.cdnPublicUrl,
+          assetType: mediaAssets.assetType,
+        })
+        .from(mediaAssets)
+        .where(inArray(mediaAssets.publicationId, pubIds)),
+      db
+        .select({
+          publicationId: socialSyndicationPacks.publicationId,
+        })
+        .from(socialSyndicationPacks)
+        .where(inArray(socialSyndicationPacks.publicationId, pubIds)),
+    ]);
+
+    const mediaMap = new Map<string, { cdnPublicUrl: string; assetType: string }>();
+    for (const m of medias) {
+      // Prioritaskan poster/infografis PNG jika ada banyak aset
+      if (!mediaMap.has(m.publicationId) || m.assetType === AssetType.INFOGRAPHIC_PNG || m.assetType === AssetType.DALLE_POSTER) {
+        mediaMap.set(m.publicationId, m);
+      }
+    }
+
+    const socialSet = new Set<string>(socials.map((s) => s.publicationId));
+
+    return items.map((item) => {
+      const media = mediaMap.get(item.id);
+      const hasSocial = socialSet.has(item.id);
+
+      // Klasifikasi deterministik & non-destruktif
+      let contentType: 'INFOGRAPHIC' | 'TERPADU' | 'ARTICLE' = 'ARTICLE';
+      const isInfographicExcerpt = item.excerpt?.toLowerCase().startsWith('infografik publik:') || false;
+      const isInfographicTitle = item.title?.toLowerCase().startsWith('infografik publik:') || false;
+
+      if (
+        media?.assetType === AssetType.INFOGRAPHIC_PNG ||
+        ((item.wordCount === 0 || isInfographicExcerpt || isInfographicTitle) && media?.cdnPublicUrl && !hasSocial)
+      ) {
+        contentType = 'INFOGRAPHIC';
+      } else if (hasSocial || (media && item.wordCount > 0)) {
+        contentType = 'TERPADU';
+      } else {
+        contentType = 'ARTICLE';
+      }
+
+      return {
+        ...item,
+        contentType,
+        thumbnailUrl: media?.cdnPublicUrl || null,
+        hasSocialPack: hasSocial,
+      };
+    });
   }
 
   async getArticleDetail(tenantId: string, articleId: string) {

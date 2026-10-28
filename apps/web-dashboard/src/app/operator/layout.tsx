@@ -53,32 +53,35 @@ export default function OperatorLayout({
   const isDark = resolvedMode === 'dark';
 
   return (
-    <div className="min-h-screen bg-slate-50 dark:bg-[#070A12] text-slate-900 dark:text-slate-100 font-sans transition-colors duration-200">
+    <div className="min-h-screen bg-slate-50 dark:bg-[#070A12] text-slate-900 dark:text-slate-100 font-sans transition-colors duration-200 overflow-x-hidden">
       {/* TOP NAVIGATION BAR FOR OPERATOR COCKPIT */}
       <header className="sticky top-0 z-40 bg-white/80 dark:bg-[#0B0F19]/80 backdrop-blur-md border-b border-slate-200 dark:border-slate-800/80 px-4 sm:px-6 py-3">
-        <div className="max-w-7xl mx-auto flex items-center justify-between">
+        <div className="max-w-7xl mx-auto flex items-center justify-between gap-2">
           {/* BRANDING */}
-          <div className="flex items-center space-x-3">
-            <div className="w-9 h-9 rounded-xl bg-gradient-to-tr from-amber-500 via-indigo-600 to-indigo-800 flex items-center justify-center shadow-lg shadow-indigo-500/20 text-white font-black text-lg">
+          <div className="flex items-center space-x-2.5 sm:space-x-3 min-w-0">
+            <div className="w-9 h-9 rounded-xl bg-gradient-to-tr from-amber-500 via-indigo-600 to-indigo-800 flex items-center justify-center shadow-lg shadow-indigo-500/20 text-white font-black text-lg shrink-0">
               P
             </div>
-            <div>
-              <div className="flex items-center space-x-2">
-                <span className="font-bold tracking-tight text-slate-900 dark:text-white text-base">
-                  POLARIS <span className="text-amber-500 text-xs font-semibold px-2 py-0.5 rounded-full bg-amber-500/10 border border-amber-500/20">OPERATOR COCKPIT</span>
+            <div className="min-w-0">
+              <div className="flex items-center gap-1.5 flex-wrap">
+                <span className="font-bold tracking-tight text-slate-900 dark:text-white text-sm sm:text-base">
+                  POLARIS
+                </span>
+                <span className="text-amber-500 text-[9px] sm:text-xs font-semibold px-2 py-0.5 rounded-full bg-amber-500/10 border border-amber-500/20 whitespace-nowrap">
+                  OPERATOR COCKPIT
                 </span>
               </div>
-              <p className="text-[11px] text-slate-500 dark:text-slate-400">
+              <p className="text-[10px] sm:text-[11px] text-slate-500 dark:text-slate-400 truncate max-w-[200px] xs:max-w-[260px] sm:max-w-none">
                 Managed Content Operations & Civic Triage Engine
               </p>
             </div>
           </div>
 
           {/* USER INFO & ACTIONS */}
-          <div className="flex items-center space-x-4">
+          <div className="flex items-center space-x-2 sm:space-x-4 shrink-0">
             <button
               onClick={() => setMode(isDark ? 'light' : 'dark')}
-              className="p-2 rounded-lg text-slate-500 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800 transition"
+              className="p-2 rounded-lg text-slate-500 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800 transition cursor-pointer"
               title="Toggle Tema"
             >
               {isDark ? <Sun className="w-4 h-4 text-amber-400" /> : <Moon className="w-4 h-4 text-slate-600" />}
@@ -94,7 +97,7 @@ export default function OperatorLayout({
             {operatorUser?.role === 'SUPERADMIN' && (
               <button
                 onClick={() => router.push('/superadmin')}
-                className="hidden sm:inline-flex items-center space-x-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold bg-indigo-600 hover:bg-indigo-700 text-white shadow-sm transition"
+                className="hidden sm:inline-flex items-center space-x-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold bg-indigo-600 hover:bg-indigo-700 text-white shadow-sm transition cursor-pointer"
               >
                 <Shield className="w-3.5 h-3.5" />
                 <span>Panel Superadmin</span>
@@ -103,7 +106,7 @@ export default function OperatorLayout({
 
             <button
               onClick={handleLogout}
-              className="flex items-center space-x-1.5 px-3 py-1.5 rounded-xl text-xs font-medium text-rose-600 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/30 transition border border-transparent hover:border-rose-200 dark:hover:border-rose-900"
+              className="flex items-center space-x-1.5 px-3 py-1.5 rounded-xl text-xs font-medium text-rose-600 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/30 transition border border-transparent hover:border-rose-200 dark:hover:border-rose-900 cursor-pointer"
             >
               <LogOut className="w-3.5 h-3.5" />
               <span className="hidden sm:inline">Keluar</span>
@@ -113,7 +116,7 @@ export default function OperatorLayout({
       </header>
 
       {/* MAIN VIEWPORT */}
-      <main className="max-w-7xl mx-auto p-4 sm:p-6 lg:p-8">
+      <main className="max-w-7xl mx-auto p-4 sm:p-6 lg:p-8 min-w-0 w-full overflow-x-hidden">
         {children}
       </main>
     </div>

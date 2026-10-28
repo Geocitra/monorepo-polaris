@@ -164,3 +164,15 @@ export class UpdateDomainConfigDto {
   @IsString()
   metaDescription?: string;
 }
+
+export class CreateDomainRequestDto {
+  @IsNotEmpty({ message: 'Tipe pengajuan wajib ditentukan.' })
+  @IsEnum(['SUBDOMAIN', 'CUSTOM_DOMAIN'], { message: 'Tipe pengajuan harus SUBDOMAIN atau CUSTOM_DOMAIN.' })
+  requestType!: 'SUBDOMAIN' | 'CUSTOM_DOMAIN';
+
+  @IsNotEmpty({ message: 'Domain yang diajukan tidak boleh kosong.' })
+  @IsString()
+  @MaxLength(253)
+  requestedDomain!: string;
+}
+

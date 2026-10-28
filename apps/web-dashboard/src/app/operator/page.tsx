@@ -56,7 +56,11 @@ import {
 import { VisualDocumentCanvas } from '@/components/studio/artikel/VisualDocumentCanvas';
 import { TiptapExecutiveEditor } from '@/components/studio/artikel/TiptapExecutiveEditor';
 import { downloadImageFile } from '@/lib/utils';
-import { OperatorKnowledgeTab } from '@/components/operator/OperatorKnowledgeTab';
+import {
+  OperatorKnowledgeTab,
+  OperatorArticlesTab,
+  OperatorProfileTab,
+} from '@/components/operator';
 
 export interface AttachedFileItem {
   id: string;
@@ -850,13 +854,13 @@ export default function OperatorCockpitPage() {
         <div className="space-y-4 animate-in fade-in duration-200">
           {/* Header Filter & Pencarian */}
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-white dark:bg-[#0B0F19] p-4 rounded-2xl border border-slate-200 dark:border-slate-800">
-            <div className="flex items-center space-x-2 text-xs">
+            <div className="flex items-center space-x-2 text-xs overflow-x-auto scrollbar-none pb-1 sm:pb-0 max-w-full">
               <Filter className="w-4 h-4 text-slate-400 shrink-0" />
               {(['ALL', 'PENDING', 'PUBLISHED'] as const).map((f) => (
                 <button
                   key={f}
                   onClick={() => setDirectoryFilter(f)}
-                  className={`px-3 py-1.5 rounded-xl font-bold transition text-xs ${
+                  className={`shrink-0 whitespace-nowrap px-3 py-1.5 rounded-xl font-bold transition text-xs ${
                     directoryFilter === f
                       ? 'bg-indigo-600 text-white shadow-sm'
                       : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200'
@@ -976,7 +980,7 @@ export default function OperatorCockpitPage() {
             </div>
 
             {/* Pita Kontak Tokoh (Horizontal Scroll) */}
-            <div className="flex items-center gap-2.5 overflow-x-auto pb-1.5 pt-1">
+            <div className="flex items-center gap-2.5 overflow-x-auto scrollbar-none pb-1.5 pt-1 max-w-full">
               {assignments.map((item) => {
                 const isSelected = item.tenantId === selectedTenantId;
                 const isDone = item.todayStats.hasPublishedToday;
@@ -1047,7 +1051,7 @@ export default function OperatorCockpitPage() {
 
           {/* PERSONA HEADER TOKOH AKTIF */}
           <div
-            className={`rounded-2xl p-5 border bg-gradient-to-r ${branding.gradient} bg-white dark:bg-[#0B0F19] ${branding.border} shadow-sm space-y-4`}
+            className={`rounded-2xl p-4 sm:p-5 border bg-gradient-to-r ${branding.gradient} bg-white dark:bg-[#0B0F19] ${branding.border} shadow-sm space-y-4 overflow-hidden max-w-full`}
           >
             <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
               {/* Profil Tokoh Aktif */}
@@ -1129,10 +1133,10 @@ export default function OperatorCockpitPage() {
             </div>
 
             {/* B. WORKSPACE TAB NAVIGATION */}
-            <div className="flex items-center space-x-2 border-t border-slate-200/80 dark:border-slate-800/80 pt-3">
+            <div className="flex items-center space-x-2 border-t border-slate-200/80 dark:border-slate-800/80 pt-3 overflow-x-auto scrollbar-none pb-1 max-w-full">
               <button
                 onClick={() => setActiveTab('CONTENT')}
-                className={`flex items-center space-x-2 px-3.5 py-2 rounded-xl text-xs font-bold transition cursor-pointer ${
+                className={`shrink-0 whitespace-nowrap flex items-center space-x-2 px-3.5 py-2 rounded-xl text-xs font-bold transition cursor-pointer ${
                   activeTab === 'CONTENT'
                     ? 'bg-indigo-600 text-white shadow-sm'
                     : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800'
@@ -1144,7 +1148,7 @@ export default function OperatorCockpitPage() {
 
               <button
                 onClick={() => setActiveTab('ARTICLES')}
-                className={`flex items-center space-x-2 px-3.5 py-2 rounded-xl text-xs font-bold transition cursor-pointer ${
+                className={`shrink-0 whitespace-nowrap flex items-center space-x-2 px-3.5 py-2 rounded-xl text-xs font-bold transition cursor-pointer ${
                   activeTab === 'ARTICLES'
                     ? 'bg-indigo-600 text-white shadow-sm'
                     : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800'
@@ -1156,7 +1160,7 @@ export default function OperatorCockpitPage() {
 
               <button
                 onClick={() => setActiveTab('KNOWLEDGE')}
-                className={`flex items-center space-x-2 px-3.5 py-2 rounded-xl text-xs font-bold transition cursor-pointer ${
+                className={`shrink-0 whitespace-nowrap flex items-center space-x-2 px-3.5 py-2 rounded-xl text-xs font-bold transition cursor-pointer ${
                   activeTab === 'KNOWLEDGE'
                     ? 'bg-indigo-600 text-white shadow-sm'
                     : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800'
@@ -1168,7 +1172,7 @@ export default function OperatorCockpitPage() {
 
               <button
                 onClick={() => setActiveTab('PROFILE')}
-                className={`flex items-center space-x-2 px-3.5 py-2 rounded-xl text-xs font-bold transition ${
+                className={`shrink-0 whitespace-nowrap flex items-center space-x-2 px-3.5 py-2 rounded-xl text-xs font-bold transition cursor-pointer ${
                   activeTab === 'PROFILE'
                     ? 'bg-indigo-600 text-white shadow-sm'
                     : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800'
@@ -1180,7 +1184,7 @@ export default function OperatorCockpitPage() {
 
               <button
                 onClick={() => setActiveTab('ASPIRASI')}
-                className={`flex items-center space-x-2 px-3.5 py-2 rounded-xl text-xs font-bold transition ${
+                className={`shrink-0 whitespace-nowrap flex items-center space-x-2 px-3.5 py-2 rounded-xl text-xs font-bold transition cursor-pointer ${
                   activeTab === 'ASPIRASI'
                     ? 'bg-indigo-600 text-white shadow-sm'
                     : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800'
@@ -1192,7 +1196,7 @@ export default function OperatorCockpitPage() {
 
               <button
                 onClick={() => setActiveTab('COMMENTS')}
-                className={`flex items-center space-x-2 px-3.5 py-2 rounded-xl text-xs font-bold transition ${
+                className={`shrink-0 whitespace-nowrap flex items-center space-x-2 px-3.5 py-2 rounded-xl text-xs font-bold transition cursor-pointer ${
                   activeTab === 'COMMENTS'
                     ? 'bg-indigo-600 text-white shadow-sm'
                     : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800'
@@ -1554,11 +1558,11 @@ export default function OperatorCockpitPage() {
                   </div>
 
                   {/* 3 SUB-TAB KANVAS: NASKAH KEBIJAKAN, POSTER VISUAL, & WHATSAPP/MEDSOS */}
-                  <div className="flex items-center gap-2 border-b border-slate-100 dark:border-slate-800 pb-3">
+                  <div className="flex items-center gap-2 border-b border-slate-100 dark:border-slate-800 pb-3 overflow-x-auto scrollbar-none max-w-full">
                     <button
                       type="button"
                       onClick={() => setResultTab('article')}
-                      className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition cursor-pointer ${
+                      className={`shrink-0 whitespace-nowrap flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition cursor-pointer ${
                         resultTab === 'article'
                           ? 'bg-indigo-600 text-white shadow-sm'
                           : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800'
@@ -1571,7 +1575,7 @@ export default function OperatorCockpitPage() {
                     <button
                       type="button"
                       onClick={() => setResultTab('poster')}
-                      className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition cursor-pointer ${
+                      className={`shrink-0 whitespace-nowrap flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition cursor-pointer ${
                         resultTab === 'poster'
                           ? 'bg-indigo-600 text-white shadow-sm'
                           : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800'
@@ -1587,7 +1591,7 @@ export default function OperatorCockpitPage() {
                     <button
                       type="button"
                       onClick={() => setResultTab('social')}
-                      className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition cursor-pointer ${
+                      className={`shrink-0 whitespace-nowrap flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition cursor-pointer ${
                         resultTab === 'social'
                           ? 'bg-indigo-600 text-white shadow-sm'
                           : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800'
@@ -1945,156 +1949,22 @@ export default function OperatorCockpitPage() {
           {/* TAB: ARSIP NASKAH & DRAF KEBIJAKAN TOKOH (KATALOG LENGKAP)            */}
           {/* ===================================================================== */}
           {activeTab === 'ARTICLES' && (
-            <div className="bg-white dark:bg-[#0B0F19] rounded-2xl p-6 border border-slate-200 dark:border-slate-800 shadow-sm space-y-6 animate-in fade-in duration-150">
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-100 dark:border-slate-800 pb-4">
-                <div>
-                  <h4 className="text-sm font-bold text-slate-900 dark:text-white flex items-center gap-2">
-                    <BookOpen className="w-4 h-4 text-indigo-600" />
-                    <span>Arsip & Draf Naskah: {selectedDewan.fullName}</span>
-                  </h4>
-                  <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-                    Daftar seluruh naskah kebijakan, rilis, dan draf yang tersimpan di profil dewan ini.
-                  </p>
-                </div>
-
-                <div className="flex items-center gap-2">
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setGeneratedResult(null);
-                      setActiveTab('CONTENT');
-                    }}
-                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold shadow-sm transition cursor-pointer"
-                  >
-                    <Plus className="w-3.5 h-3.5" />
-                    <span>Buat Naskah Baru</span>
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={() => loadDewanArticles(selectedTenantId || undefined)}
-                    disabled={loadingDewanArticles}
-                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 text-xs font-bold hover:bg-slate-50 dark:hover:bg-slate-800 transition cursor-pointer"
-                  >
-                    <RefreshCw className={`w-3.5 h-3.5 ${loadingDewanArticles ? 'animate-spin' : ''}`} />
-                    <span>Segarkan</span>
-                  </button>
-                </div>
-              </div>
-
-              {/* Filter Tabs & Search */}
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                <div className="flex items-center gap-1.5">
-                  {(['ALL', 'DRAFT', 'PUBLISHED'] as const).map((mode) => {
-                    const count =
-                      mode === 'ALL'
-                        ? dewanArticles.length
-                        : mode === 'DRAFT'
-                        ? dewanArticles.filter((a) => a.status !== 'PUBLISHED').length
-                        : dewanArticles.filter((a) => a.status === 'PUBLISHED').length;
-                    return (
-                      <button
-                        key={mode}
-                        type="button"
-                        onClick={() => setArticlesFilter(mode)}
-                        className={`px-3 py-1.5 rounded-xl text-xs font-bold transition cursor-pointer ${
-                          articlesFilter === mode
-                            ? 'bg-slate-900 text-white dark:bg-white dark:text-slate-900 shadow-sm'
-                            : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-700'
-                        }`}
-                      >
-                        {mode === 'ALL' ? 'Semua' : mode === 'DRAFT' ? 'Draf' : 'Tayang'}{' '}
-                        <span className="opacity-75">({count})</span>
-                      </button>
-                    );
-                  })}
-                </div>
-
-                <div className="relative w-full sm:w-64">
-                  <Search className="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
-                  <input
-                    type="text"
-                    placeholder="Cari judul naskah..."
-                    value={articlesSearch}
-                    onChange={(e) => setArticlesSearch(e.target.value)}
-                    className="w-full pl-9 pr-3 py-1.5 text-xs rounded-xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-1 focus:ring-indigo-500"
-                  />
-                </div>
-              </div>
-
-              {/* List of Articles */}
-              {loadingDewanArticles ? (
-                <div className="py-12 flex flex-col items-center justify-center text-slate-400 gap-2">
-                  <RefreshCw className="w-5 h-5 animate-spin text-indigo-600" />
-                  <span className="text-xs">Memuat arsip naskah dewan...</span>
-                </div>
-              ) : filteredDewanArticles.length === 0 ? (
-                <div className="py-12 text-center space-y-2 border border-dashed border-slate-200 dark:border-slate-800 rounded-2xl">
-                  <BookOpen className="w-8 h-8 text-slate-300 dark:text-slate-600 mx-auto" />
-                  <p className="text-xs font-bold text-slate-600 dark:text-slate-400">
-                    Belum ada naskah untuk filter ini
-                  </p>
-                  <p className="text-[11px] text-slate-400">
-                    Gunakan tab "Pabrik Konten & Visual AI" untuk membuat naskah pertama.
-                  </p>
-                </div>
-              ) : (
-                <div className="space-y-3">
-                  {filteredDewanArticles.map((art) => {
-                    const isPublished = art.status === 'PUBLISHED';
-                    const isLoadingCanvas = loadingCanvasArticleId === art.id;
-
-                    return (
-                      <div
-                        key={art.id}
-                        className="p-4 rounded-xl border border-slate-200 dark:border-slate-800 hover:border-indigo-400 dark:hover:border-indigo-600 bg-slate-50/50 dark:bg-slate-900/40 transition flex flex-col sm:flex-row sm:items-center justify-between gap-4"
-                      >
-                        <div className="min-w-0 flex-1 space-y-1">
-                          <div className="flex items-center gap-2">
-                            <span
-                              className={`px-2 py-0.5 rounded-full text-[10px] font-bold border ${
-                                isPublished
-                                  ? 'bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800'
-                                  : 'bg-amber-50 text-amber-700 dark:bg-amber-950/40 dark:text-amber-300 border-amber-200 dark:border-amber-800'
-                              }`}
-                            >
-                              {isPublished ? '✓ TAYANG' : '• DRAF'}
-                            </span>
-                            <span className="text-[11px] text-slate-400">
-                              {art.createdAt ? new Date(art.createdAt).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' }) : '-'}
-                            </span>
-                          </div>
-                          <h5 className="text-xs font-bold text-slate-900 dark:text-white line-clamp-1">
-                            {art.title}
-                          </h5>
-                          {art.excerpt && (
-                            <p className="text-[11px] text-slate-500 dark:text-slate-400 line-clamp-1">
-                              {art.excerpt}
-                            </p>
-                          )}
-                        </div>
-
-                        <div className="flex items-center gap-2 shrink-0">
-                          <button
-                            type="button"
-                            onClick={() => loadArticleToCanvas(art.id)}
-                            disabled={isLoadingCanvas}
-                            className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-indigo-50 dark:bg-indigo-950/40 text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800 text-xs font-bold hover:bg-indigo-100 dark:hover:bg-indigo-900/40 transition cursor-pointer"
-                          >
-                            {isLoadingCanvas ? (
-                              <RefreshCw className="w-3.5 h-3.5 animate-spin" />
-                            ) : (
-                              <Edit3 className="w-3.5 h-3.5" />
-                            )}
-                            <span>Buka di Kanvas Editor</span>
-                          </button>
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              )}
-            </div>
+            <OperatorArticlesTab
+              selectedDewan={selectedDewan}
+              dewanArticles={dewanArticles}
+              loadingDewanArticles={loadingDewanArticles}
+              articlesFilter={articlesFilter}
+              setArticlesFilter={setArticlesFilter}
+              articlesSearch={articlesSearch}
+              setArticlesSearch={setArticlesSearch}
+              onRefresh={() => loadDewanArticles(selectedTenantId || undefined)}
+              onCreateNew={() => {
+                setGeneratedResult(null);
+                setActiveTab('CONTENT');
+              }}
+              onLoadArticleToCanvas={loadArticleToCanvas}
+              loadingCanvasArticleId={loadingCanvasArticleId}
+            />
           )}
 
           {/* ===================================================================== */}
@@ -2114,145 +1984,13 @@ export default function OperatorCockpitPage() {
           {/* TAB 2: PROFIL PUBLIK & IDENTITAS TOKOH (DELEGASI OPERATOR RESMI)      */}
           {/* ===================================================================== */}
           {activeTab === 'PROFILE' && (
-            <div className="bg-white dark:bg-[#0B0F19] rounded-2xl p-6 border border-slate-200 dark:border-slate-800 shadow-sm space-y-6 animate-in fade-in duration-150">
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-100 dark:border-slate-800 pb-4">
-                <div>
-                  <h4 className="text-sm font-bold text-slate-900 dark:text-white">
-                    Manajemen Profil & Portofolio Publik Dewan
-                  </h4>
-                  <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-                    Perbarui nama resmi, komisi, partai, bio, dan foto yang ditampilkan di Portal Publik Tokoh.
-                  </p>
-                </div>
-
-                <div className="flex items-center space-x-1.5 text-[11px] font-bold text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/40 px-2.5 py-1 rounded-xl border border-emerald-200 dark:border-emerald-800">
-                  <ShieldCheck className="w-3.5 h-3.5" />
-                  <span>Kredensial & Sandi Dewan Aman Terisolasi</span>
-                </div>
-              </div>
-
-              {profileSaveSuccess && (
-                <div className="p-3.5 rounded-xl bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 text-xs font-bold border border-emerald-200 dark:border-emerald-800 flex items-center gap-2">
-                  <Check className="w-4 h-4 text-emerald-600" />
-                  <span>{profileSaveSuccess}</span>
-                </div>
-              )}
-
-              <form onSubmit={handleSaveProfile} className="space-y-5">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  {/* Nama Lengkap & Gelar */}
-                  <div>
-                    <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5">
-                      Nama Lengkap & Gelar Resmi
-                    </label>
-                    <input
-                      type="text"
-                      value={profileForm.fullName}
-                      onChange={(e) => setProfileForm({ ...profileForm, fullName: e.target.value })}
-                      placeholder="Contoh: H. Ahmad Fauzi, S.E., M.M."
-                      className="w-full p-2.5 text-xs rounded-xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-indigo-500"
-                    />
-                  </div>
-
-                  {/* Partai Politik */}
-                  <div>
-                    <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5">
-                      Partai Politik / Fraksi
-                    </label>
-                    <input
-                      type="text"
-                      value={profileForm.partyAffiliation}
-                      onChange={(e) => setProfileForm({ ...profileForm, partyAffiliation: e.target.value })}
-                      placeholder="Contoh: Golkar, PDI Perjuangan, Gerindra..."
-                      className="w-full p-2.5 text-xs rounded-xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-indigo-500"
-                    />
-                  </div>
-
-                  {/* Nama Dapil Kustom */}
-                  <div>
-                    <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5">
-                      Daerah Pemilihan (Dapil)
-                    </label>
-                    <input
-                      type="text"
-                      value={profileForm.customDapilName}
-                      onChange={(e) => setProfileForm({ ...profileForm, customDapilName: e.target.value })}
-                      placeholder="Contoh: Jawa Barat I (Kota Bandung & Cimahi)"
-                      className="w-full p-2.5 text-xs rounded-xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-indigo-500"
-                    />
-                  </div>
-
-                  {/* Komisi & Tugas Parlemen */}
-                  <div>
-                    <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5">
-                      Komisi / Alat Kelengkapan Dewan (AKD)
-                    </label>
-                    <input
-                      type="text"
-                      value={profileForm.commissionName}
-                      onChange={(e) => setProfileForm({ ...profileForm, commissionName: e.target.value })}
-                      placeholder="Contoh: Komisi IV (Pertanian, Pangan, Maritim)"
-                      className="w-full p-2.5 text-xs rounded-xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-indigo-500"
-                    />
-                  </div>
-
-                  {/* Foto Profil URL */}
-                  <div className="md:col-span-2">
-                    <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5">
-                      URL Foto Resmi Tokoh
-                    </label>
-                    <div className="flex items-center space-x-3">
-                      <input
-                        type="text"
-                        value={profileForm.photoUrl}
-                        onChange={(e) => setProfileForm({ ...profileForm, photoUrl: e.target.value })}
-                        placeholder="https://... URL foto resolusi tinggi berlatar formal"
-                        className="flex-1 p-2.5 text-xs rounded-xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-indigo-500"
-                      />
-                      {profileForm.photoUrl && (
-                        <div className="w-10 h-10 rounded-xl bg-slate-200 dark:bg-slate-800 overflow-hidden shrink-0 border">
-                          <img src={profileForm.photoUrl} alt="Preview" className="w-full h-full object-cover" />
-                        </div>
-                      )}
-                    </div>
-                  </div>
-
-                  {/* Riwayat Pendidikan & Bio Ringkas */}
-                  <div className="md:col-span-2">
-                    <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5">
-                      Profil & Pernyataan Visi Tokoh
-                    </label>
-                    <textarea
-                      rows={3}
-                      value={profileForm.education}
-                      onChange={(e) => setProfileForm({ ...profileForm, education: e.target.value })}
-                      placeholder="Pernyataan komitmen pelayanan publik, rekam jejak, atau pendidikan tokoh."
-                      className="w-full p-2.5 text-xs rounded-xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-indigo-500 font-sans"
-                    />
-                  </div>
-                </div>
-
-                <div className="flex items-center justify-end space-x-3 pt-2">
-                  <button
-                    type="submit"
-                    disabled={savingProfile}
-                    className="flex items-center space-x-2 px-5 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold transition shadow-sm disabled:opacity-50"
-                  >
-                    {savingProfile ? (
-                      <>
-                        <RefreshCw className="w-3.5 h-3.5 animate-spin" />
-                        <span>Menyimpan...</span>
-                      </>
-                    ) : (
-                      <>
-                        <Save className="w-3.5 h-3.5" />
-                        <span>Simpan Perubahan Profil</span>
-                      </>
-                    )}
-                  </button>
-                </div>
-              </form>
-            </div>
+            <OperatorProfileTab
+              profileForm={profileForm}
+              setProfileForm={setProfileForm}
+              profileSaveSuccess={profileSaveSuccess}
+              savingProfile={savingProfile}
+              onSaveProfile={handleSaveProfile}
+            />
           )}
 
           {/* ===================================================================== */}

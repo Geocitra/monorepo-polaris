@@ -4,7 +4,7 @@ import { map, finalize } from 'rxjs/operators';
 import { RedisService, UserNotificationEvent, UserProgressEvent } from '../redis/redis.service.js';
 
 export interface RealtimeMessage {
-  type: 'CONNECTED' | 'NOTIFICATION' | 'JOB_PROGRESS' | 'HEARTBEAT';
+  type: string;
   data: any;
   timestamp: number;
 }
@@ -37,19 +37,23 @@ export class RealtimeService {
     };
 
     // Handler untuk notifikasi
-    const notificationHandler = (event: UserNotificationEvent) => {
+    const notificationHandler = (event: any) => {
+      const type = event?.type || 'NOTIFICATION';
+      const data = event?.data !== undefined ? event.data : event;
       userSubject.next({
-        type: 'NOTIFICATION',
-        data: event,
+        type,
+        data,
         timestamp: Date.now(),
       });
     };
 
     // Handler untuk siaran umum
     const broadcastHandler = (event: any) => {
+      const type = event?.type || 'NOTIFICATION';
+      const data = event?.data !== undefined ? event.data : event;
       userSubject.next({
-        type: 'NOTIFICATION',
-        data: event,
+        type,
+        data,
         timestamp: Date.now(),
       });
     };

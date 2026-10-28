@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import {
   History,
   X,
@@ -15,6 +15,7 @@ import {
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import { Portal } from '@/components/ui/portal';
 
 export interface StudioIteration {
   id: string;
@@ -51,7 +52,18 @@ export function TerpaduVersionDrawer({
   onRestoreVersion,
   onExitPreview,
 }: TerpaduVersionDrawerProps) {
+  useEffect(() => {
+    if (isOpen) {
+      const originalOverflow = document.body.style.overflow;
+      document.body.style.overflow = 'hidden';
+      return () => {
+        document.body.style.overflow = originalOverflow;
+      };
+    }
+  }, [isOpen]);
+
   if (!isOpen) return null;
+
 
   function formatTime(isoString: string) {
     try {
@@ -68,12 +80,13 @@ export function TerpaduVersionDrawer({
   }
 
   return (
-    <div className="fixed inset-0 z-50 overflow-hidden flex justify-end animate-in fade-in duration-200">
-      {/* Backdrop */}
-      <div
-        className="fixed inset-0 bg-slate-900/60 backdrop-blur-xs transition-opacity"
-        onClick={onClose}
-      />
+    <Portal>
+      <div className="fixed inset-0 !m-0 z-[60] overflow-hidden flex justify-end animate-in fade-in duration-200">
+        {/* Backdrop */}
+        <div
+          className="fixed inset-0 !m-0 bg-slate-900/60 backdrop-blur-xs transition-opacity"
+          onClick={onClose}
+        />
 
       {/* Drawer Panel */}
       <div className="relative w-full max-w-md bg-white dark:bg-slate-900 h-full shadow-2xl border-l border-slate-200 dark:border-slate-800 flex flex-col z-10 animate-in slide-in-from-right duration-250">
@@ -247,5 +260,6 @@ export function TerpaduVersionDrawer({
         </div>
       </div>
     </div>
+    </Portal>
   );
 }

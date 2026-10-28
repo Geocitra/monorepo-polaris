@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import {
   X,
   Plus,
@@ -19,6 +19,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Modal } from '@/components/ui/modal';
+import { Portal } from '@/components/ui/portal';
 
 export interface StudioSessionItem {
   id: string;
@@ -27,6 +28,8 @@ export interface StudioSessionItem {
   excerpt?: string;
   status: 'DRAFT' | 'PUBLISHED' | 'SCHEDULED' | 'ARCHIVED' | string;
   wordCount?: number;
+  contentType?: 'ARTICLE' | 'INFOGRAPHIC' | 'TERPADU' | string;
+  thumbnailUrl?: string | null;
   publishedAt?: string | null;
   createdAt: string;
 }
@@ -55,6 +58,16 @@ export function TerpaduSessionDrawer({
   const [searchQuery, setSearchQuery] = useState('');
   const [sessionToDelete, setSessionToDelete] = useState<StudioSessionItem | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
+
+  useEffect(() => {
+    if (isOpen) {
+      const originalOverflow = document.body.style.overflow;
+      document.body.style.overflow = 'hidden';
+      return () => {
+        document.body.style.overflow = originalOverflow;
+      };
+    }
+  }, [isOpen]);
 
   if (!isOpen) return null;
 
@@ -220,12 +233,13 @@ export function TerpaduSessionDrawer({
   }
 
   return (
-    <div className="fixed inset-0 z-50 overflow-hidden animate-in fade-in duration-200">
-      {/* Backdrop */}
-      <div
-        className="absolute inset-0 bg-slate-900/60 backdrop-blur-xs transition-opacity"
-        onClick={onClose}
-      />
+    <Portal>
+      <div className="fixed inset-0 !m-0 z-[60] overflow-hidden animate-in fade-in duration-200">
+        {/* Backdrop */}
+        <div
+          className="fixed inset-0 !m-0 bg-slate-900/60 backdrop-blur-xs transition-opacity"
+          onClick={onClose}
+        />
 
       <div className="fixed inset-y-0 right-0 max-w-full flex pl-10">
         <div className="w-screen max-w-md bg-slate-50 dark:bg-slate-900 shadow-2xl flex flex-col border-l border-slate-200/90 dark:border-slate-800 animate-in slide-in-from-right duration-250">
@@ -384,5 +398,6 @@ export function TerpaduSessionDrawer({
         </div>
       </Modal>
     </div>
+    </Portal>
   );
 }

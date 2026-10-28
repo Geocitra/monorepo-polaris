@@ -246,3 +246,10 @@ export class AdminUpdatePricingMatrixDto {
   isActive?: boolean;
 }
 
+export class RejectDomainRequestDto {
+  @IsNotEmpty({ message: 'Alasan penolakan pengajuan domain wajib diisi.' })
+  @IsString()
+  adminNotes!: string;
+}
+
+

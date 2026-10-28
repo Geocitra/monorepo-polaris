@@ -12,6 +12,7 @@ import {
   mediaAssets,
   socialSyndicationPacks,
   subscriptions,
+  subdomainAliases,
 } from '@polaris/database';
 import { ContentStatus, SubscriptionStatus, PlanTier, AssetType } from '@polaris/shared-types';
 
@@ -22,7 +23,7 @@ export class CmsPublicPortalService {
     const isSubdomain = !cleanIdentifier.includes('.');
 
     // Query Portal dengan evaluasi status verifikasi
-    const [portal] = await db
+    let [portal] = await db
       .select({
         id: portalConfigs.id,
         tenantId: portalConfigs.tenantId,
@@ -40,6 +41,33 @@ export class CmsPublicPortalService {
           : eq(portalConfigs.customDomain, cleanIdentifier)
       )
       .limit(1);
+
+    // BILA TIDAK DITEMUKAN: Periksa apakah ini adalah subdomain lama yang telah dialihkan (301 Permanent Redirect)
+    if (!portal && isSubdomain) {
+      const [alias] = await db
+        .select()
+        .from(subdomainAliases)
+        .where(eq(subdomainAliases.oldSubdomainSlug, cleanIdentifier))
+        .limit(1);
+
+      if (alias) {
+        // Query target subdomain baru
+        [portal] = await db
+          .select({
+            id: portalConfigs.id,
+            tenantId: portalConfigs.tenantId,
+            subdomainSlug: portalConfigs.subdomainSlug,
+            customDomain: portalConfigs.customDomain,
+            customDomainStatus: portalConfigs.customDomainStatus,
+            isActive: portalConfigs.isActive,
+            metaTitle: portalConfigs.metaTitle,
+            metaDescription: portalConfigs.metaDescription,
+          })
+          .from(portalConfigs)
+          .where(eq(portalConfigs.subdomainSlug, alias.newSubdomainSlug))
+          .limit(1);
+      }
+    }
 
     if (!portal || !portal.isActive) {
       throw new NotFoundException(
@@ -246,7 +274,7 @@ export class CmsPublicPortalService {
     const cleanIdentifier = slugOrDomain.toLowerCase().trim();
     const isSubdomain = !cleanIdentifier.includes('.');
 
-    const [portal] = await db
+    let [portal] = await db
       .select({
         id: portalConfigs.id,
         tenantId: portalConfigs.tenantId,
@@ -260,6 +288,27 @@ export class CmsPublicPortalService {
           : eq(portalConfigs.customDomain, cleanIdentifier)
       )
       .limit(1);
+
+    if (!portal && isSubdomain) {
+      const [alias] = await db
+        .select()
+        .from(subdomainAliases)
+        .where(eq(subdomainAliases.oldSubdomainSlug, cleanIdentifier))
+        .limit(1);
+
+      if (alias) {
+        [portal] = await db
+          .select({
+            id: portalConfigs.id,
+            tenantId: portalConfigs.tenantId,
+            isActive: portalConfigs.isActive,
+            customDomainStatus: portalConfigs.customDomainStatus,
+          })
+          .from(portalConfigs)
+          .where(eq(portalConfigs.subdomainSlug, alias.newSubdomainSlug))
+          .limit(1);
+      }
+    }
 
     if (!portal || !portal.isActive) {
       throw new NotFoundException('Portal dewan tidak ditemukan.');

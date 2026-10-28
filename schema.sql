@@ -511,3 +511,32 @@ CREATE TABLE IF NOT EXISTS email_otps (
 );
 
 CREATE INDEX IF NOT EXISTS idx_email_otps_lookup ON email_otps(email, is_used, expires_at);
+
+-- 12. TABEL PENGAJUAN DOMAIN & ALIAS REDIRECT 301
+CREATE TABLE IF NOT EXISTS domain_requests (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  tenant_id UUID NOT NULL REFERENCES tenant_members(id) ON DELETE CASCADE,
+  request_type VARCHAR(20) NOT NULL,
+  requested_domain VARCHAR(255) NOT NULL,
+  current_domain VARCHAR(255),
+  status VARCHAR(30) NOT NULL DEFAULT 'PENDING_REVIEW',
+  admin_notes TEXT,
+  reviewed_by_user_id UUID,
+  reviewed_at TIMESTAMPTZ,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+CREATE INDEX IF NOT EXISTS idx_domain_requests_tenant ON domain_requests(tenant_id);
+CREATE INDEX IF NOT EXISTS idx_domain_requests_status ON domain_requests(status);
+
+CREATE TABLE IF NOT EXISTS subdomain_aliases (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  tenant_id UUID NOT NULL REFERENCES tenant_members(id) ON DELETE CASCADE,
+  old_subdomain_slug VARCHAR(63) NOT NULL UNIQUE,
+  new_subdomain_slug VARCHAR(63) NOT NULL,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+CREATE INDEX IF NOT EXISTS idx_subdomain_aliases_tenant ON subdomain_aliases(tenant_id);
+

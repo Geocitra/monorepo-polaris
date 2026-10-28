@@ -59,7 +59,7 @@ export default function SuperadminMasterDataPage() {
       </div>
 
       {/* 2. SUB-TABS NAVIGATION */}
-      <div className="flex items-center gap-1.5 p-1 rounded-xl bg-slate-100 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 w-fit overflow-x-auto">
+      <div className="flex items-center gap-1.5 p-1 rounded-xl bg-slate-100 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 w-fit max-w-full overflow-x-auto scrollbar-none">
         {[
           { key: 'PARTIES', label: 'Partai Politik', icon: Palette, count: parties.length },
           { key: 'DAPIL', label: 'Daerah Pemilihan (KPU)', icon: MapPin, count: dapils.length },
@@ -72,7 +72,7 @@ export default function SuperadminMasterDataPage() {
             <button
               key={tab.key}
               onClick={() => setActiveTab(tab.key as any)}
-              className={`flex items-center gap-2 px-3.5 py-2 rounded-lg text-xs font-bold transition-all cursor-pointer whitespace-nowrap ${
+              className={`shrink-0 flex items-center gap-2 px-3.5 py-2 rounded-lg text-xs font-bold transition-all cursor-pointer whitespace-nowrap ${
                 isActive
                   ? 'bg-white dark:bg-slate-800 text-blue-600 dark:text-blue-400 shadow-xs'
                   : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-200/60 dark:hover:bg-slate-800/60'

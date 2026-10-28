@@ -47,6 +47,7 @@ import { ApiClient } from '@/lib/api-client';
 import { downloadImageFile } from '@/lib/utils';
 import { InstagramPublishProgressModal } from '@/components/studio/InstagramPublishProgressModal';
 import { ThreadsPublishProgressModal } from '@/components/studio/ThreadsPublishProgressModal';
+import { PosterLightbox } from './preview/PosterLightbox';
 
 const TiptapExecutiveEditor = dynamic(
   () => import('@/components/studio/artikel/TiptapExecutiveEditor').then((m) => m.TiptapExecutiveEditor),
@@ -1917,68 +1918,15 @@ export function CampaignPreview({
 
       {/* ========================================================================= */}
       {/* LIGHTBOX FULLSCREEN MODAL: LIHAT POSTER RESOLUSI TINGGI PENUH (GEDE FULL)  */}
-      {/* ========================================================================= */}
-      {isPosterLightboxOpen && (selectedPosterUrl || generatedResult?.posterUrl) && (
-        <div
-          className="fixed inset-0 z-50 bg-slate-950/95 backdrop-blur-md flex flex-col items-center justify-between p-4 sm:p-6 animate-in fade-in duration-200 select-none"
-          onClick={() => setIsPosterLightboxOpen(false)}
-        >
-          {/* Header Lightbox */}
-          <div
-            className="w-full max-w-6xl flex items-center justify-between text-white pb-3 border-b border-slate-800"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div className="flex items-center gap-2">
-              <span className="font-extrabold text-sm text-white">
-                {currentTitle || 'Pratinjau Poster Utuh'}
-              </span>
-              <span className="text-xs text-blue-400 font-mono px-2 py-0.5 rounded-full bg-blue-950/60 border border-blue-800">
-                Resolusi Asli Penuh
-              </span>
-            </div>
-
-            <div className="flex items-center gap-3">
-              <button
-                type="button"
-                onClick={() => handleDownloadPosterImage()}
-                disabled={downloadingPoster}
-                className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-extrabold text-xs shadow-md cursor-pointer transition-colors disabled:opacity-60"
-              >
-                {downloadingPoster ? <Loader2 className="h-4 w-4 animate-spin" /> : <Download className="h-4 w-4" />}
-                <span>{downloadingPoster ? 'Mengunduh...' : 'Unduh Poster'}</span>
-              </button>
-
-              <button
-                type="button"
-                onClick={() => setIsPosterLightboxOpen(false)}
-                className="p-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white transition-colors cursor-pointer"
-                title="Tutup (ESC)"
-              >
-                <X className="h-5 w-5" />
-              </button>
-            </div>
-          </div>
-
-          {/* Frame Gambar Gede Penuh */}
-          <div
-            className="flex-1 w-full max-w-6xl flex items-center justify-center p-2 sm:p-4 overflow-auto"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <img
-              src={selectedPosterUrl || generatedResult?.posterUrl}
-              alt="Poster Penuh"
-              className="max-h-[82vh] max-w-full object-contain rounded-xl shadow-2xl border border-slate-800"
-            />
-          </div>
-
-          {/* Footer Info */}
-          <div className="text-[11px] text-slate-400 pt-2 flex items-center gap-2">
-            <span>Tekan tombol</span>
-            <kbd className="px-1.5 py-0.5 bg-slate-800 border border-slate-700 rounded text-slate-300 font-mono text-[10px]">ESC</kbd>
-            <span>atau klik di luar gambar untuk menutup tampilan penuh.</span>
-          </div>
-        </div>
-      )}
+      {/* Lightbox Preview Poster Penuh HD */}
+      <PosterLightbox
+        isOpen={isPosterLightboxOpen && Boolean(selectedPosterUrl || generatedResult?.posterUrl)}
+        onClose={() => setIsPosterLightboxOpen(false)}
+        imageUrl={selectedPosterUrl || generatedResult?.posterUrl}
+        title={currentTitle}
+        downloading={downloadingPoster}
+        onDownload={handleDownloadPosterImage}
+      />
     </Card>
   );
 }

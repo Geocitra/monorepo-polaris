@@ -83,7 +83,10 @@ function KampanyeTerpaduContent() {
         ]);
         setProfile(p);
         setBilling(b);
-        setSessions(Array.isArray(arts) ? arts : []);
+        const terpaduSessions = Array.isArray(arts)
+          ? arts.filter((item: any) => item.contentType !== 'INFOGRAPHIC')
+          : [];
+        setSessions(terpaduSessions);
 
         // Sinkronisasi isu prioritas dari cron job crawler
         if (briefing?.priorityIssues && briefing.priorityIssues.length > 0) {
@@ -174,7 +177,10 @@ function KampanyeTerpaduContent() {
   async function reloadSessions() {
     try {
       const arts = await ApiClient.request<any[]>('/studio/articles');
-      setSessions(Array.isArray(arts) ? arts : []);
+      const terpaduSessions = Array.isArray(arts)
+        ? arts.filter((item: any) => item.contentType !== 'INFOGRAPHIC')
+        : [];
+      setSessions(terpaduSessions);
     } catch (err) {
       console.error('Failed to reload studio sessions', err);
     }

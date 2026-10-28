@@ -21,6 +21,14 @@ import {
   RefreshCw,
 } from 'lucide-react';
 import { AdminApiClient } from '@/lib/api-client';
+import {
+  AuditApiModal,
+  UploadCsvModal,
+  ResolveDiscrepancyModal,
+  ReconciliationFeedbackModal,
+  BatchDetailModal,
+  ReconciliationFeedback,
+} from '@/components/superadmin/reconciliation';
 
 export default function SuperadminReconciliationPage() {
   const [batches, setBatches] = useState<any[]>([]);
@@ -506,600 +514,61 @@ export default function SuperadminReconciliationPage() {
       </div>
 
       {/* Modal Detail Batch & Investigasi Selisih */}
-      {selectedBatch && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-5 bg-slate-950/75 backdrop-blur-xs animate-in fade-in duration-200">
-          <div className="w-full max-w-4xl bg-white dark:bg-[#0E131F] rounded-3xl border border-slate-200 dark:border-slate-800 shadow-2xl overflow-hidden flex flex-col max-h-[90vh]">
-            {/* Modal Header */}
-            <div className="p-5 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between">
-              <div>
-                <div className="flex items-center gap-2.5">
-                  <h3 className="font-black text-slate-900 dark:text-white text-base font-mono">
-                    {selectedBatch.batch.batchNumber}
-                  </h3>
-                  <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase font-mono ${
-                    selectedBatch.batch.status === 'BALANCED'
-                      ? 'bg-emerald-50 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800/60'
-                      : selectedBatch.batch.status === 'RESOLVED'
-                      ? 'bg-blue-50 text-blue-700 dark:bg-blue-950/60 dark:text-blue-300 border border-blue-200 dark:border-blue-800/60'
-                      : 'bg-rose-50 text-rose-700 dark:bg-rose-950/60 dark:text-rose-300 border border-rose-200 dark:border-rose-800/60'
-                  }`}>
-                    {selectedBatch.batch.status}
-                  </span>
-                </div>
-                <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
-                  Tanggal Buku Kas: <strong className="text-slate-700 dark:text-slate-300">{selectedBatch.batch.reconDate}</strong> • Gateway: <strong className="text-slate-700 dark:text-slate-300">{selectedBatch.batch.sourceGateway}</strong> • Dijalankan oleh: {selectedBatch.batch.executedBy}
-                </p>
-                {selectedBatch.batch.notes && (
-                  <p className="text-[11px] text-slate-400 italic mt-0.5">
-                    Catatan: &ldquo;{selectedBatch.batch.notes}&rdquo;
-                  </p>
-                )}
-              </div>
-              <button
-                onClick={() => setSelectedBatch(null)}
-                className="p-1.5 rounded-xl text-slate-400 hover:text-slate-700 dark:hover:text-white transition-colors cursor-pointer"
-              >
-                <X className="h-5 w-5" />
-              </button>
-            </div>
-
-            {/* KPI Ringkasan Batch */}
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 p-5 bg-slate-50/70 dark:bg-slate-900/50 border-b border-slate-100 dark:border-slate-800 text-xs">
-              <div className="p-3 rounded-xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800">
-                <span className="text-[10px] font-bold uppercase text-slate-400 block">Total Tagihan (Gross)</span>
-                <div className="text-base font-black text-slate-900 dark:text-white font-mono mt-0.5">
-                  Rp {Number(selectedBatch.batch.totalGrossAmountIdr).toLocaleString('id-ID')}
-                </div>
-              </div>
-              <div className="p-3 rounded-xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800">
-                <span className="text-[10px] font-bold uppercase text-amber-500 block">Potongan MDR & PPN</span>
-                <div className="text-base font-black text-amber-600 dark:text-amber-400 font-mono mt-0.5">
-                  Rp {Number(selectedBatch.batch.totalMdrFeeIdr).toLocaleString('id-ID')}
-                </div>
-              </div>
-              <div className="p-3 rounded-xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800">
-                <span className="text-[10px] font-bold uppercase text-emerald-500 block">Kas Bersih (Net)</span>
-                <div className="text-base font-black text-emerald-600 dark:text-emerald-400 font-mono mt-0.5">
-                  Rp {Number(selectedBatch.batch.totalNetAmountIdr).toLocaleString('id-ID')}
-                </div>
-              </div>
-              <div className="p-3 rounded-xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800">
-                <span className="text-[10px] font-bold uppercase text-slate-400 block">Kecocokan</span>
-                <div className="text-base font-black text-slate-900 dark:text-white font-mono mt-0.5">
-                  {selectedBatch.batch.totalMatchedTransactions} / {selectedBatch.batch.totalGatewayTransactions} Transaksi
-                </div>
-              </div>
-            </div>
-
-            {/* Tab Navigasi Detail */}
-            <div className="px-5 pt-3 border-b border-slate-100 dark:border-slate-800 flex items-center gap-4">
-              <button
-                onClick={() => setDetailTab('MATCHED')}
-                className={`pb-2.5 text-xs font-bold transition-all border-b-2 cursor-pointer ${
-                  detailTab === 'MATCHED'
-                    ? 'border-blue-600 text-blue-600 dark:text-blue-400'
-                    : 'border-transparent text-slate-400 hover:text-slate-600'
-                }`}
-              >
-                Transaksi Cocok ({selectedBatch.matchedInvoices?.length || selectedBatch.batch.totalMatchedTransactions || 0})
-              </button>
-              <button
-                onClick={() => setDetailTab('DISCREPANCIES')}
-                className={`pb-2.5 text-xs font-bold transition-all border-b-2 cursor-pointer ${
-                  detailTab === 'DISCREPANCIES'
-                    ? 'border-rose-600 text-rose-600 dark:text-rose-400'
-                    : 'border-transparent text-slate-400 hover:text-slate-600'
-                }`}
-              >
-                Selisih Transaksi ({selectedBatch.discrepancies?.length || 0})
-              </button>
-            </div>
-
-            {/* Modal Body / Tab Content */}
-            <div className="p-5 overflow-y-auto space-y-4 flex-1">
-              {detailTab === 'MATCHED' && (
-                <div>
-                  {!selectedBatch.matchedInvoices || selectedBatch.matchedInvoices.length === 0 ? (
-                    <div className="p-8 text-center rounded-2xl bg-slate-50 dark:bg-slate-900 text-xs text-slate-400">
-                      Tidak ada detail baris invoice langsung yang terlampir pada batch ini.
-                    </div>
-                  ) : (
-                    <div className="overflow-x-auto border border-slate-100 dark:border-slate-800 rounded-2xl">
-                      <table className="w-full text-left text-xs border-collapse">
-                        <thead>
-                          <tr className="bg-slate-50 dark:bg-slate-900 border-b border-slate-100 dark:border-slate-800 text-[10px] font-black uppercase text-slate-400 tracking-wider">
-                            <th className="py-2.5 px-3">Nomor Tagihan</th>
-                            <th className="py-2.5 px-3">Tagihan Kotor (Gross)</th>
-                            <th className="py-2.5 px-3">Biaya MDR Bank</th>
-                            <th className="py-2.5 px-3">PPN 11%</th>
-                            <th className="py-2.5 px-3">Kas Bersih (Net)</th>
-                            <th className="py-2.5 px-3">Waktu Bayar</th>
-                            <th className="py-2.5 px-3 text-right">Status</th>
-                          </tr>
-                        </thead>
-                        <tbody className="divide-y divide-slate-100 dark:divide-slate-800/60 font-mono text-[11px]">
-                          {selectedBatch.matchedInvoices.map((inv: any) => (
-                            <tr key={inv.id} className="hover:bg-slate-50/50 dark:hover:bg-slate-800/20">
-                              <td className="py-2.5 px-3 font-bold text-slate-900 dark:text-white">
-                                {inv.invoiceNumber}
-                              </td>
-                              <td className="py-2.5 px-3">
-                                Rp {Number(inv.grossAmountIdr || inv.amountIdr).toLocaleString('id-ID')}
-                              </td>
-                              <td className="py-2.5 px-3 text-amber-600">
-                                Rp {Number(inv.mdrFeeIdr || 0).toLocaleString('id-ID')}
-                              </td>
-                              <td className="py-2.5 px-3 text-amber-600">
-                                Rp {Number(inv.vatFeeIdr || 0).toLocaleString('id-ID')}
-                              </td>
-                              <td className="py-2.5 px-3 text-emerald-600 font-bold">
-                                Rp {Number(inv.netAmountIdr || inv.amountIdr).toLocaleString('id-ID')}
-                              </td>
-                              <td className="py-2.5 px-3 text-slate-400 text-[10px]">
-                                {inv.paidAt ? new Date(inv.paidAt).toLocaleString('id-ID') : '-'}
-                              </td>
-                              <td className="py-2.5 px-3 text-right">
-                                <span className="px-2 py-0.5 rounded-full text-[9px] font-black uppercase bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300">
-                                  {inv.paymentStatus}
-                                </span>
-                              </td>
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
-                    </div>
-                  )}
-                </div>
-              )}
-
-              {detailTab === 'DISCREPANCIES' && (
-                <div>
-                  {selectedBatch.discrepancies?.length === 0 ? (
-                    <div className="p-8 text-center rounded-2xl bg-emerald-50/50 dark:bg-emerald-950/20 border border-emerald-200 dark:border-emerald-800 text-xs text-emerald-800 dark:text-emerald-300 font-bold flex flex-col items-center gap-2">
-                      <CheckCircle2 className="h-6 w-6 text-emerald-600" />
-                      <span>Nihil Selisih: Seluruh transaksi cocok 100% dan seimbang secara akuntansi.</span>
-                    </div>
-                  ) : (
-                    <div className="space-y-3">
-                      {selectedBatch.discrepancies.map((d: any) => (
-                        <div
-                          key={d.id}
-                          className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 space-y-2 text-xs"
-                        >
-                          <div className="flex items-center justify-between">
-                            <span className="font-mono font-bold text-slate-900 dark:text-white">
-                              Order ID: {d.gatewayOrderId}
-                            </span>
-                            <span className={`px-2 py-0.5 rounded text-[10px] font-black uppercase ${
-                              d.resolutionStatus === 'UNRESOLVED' ? 'bg-rose-100 text-rose-800' : 'bg-emerald-100 text-emerald-800'
-                            }`}>
-                              {d.resolutionStatus}
-                            </span>
-                          </div>
-                          <div className="grid grid-cols-2 gap-2 text-slate-600 dark:text-slate-400">
-                            <div>Tipe Selisih: <strong className="text-slate-800 dark:text-slate-200">{d.discrepancyType}</strong></div>
-                            <div>Selisih: <strong className="text-rose-600">Rp {Number(d.discrepancyAmountIdr).toLocaleString('id-ID')}</strong></div>
-                          </div>
-                          <p className="text-[11px] text-slate-500 italic bg-white dark:bg-slate-800 p-2 rounded-lg border border-slate-200/60 dark:border-slate-700">
-                            {d.resolutionNotes || 'Belum ada catatan investigasi.'}
-                          </p>
-                          {d.resolutionStatus === 'UNRESOLVED' && (
-                            <button
-                              onClick={() => setSelectedDiscrepancy(d)}
-                              className="mt-1 px-3 py-1.5 rounded-lg bg-blue-600 text-white font-bold text-xs hover:bg-blue-700 transition-colors cursor-pointer"
-                            >
-                              Selesaikan Selisih
-                            </button>
-                          )}
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </div>
-              )}
-            </div>
-          </div>
-        </div>
-      )}
+      <BatchDetailModal
+        batchData={selectedBatch}
+        onClose={() => setSelectedBatch(null)}
+        detailTab={detailTab}
+        onDetailTabChange={setDetailTab}
+        onSelectDiscrepancy={(d) => setSelectedDiscrepancy(d)}
+      />
 
       {/* Modal Tarik Otomatis Midtrans API */}
-      {showApiModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/75 backdrop-blur-xs animate-in fade-in duration-200">
-          <div className="w-full max-w-lg bg-white dark:bg-[#0E131F] rounded-3xl border border-slate-200 dark:border-slate-800 shadow-2xl p-6 space-y-4">
-            <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-3">
-              <div className="flex items-center gap-2.5">
-                <div className="h-9 w-9 rounded-xl bg-blue-50 text-blue-600 dark:bg-blue-950/60 dark:text-blue-400 flex items-center justify-center font-black">
-                  <RefreshCw className="h-4 w-4" />
-                </div>
-                <div>
-                  <h3 className="font-extrabold text-sm text-slate-900 dark:text-white">
-                    Audit Otomatis via Midtrans API
-                  </h3>
-                  <p className="text-[11px] text-slate-400">
-                    Tarik dan kroscek mutasi settlement langsung dari Midtrans Core API
-                  </p>
-                </div>
-              </div>
-              <button onClick={() => setShowApiModal(false)} className="text-slate-400 hover:text-slate-600 cursor-pointer">
-                <X className="h-4 w-4" />
-              </button>
-            </div>
-
-            <form onSubmit={submitApiReconciliation} className="space-y-4 text-xs">
-              <div className="space-y-2">
-                <label className="font-bold text-slate-700 dark:text-slate-300 block">
-                  Pilih Tanggal Audit Mutasi:
-                </label>
-                <input
-                  type="date"
-                  required
-                  value={apiReconDate}
-                  onChange={(e) => setApiReconDate(e.target.value)}
-                  className="w-full p-2.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900 text-slate-900 dark:text-white font-mono"
-                />
-
-                {/* Shortcut Presets */}
-                <div className="flex flex-wrap items-center gap-1.5 pt-1">
-                  <span className="text-[10px] text-slate-400 font-medium">Pilihan Cepat:</span>
-                  <button
-                    type="button"
-                    onClick={() => setApiReconDate('2026-09-30')}
-                    className={`px-2.5 py-1 rounded-lg text-[10px] font-bold transition-all cursor-pointer ${
-                      apiReconDate === '2026-09-30'
-                        ? 'bg-blue-600 text-white'
-                        : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700'
-                    }`}
-                  >
-                    30 Sep 2026 (Transaksi Terakhir)
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      const d = new Date();
-                      d.setDate(d.getDate() - 1);
-                      setApiReconDate(d.toISOString().slice(0, 10));
-                    }}
-                    className="px-2.5 py-1 rounded-lg text-[10px] font-bold bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700 cursor-pointer"
-                  >
-                    Kemarin (H-1)
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setApiReconDate(new Date().toISOString().slice(0, 10))}
-                    className="px-2.5 py-1 rounded-lg text-[10px] font-bold bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700 cursor-pointer"
-                  >
-                    Hari Ini
-                  </button>
-                </div>
-              </div>
-
-              <div className="space-y-1">
-                <label className="font-bold text-slate-700 dark:text-slate-300 block">
-                  Catatan Justifikasi Audit (Opsional):
-                </label>
-                <input
-                  type="text"
-                  placeholder="Contoh: Audit reguler mutasi kas akhir bulan September..."
-                  value={apiNotes}
-                  onChange={(e) => setApiNotes(e.target.value)}
-                  className="w-full p-2.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900 text-slate-900 dark:text-white"
-                />
-              </div>
-
-              {/* Kartu Informasi Transparansi Rekonsiliasi */}
-              <div className="p-3.5 rounded-2xl bg-blue-50/70 dark:bg-blue-950/30 border border-blue-100 dark:border-blue-900/40 space-y-1.5">
-                <div className="font-bold text-blue-900 dark:text-blue-300 flex items-center gap-1.5">
-                  <CheckCircle2 className="h-4 w-4 text-blue-600 shrink-0" />
-                  <span>Kroscek Finansial Otomatis 5-Arah</span>
-                </div>
-                <p className="text-[11px] text-blue-700/80 dark:text-blue-300/70 leading-relaxed">
-                  Sistem akan mengkueri status resmi setiap tagihan ke Midtrans Core API, menghitung potongan MDR & PPN 11%, serta memverifikasi kecocokan status lunas terhadap pembukuan POLARIS.
-                </p>
-              </div>
-
-              <div className="flex items-center justify-end gap-2 pt-2 border-t border-slate-100 dark:border-slate-800">
-                <button
-                  type="button"
-                  onClick={() => setShowApiModal(false)}
-                  className="px-4 py-2 rounded-xl text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 font-bold cursor-pointer"
-                >
-                  Batal
-                </button>
-                <button
-                  type="submit"
-                  disabled={triggeringApi}
-                  className="inline-flex items-center gap-1.5 px-5 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white font-bold transition-all shadow-xs cursor-pointer"
-                >
-                  {triggeringApi ? (
-                    <>
-                      <RefreshCw className="h-3.5 w-3.5 animate-spin" />
-                      <span>Menghubungi Midtrans...</span>
-                    </>
-                  ) : (
-                    <>
-                      <PlayCircle className="h-3.5 w-3.5" />
-                      <span>Jalankan Audit Midtrans</span>
-                    </>
-                  )}
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
+      <AuditApiModal
+        isOpen={showApiModal}
+        onClose={() => setShowApiModal(false)}
+        apiReconDate={apiReconDate}
+        onApiReconDateChange={setApiReconDate}
+        apiNotes={apiNotes}
+        onApiNotesChange={setApiNotes}
+        triggeringApi={triggeringApi}
+        onSubmit={submitApiReconciliation}
+      />
 
       {/* Modal Upload CSV Mutasi */}
-      {showUploadModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/75 backdrop-blur-xs animate-in fade-in duration-200">
-          <div className="w-full max-w-lg bg-white dark:bg-[#0E131F] rounded-3xl border border-slate-200 dark:border-slate-800 shadow-2xl p-6 space-y-4">
-            <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-3">
-              <div className="flex items-center gap-2">
-                <div className="h-8 w-8 rounded-lg bg-blue-50 text-blue-600 dark:bg-blue-950/60 dark:text-blue-400 flex items-center justify-center">
-                  <UploadCloud className="h-4 w-4" />
-                </div>
-                <div>
-                  <h3 className="font-extrabold text-sm text-slate-900 dark:text-white">
-                    Unggah File CSV Mutasi Midtrans
-                  </h3>
-                  <p className="text-[11px] text-slate-400">Pilih file .csv hasil ekspor dari portal Midtrans MAP</p>
-                </div>
-              </div>
-              <button onClick={() => setShowUploadModal(false)} className="text-slate-400 hover:text-slate-600 cursor-pointer">
-                <X className="h-4 w-4" />
-              </button>
-            </div>
-
-            <form onSubmit={handleUploadCsv} className="space-y-4 text-xs">
-              <div className="flex items-center justify-between gap-4">
-                <div className="flex-1">
-                  <label className="font-bold text-slate-700 dark:text-slate-300 block mb-1">
-                    Tanggal Laporan Mutasi:
-                  </label>
-                  <input
-                    type="date"
-                    required
-                    value={reconDateInput}
-                    onChange={(e) => setReconDateInput(e.target.value)}
-                    className="w-full p-2.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900 text-slate-900 dark:text-white"
-                  />
-                </div>
-                <div>
-                  <label className="font-bold text-slate-400 block mb-1 invisible">
-                    Sample
-                  </label>
-                  <button
-                    type="button"
-                    onClick={handleDownloadSampleCsv}
-                    className="inline-flex items-center gap-1.5 px-3 py-2.5 rounded-xl border border-dashed border-slate-300 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800/60 text-slate-600 dark:text-slate-400 text-xs font-semibold cursor-pointer"
-                    title="Unduh contoh file CSV resmi"
-                  >
-                    <Download className="h-3.5 w-3.5" />
-                    <span>Contoh CSV</span>
-                  </button>
-                </div>
-              </div>
-
-              {/* Area Drag-and-Drop File Picker */}
-              <div>
-                <input
-                  type="file"
-                  ref={fileInputRef}
-                  accept=".csv,text/csv"
-                  className="hidden"
-                  onChange={(e) => {
-                    const file = e.target.files?.[0] || null;
-                    handleFileChange(file);
-                  }}
-                />
-
-                {!selectedFile ? (
-                  <div
-                    onDragOver={(e) => {
-                      e.preventDefault();
-                      setIsDragging(true);
-                    }}
-                    onDragLeave={() => setIsDragging(false)}
-                    onDrop={(e) => {
-                      e.preventDefault();
-                      setIsDragging(false);
-                      const file = e.dataTransfer.files?.[0] || null;
-                      handleFileChange(file);
-                    }}
-                    onClick={() => fileInputRef.current?.click()}
-                    className={`border-2 border-dashed rounded-2xl p-6 text-center transition-all cursor-pointer flex flex-col items-center justify-center gap-2 ${
-                      isDragging
-                        ? 'border-blue-500 bg-blue-50/50 dark:bg-blue-950/20'
-                        : 'border-slate-200 dark:border-slate-800 hover:border-blue-400 dark:hover:border-blue-500 bg-slate-50/50 dark:bg-slate-900/50'
-                    }`}
-                  >
-                    <div className="h-10 w-10 rounded-xl bg-blue-100/80 dark:bg-blue-950 text-blue-600 dark:text-blue-400 flex items-center justify-center">
-                      <FileSpreadsheet className="h-5 w-5" />
-                    </div>
-                    <div>
-                      <span className="font-bold text-slate-800 dark:text-slate-200">
-                        Klik untuk cari file .csv
-                      </span>{' '}
-                      <span className="text-slate-400">atau seret file ke sini</span>
-                    </div>
-                    <span className="text-[10px] text-slate-400">
-                      Mendukung format settlement resmi Midtrans (Order ID, Gross, Status, Time)
-                    </span>
-                  </div>
-                ) : (
-                  <div className="p-3.5 rounded-2xl bg-blue-50/80 dark:bg-blue-950/40 border border-blue-200 dark:border-blue-800 flex items-center justify-between">
-                    <div className="flex items-center gap-2.5 overflow-hidden">
-                      <div className="h-9 w-9 rounded-xl bg-blue-600 text-white flex items-center justify-center shrink-0">
-                        <FileSpreadsheet className="h-5 w-5" />
-                      </div>
-                      <div className="truncate">
-                        <div className="font-bold text-xs text-slate-900 dark:text-white truncate">
-                          {selectedFile.name}
-                        </div>
-                        <div className="text-[10px] text-slate-500 dark:text-slate-400">
-                          {(selectedFile.size / 1024).toFixed(1)} KB • {csvContent.split('\n').filter(Boolean).length - 1} baris transaksi terdeteksi
-                        </div>
-                      </div>
-                    </div>
-                    <button
-                      type="button"
-                      onClick={() => handleFileChange(null)}
-                      className="p-1.5 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/40 transition-colors cursor-pointer"
-                      title="Ganti file"
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </button>
-                  </div>
-                )}
-              </div>
-
-              {/* Opsi Toggle Pratinjau Teks CSV */}
-              <div>
-                <button
-                  type="button"
-                  onClick={() => setShowManualTextarea(!showManualTextarea)}
-                  className="text-[11px] font-bold text-blue-600 dark:text-blue-400 hover:underline cursor-pointer flex items-center gap-1"
-                >
-                  <FileText className="h-3 w-3" />
-                  <span>{showManualTextarea ? 'Sembunyikan editor teks' : 'Lihat / Edit teks CSV secara manual'}</span>
-                </button>
-
-                {showManualTextarea && (
-                  <div className="mt-2 space-y-1">
-                    <textarea
-                      rows={5}
-                      placeholder="Order ID,Gross Amount,Payment Type,Transaction Status,Settlement Time..."
-                      value={csvContent}
-                      onChange={(e) => setCsvContent(e.target.value)}
-                      className="w-full p-2.5 rounded-xl border border-slate-200 dark:border-slate-800 font-mono text-[11px] bg-slate-50 dark:bg-slate-900 text-slate-900 dark:text-white"
-                    />
-                  </div>
-                )}
-              </div>
-
-              <div className="flex items-center justify-end gap-2 pt-2 border-t border-slate-100 dark:border-slate-800">
-                <button
-                  type="button"
-                  onClick={() => setShowUploadModal(false)}
-                  className="px-4 py-2 rounded-xl text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 font-bold cursor-pointer"
-                >
-                  Batal
-                </button>
-                <button
-                  type="submit"
-                  disabled={uploading || !csvContent.trim()}
-                  className="inline-flex items-center gap-1.5 px-5 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white font-bold transition-all shadow-xs cursor-pointer"
-                >
-                  {uploading ? (
-                    <>
-                      <RefreshCw className="h-3.5 w-3.5 animate-spin" />
-                      <span>Memproses...</span>
-                    </>
-                  ) : (
-                    <>
-                      <Check className="h-3.5 w-3.5" />
-                      <span>Proses Rekonsiliasi</span>
-                    </>
-                  )}
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
+      <UploadCsvModal
+        isOpen={showUploadModal}
+        onClose={() => setShowUploadModal(false)}
+        reconDateInput={reconDateInput}
+        onReconDateChange={setReconDateInput}
+        selectedFile={selectedFile}
+        onFileChange={handleFileChange}
+        csvContent={csvContent}
+        onCsvContentChange={setCsvContent}
+        showManualTextarea={showManualTextarea}
+        onToggleManualTextarea={() => setShowManualTextarea(!showManualTextarea)}
+        isDragging={isDragging}
+        setIsDragging={setIsDragging}
+        uploading={uploading}
+        onSubmit={handleUploadCsv}
+        onDownloadSampleCsv={handleDownloadSampleCsv}
+        fileInputRef={fileInputRef}
+      />
 
       {/* Modal Penyelesaian Selisih (Manual Resolve) */}
-      {selectedDiscrepancy && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/75 backdrop-blur-xs animate-in fade-in duration-200">
-          <div className="w-full max-w-md bg-white dark:bg-[#0E131F] rounded-3xl border border-slate-200 dark:border-slate-800 shadow-2xl p-6 space-y-4">
-            <h3 className="font-extrabold text-sm text-slate-900 dark:text-white">
-              Resolusi Selisih Transaksi: {selectedDiscrepancy.gatewayOrderId}
-            </h3>
-            <p className="text-xs text-slate-500">
-              Tipe: {selectedDiscrepancy.discrepancyType} • Selisih: Rp {Number(selectedDiscrepancy.discrepancyAmountIdr).toLocaleString('id-ID')}
-            </p>
+      <ResolveDiscrepancyModal
+        discrepancy={selectedDiscrepancy}
+        onClose={() => setSelectedDiscrepancy(null)}
+        onResolve={handleResolveDiscrepancy}
+        resolveNotes={resolveNotes}
+        onNotesChange={setResolveNotes}
+        resolving={resolving}
+      />
 
-            <div className="space-y-1">
-              <label className="text-xs font-bold text-slate-700 dark:text-slate-300">Catatan Justifikasi Audit:</label>
-              <textarea
-                rows={3}
-                required
-                placeholder="Contoh: Pembayaran telah dikonfirmasi manual via bukti mutasi rekening koran..."
-                value={resolveNotes}
-                onChange={(e) => setResolveNotes(e.target.value)}
-                className="w-full p-2.5 rounded-xl border border-slate-200 dark:border-slate-800 text-xs bg-slate-50 dark:bg-slate-900 text-slate-900 dark:text-white"
-              />
-            </div>
-
-            <div className="flex items-center justify-end gap-2 pt-2 border-t border-slate-100 dark:border-slate-800">
-              <button
-                type="button"
-                onClick={() => setSelectedDiscrepancy(null)}
-                className="px-3.5 py-2 rounded-xl text-slate-600 dark:text-slate-300 text-xs font-bold hover:bg-slate-100 dark:hover:bg-slate-800 cursor-pointer"
-              >
-                Batal
-              </button>
-              <button
-                type="button"
-                disabled={resolving || !resolveNotes.trim()}
-                onClick={() => handleResolveDiscrepancy('MANUALLY_RESOLVED')}
-                className="px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs shadow-xs cursor-pointer"
-              >
-                {resolving ? 'Menyimpan...' : 'Tandai Selesai (Manually Resolved)'}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* SweetAlert Style Feedback Modal (No More "localhost says") */}
-      {feedback && feedback.show && (
-        <div className="fixed inset-0 z-60 flex items-center justify-center p-4 bg-slate-950/75 backdrop-blur-sm animate-in fade-in duration-200">
-          <div className="w-full max-w-sm bg-white dark:bg-[#0E131F] rounded-3xl border border-slate-200 dark:border-slate-800 shadow-2xl p-6 text-center space-y-4 animate-in zoom-in-95 duration-200">
-            {/* Animated Icon Container */}
-            <div className="flex justify-center pt-2">
-              {feedback.type === 'success' ? (
-                <div className="h-16 w-16 rounded-full bg-emerald-50 dark:bg-emerald-950/60 border-2 border-emerald-500/30 text-emerald-600 dark:text-emerald-400 flex items-center justify-center shadow-lg shadow-emerald-500/10">
-                  <CheckCircle2 className="h-9 w-9 stroke-[2.5]" />
-                </div>
-              ) : feedback.type === 'error' ? (
-                <div className="h-16 w-16 rounded-full bg-rose-50 dark:bg-rose-950/60 border-2 border-rose-500/30 text-rose-600 dark:text-rose-400 flex items-center justify-center shadow-lg shadow-rose-500/10">
-                  <ShieldAlert className="h-9 w-9 stroke-[2.5]" />
-                </div>
-              ) : (
-                <div className="h-16 w-16 rounded-full bg-amber-50 dark:bg-amber-950/60 border-2 border-amber-500/30 text-amber-600 dark:text-amber-400 flex items-center justify-center shadow-lg shadow-amber-500/10">
-                  <AlertTriangle className="h-9 w-9 stroke-[2.5]" />
-                </div>
-              )}
-            </div>
-
-            {/* Title & Badge & Message */}
-            <div className="space-y-1.5">
-              {feedback.badge && (
-                <span className="inline-block px-3 py-0.5 rounded-full text-[10px] font-black uppercase font-mono tracking-wider bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800 mb-1">
-                  Status: {feedback.badge}
-                </span>
-              )}
-              <h3 className="text-base font-black text-slate-900 dark:text-white tracking-tight">
-                {feedback.title}
-              </h3>
-              <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed">
-                {feedback.message}
-              </p>
-            </div>
-
-            {/* Action Button */}
-            <div className="pt-2">
-              <button
-                type="button"
-                onClick={() => setFeedback({ ...feedback, show: false })}
-                className="w-full py-2.5 px-4 rounded-xl font-bold text-xs text-white shadow-sm transition-all cursor-pointer bg-blue-600 hover:bg-blue-700 active:scale-98"
-              >
-                Mengerti & Lanjutkan
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      {/* SweetAlert Style Feedback Modal */}
+      <ReconciliationFeedbackModal
+        feedback={feedback}
+        onClose={() => setFeedback(feedback ? { ...feedback, show: false } : null)}
+      />
     </div>
   );
 }

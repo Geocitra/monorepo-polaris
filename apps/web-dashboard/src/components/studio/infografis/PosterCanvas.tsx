@@ -51,14 +51,14 @@ export function PosterCanvas({
   partyAffiliation = 'Fraksi Parlemen',
 }: PosterCanvasProps) {
   return (
-    <div className="p-6 rounded-3xl bg-white border border-slate-200 shadow-sm space-y-4">
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between border-b border-slate-100 pb-3 gap-2">
+    <div className="p-6 rounded-3xl bg-white dark:bg-[#0E131F] border border-slate-200 dark:border-slate-800 shadow-sm space-y-4 transition-colors duration-200">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-3 gap-2">
         <div>
-          <span className="text-xs font-extrabold text-slate-700 uppercase tracking-wider flex items-center gap-2">
-            <ImageIcon className="h-4 w-4 text-emerald-600" />
+          <span className="text-xs font-extrabold text-slate-800 dark:text-slate-200 uppercase tracking-wider flex items-center gap-2">
+            <ImageIcon className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />
             <span>Pratinjau Visual Poster</span>
           </span>
-          <p className="text-[11px] text-slate-500 mt-0.5">
+          <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">
             Pilih visual ilustrasi atau masukkan instruksi AI untuk kreasi baru
           </p>
         </div>
@@ -73,7 +73,7 @@ export function PosterCanvas({
               className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-[11px] font-bold transition-all ${
                 activePresetId === preset.id && activeImage === preset.url
                   ? 'bg-blue-600 text-white shadow-xs'
-                  : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                  : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700'
               }`}
             >
               <span>{preset.icon}</span>

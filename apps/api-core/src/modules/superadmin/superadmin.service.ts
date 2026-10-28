@@ -23,6 +23,7 @@ import {
   SuperadminMasterDataService,
   SuperadminObservabilityService,
   SuperadminAuditService,
+  SuperadminDomainService,
 } from './services/index.js';
 
 /**
@@ -35,6 +36,7 @@ import {
  * - SuperadminMasterDataService (Partai, Dapil, Komisi, Pricing)
  * - SuperadminObservabilityService (Langfuse AI Telemetri, Token Pool)
  * - SuperadminAuditService (Audit Log & Agregat Token Member)
+ * - SuperadminDomainService (Manajemen Pengajuan Domain, Cek DNS, Approval)
  */
 @Injectable()
 export class SuperadminService {
@@ -47,6 +49,7 @@ export class SuperadminService {
     private readonly masterDataService: SuperadminMasterDataService,
     private readonly observabilityService: SuperadminObservabilityService,
     private readonly auditService: SuperadminAuditService,
+    private readonly domainService: SuperadminDomainService,
   ) {}
 
   // --- Domain: Autentikasi Superadmin ---
@@ -187,4 +190,22 @@ export class SuperadminService {
   ) {
     return await this.auditService.getMemberActivityLogs(tenantId, query);
   }
+
+  // --- Domain: Pengelolaan Tiket Pengajuan Domain ---
+  async getDomainRequests(status?: string) {
+    return await this.domainService.getDomainRequests(status);
+  }
+
+  async checkDnsForDomainRequest(requestId: string) {
+    return await this.domainService.checkDns(requestId);
+  }
+
+  async approveDomainRequest(requestId: string, adminUserId: string) {
+    return await this.domainService.approveDomainRequest(requestId, adminUserId);
+  }
+
+  async rejectDomainRequest(requestId: string, adminNotes: string, adminUserId: string) {
+    return await this.domainService.rejectDomainRequest(requestId, adminNotes, adminUserId);
+  }
 }
+

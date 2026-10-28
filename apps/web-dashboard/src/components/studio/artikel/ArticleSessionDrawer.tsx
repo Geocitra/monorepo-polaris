@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import {
   X,
   Plus,
@@ -18,6 +18,7 @@ import {
 import { WritingStyle, LengthTarget } from './WritingStyleSelector';
 import { ArticleIteration } from './ArticleVersionHistoryDrawer';
 import { cn } from '@/lib/utils';
+import { Portal } from '@/components/ui/portal';
 
 export interface ArticleSession {
   id: string;
@@ -55,6 +56,16 @@ export function ArticleSessionDrawer({
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editTitle, setEditTitle] = useState('');
 
+  useEffect(() => {
+    if (isOpen) {
+      const originalOverflow = document.body.style.overflow;
+      document.body.style.overflow = 'hidden';
+      return () => {
+        document.body.style.overflow = originalOverflow;
+      };
+    }
+  }, [isOpen]);
+
   if (!isOpen) return null;
 
   const filteredSessions = sessions.filter((s) =>
@@ -85,12 +96,13 @@ export function ArticleSessionDrawer({
   const olderSessions = filteredSessions.filter((s) => now - new Date(s.updatedAt).getTime() >= oneDay);
 
   return (
-    <div className="fixed inset-0 z-50 overflow-hidden">
-      {/* Backdrop */}
-      <div
-        className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm transition-opacity"
-        onClick={onClose}
-      />
+    <Portal>
+      <div className="fixed inset-0 !m-0 z-[60] overflow-hidden">
+        {/* Backdrop */}
+        <div
+          className="fixed inset-0 !m-0 bg-slate-900/60 backdrop-blur-sm transition-opacity"
+          onClick={onClose}
+        />
 
       <div className="fixed inset-y-0 left-0 max-w-full flex pr-10">
         <div className="w-screen max-w-md bg-white dark:bg-slate-900 shadow-2xl flex flex-col border-r border-slate-200 dark:border-slate-800 animate-in slide-in-from-left duration-250">
@@ -194,6 +206,7 @@ export function ArticleSessionDrawer({
         </div>
       </div>
     </div>
+    </Portal>
   );
 
   function renderSessionCard(session: ArticleSession) {

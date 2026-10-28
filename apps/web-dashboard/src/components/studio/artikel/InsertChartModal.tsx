@@ -1,7 +1,8 @@
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { Editor } from '@tiptap/react';
+import { Portal } from '@/components/ui/portal';
 import {
   BarChart3,
   TrendingUp,
@@ -47,6 +48,16 @@ export function InsertChartModal({
       .map((l) => l.trim())
       .filter(Boolean);
   }, [labelsStr]);
+
+  useEffect(() => {
+    if (isOpen) {
+      const originalOverflow = document.body.style.overflow;
+      document.body.style.overflow = 'hidden';
+      return () => {
+        document.body.style.overflow = originalOverflow;
+      };
+    }
+  }, [isOpen]);
 
   if (!isOpen) return null;
 
@@ -129,8 +140,9 @@ export function InsertChartModal({
   );
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/70 backdrop-blur-xs animate-in fade-in duration-200">
-      <div className="w-full max-w-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl shadow-2xl overflow-hidden flex flex-col max-h-[92vh]">
+    <Portal>
+      <div className="fixed inset-0 !m-0 z-[60] flex items-center justify-center p-3 sm:p-4 bg-slate-900/60 backdrop-blur-sm animate-in fade-in duration-200">
+        <div className="w-full max-w-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl shadow-2xl overflow-hidden flex flex-col max-h-[92vh]">
         {/* MODAL HEADER */}
         <div className="p-5 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between">
           <div className="flex items-center gap-2.5">
@@ -289,7 +301,8 @@ export function InsertChartModal({
             </span>
 
             <div className="rounded-xl border border-slate-200 dark:border-slate-800 overflow-hidden">
-              <table className="w-full text-xs text-left">
+              <div className="overflow-x-auto">
+                <table className="w-full text-xs text-left min-w-[340px]">
                 <thead className="bg-slate-100 dark:bg-slate-800 text-[10px] uppercase font-bold text-slate-600 dark:text-slate-300 border-b border-slate-200 dark:border-slate-700">
                   <tr>
                     <th className="p-2.5">Kategori</th>
@@ -341,6 +354,7 @@ export function InsertChartModal({
                   ))}
                 </tbody>
               </table>
+              </div>
             </div>
 
             {chartType !== 'pie' && (
@@ -380,5 +394,6 @@ export function InsertChartModal({
         </div>
       </div>
     </div>
+    </Portal>
   );
 }

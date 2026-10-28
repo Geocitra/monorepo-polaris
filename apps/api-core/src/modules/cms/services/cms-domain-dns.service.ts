@@ -8,14 +8,25 @@ import {
 import * as crypto from 'crypto';
 import * as dns from 'dns/promises';
 import ipaddr from 'ipaddr.js';
-import { eq, and } from 'drizzle-orm';
-import { db, portalConfigs, withTenantContext } from '@polaris/database';
+import { eq, and, desc } from 'drizzle-orm';
+import {
+  db,
+  portalConfigs,
+  domainRequests,
+  subdomainAliases,
+  tenantMembers,
+  withTenantContext,
+} from '@polaris/database';
 import { SubdomainSlug } from '@polaris/core-domain';
-import { UpdateDomainConfigDto } from '../dto/cms.dto.js';
+import { UpdateDomainConfigDto, CreateDomainRequestDto } from '../dto/cms.dto.js';
+import { RedisService } from '../../redis/redis.service.js';
 
 @Injectable()
 export class CmsDomainDnsService {
   private readonly logger = new Logger(CmsDomainDnsService.name);
+
+  constructor(private readonly redisService: RedisService) {}
+
 
   // Domain terlarang yang tidak boleh diklaim secara sepihak
   public static readonly BLACKLISTED_DOMAINS = [
@@ -395,4 +406,181 @@ export class CmsDomainDnsService {
 
     return Boolean(portal);
   }
+
+  /**
+   * Klien mengajukan permohonan domain baru (Subdomain atau Custom Domain)
+   */
+  async submitDomainRequest(tenantId: string, dto: CreateDomainRequestDto) {
+    const [portal] = await db
+      .select()
+      .from(portalConfigs)
+      .where(eq(portalConfigs.tenantId, tenantId))
+      .limit(1);
+
+    if (!portal) {
+      throw new NotFoundException('Portal konfigurasi tokoh tidak ditemukan.');
+    }
+
+    // 1. Cek apakah ada pengajuan aktif yang belum selesai
+    const [activePending] = await db
+      .select({ id: domainRequests.id, requestedDomain: domainRequests.requestedDomain })
+      .from(domainRequests)
+      .where(
+        and(
+          eq(domainRequests.tenantId, tenantId),
+          eq(domainRequests.status, 'PENDING_REVIEW')
+        )
+      )
+      .limit(1);
+
+    if (activePending) {
+      throw new ConflictException(
+        `Anda masih memiliki pengajuan domain '${activePending.requestedDomain}' yang sedang ditinjau oleh tim operasional Polaris.`
+      );
+    }
+
+    let cleanTarget = '';
+    let currentDomain = '';
+
+    if (dto.requestType === 'SUBDOMAIN') {
+      let validatedSlug: SubdomainSlug;
+      try {
+        validatedSlug = new SubdomainSlug(dto.requestedDomain);
+      } catch (err: any) {
+        throw new BadRequestException(err.message);
+      }
+      cleanTarget = validatedSlug.getValue();
+      currentDomain = portal.subdomainSlug;
+
+      if (cleanTarget === portal.subdomainSlug) {
+        throw new BadRequestException('Subdomain yang diajukan sama dengan subdomain aktif saat ini.');
+      }
+
+      // Cek bentrok dengan portal lain
+      const [exists] = await db
+        .select({ id: portalConfigs.id })
+        .from(portalConfigs)
+        .where(eq(portalConfigs.subdomainSlug, cleanTarget))
+        .limit(1);
+
+      if (exists) {
+        throw new ConflictException(`Subdomain '${cleanTarget}' sudah digunakan oleh tokoh lain.`);
+      }
+
+      // Cek bentrok dengan pending request tokoh lain
+      const [pendingOther] = await db
+        .select({ id: domainRequests.id })
+        .from(domainRequests)
+        .where(
+          and(
+            eq(domainRequests.requestedDomain, cleanTarget),
+            eq(domainRequests.status, 'PENDING_REVIEW')
+          )
+        )
+        .limit(1);
+
+      if (pendingOther) {
+        throw new ConflictException(`Subdomain '${cleanTarget}' sedang dalam proses pengajuan oleh akun lain.`);
+      }
+    } else if (dto.requestType === 'CUSTOM_DOMAIN') {
+      cleanTarget = this.normalizeCustomDomain(dto.requestedDomain);
+      currentDomain = portal.customDomain || `${portal.subdomainSlug}.polaris.id`;
+
+      if (portal.customDomain && cleanTarget === portal.customDomain) {
+        throw new BadRequestException('Custom domain yang diajukan sama dengan domain aktif saat ini.');
+      }
+
+      // Cek bentrok dengan portal lain
+      const [exists] = await db
+        .select({ id: portalConfigs.id })
+        .from(portalConfigs)
+        .where(eq(portalConfigs.customDomain, cleanTarget))
+        .limit(1);
+
+      if (exists) {
+        throw new ConflictException(`Custom domain '${cleanTarget}' sudah terdaftar dalam sistem Polaris.`);
+      }
+
+      // Cek bentrok dengan pending request lain
+      const [pendingOther] = await db
+        .select({ id: domainRequests.id })
+        .from(domainRequests)
+        .where(
+          and(
+            eq(domainRequests.requestedDomain, cleanTarget),
+            eq(domainRequests.status, 'PENDING_REVIEW')
+          )
+        )
+        .limit(1);
+
+      if (pendingOther) {
+        throw new ConflictException(`Domain '${cleanTarget}' sedang dalam proses peninjauan untuk akun lain.`);
+      }
+    } else {
+      throw new BadRequestException('Tipe pengajuan tidak valid.');
+    }
+
+    // 2. Simpan ke database domain_requests
+    const [newRequest] = await db
+      .insert(domainRequests)
+      .values({
+        tenantId,
+        requestType: dto.requestType,
+        requestedDomain: cleanTarget,
+        currentDomain,
+        status: 'PENDING_REVIEW',
+      })
+      .returning();
+
+    // 3. Ambil nama tokoh untuk payload notifikasi
+    const [profile] = await db
+      .select({ fullName: tenantMembers.fullName })
+      .from(tenantMembers)
+      .where(eq(tenantMembers.id, tenantId))
+      .limit(1);
+
+    const authorName = profile?.fullName || 'Anggota Dewan';
+
+    // 4. Publikasikan notifikasi real-time via Redis Pub/Sub ke Superadmin Console
+    try {
+      await this.redisService.publish('realtime:broadcast', {
+        type: 'DOMAIN_REQUEST_CREATED',
+        data: {
+          requestId: newRequest.id,
+          tenantId,
+          requestedDomain: cleanTarget,
+          requestType: dto.requestType,
+          authorName,
+          createdAt: newRequest.createdAt,
+        },
+      });
+      this.logger.log(`Realtime event DOMAIN_REQUEST_CREATED broadcasted for: ${cleanTarget}`);
+    } catch (err: any) {
+      this.logger.warn(`Gagal mempublikasikan notifikasi realtime domain: ${err.message}`);
+    }
+
+    return {
+      success: true,
+      message: 'Pengajuan domain berhasil dikirimkan ke tim operasional Polaris.',
+      request: newRequest,
+    };
+  }
+
+  /**
+   * Mengambil riwayat pengajuan domain milik tenant yang sedang login
+   */
+  async getMyDomainRequests(tenantId: string) {
+    const requests = await db
+      .select()
+      .from(domainRequests)
+      .where(eq(domainRequests.tenantId, tenantId))
+      .orderBy(desc(domainRequests.createdAt))
+      .limit(10);
+
+    return {
+      success: true,
+      data: requests,
+    };
+  }
 }
+

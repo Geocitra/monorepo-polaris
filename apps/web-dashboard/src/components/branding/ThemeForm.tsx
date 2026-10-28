@@ -36,6 +36,7 @@ import {
 import { ColorPicker } from '@/components/ui/color-picker';
 import { cn } from '@/lib/utils';
 import { TemplateLayoutSelector, TEMPLATE_LAYOUTS } from './TemplateLayoutSelector';
+import { DomainManagementPanel } from './DomainManagementPanel';
 import { getRootDomain } from '@/lib/urls';
 
 export interface ColorPalette {
@@ -118,6 +119,7 @@ interface ThemeFormProps {
   onCareersChange?: (items: CareerItem[]) => void;
   profileEducation?: string;
   profileCourses?: string[];
+  onDomainUpdated?: () => void;
 }
 
 export function ThemeForm({
@@ -148,6 +150,7 @@ export function ThemeForm({
   onCareersChange,
   profileEducation,
   profileCourses,
+  onDomainUpdated,
 }: ThemeFormProps) {
   const [activeTab, setActiveTab] = useState<FormSectionTab>('colors');
   const [showCustomPicker, setShowCustomPicker] = useState(false);
@@ -889,63 +892,13 @@ export function ThemeForm({
     </div>
   );
 
-  // 4. DOMAIN & WEB ADDRESS SECTION
+  // 4. DOMAIN & WEB ADDRESS SECTION (ALUR PENGAJUAN TERKELOLA)
   const renderDomainSection = () => (
-    <div className="space-y-6">
-      {/* SECTION TITLE */}
-      <div className="border-b border-slate-100 dark:border-slate-800 pb-3">
-        <h3 className="text-base font-black text-slate-900 dark:text-white flex items-center gap-2">
-          <Globe className="h-4 w-4 text-blue-500" />
-          Pengaturan Domain & Alamat Website
-        </h3>
-        <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-          Kelola nama subdomain polaris.id resmi atau tautkan domain pribadi kustom Anda.
-        </p>
-      </div>
-
-      {/* SUBDOMAIN */}
-      <div className="space-y-1.5">
-        <label className="text-xs font-bold text-slate-700 dark:text-slate-300 uppercase flex items-center gap-1.5">
-          <Globe className="h-3.5 w-3.5 text-blue-500" />
-          Subdomain Polaris.id
-        </label>
-        <div className="flex items-center">
-          <input
-            type="text"
-            required
-            value={subdomainSlug}
-            onChange={(e) => onSubdomainSlugChange(e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, ''))}
-            className="block w-full rounded-l-xl border border-r-0 border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 px-3.5 py-2.5 text-xs sm:text-sm font-semibold text-slate-900 dark:text-white focus:outline-none focus:border-blue-600"
-          />
-          <span className="inline-flex items-center px-4 py-2.5 rounded-r-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-800 text-xs font-bold text-slate-500 dark:text-slate-400 select-none">
-            .{getRootDomain()}
-          </span>
-        </div>
-        <p className="text-[10.5px] text-slate-400">
-          Alamat portal publik instan: <span className="font-mono text-blue-600 dark:text-blue-400">https://{subdomainSlug || 'nama'}.{getRootDomain()}</span>
-        </p>
-      </div>
-
-      {/* CUSTOM DOMAIN */}
-      <div className="space-y-1.5">
-        <label className="text-xs font-bold text-slate-700 dark:text-slate-300 uppercase block">
-          Custom Domain Pribadi
-        </label>
-        <input
-          type="text"
-          placeholder="opinitaru.com atau ayublaksono.com"
-          value={customDomain}
-          onChange={(e) => onCustomDomainChange(e.target.value.toLowerCase().trim())}
-          className="block w-full rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 px-3.5 py-2.5 text-xs sm:text-sm text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:outline-none focus:border-blue-600 font-mono"
-        />
-        <div className="p-3 rounded-xl bg-blue-50/60 dark:bg-blue-950/30 border border-blue-100 dark:border-blue-900/60 flex items-start gap-2.5 mt-2">
-          <Info className="w-4 h-4 text-blue-600 shrink-0 mt-0.5" />
-          <p className="text-[11px] text-slate-600 dark:text-slate-300 leading-relaxed">
-            Untuk menghubungkan domain pribadi, buat rekod DNS tipe <strong className="text-slate-900 dark:text-white font-mono">A</strong> yang mengarah ke IP Server VPS: <code className="font-bold text-blue-600 dark:text-blue-400">202.155.13.40</code> atau <strong className="text-slate-900 dark:text-white font-mono">CNAME</strong> ke <code className="font-bold text-blue-600 dark:text-blue-400">app.{getRootDomain()}</code>.
-          </p>
-        </div>
-      </div>
-    </div>
+    <DomainManagementPanel
+      currentSubdomain={subdomainSlug}
+      currentCustomDomain={customDomain}
+      onDomainUpdated={onDomainUpdated}
+    />
   );
 
   return (

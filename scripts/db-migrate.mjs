@@ -429,6 +429,31 @@ async function runMigration() {
         CONSTRAINT unq_portal_platform UNIQUE (portal_id, platform)
       );
 
+      CREATE TABLE IF NOT EXISTS domain_requests (
+        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        tenant_id UUID NOT NULL REFERENCES tenant_members(id) ON DELETE CASCADE,
+        request_type VARCHAR(20) NOT NULL,
+        requested_domain VARCHAR(255) NOT NULL,
+        current_domain VARCHAR(255),
+        status VARCHAR(30) DEFAULT 'PENDING_REVIEW' NOT NULL,
+        admin_notes TEXT,
+        reviewed_by_user_id UUID,
+        reviewed_at TIMESTAMPTZ,
+        created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+        updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
+      );
+      CREATE INDEX IF NOT EXISTS idx_domain_requests_tenant ON domain_requests (tenant_id);
+      CREATE INDEX IF NOT EXISTS idx_domain_requests_status ON domain_requests (status);
+
+      CREATE TABLE IF NOT EXISTS subdomain_aliases (
+        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        tenant_id UUID NOT NULL REFERENCES tenant_members(id) ON DELETE CASCADE,
+        old_subdomain_slug VARCHAR(63) NOT NULL UNIQUE,
+        new_subdomain_slug VARCHAR(63) NOT NULL,
+        created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+      );
+      CREATE INDEX IF NOT EXISTS idx_subdomain_aliases_tenant ON subdomain_aliases (tenant_id);
+
       -- 4. Content & Studio
       CREATE TABLE IF NOT EXISTS content_publications (
         id UUID PRIMARY KEY DEFAULT gen_random_uuid(),

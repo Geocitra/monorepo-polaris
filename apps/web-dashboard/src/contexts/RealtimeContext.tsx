@@ -31,6 +31,7 @@ interface RealtimeContextValue {
   markAllAsRead: () => void;
   triggerTestNotification: () => Promise<void>;
   triggerSimulateJob: () => Promise<void>;
+  subscribe: (eventType: string, callback: (data: any) => void) => () => void;
 }
 
 const RealtimeContext = createContext<RealtimeContextValue | null>(null);
@@ -42,6 +43,17 @@ export function RealtimeProvider({ children }: { children: React.ReactNode }) {
   const [activeJob, setActiveJob] = useState<LiveJobProgress | null>(null);
   const eventSourceRef = useRef<EventSource | null>(null);
   const retryTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const subscribersRef = useRef<Map<string, Set<(data: any) => void>>>(new Map());
+
+  const subscribe = useCallback((eventType: string, callback: (data: any) => void) => {
+    if (!subscribersRef.current.has(eventType)) {
+      subscribersRef.current.set(eventType, new Set());
+    }
+    subscribersRef.current.get(eventType)!.add(callback);
+    return () => {
+      subscribersRef.current.get(eventType)?.delete(callback);
+    };
+  }, []);
 
   // Ambil riwayat notifikasi tersimpan dari Redis saat pertama kali mount
   useEffect(() => {
@@ -127,8 +139,88 @@ export function RealtimeProvider({ children }: { children: React.ReactNode }) {
   const handleRealtimeMessage = useCallback((msg: any) => {
     const { type, data } = msg;
 
+    // Notifikasi semua listener kustom yang berlangganan event type ini atau wildcard
+    const specificHandlers = subscribersRef.current.get(type);
+    if (specificHandlers) {
+      specificHandlers.forEach((fn) => {
+        try {
+          fn(data);
+        } catch (e) {
+          console.error(`[Realtime SSE] Error in listener for ${type}:`, e);
+        }
+      });
+    }
+
+    const wildcardHandlers = subscribersRef.current.get('*');
+    if (wildcardHandlers) {
+      wildcardHandlers.forEach((fn) => {
+        try {
+          fn({ type, data });
+        } catch (e) {
+          console.error('[Realtime SSE] Error in wildcard listener:', e);
+        }
+      });
+    }
+
     if (type === 'CONNECTED') {
       setIsConnected(true);
+    } else if (type === 'DOMAIN_REQUEST_CREATED') {
+      const newNotif: RealtimeNotification = {
+        id: `domreq_${data?.requestId || Date.now()}`,
+        title: '🌐 Pengajuan Domain Baru!',
+        message: `${data?.authorName || 'Tokoh'} mengajukan ${data?.requestType === 'SUBDOMAIN' ? 'subdomain' : 'custom domain'}: ${data?.requestedDomain}`,
+        category: 'SYSTEM',
+        link: '/superadmin/tenants?tab=domains',
+        timestamp: Date.now(),
+        read: false,
+      };
+
+      setNotifications((prev) => [newNotif, ...prev.slice(0, 19)]);
+      setUnreadCount((c) => c + 1);
+
+      toast({
+        title: newNotif.title,
+        description: newNotif.message,
+        type: 'info',
+      });
+    } else if (type === 'DOMAIN_REQUEST_APPROVED') {
+      const newNotif: RealtimeNotification = {
+        id: `domreq_app_${data?.requestId || Date.now()}`,
+        title: '✅ Pengajuan Domain Disetujui!',
+        message: `Domain ${data?.requestedDomain} telah disetujui dan aktif untuk website Anda.`,
+        category: 'SYSTEM',
+        link: '/branding/website',
+        timestamp: Date.now(),
+        read: false,
+      };
+
+      setNotifications((prev) => [newNotif, ...prev.slice(0, 19)]);
+      setUnreadCount((c) => c + 1);
+
+      toast({
+        title: newNotif.title,
+        description: newNotif.message,
+        type: 'success',
+      });
+    } else if (type === 'DOMAIN_REQUEST_REJECTED') {
+      const newNotif: RealtimeNotification = {
+        id: `domreq_rej_${data?.requestId || Date.now()}`,
+        title: '❌ Pengajuan Domain Ditolak',
+        message: `Domain ${data?.requestedDomain} ditolak: ${data?.adminNotes || 'Mohon tinjau catatan admin.'}`,
+        category: 'SYSTEM',
+        link: '/branding/website',
+        timestamp: Date.now(),
+        read: false,
+      };
+
+      setNotifications((prev) => [newNotif, ...prev.slice(0, 19)]);
+      setUnreadCount((c) => c + 1);
+
+      toast({
+        title: newNotif.title,
+        description: newNotif.message,
+        type: 'error',
+      });
     } else if (type === 'NOTIFICATION') {
       const newNotif: RealtimeNotification = {
         id: data.id || `notif_${Date.now()}`,
@@ -225,6 +317,7 @@ export function RealtimeProvider({ children }: { children: React.ReactNode }) {
         markAllAsRead,
         triggerTestNotification,
         triggerSimulateJob,
+        subscribe,
       }}
     >
       {children}

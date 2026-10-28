@@ -64,47 +64,48 @@ function WebsiteStudioContent() {
   const [careers, setCareers] = useState<any[]>([]);
   const [layoutSchema, setLayoutSchema] = useState<any>(null);
 
-  useEffect(() => {
-    async function loadConfig() {
-      try {
-        const p = await ApiClient.request<any>('/auth/me');
-        const b = await ApiClient.request<any>('/billing/status');
-        const portalData = await ApiClient.request<any>('/cms/my-portal').catch(() => null);
+  const loadConfig = async () => {
+    try {
+      const p = await ApiClient.request<any>('/auth/me');
+      const b = await ApiClient.request<any>('/billing/status');
+      const portalData = await ApiClient.request<any>('/cms/my-portal').catch(() => null);
 
-        setProfile(p);
-        setBilling(b);
+      setProfile(p);
+      setBilling(b);
 
-        if (portalData?.theme) {
-          setPrimaryColor(portalData.theme.primaryHexColor || '#1890FF');
-          setSecondaryColor(portalData.theme.secondaryHexColor || '#001529');
-          const initialPhoto = p?.photoUrl || portalData.theme.officialPhotoUrl || '';
-          setOfficialPhotoUrl(initialPhoto);
-          setHeadlineTagline(portalData.theme.headlineTagline || '');
-          setBioBiography(portalData.theme.bioBiography || '');
-          setLayoutTemplateId(portalData.theme.layoutTemplateId || 'standard-default');
+      if (portalData?.theme) {
+        setPrimaryColor(portalData.theme.primaryHexColor || '#1890FF');
+        setSecondaryColor(portalData.theme.secondaryHexColor || '#001529');
+        const initialPhoto = p?.photoUrl || portalData.theme.officialPhotoUrl || '';
+        setOfficialPhotoUrl(initialPhoto);
+        setHeadlineTagline(portalData.theme.headlineTagline || '');
+        setBioBiography(portalData.theme.bioBiography || '');
+        setLayoutTemplateId(portalData.theme.layoutTemplateId || 'standard-default');
 
-          const schema = portalData.theme.layoutSchema || {};
-          setLayoutSchema(schema);
-          if (Array.isArray(schema.visionMission) && schema.visionMission.length > 0) {
-            setVisionMission(schema.visionMission);
-          }
-          if (Array.isArray(schema.careers) && schema.careers.length > 0) {
-            setCareers(schema.careers);
-          }
-        } else if (p?.photoUrl) {
-          setOfficialPhotoUrl(p.photoUrl);
+        const schema = portalData.theme.layoutSchema || {};
+        setLayoutSchema(schema);
+        if (Array.isArray(schema.visionMission) && schema.visionMission.length > 0) {
+          setVisionMission(schema.visionMission);
         }
-
-        if (portalData?.portal) {
-          setSubdomainSlug(portalData.portal.subdomainSlug || '');
-          setCustomDomain(portalData.portal.customDomain || '');
+        if (Array.isArray(schema.careers) && schema.careers.length > 0) {
+          setCareers(schema.careers);
         }
-      } catch (err) {
-        console.error('Error loading branding config:', err);
-      } finally {
-        setLoading(false);
+      } else if (p?.photoUrl) {
+        setOfficialPhotoUrl(p.photoUrl);
       }
+
+      if (portalData?.portal) {
+        setSubdomainSlug(portalData.portal.subdomainSlug || '');
+        setCustomDomain(portalData.portal.customDomain || '');
+      }
+    } catch (err) {
+      console.error('Error loading branding config:', err);
+    } finally {
+      setLoading(false);
     }
+  };
+
+  useEffect(() => {
     loadConfig();
   }, []);
 
@@ -144,14 +145,6 @@ function WebsiteStudioContent() {
           layoutSchema: updatedSchema,
         }),
       });
-
-      await ApiClient.request<any>('/cms/domain', {
-        method: 'PUT',
-        body: JSON.stringify({
-          subdomainSlug: subdomainSlug.trim() || undefined,
-          customDomain: customDomain.trim() || undefined,
-        }),
-      }).catch(() => {});
 
       toast({
         type: 'success',
@@ -219,36 +212,36 @@ function WebsiteStudioContent() {
   }
 
   return (
-    <div className="flex flex-col h-screen w-screen bg-slate-100 text-slate-900 overflow-hidden select-none">
-      {/* ─── IMMERSIVE STUDIO TOPBAR (BRIGHT LIGHT HEADER) ─── */}
-      <header className="h-16 px-4 sm:px-6 bg-white border-b border-slate-200/90 backdrop-blur flex items-center justify-between shrink-0 z-20 shadow-2xs">
+    <div className="flex flex-col h-screen w-screen bg-slate-100 dark:bg-[#070A12] text-slate-900 dark:text-slate-100 overflow-hidden select-none font-sans">
+      {/* ─── IMMERSIVE STUDIO TOPBAR ─── */}
+      <header className="h-16 px-4 sm:px-6 bg-white dark:bg-[#0E131F] border-b border-slate-200/90 dark:border-slate-800 backdrop-blur flex items-center justify-between shrink-0 z-20 shadow-2xs">
         {/* Left: Back Link & Portal Identity */}
         <div className="flex items-center gap-3 min-w-0">
           <Link
             href="/branding"
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold text-slate-700 hover:text-slate-900 bg-slate-100 hover:bg-slate-200/80 border border-slate-200 transition-all shadow-2xs shrink-0"
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold text-slate-700 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white bg-slate-100 dark:bg-slate-800 hover:bg-slate-200/80 dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-700 transition-all shadow-2xs shrink-0"
             title="Kembali ke Dashboard Utama"
           >
             <ArrowLeft className="w-4 h-4" />
             <span className="hidden sm:inline">Kembali</span>
           </Link>
 
-          <div className="h-5 w-px bg-slate-200 hidden sm:block" />
+          <div className="h-5 w-px bg-slate-200 dark:bg-slate-800 hidden sm:block" />
 
           <div className="flex items-center gap-2.5 min-w-0">
-            <div className="w-8 h-8 rounded-xl bg-blue-50 border border-blue-200 text-blue-600 flex items-center justify-center shrink-0 shadow-2xs">
+            <div className="w-8 h-8 rounded-xl bg-blue-50 dark:bg-blue-500/10 border border-blue-200 dark:border-blue-500/20 text-blue-600 dark:text-blue-400 flex items-center justify-center shrink-0 shadow-2xs">
               <Globe className="w-4 h-4" />
             </div>
             <div className="min-w-0">
               <div className="flex items-center gap-2">
-                <h1 className="text-xs sm:text-sm font-black text-slate-900 truncate">
+                <h1 className="text-xs sm:text-sm font-black text-slate-900 dark:text-white truncate">
                   Studio Branding Website Publik
                 </h1>
-                <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-blue-50 text-blue-700 border border-blue-200 hidden md:inline-block">
+                <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-blue-50 dark:bg-blue-500/10 text-blue-700 dark:text-blue-400 border border-blue-200 dark:border-blue-500/20 hidden md:inline-block">
                   {activeTemplate.name}
                 </span>
               </div>
-              <p className="text-[10.5px] text-slate-500 truncate font-mono">
+              <p className="text-[10.5px] text-slate-500 dark:text-slate-400 truncate font-mono">
                 {customDomain
                   ? `https://${customDomain}`
                   : subdomainSlug
@@ -260,15 +253,15 @@ function WebsiteStudioContent() {
         </div>
 
         {/* Center: Device Simulator Controls */}
-        <div className="hidden lg:flex items-center gap-1 bg-slate-100/90 p-1 rounded-xl border border-slate-200/80 shadow-2xs">
+        <div className="hidden lg:flex items-center gap-1 bg-slate-100/90 dark:bg-slate-800/90 p-1 rounded-xl border border-slate-200/80 dark:border-slate-700 shadow-2xs">
           <button
             type="button"
             onClick={() => setPreviewDevice('desktop')}
             className={cn(
               'flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer',
               previewDevice === 'desktop'
-                ? 'bg-white text-blue-600 shadow-xs border border-slate-200/80'
-                : 'text-slate-600 hover:text-slate-900'
+                ? 'bg-white dark:bg-slate-900 text-blue-600 dark:text-blue-400 shadow-xs border border-slate-200/80 dark:border-slate-700'
+                : 'text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white'
             )}
             title="Resolusi Desktop (1280px)"
           >
@@ -282,8 +275,8 @@ function WebsiteStudioContent() {
             className={cn(
               'flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer',
               previewDevice === 'tablet'
-                ? 'bg-white text-blue-600 shadow-xs border border-slate-200/80'
-                : 'text-slate-600 hover:text-slate-900'
+                ? 'bg-white dark:bg-slate-900 text-blue-600 dark:text-blue-400 shadow-xs border border-slate-200/80 dark:border-slate-700'
+                : 'text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white'
             )}
             title="Resolusi Tablet (768px)"
           >
@@ -297,8 +290,8 @@ function WebsiteStudioContent() {
             className={cn(
               'flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer',
               previewDevice === 'mobile'
-                ? 'bg-white text-blue-600 shadow-xs border border-slate-200/80'
-                : 'text-slate-600 hover:text-slate-900'
+                ? 'bg-white dark:bg-slate-900 text-blue-600 dark:text-blue-400 shadow-xs border border-slate-200/80 dark:border-slate-700'
+                : 'text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white'
             )}
             title="Resolusi Smartphone (390px)"
           >
@@ -309,7 +302,7 @@ function WebsiteStudioContent() {
           <button
             type="button"
             onClick={() => setIframeKey((prev) => prev + 1)}
-            className="p-1.5 text-slate-400 hover:text-slate-700 rounded-lg border-l border-slate-200 ml-1 cursor-pointer"
+            className="p-1.5 text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 rounded-lg border-l border-slate-200 dark:border-slate-700 ml-1 cursor-pointer"
             title="Muat Ulang Simulator"
           >
             <RefreshCw className="w-3.5 h-3.5" />
@@ -322,7 +315,7 @@ function WebsiteStudioContent() {
             href={previewBaseUrl}
             target="_blank"
             rel="noopener noreferrer"
-            className="hidden sm:inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold text-slate-700 hover:text-slate-900 bg-white hover:bg-slate-50 border border-slate-200 transition-all shadow-2xs"
+            className="hidden sm:inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold text-slate-700 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white bg-white dark:bg-slate-800 hover:bg-slate-50 dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-700 transition-all shadow-2xs"
             title="Buka Website di Tab Baru"
           >
             <ExternalLink className="w-3.5 h-3.5" />
@@ -353,10 +346,10 @@ function WebsiteStudioContent() {
         </div>
       </header>
 
-      {/* ─── IMMERSIVE STUDIO WORKSPACE (BALANCED RATIO: ~47% LEFT, ~53% RIGHT) ─── */}
+      {/* ─── IMMERSIVE STUDIO WORKSPACE ─── */}
       <div className="flex-1 flex overflow-hidden min-h-0">
-        {/* Left: Inspector / Form Panel (Nearly equal size, spacious form ~47%) */}
-        <aside className="w-full lg:w-[47%] xl:w-[47%] shrink-0 border-r border-slate-200 bg-white overflow-y-auto p-5 sm:p-7 xl:p-8 text-slate-900 shadow-sm z-10">
+        {/* Left: Inspector / Form Panel */}
+        <aside className="w-full lg:w-[47%] xl:w-[47%] shrink-0 border-r border-slate-200 dark:border-slate-800 bg-white dark:bg-[#0E131F] overflow-y-auto p-5 sm:p-7 xl:p-8 text-slate-900 dark:text-slate-100 shadow-sm z-10">
           <div className="max-w-2xl mx-auto w-full">
             <ThemeForm
               primaryColor={primaryColor}
@@ -387,12 +380,13 @@ function WebsiteStudioContent() {
               onCareersChange={setCareers}
               profileEducation={profile?.education}
               profileCourses={profile?.courses}
+              onDomainUpdated={loadConfig}
             />
           </div>
         </aside>
 
-        {/* Right: Live Simulator Canvas (Slightly bigger than left: ~53%, perfectly proportioned) */}
-        <main className="hidden lg:flex flex-1 bg-slate-100/80 p-5 xl:p-8 flex-col items-center justify-start overflow-y-auto">
+        {/* Right: Live Simulator Canvas */}
+        <main className="hidden lg:flex flex-1 bg-slate-100/80 dark:bg-[#070A12] p-5 xl:p-8 flex-col items-center justify-start overflow-y-auto">
           <div className="w-full max-w-3xl xl:max-w-4xl flex justify-center sticky top-2">
             <DeviceSimulator
               previewUrl={previewUrl}

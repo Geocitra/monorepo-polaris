@@ -1,17 +1,22 @@
 'use client';
 
 import React, { useEffect, useState } from 'react';
-import { UserPlus } from 'lucide-react';
+import { UserPlus, Users, Globe } from 'lucide-react';
 import { AdminApiClient } from '@/lib/api-client';
 import { TenantRow } from '@/components/superadmin/types';
 import { TenantFiltersBar } from '@/components/superadmin/tenants/TenantFiltersBar';
 import { TenantTable } from '@/components/superadmin/tenants/TenantTable';
+import { DomainRequestsTab } from '@/components/superadmin/tenants/DomainRequestsTab';
 import { ManualLicenseModal } from '@/components/superadmin/tenants/ManualLicenseModal';
 import { CreateTenantModal } from '@/components/superadmin/tenants/CreateTenantModal';
 import { UpdateLegislativeLevelModal } from '@/components/superadmin/tenants/UpdateLegislativeLevelModal';
 import { ResetPasswordModal } from '@/components/superadmin/tenants/ResetPasswordModal';
+import { useRealtime } from '@/contexts/RealtimeContext';
 
 export default function SuperadminTenantsPage() {
+  const { subscribe } = useRealtime();
+  const [activeTab, setActiveTab] = useState<'TENANTS' | 'DOMAINS'>('TENANTS');
+  const [pendingDomainCount, setPendingDomainCount] = useState<number>(0);
   const [tenants, setTenants] = useState<TenantRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
@@ -26,6 +31,33 @@ export default function SuperadminTenantsPage() {
   useEffect(() => {
     loadTenants();
   }, [partyFilter]);
+
+  const loadPendingDomainCount = async () => {
+    try {
+      const res = await AdminApiClient.request<{ success: boolean; data: any[] }>(
+        '/admin/domain-requests?status=PENDING_REVIEW'
+      );
+      if (res?.data) {
+        setPendingDomainCount(res.data.length);
+      }
+    } catch {
+      // silent
+    }
+  };
+
+  useEffect(() => {
+    loadPendingDomainCount();
+    const unsub = subscribe('DOMAIN_REQUEST_CREATED', () => {
+      loadPendingDomainCount();
+    });
+    const unsub2 = subscribe('DOMAIN_REQUEST_UPDATED', () => {
+      loadPendingDomainCount();
+    });
+    return () => {
+      unsub();
+      unsub2();
+    };
+  }, [subscribe]);
 
   const loadTenants = async () => {
     try {
@@ -108,24 +140,69 @@ export default function SuperadminTenantsPage() {
         </div>
       </div>
 
-      {/* 2. MODULAR FILTER BAR */}
-      <TenantFiltersBar
-        search={search}
-        onSearchChange={setSearch}
-        partyFilter={partyFilter}
-        onPartyFilterChange={setPartyFilter}
-      />
+      {/* 2. TAB SWITCHER */}
+      <div className="flex items-center gap-2 border-b border-slate-200 dark:border-slate-800 pb-2">
+        <button
+          type="button"
+          onClick={() => setActiveTab('TENANTS')}
+          className={`flex items-center gap-2 px-4 py-2 text-xs font-bold rounded-xl transition ${
+            activeTab === 'TENANTS'
+              ? 'bg-slate-900 text-white dark:bg-white dark:text-slate-950 shadow-xs'
+              : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800'
+          }`}
+        >
+          <Users className="w-4 h-4" />
+          <span>Direktori Tokoh Dewan</span>
+          <span className="px-1.5 py-0.5 rounded-full text-[10px] bg-slate-200/70 dark:bg-slate-700/70 text-slate-700 dark:text-slate-300">
+            {tenants.length}
+          </span>
+        </button>
 
-      {/* 3. MODULAR TENANTS TABLE */}
-      <TenantTable
-        tenants={filteredTenants}
-        loading={loading}
-        onVerifyToggle={handleVerifyToggle}
-        onStatusToggle={handleStatusToggle}
-        onOpenLicenseModal={(t) => setSelectedTenantForLicense(t)}
-        onOpenLegislativeLevelModal={(t) => setSelectedTenantForLevel(t)}
-        onOpenResetPasswordModal={(t) => setSelectedTenantForResetPassword(t)}
-      />
+        <button
+          type="button"
+          onClick={() => setActiveTab('DOMAINS')}
+          className={`flex items-center gap-2 px-4 py-2 text-xs font-bold rounded-xl transition relative ${
+            activeTab === 'DOMAINS'
+              ? 'bg-slate-900 text-white dark:bg-white dark:text-slate-950 shadow-xs'
+              : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800'
+          }`}
+        >
+          <Globe className="w-4 h-4" />
+          <span>Pengajuan Domain</span>
+          {pendingDomainCount > 0 ? (
+            <span className="px-2 py-0.5 rounded-full text-[10px] font-black bg-amber-500 text-slate-950 animate-pulse shadow-xs">
+              {pendingDomainCount} baru
+            </span>
+          ) : (
+            <span className="w-2 h-2 rounded-full bg-slate-300 dark:bg-slate-600" />
+          )}
+        </button>
+      </div>
+
+      {activeTab === 'TENANTS' ? (
+        <>
+          {/* 3. MODULAR FILTER BAR */}
+          <TenantFiltersBar
+            search={search}
+            onSearchChange={setSearch}
+            partyFilter={partyFilter}
+            onPartyFilterChange={setPartyFilter}
+          />
+
+          {/* 4. MODULAR TENANTS TABLE */}
+          <TenantTable
+            tenants={filteredTenants}
+            loading={loading}
+            onVerifyToggle={handleVerifyToggle}
+            onStatusToggle={handleStatusToggle}
+            onOpenLicenseModal={(t) => setSelectedTenantForLicense(t)}
+            onOpenLegislativeLevelModal={(t) => setSelectedTenantForLevel(t)}
+            onOpenResetPasswordModal={(t) => setSelectedTenantForResetPassword(t)}
+          />
+        </>
+      ) : (
+        <DomainRequestsTab onRequestCountChange={setPendingDomainCount} />
+      )}
 
       {/* 4. CREATE TENANT MODAL */}
       {isCreateModalOpen && (

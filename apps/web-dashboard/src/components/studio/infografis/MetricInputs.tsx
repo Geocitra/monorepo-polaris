@@ -77,7 +77,7 @@ export function MetricInputs({
           <span className="text-[11px] text-slate-400 font-normal">Dapat disunting langsung</span>
         </label>
 
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <div className="p-3 rounded-xl bg-slate-50 border border-slate-200">
             <div className="flex items-center justify-between">
               <span className="text-[10px] text-slate-500 font-bold uppercase">Metrik 1</span>

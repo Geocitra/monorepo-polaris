@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { 
   X, 
   Copy, 
@@ -16,6 +16,7 @@ import {
 } from 'lucide-react';
 import { useToast } from '@/components/ui/toast';
 import { cn } from '@/lib/utils';
+import { Portal } from '@/components/ui/portal';
 
 interface OmnichannelExportModalProps {
   isOpen: boolean;
@@ -43,6 +44,16 @@ export function OmnichannelExportModal({
   const { toast } = useToast();
   const [activeChannel, setActiveChannel] = useState<'WA' | 'MEDSOS' | 'WORD' | 'PDF'>('WA');
   const [copied, setCopied] = useState(false);
+
+  useEffect(() => {
+    if (isOpen) {
+      const originalOverflow = document.body.style.overflow;
+      document.body.style.overflow = 'hidden';
+      return () => {
+        document.body.style.overflow = originalOverflow;
+      };
+    }
+  }, [isOpen]);
 
   if (!isOpen) return null;
 
@@ -274,10 +285,11 @@ Bagaimana pandangan Bapak/Ibu mengenai langkah kebijakan ini? Tuliskan aspirasi 
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-in fade-in">
-      <div className="w-full max-w-2xl bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-2xl overflow-hidden animate-in zoom-in-95">
-        {/* HEADER MODAL */}
-        <div className="flex items-center justify-between p-5 sm:p-6 border-b border-slate-100 dark:border-slate-800">
+    <Portal>
+      <div className="fixed inset-0 !m-0 z-[60] flex items-center justify-center p-3 sm:p-4 bg-slate-900/60 backdrop-blur-sm animate-in fade-in">
+        <div className="w-full max-w-2xl bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-2xl overflow-hidden animate-in zoom-in-95 max-h-[92vh] flex flex-col">
+          {/* HEADER MODAL */}
+          <div className="flex items-center justify-between p-4 sm:p-6 border-b border-slate-100 dark:border-slate-800 shrink-0">
           <div>
             <span className="text-[10px] font-black uppercase tracking-widest text-blue-600 dark:text-blue-400 block">
               Omnichannel Content Distribution
@@ -295,7 +307,7 @@ Bagaimana pandangan Bapak/Ibu mengenai langkah kebijakan ini? Tuliskan aspirasi 
         </div>
 
         {/* CHANNEL TABS */}
-        <div className="grid grid-cols-4 gap-1 p-2 bg-slate-50 dark:bg-slate-950/60 border-b border-slate-100 dark:border-slate-800">
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-1.5 p-2 bg-slate-50 dark:bg-slate-950/60 border-b border-slate-100 dark:border-slate-800 shrink-0">
           <button
             type="button"
             onClick={() => setActiveChannel('WA')}
@@ -498,5 +510,6 @@ Bagaimana pandangan Bapak/Ibu mengenai langkah kebijakan ini? Tuliskan aspirasi 
         </div>
       </div>
     </div>
+    </Portal>
   );
 }

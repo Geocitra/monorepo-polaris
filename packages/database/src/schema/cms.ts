@@ -68,3 +68,31 @@ export const portalNewsletterSubscribers = pgTable('portal_newsletter_subscriber
   unqPortalEmail: unique().on(t.portalId, t.email),
   idxPortalSubscribers: index('idx_portal_subscribers').on(t.portalId, t.createdAt),
 }));
+
+export const domainRequests = pgTable('domain_requests', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  tenantId: uuid('tenant_id').notNull().references(() => tenantMembers.id, { onDelete: 'cascade' }),
+  requestType: varchar('request_type', { length: 20 }).notNull(), // 'SUBDOMAIN' | 'CUSTOM_DOMAIN'
+  requestedDomain: varchar('requested_domain', { length: 255 }).notNull(),
+  currentDomain: varchar('current_domain', { length: 255 }),
+  status: varchar('status', { length: 30 }).default('PENDING_REVIEW').notNull(), // 'PENDING_REVIEW' | 'DNS_CHECKING' | 'APPROVED' | 'REJECTED'
+  adminNotes: text('admin_notes'),
+  reviewedByUserId: uuid('reviewed_by_user_id'),
+  reviewedAt: timestamp('reviewed_at', { withTimezone: true }),
+  createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
+}, (t) => ({
+  idxDomainRequestsTenant: index('idx_domain_requests_tenant').on(t.tenantId),
+  idxDomainRequestsStatus: index('idx_domain_requests_status').on(t.status),
+}));
+
+export const subdomainAliases = pgTable('subdomain_aliases', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  tenantId: uuid('tenant_id').notNull().references(() => tenantMembers.id, { onDelete: 'cascade' }),
+  oldSubdomainSlug: varchar('old_subdomain_slug', { length: 63 }).notNull().unique(),
+  newSubdomainSlug: varchar('new_subdomain_slug', { length: 63 }).notNull(),
+  createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+}, (t) => ({
+  idxSubdomainAliasesTenant: index('idx_subdomain_aliases_tenant').on(t.tenantId),
+}));
+

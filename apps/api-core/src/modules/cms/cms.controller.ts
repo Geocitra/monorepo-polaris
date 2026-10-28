@@ -13,7 +13,7 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { CmsService } from './cms.service.js';
-import { UpdateThemeSettingsDto, UpdateDomainConfigDto, CreatePortalDocumentRequestDto } from './dto/cms.dto.js';
+import { UpdateThemeSettingsDto, UpdateDomainConfigDto, CreatePortalDocumentRequestDto, CreateDomainRequestDto } from './dto/cms.dto.js';
 import { Public } from '../../common/decorators/public.decorator.js';
 import { CurrentTenant, AuthenticatedTenantPayload } from '../../common/decorators/current-tenant.decorator.js';
 import { SubscriptionGuard } from '../../common/guards/subscription.guard.js';
@@ -93,6 +93,22 @@ export class CmsController {
   @HttpCode(HttpStatus.OK)
   async verifyCustomDomain(@CurrentTenant() user: AuthenticatedTenantPayload) {
     return await this.cmsService.verifyCustomDomainDns(user.tenantId);
+  }
+
+  @UseGuards(SubscriptionGuard)
+  @Post('domain/request')
+  @HttpCode(HttpStatus.CREATED)
+  async submitDomainRequest(
+    @CurrentTenant() user: AuthenticatedTenantPayload,
+    @Body() dto: CreateDomainRequestDto
+  ) {
+    return await this.cmsService.submitDomainRequest(user.tenantId, dto);
+  }
+
+  @Get('domain/request/my')
+  @HttpCode(HttpStatus.OK)
+  async getMyDomainRequests(@CurrentTenant() user: AuthenticatedTenantPayload) {
+    return await this.cmsService.getMyDomainRequests(user.tenantId);
   }
 
   @Public()

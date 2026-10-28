@@ -1,8 +1,9 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { X, DollarSign, Coins, CreditCard, CheckCircle2, AlertCircle, FileText, Info } from 'lucide-react';
 import { AdminApiClient } from '@/lib/api-client';
+import { Portal } from '@/components/ui/portal';
 
 interface TopupTokenModalProps {
   isOpen: boolean;
@@ -17,6 +18,16 @@ export function TopupTokenModal({ isOpen, onClose, onSuccess }: TopupTokenModalP
   const [notes, setNotes] = useState<string>('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (isOpen) {
+      const originalOverflow = document.body.style.overflow;
+      document.body.style.overflow = 'hidden';
+      return () => {
+        document.body.style.overflow = originalOverflow;
+      };
+    }
+  }, [isOpen]);
 
   if (!isOpen) return null;
 
@@ -72,8 +83,9 @@ export function TopupTokenModal({ isOpen, onClose, onSuccess }: TopupTokenModalP
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-slate-950/75 backdrop-blur-xs animate-in fade-in duration-200">
-      <div className="w-full max-w-lg bg-white dark:bg-[#0E131F] rounded-3xl border border-slate-200 dark:border-slate-800 shadow-2xl overflow-hidden my-auto">
+    <Portal>
+      <div className="fixed inset-0 !m-0 z-[60] flex items-center justify-center p-3 sm:p-4 bg-slate-950/75 backdrop-blur-xs animate-in fade-in duration-200">
+        <div className="w-full max-w-lg bg-white dark:bg-[#0E131F] rounded-3xl border border-slate-200 dark:border-slate-800 shadow-2xl overflow-hidden my-auto max-h-[92vh] flex flex-col">
         {/* Header */}
         <div className="px-5 py-4 sm:px-6 sm:py-5 border-b border-slate-100 dark:border-slate-800/80 flex items-center justify-between">
           <div className="flex items-center gap-3">
@@ -111,7 +123,7 @@ export function TopupTokenModal({ isOpen, onClose, onSuccess }: TopupTokenModalP
             <label className="text-xs font-bold text-slate-700 dark:text-slate-300 block mb-2">
               Pilihan Cepat Nominal Deposit (USD)
             </label>
-            <div className="grid grid-cols-5 gap-2">
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-2">
               {[10, 25, 50, 100, 200].map((amt) => {
                 const isActive = amountUsd === amt;
                 return (
@@ -238,5 +250,6 @@ export function TopupTokenModal({ isOpen, onClose, onSuccess }: TopupTokenModalP
         </form>
       </div>
     </div>
+    </Portal>
   );
 }

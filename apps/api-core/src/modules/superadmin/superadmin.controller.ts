@@ -28,6 +28,7 @@ import {
   AdminUpdateLegislativeLevelDto,
   AdminResetTenantPasswordDto,
   AdminUpdatePricingMatrixDto,
+  RejectDomainRequestDto,
 } from './dto/superadmin.dto.js';
 import { Public } from '../../common/decorators/public.decorator.js';
 import { SuperadminGuard } from '../../common/guards/superadmin.guard.js';
@@ -257,4 +258,40 @@ export class SuperadminController {
       limit: limit ? Number(limit) : 15,
     });
   }
+
+  // --- Domain: Pengelolaan Tiket Pengajuan Domain ---
+  @UseGuards(SuperadminGuard)
+  @Get('domain-requests')
+  @HttpCode(HttpStatus.OK)
+  async getDomainRequests(@Query('status') status?: string) {
+    return await this.superadminService.getDomainRequests(status);
+  }
+
+  @UseGuards(SuperadminGuard)
+  @Get('domain-requests/:id/dns-check')
+  @HttpCode(HttpStatus.OK)
+  async checkDnsForDomainRequest(@Param('id') id: string) {
+    return await this.superadminService.checkDnsForDomainRequest(id);
+  }
+
+  @UseGuards(SuperadminGuard)
+  @Patch('domain-requests/:id/approve')
+  @HttpCode(HttpStatus.OK)
+  async approveDomainRequest(@Param('id') id: string, @Request() req: any) {
+    const adminUserId = req.user.tenantId;
+    return await this.superadminService.approveDomainRequest(id, adminUserId);
+  }
+
+  @UseGuards(SuperadminGuard)
+  @Patch('domain-requests/:id/reject')
+  @HttpCode(HttpStatus.OK)
+  async rejectDomainRequest(
+    @Param('id') id: string,
+    @Body() dto: RejectDomainRequestDto,
+    @Request() req: any,
+  ) {
+    const adminUserId = req.user.tenantId;
+    return await this.superadminService.rejectDomainRequest(id, dto.adminNotes, adminUserId);
+  }
 }
+
