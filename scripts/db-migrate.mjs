@@ -202,6 +202,14 @@ async function runMigration() {
         updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
       );
 
+      ALTER TABLE tenant_members ADD COLUMN IF NOT EXISTS username VARCHAR(50);
+      ALTER TABLE tenant_members ADD COLUMN IF NOT EXISTS must_change_password BOOLEAN NOT NULL DEFAULT false;
+      ALTER TABLE tenant_members ADD COLUMN IF NOT EXISTS temporary_password_plaintext_preview VARCHAR(100);
+      ALTER TABLE tenant_members ADD COLUMN IF NOT EXISTS password_changed_at TIMESTAMPTZ;
+      ALTER TABLE tenant_members ADD COLUMN IF NOT EXISTS internal_notes TEXT;
+      ALTER TABLE tenant_members ADD COLUMN IF NOT EXISTS commission_id UUID;
+      ALTER TABLE tenant_members ADD COLUMN IF NOT EXISTS commission_name VARCHAR(150);
+
       CREATE TABLE IF NOT EXISTS email_otps (
         id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
         email VARCHAR(255) NOT NULL,
@@ -288,6 +296,15 @@ async function runMigration() {
         reconciliation_batch_id UUID REFERENCES reconciliation_batches(id) ON DELETE SET NULL,
         created_at TIMESTAMPTZ NOT NULL DEFAULT now()
       );
+
+      ALTER TABLE invoice_transactions ADD COLUMN IF NOT EXISTS matrix_id UUID REFERENCES subscription_price_matrices(id) ON DELETE SET NULL;
+      ALTER TABLE invoice_transactions ADD COLUMN IF NOT EXISTS gross_amount_idr NUMERIC(12,2);
+      ALTER TABLE invoice_transactions ADD COLUMN IF NOT EXISTS mdr_fee_idr NUMERIC(12,2) DEFAULT 0.00;
+      ALTER TABLE invoice_transactions ADD COLUMN IF NOT EXISTS vat_fee_idr NUMERIC(12,2) DEFAULT 0.00;
+      ALTER TABLE invoice_transactions ADD COLUMN IF NOT EXISTS net_amount_idr NUMERIC(12,2);
+      ALTER TABLE invoice_transactions ADD COLUMN IF NOT EXISTS settlement_time TIMESTAMPTZ;
+      ALTER TABLE invoice_transactions ADD COLUMN IF NOT EXISTS reconciliation_status VARCHAR(30) DEFAULT 'UNRECONCILED';
+      ALTER TABLE invoice_transactions ADD COLUMN IF NOT EXISTS reconciliation_batch_id UUID REFERENCES reconciliation_batches(id) ON DELETE SET NULL;
 
       CREATE TABLE IF NOT EXISTS reconciliation_discrepancies (
         id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -376,6 +393,11 @@ async function runMigration() {
         created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
         updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
       );
+
+      ALTER TABLE portal_configs ADD COLUMN IF NOT EXISTS custom_domain_status VARCHAR(30) NOT NULL DEFAULT 'UNVERIFIED';
+      ALTER TABLE portal_configs ADD COLUMN IF NOT EXISTS dns_verification_token VARCHAR(64);
+      ALTER TABLE portal_configs ADD COLUMN IF NOT EXISTS dns_verification_expires_at TIMESTAMPTZ;
+      ALTER TABLE portal_configs ADD COLUMN IF NOT EXISTS domain_verified_at TIMESTAMPTZ;
 
       CREATE TABLE IF NOT EXISTS portal_theme_settings (
         id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
