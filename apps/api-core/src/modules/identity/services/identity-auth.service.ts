@@ -192,7 +192,7 @@ export class IdentityAuthService {
 
     return {
       accessToken,
-      expiresIn: '7d',
+      expiresIn: '24h',
       user: {
         id: result.member.id,
         email: result.member.email,
@@ -391,7 +391,7 @@ export class IdentityAuthService {
 
     return {
       accessToken,
-      expiresIn: '7d',
+      expiresIn: '24h',
       user: {
         id: member.id,
         email: member.email,

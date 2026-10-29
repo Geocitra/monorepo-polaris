@@ -1,8 +1,21 @@
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000/api/v1';
 
 export class ApiClient {
+  public static readonly SESSION_DURATION_SEC = 24 * 60 * 60; // 24 jam (1 hari)
+  public static readonly EXPIRES_KEY = 'polaris_token_expires_at';
+
   public static getToken(): string | null {
     if (typeof window === 'undefined') return null;
+
+    // Cek hard expiration timestamp di client
+    try {
+      const expiresAt = localStorage.getItem(this.EXPIRES_KEY);
+      if (expiresAt && Date.now() > Number(expiresAt)) {
+        this.removeToken();
+        return null;
+      }
+    } catch {}
+
     let token: string | null = null;
     try {
       token = localStorage.getItem('polaris_token');
@@ -14,12 +27,15 @@ export class ApiClient {
         token = decodeURIComponent(match[1]);
         try {
           localStorage.setItem('polaris_token', token);
+          if (!localStorage.getItem(this.EXPIRES_KEY)) {
+            localStorage.setItem(this.EXPIRES_KEY, String(Date.now() + this.SESSION_DURATION_SEC * 1000));
+          }
         } catch {}
       }
     } else {
       const hasCookie = document.cookie.includes('polaris_session=');
       if (!hasCookie) {
-        document.cookie = `polaris_session=${encodeURIComponent(token)}; path=/; max-age=${30 * 24 * 60 * 60}; SameSite=Lax`;
+        document.cookie = `polaris_session=${encodeURIComponent(token)}; path=/; max-age=${this.SESSION_DURATION_SEC}; SameSite=Lax`;
       }
     }
 
@@ -30,8 +46,10 @@ export class ApiClient {
     if (typeof window !== 'undefined') {
       try {
         localStorage.setItem('polaris_token', token);
+        localStorage.setItem(this.EXPIRES_KEY, String(Date.now() + this.SESSION_DURATION_SEC * 1000));
+        localStorage.setItem('polaris_last_activity', String(Date.now()));
       } catch {}
-      document.cookie = `polaris_session=${encodeURIComponent(token)}; path=/; max-age=${30 * 24 * 60 * 60}; SameSite=Lax`;
+      document.cookie = `polaris_session=${encodeURIComponent(token)}; path=/; max-age=${this.SESSION_DURATION_SEC}; SameSite=Lax`;
     }
   }
 
@@ -40,6 +58,8 @@ export class ApiClient {
       try {
         localStorage.removeItem('polaris_token');
         localStorage.removeItem('polaris_user');
+        localStorage.removeItem(this.EXPIRES_KEY);
+        localStorage.removeItem('polaris_last_activity');
       } catch {}
       document.cookie = 'polaris_session=; path=/; max-age=0; SameSite=Lax';
     }
@@ -159,9 +179,21 @@ export class ApiClient {
 export class AdminApiClient {
   private static readonly TOKEN_KEY = 'polaris_admin_token';
   private static readonly USER_KEY = 'polaris_admin_user';
+  public static readonly ADMIN_SESSION_DURATION_SEC = 12 * 60 * 60; // 12 jam (Superadmin Control Tower)
+  public static readonly ADMIN_EXPIRES_KEY = 'polaris_admin_token_expires_at';
 
   public static getToken(): string | null {
     if (typeof window === 'undefined') return null;
+
+    // Cek hard expiration timestamp di client
+    try {
+      const expiresAt = localStorage.getItem(this.ADMIN_EXPIRES_KEY);
+      if (expiresAt && Date.now() > Number(expiresAt)) {
+        this.logout();
+        return null;
+      }
+    } catch {}
+
     let token: string | null = null;
     try {
       token = localStorage.getItem(this.TOKEN_KEY);
@@ -173,6 +205,9 @@ export class AdminApiClient {
         token = decodeURIComponent(match[1]);
         try {
           localStorage.setItem(this.TOKEN_KEY, token);
+          if (!localStorage.getItem(this.ADMIN_EXPIRES_KEY)) {
+            localStorage.setItem(this.ADMIN_EXPIRES_KEY, String(Date.now() + this.ADMIN_SESSION_DURATION_SEC * 1000));
+          }
         } catch {}
       }
     }
@@ -195,8 +230,10 @@ export class AdminApiClient {
       try {
         localStorage.setItem(this.TOKEN_KEY, token);
         localStorage.setItem(this.USER_KEY, JSON.stringify(adminUser));
+        localStorage.setItem(this.ADMIN_EXPIRES_KEY, String(Date.now() + this.ADMIN_SESSION_DURATION_SEC * 1000));
+        localStorage.setItem('polaris_last_activity', String(Date.now()));
       } catch {}
-      document.cookie = `polaris_admin_session=${encodeURIComponent(token)}; path=/; max-age=${7 * 24 * 60 * 60}; SameSite=Lax`;
+      document.cookie = `polaris_admin_session=${encodeURIComponent(token)}; path=/; max-age=${this.ADMIN_SESSION_DURATION_SEC}; SameSite=Lax`;
     }
   }
 
@@ -205,6 +242,8 @@ export class AdminApiClient {
       try {
         localStorage.removeItem(this.TOKEN_KEY);
         localStorage.removeItem(this.USER_KEY);
+        localStorage.removeItem(this.ADMIN_EXPIRES_KEY);
+        localStorage.removeItem('polaris_last_activity');
       } catch {}
       document.cookie = 'polaris_admin_session=; path=/; max-age=0; SameSite=Lax';
     }

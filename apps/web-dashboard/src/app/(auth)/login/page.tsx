@@ -28,6 +28,15 @@ function LoginFormContent() {
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
 
   useEffect(() => {
+    const reason = searchParams.get('reason');
+    if (reason === 'idle_timeout') {
+      setErrorMsg('Sesi Anda telah berakhir secara otomatis demi keamanan karena tidak ada aktivitas selama 60 menit. Silakan masuk kembali.');
+    } else if (reason === 'session_expired') {
+      setErrorMsg('Masa aktif sesi masuk Anda telah berakhir (24 jam). Silakan masuk kembali.');
+    }
+  }, [searchParams]);
+
+  useEffect(() => {
     if (ApiClient.isAuthenticated()) {
       ApiClient.request<any>('/auth/me')
         .then(() => {

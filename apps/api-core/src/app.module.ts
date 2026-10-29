@@ -34,7 +34,7 @@ import { AppController } from './app.controller.js';
     JwtModule.register({
       global: true,
       secret: process.env.JWT_SECRET || 'polaris-secret-super-secure-key-2026',
-      signOptions: { expiresIn: '7d' },
+      signOptions: { expiresIn: '24h' },
     }),
     RedisModule,       // Enterprise In-Memory Pub/Sub & Cache Engine
     RealtimeModule,    // Real-Time SSE Streams & Live Notifications

@@ -194,7 +194,7 @@ export class SuperadminAuthService {
       isOperator: isOperatorRole,
     };
 
-    const token = await this.jwtService.signAsync(tokenPayload, { expiresIn: '7d' });
+    const token = await this.jwtService.signAsync(tokenPayload, { expiresIn: '12h' });
 
     return {
       token,

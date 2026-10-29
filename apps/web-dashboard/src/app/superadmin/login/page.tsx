@@ -27,6 +27,15 @@ function SuperadminLoginFormContent() {
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
 
   useEffect(() => {
+    const reason = searchParams.get('reason');
+    if (reason === 'idle_timeout') {
+      setErrorMsg('Sesi Superadmin telah berakhir otomatis karena tidak ada aktivitas selama 60 menit. Silakan masuk kembali.');
+    } else if (reason === 'session_expired') {
+      setErrorMsg('Masa aktif sesi Superadmin telah berakhir (12 jam). Silakan masuk kembali.');
+    }
+  }, [searchParams]);
+
+  useEffect(() => {
     // Jika ada parameter reset atau logout di URL, bersihkan sesi
     if (searchParams.get('reset') === 'true' || searchParams.get('logout') === 'true') {
       AdminApiClient.logout();
