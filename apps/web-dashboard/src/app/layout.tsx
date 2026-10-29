@@ -2,7 +2,7 @@ import './globals.css';
 import type { Metadata } from 'next';
 import { ToastProvider } from '@/components/ui/toast';
 import { ThemeProvider } from '@/contexts/ThemeContext';
-
+import { RealtimeProvider } from '@/contexts/RealtimeContext';
 import { SessionSecurityGate } from '@/components/auth/SessionSecurityGate';
 
 export const metadata: Metadata = {
@@ -28,7 +28,9 @@ export default function RootLayout({
       <body className="min-h-screen">
         <ThemeProvider>
           <ToastProvider>
-            <SessionSecurityGate>{children}</SessionSecurityGate>
+            <RealtimeProvider>
+              <SessionSecurityGate>{children}</SessionSecurityGate>
+            </RealtimeProvider>
           </ToastProvider>
         </ThemeProvider>
       </body>

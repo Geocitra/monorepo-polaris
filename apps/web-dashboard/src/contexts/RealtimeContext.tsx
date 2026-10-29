@@ -1,7 +1,7 @@
 'use client';
 
 import React, { createContext, useContext, useEffect, useState, useCallback, useRef } from 'react';
-import { ApiClient } from '@/lib/api-client';
+import { ApiClient, AdminApiClient } from '@/lib/api-client';
 import { toast } from '@/components/ui/toast';
 
 export interface RealtimeNotification {
@@ -34,7 +34,23 @@ interface RealtimeContextValue {
   subscribe: (eventType: string, callback: (data: any) => void) => () => void;
 }
 
+const defaultRealtimeValue: RealtimeContextValue = {
+  isConnected: false,
+  notifications: [],
+  unreadCount: 0,
+  activeJob: null,
+  markAllAsRead: () => {},
+  triggerTestNotification: async () => {},
+  triggerSimulateJob: async () => {},
+  subscribe: () => () => {},
+};
+
 const RealtimeContext = createContext<RealtimeContextValue | null>(null);
+
+function getAnyActiveToken(): string | null {
+  if (typeof window === 'undefined') return null;
+  return ApiClient.getToken() || AdminApiClient.getToken();
+}
 
 export function RealtimeProvider({ children }: { children: React.ReactNode }) {
   const [isConnected, setIsConnected] = useState(false);
@@ -59,9 +75,10 @@ export function RealtimeProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     async function fetchInitialHistory() {
       try {
-        const token = ApiClient.getToken();
+        const token = getAnyActiveToken();
         if (!token) return;
-        const res = await ApiClient.request<any>('/realtime/notifications');
+        const client = AdminApiClient.getToken() ? AdminApiClient : ApiClient;
+        const res = await client.request<any>('/realtime/notifications');
         if (res?.data && Array.isArray(res.data)) {
           setNotifications(res.data);
         }
@@ -77,7 +94,7 @@ export function RealtimeProvider({ children }: { children: React.ReactNode }) {
     let isMounted = true;
 
     function connectSSE() {
-      const token = ApiClient.getToken();
+      const token = getAnyActiveToken();
       if (!token) {
         setIsConnected(false);
         return;
@@ -265,11 +282,14 @@ export function RealtimeProvider({ children }: { children: React.ReactNode }) {
   const markAllAsRead = useCallback(() => {
     setUnreadCount(0);
     setNotifications((prev) => prev.map((n) => ({ ...n, read: true })));
+    const client = AdminApiClient.getToken() ? AdminApiClient : ApiClient;
+    client.request('/realtime/notifications/read-all', { method: 'POST' }).catch(() => {});
   }, []);
 
   const triggerTestNotification = useCallback(async () => {
     try {
-      await ApiClient.request('/realtime/test-notify', {
+      const client = AdminApiClient.getToken() ? AdminApiClient : ApiClient;
+      await client.request('/realtime/test-notify', {
         method: 'POST',
         body: JSON.stringify({
           title: '⚡ Notifikasi Real-Time Redis!',
@@ -287,7 +307,8 @@ export function RealtimeProvider({ children }: { children: React.ReactNode }) {
 
   const triggerSimulateJob = useCallback(async () => {
     try {
-      await ApiClient.request('/realtime/simulate-job', {
+      const client = AdminApiClient.getToken() ? AdminApiClient : ApiClient;
+      await client.request('/realtime/simulate-job', {
         method: 'POST',
         body: JSON.stringify({
           topic: 'Alokasi Anggaran Subsidi Pertanian 2026',
@@ -328,7 +349,7 @@ export function RealtimeProvider({ children }: { children: React.ReactNode }) {
 export function useRealtime() {
   const ctx = useContext(RealtimeContext);
   if (!ctx) {
-    throw new Error('useRealtime harus digunakan di dalam RealtimeProvider');
+    return defaultRealtimeValue;
   }
   return ctx;
 }
