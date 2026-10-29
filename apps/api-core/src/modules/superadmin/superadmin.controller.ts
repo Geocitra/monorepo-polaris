@@ -63,7 +63,8 @@ export class SuperadminController {
   @Get('auth/me')
   @HttpCode(HttpStatus.OK)
   async getProfile(@Request() req: any) {
-    return await this.superadminService.getProfile(req.user.tenantId);
+    const adminId = req.user.operatorId || req.user.tenantId;
+    return await this.superadminService.getProfile(adminId);
   }
 
   @UseGuards(SuperadminGuard)

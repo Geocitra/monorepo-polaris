@@ -27,15 +27,40 @@ export default function SuperadminLayout({
     if (!token) {
       router.replace('/superadmin/login');
       return;
-    } 
-    
-    if (user?.role === 'CONTENT_OPERATOR' || user?.role === 'SUPPORT_OPERATOR') {
+    }
+
+    if (!user) {
+      // Hidrasi profil Superadmin jika token valid tapi storage lokal kosong / setelah refresh
+      AdminApiClient.request<any>('/admin/auth/me')
+        .then((profile) => {
+          if (profile && profile.role === 'SUPERADMIN') {
+            if (typeof window !== 'undefined') {
+              try {
+                localStorage.setItem('polaris_admin_user', JSON.stringify(profile));
+              } catch { }
+            }
+            setAdminUser(profile);
+          } else if (profile?.role === 'CONTENT_OPERATOR' || profile?.role === 'SUPPORT_OPERATOR') {
+            router.replace('/operator');
+          } else {
+            AdminApiClient.logout();
+            router.replace('/superadmin/login');
+          }
+        })
+        .catch(() => {
+          AdminApiClient.logout();
+          router.replace('/superadmin/login');
+        });
+      return;
+    }
+
+    if (user.role === 'CONTENT_OPERATOR' || user.role === 'SUPPORT_OPERATOR') {
       // OPERATOR TIDAK BOLEH MENGAKSES PANEL SUPERADMIN!
       router.replace('/operator');
       return;
-    } 
-    
-    if (user?.role !== 'SUPERADMIN') {
+    }
+
+    if (user.role !== 'SUPERADMIN') {
       AdminApiClient.logout();
       router.replace('/superadmin/login');
       return;

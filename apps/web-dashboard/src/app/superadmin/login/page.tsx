@@ -17,8 +17,8 @@ function SuperadminLoginFormContent() {
   const { resolvedMode, setMode } = useTheme();
 
   const [step, setStep] = useState<'CREDENTIALS' | 'OTP'>('CREDENTIALS');
-  const [email, setEmail] = useState('smtpgeocitra@gmail.com');
-  const [password, setPassword] = useState('password123');
+  const [email, setEmail] = useState('admin@polaris.id');
+  const [password, setPassword] = useState('polaris_admin_2026');
   const [otpCode, setOtpCode] = useState('');
   const [countdown, setCountdown] = useState(0);
 
@@ -54,8 +54,25 @@ function SuperadminLoginFormContent() {
         AdminApiClient.logout();
       }
     } else if (token && !user) {
-      // Keadaan tidak konsisten (token ada tapi data user tidak ada / korup)
-      AdminApiClient.logout();
+      // Hidrasi profil Superadmin jika token valid di cookie tapi user storage kosong
+      AdminApiClient.request<any>('/admin/auth/me')
+        .then((profile) => {
+          if (profile?.role === 'SUPERADMIN') {
+            if (typeof window !== 'undefined') {
+              try {
+                localStorage.setItem('polaris_admin_user', JSON.stringify(profile));
+              } catch {}
+            }
+            router.replace(redirectUrl || '/superadmin');
+          } else if (profile?.role === 'CONTENT_OPERATOR' || profile?.role === 'SUPPORT_OPERATOR') {
+            router.replace('/operator');
+          } else {
+            AdminApiClient.logout();
+          }
+        })
+        .catch(() => {
+          AdminApiClient.logout();
+        });
     }
   }, [redirectUrl, router, searchParams]);
 

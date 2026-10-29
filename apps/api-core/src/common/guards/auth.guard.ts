@@ -103,7 +103,7 @@ export class AuthGuard implements CanActivate {
           email: payload.email,
           role: role,
           isSuperadmin: isSuperadminRole,
-          isOperator: true,
+          isOperator: isOperatorRole && !isSuperadminRole,
           canDirectPublish,
           mustChangePassword: false,
         };

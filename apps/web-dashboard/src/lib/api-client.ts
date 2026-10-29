@@ -48,6 +48,7 @@ export class ApiClient {
         localStorage.setItem('polaris_token', token);
         localStorage.setItem(this.EXPIRES_KEY, String(Date.now() + this.SESSION_DURATION_SEC * 1000));
         localStorage.setItem('polaris_last_activity', String(Date.now()));
+        localStorage.removeItem('polaris_acting_tenant_id');
       } catch {}
       document.cookie = `polaris_session=${encodeURIComponent(token)}; path=/; max-age=${this.SESSION_DURATION_SEC}; SameSite=Lax`;
     }
@@ -60,6 +61,7 @@ export class ApiClient {
         localStorage.removeItem('polaris_user');
         localStorage.removeItem(this.EXPIRES_KEY);
         localStorage.removeItem('polaris_last_activity');
+        localStorage.removeItem('polaris_acting_tenant_id');
       } catch {}
       document.cookie = 'polaris_session=; path=/; max-age=0; SameSite=Lax';
     }
@@ -232,6 +234,7 @@ export class AdminApiClient {
         localStorage.setItem(this.USER_KEY, JSON.stringify(adminUser));
         localStorage.setItem(this.ADMIN_EXPIRES_KEY, String(Date.now() + this.ADMIN_SESSION_DURATION_SEC * 1000));
         localStorage.setItem('polaris_last_activity', String(Date.now()));
+        localStorage.removeItem('polaris_acting_tenant_id');
       } catch {}
       document.cookie = `polaris_admin_session=${encodeURIComponent(token)}; path=/; max-age=${this.ADMIN_SESSION_DURATION_SEC}; SameSite=Lax`;
     }
@@ -244,6 +247,7 @@ export class AdminApiClient {
         localStorage.removeItem(this.USER_KEY);
         localStorage.removeItem(this.ADMIN_EXPIRES_KEY);
         localStorage.removeItem('polaris_last_activity');
+        localStorage.removeItem('polaris_acting_tenant_id');
       } catch {}
       document.cookie = 'polaris_admin_session=; path=/; max-age=0; SameSite=Lax';
     }
@@ -288,7 +292,7 @@ export class AdminApiClient {
   }
 
   public static getActingTenant(): string | null {
-    if (this.actingTenantId) return this.actingTenantId;
+
     if (typeof window !== 'undefined') {
       try {
         this.actingTenantId = localStorage.getItem('polaris_acting_tenant_id');
