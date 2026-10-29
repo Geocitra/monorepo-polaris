@@ -201,8 +201,7 @@ export function DarkModernShell({
               {/* Title & Badge */}
               <div className="space-y-3">
                 {pageBadge && (
-                  <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[11px] font-bold uppercase tracking-wider bg-blue-500/10 text-blue-400 border border-blue-500/20">
-                    <Sparkles className="w-3 h-3 text-blue-400 shrink-0" />
+                  <div className="inline-flex items-center px-3 py-1 rounded-full text-[11px] font-bold uppercase tracking-wider bg-blue-500/10 text-blue-400 border border-blue-500/20">
                     <span>{pageBadge}</span>
                   </div>
                 )}

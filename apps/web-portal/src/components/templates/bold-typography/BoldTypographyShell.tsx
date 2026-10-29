@@ -254,8 +254,7 @@ export function BoldTypographyShell({
 
               {/* Page Badge */}
               {pageBadge && (
-                <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-red-950/40 border border-red-500/30 text-[11px] font-mono font-bold text-red-400 uppercase tracking-widest">
-                  <span className="w-2 h-2 rounded-full bg-red-500 animate-pulse" />
+                <div className="inline-flex items-center px-3 py-1 rounded-full bg-red-950/40 border border-red-500/30 text-[11px] font-mono font-bold text-red-400 uppercase tracking-widest">
                   <span>{pageBadge}</span>
                 </div>
               )}

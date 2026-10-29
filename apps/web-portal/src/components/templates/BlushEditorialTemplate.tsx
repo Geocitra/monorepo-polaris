@@ -99,9 +99,8 @@ export function BlushEditorialTemplate({
             {/* Sisi Kiri Hero */}
             <div className="lg:col-span-7 space-y-6">
               
-              <div className="flex items-center gap-2 text-xs font-bold tracking-[0.2em] text-[#8C7D73] uppercase">
+              <div className="flex items-center text-xs font-bold tracking-[0.2em] text-[#8C7D73] uppercase">
                 <span>HI, SAYA WAKIL RAKYAT ANDA</span>
-                <Sparkles className="w-3.5 h-3.5" style={{ color: info.primaryColor }} />
               </div>
 
               {/* Headline Dual-Tone Editorial Serif Persis Gambar */}

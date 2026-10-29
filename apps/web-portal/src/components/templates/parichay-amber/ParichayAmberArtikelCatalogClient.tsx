@@ -87,14 +87,13 @@ export function ParichayAmberArtikelCatalogClient({
         <div className="absolute -left-20 -top-20 w-[400px] h-[400px] rounded-full border-[40px] border-white/60 pointer-events-none" />
         <div className="max-w-[1240px] mx-auto px-6 lg:px-10 relative z-10">
           <div className="max-w-2xl space-y-3">
-            <div className="flex items-center gap-2">
+            <div className="flex items-center">
               <span
                 className="text-xs font-black uppercase tracking-[0.2em]"
                 style={{ color: info.primaryColor }}
               >
                 PUBLIKASI &amp; RISET KEBIJAKAN
               </span>
-              <Sparkles className="w-3.5 h-3.5" style={{ color: info.primaryColor }} />
             </div>
             <h1 className="font-extrabold text-4xl sm:text-5xl text-[#1E1E1E] tracking-tight">
               Katalog Artikel &amp; Risalah

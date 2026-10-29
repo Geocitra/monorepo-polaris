@@ -5,38 +5,38 @@ import { PortalTemplateId } from '@polaris/shared-types';
 
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
+
 import { ParliamentShell } from '@/components/templates/polaris-insight/ParliamentShell';
 import { KontakPageClient } from '@/components/templates/polaris-insight/KontakPageClient';
-import { BoldTypographyShell, BoldKontakClient } from '@/components/templates/bold-typography';
-import { DarkModernShell, DarkModernKontakClient } from '@/components/templates/dark-modern';
-import { NeonGlowShell, NeonGlowKontakClient } from '@/components/templates/neon-glow';
-import { CleanEditorialShell, CleanEditorialKontakClient } from '@/components/templates/clean-editorial';
-import { CreativeWarmShell, CreativeWarmKontakClient } from '@/components/templates/creative-warm';
-import { WarmPortfolioShell, WarmPortfolioKontakClient } from '@/components/templates/warm-portfolio';
-import { MidnightGoldShell, MidnightGoldKontakClient } from '@/components/templates/midnight-gold';
-import { EmeraldTechShell, EmeraldTechKontakClient } from '@/components/templates/emerald-tech';
-import { QurifolioShell, QurifolioKontakClient } from '@/components/templates/qurifolio';
-import { AmberPortfolioShell, AmberPortfolioKontakClient } from '@/components/templates/amber-portfolio';
-import { MidnightLimeShell, MidnightLimeKontakClient } from '@/components/templates/midnight-lime';
-import { PlatinumSlateShell, PlatinumSlateKontakClient } from '@/components/templates/platinum-slate';
-import { NayaEditorialShell, NayaEditorialKontakClient } from '@/components/templates/naya-editorial';
-import { CrimsonNoirShell, CrimsonNoirKontakClient } from '@/components/templates/crimson-noir';
-import { GoldenSplitShell, GoldenSplitKontakClient } from '@/components/templates/golden-split';
-import { BlushEditorialShell, BlushEditorialKontakClient } from '@/components/templates/blush-editorial';
-import { FoliobloxShell, FoliobloxKontakClient } from '@/components/templates/folioblox';
-import { StudioEditorialShell, StudioEditorialKontakClient } from '@/components/templates/studio-editorial';
-import { CreatixLimeShell, CreatixLimeKontakClient } from '@/components/templates/creatix-lime';
-import { ParichayAmberKontakClient } from '@/components/templates/parichay-amber';
-import { OrixVioletKontakClient } from '@/components/templates/orix-violet';
-import { AgethaRubyKontakClient } from '@/components/templates/agetha-ruby';
-import { WashoskiCyanKontakClient } from '@/components/templates/washoski-cyan';
-import { ArikNoirKontakClient } from '@/components/templates/arik-noir';
-import { AnivioxEmeraldKontakClient } from '@/components/templates/aniviox-emerald';
+import { BoldTypographyShell } from '@/components/templates/bold-typography';
+import { DarkModernShell } from '@/components/templates/dark-modern';
+import { NeonGlowShell } from '@/components/templates/neon-glow';
+import { CleanEditorialShell } from '@/components/templates/clean-editorial';
+import { CreativeWarmShell } from '@/components/templates/creative-warm';
+import { WarmPortfolioShell } from '@/components/templates/warm-portfolio';
+import { MidnightGoldShell } from '@/components/templates/midnight-gold';
+import { EmeraldTechShell } from '@/components/templates/emerald-tech';
+import { QurifolioShell } from '@/components/templates/qurifolio';
+import { AmberPortfolioShell } from '@/components/templates/amber-portfolio';
+import { MidnightLimeShell } from '@/components/templates/midnight-lime';
+import { PlatinumSlateShell } from '@/components/templates/platinum-slate';
+import { NayaEditorialShell } from '@/components/templates/naya-editorial';
+import { CrimsonNoirShell } from '@/components/templates/crimson-noir';
+import { GoldenSplitShell } from '@/components/templates/golden-split';
+import { BlushEditorialShell } from '@/components/templates/blush-editorial';
+import { FoliobloxShell } from '@/components/templates/folioblox';
+import { StudioEditorialShell } from '@/components/templates/studio-editorial';
+import { CreatixLimeShell } from '@/components/templates/creatix-lime';
+import { ParichayAmberShell } from '@/components/templates/parichay-amber';
+import { OrixVioletShell } from '@/components/templates/orix-violet';
+import { AgethaRubyShell } from '@/components/templates/agetha-ruby';
+import { WashoskiCyanShell } from '@/components/templates/washoski-cyan';
+import { ArikNoirShell } from '@/components/templates/arik-noir';
+import { AnivioxEmeraldShell } from '@/components/templates/aniviox-emerald';
 import { LailaSakuraKontakClient } from '@/components/templates/laila-sakura';
-import { NexoraVioletKontakClient } from '@/components/templates/nexora-violet';
-import { XenonMintKontakClient } from '@/components/templates/xenon-mint';
-import { TiaraBurgundyKontakClient } from '@/components/templates/tiara-burgundy';
-
+import { NexoraVioletShell, NexoraVioletKontakClient } from '@/components/templates/nexora-violet';
+import { XenonMintShell, XenonMintKontakClient } from '@/components/templates/xenon-mint';
+import { TiaraBurgundyShell } from '@/components/templates/tiara-burgundy';
 
 export async function generateMetadata({
   params,
@@ -47,9 +47,56 @@ export async function generateMetadata({
   const data = await fetchPortalData(subdomain);
   if (!data) return { title: 'Kontak Resmi - POLARIS' };
 
+  const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3001';
+  const { member, theme, portal } = data;
+  const officialFullName = member?.fullName || theme?.officialFullName || 'Anggota Dewan';
+  const dapil = member?.dapilName || member?.customDapilName || member?.customDapil || 'Daerah Pemilihan';
+  const party = member?.partyAffiliation || 'Parlemen';
+
+  const title = `Kontak Resmi & Sekretariat - ${officialFullName}`;
+  const description = `Kanal komunikasi resmi, hotline WhatsApp tim dewan, layanan aspirasi warga, serta posko pengaduan masyarakat bersama ${officialFullName} di ${dapil}.`;
+
+  const canonicalUrl = portal?.customDomain
+    ? `https://${portal.customDomain}/kontak`
+    : `${baseUrl}/${subdomain}/kontak`;
+
+  const ogImageUrl = `/api/og?title=${encodeURIComponent(`Kanal Komunikasi & Layanan Aspirasi`)}&author=${encodeURIComponent(officialFullName)}&dapil=${encodeURIComponent(dapil)}&party=${encodeURIComponent(party)}&color=${encodeURIComponent(theme?.primaryHexColor || '#1890FF')}`;
+
   return {
-    title: `Kontak Resmi & Sekretariat - ${data.member.fullName}`,
-    description: `Alamat kantor perwakilan dewan, layanan staf ahli, saluran aspirasi, dan media sosial resmi ${data.member.fullName}.`,
+    title,
+    description,
+    keywords: [
+      officialFullName,
+      'Kontak Dewan',
+      'Hotline WhatsApp',
+      'Layanan Aspirasi Warga',
+      'Posko Parlemen',
+      party,
+      dapil,
+    ],
+    alternates: {
+      canonical: canonicalUrl,
+    },
+    openGraph: {
+      title,
+      description,
+      type: 'website',
+      url: canonicalUrl,
+      images: [
+        {
+          url: ogImageUrl,
+          width: 1200,
+          height: 630,
+          alt: title,
+        },
+      ],
+    },
+    twitter: {
+      card: 'summary_large_image',
+      title,
+      description,
+      images: [ogImageUrl],
+    },
   };
 }
 
@@ -76,9 +123,15 @@ export default async function KontakPage({
   const officialFullName =
     member?.fullName ||
     theme?.officialFullName ||
-    'Dr. Ir. Sangsoro Mowo Berkah, M.Sc.';
+    'Anggota Dewan';
   const dapil =
-    member?.dapilName || member?.customDapilName || member?.customDapil || 'Jawa Barat I';
+    member?.dapilName || member?.customDapilName || member?.customDapil || '';
+
+  const renderContent = (
+    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10 sm:py-16">
+      <KontakPageClient member={member} theme={effectiveTheme} subdomain={subdomain} />
+    </div>
+  );
 
   if (templateId === PortalTemplateId.BOLD_TYPOGRAPHY || templateId === 'bold-typography') {
     return (
@@ -88,13 +141,10 @@ export default async function KontakPage({
         subdomain={subdomain}
         activePage="kontak"
         breadcrumbTitle="Kontak & Sekretariat"
-        pageBadge="Kanal Korespondensi & Layanan Konstituen"
         pageTitle="Kontak & Sekretariat Resmi"
-        pageSubtitle={`Informasi alamat kantor perwakilan, posko aspirasi konstituen Daerah Pemilihan ${dapil}, layanan staf ahli dewan, dan saluran komunikasi langsung bersama ${officialFullName}.`}
+        pageSubtitle={`Kanal komunikasi langsung, hotline WhatsApp tim dewan, korespondensi resmi, dan formulir aspirasi warga Daerah Pemilihan ${dapil} bersama ${officialFullName}.`}
       >
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10 sm:py-16">
-          <BoldKontakClient member={member} theme={effectiveTheme} subdomain={subdomain} />
-        </div>
+        {renderContent}
       </BoldTypographyShell>
     );
   }
@@ -107,13 +157,10 @@ export default async function KontakPage({
         subdomain={subdomain}
         activePage="kontak"
         breadcrumbTitle="Kontak & Sekretariat"
-        pageBadge="Kanal Korespondensi & Layanan Konstituen"
         pageTitle="Kontak & Sekretariat Resmi"
-        pageSubtitle={`Informasi alamat kantor perwakilan, posko aspirasi konstituen Daerah Pemilihan ${dapil}, layanan staf ahli dewan, dan saluran komunikasi langsung bersama ${officialFullName}.`}
+        pageSubtitle={`Kanal komunikasi langsung, hotline WhatsApp tim dewan, korespondensi resmi, dan formulir aspirasi warga Daerah Pemilihan ${dapil} bersama ${officialFullName}.`}
       >
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10 sm:py-16">
-          <DarkModernKontakClient member={member} theme={effectiveTheme} subdomain={subdomain} />
-        </div>
+        {renderContent}
       </DarkModernShell>
     );
   }
@@ -126,13 +173,10 @@ export default async function KontakPage({
         subdomain={subdomain}
         activePage="kontak"
         breadcrumbTitle="Kontak & Sekretariat"
-        pageBadge="Kanal Korespondensi & Layanan Konstituen"
         pageTitle="Kontak & Sekretariat Resmi"
-        pageSubtitle={`Informasi alamat kantor perwakilan, posko aspirasi konstituen Daerah Pemilihan ${dapil}, layanan staf ahli dewan, dan saluran komunikasi langsung bersama ${officialFullName}.`}
+        pageSubtitle={`Kanal komunikasi langsung, hotline WhatsApp tim dewan, korespondensi resmi, dan formulir aspirasi warga Daerah Pemilihan ${dapil} bersama ${officialFullName}.`}
       >
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10 sm:py-16">
-          <NeonGlowKontakClient member={member} theme={effectiveTheme} subdomain={subdomain} />
-        </div>
+        {renderContent}
       </NeonGlowShell>
     );
   }
@@ -147,11 +191,9 @@ export default async function KontakPage({
         breadcrumbTitle="Kontak & Sekretariat"
         pageBadge="KANAL KOLEKTIF & KOMUNIKASI RESMI"
         pageTitle="Kontak & Sekretariat Resmi"
-        pageSubtitle={`Informasi alamat kantor perwakilan, posko aspirasi konstituen Daerah Pemilihan ${dapil}, layanan staf ahli dewan, dan saluran komunikasi langsung bersama ${officialFullName}.`}
+        pageSubtitle={`Kanal komunikasi langsung, hotline WhatsApp tim dewan, korespondensi resmi, dan formulir aspirasi warga Daerah Pemilihan ${dapil} bersama ${officialFullName}.`}
       >
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10 sm:py-16">
-          <CleanEditorialKontakClient member={member} theme={effectiveTheme} subdomain={subdomain} />
-        </div>
+        {renderContent}
       </CleanEditorialShell>
     );
   }
@@ -166,11 +208,9 @@ export default async function KontakPage({
         breadcrumbTitle="Kontak & Sekretariat"
         pageBadge="Kanal Aspirasi & Kontak Resmi"
         pageTitle="Kontak & Sekretariat Resmi"
-        pageSubtitle={`Informasi alamat kantor perwakilan, posko aspirasi konstituen Daerah Pemilihan ${dapil}, layanan staf ahli dewan, dan saluran komunikasi langsung bersama ${officialFullName}.`}
+        pageSubtitle={`Kanal komunikasi langsung, hotline WhatsApp tim dewan, korespondensi resmi, dan formulir aspirasi warga Daerah Pemilihan ${dapil} bersama ${officialFullName}.`}
       >
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10 sm:py-16">
-          <CreativeWarmKontakClient member={member} theme={effectiveTheme} subdomain={subdomain} />
-        </div>
+        {renderContent}
       </CreativeWarmShell>
     );
   }
@@ -185,9 +225,9 @@ export default async function KontakPage({
         breadcrumbTitle="Kontak & Sekretariat"
         pageBadge="Kanal Aspirasi & Kontak Resmi"
         pageTitle="Kontak & Posko Pengaduan Resmi"
-        pageSubtitle={`Informasi alamat kantor perwakilan, posko aspirasi konstituen Daerah Pemilihan ${dapil}, layanan staf ahli dewan, dan saluran komunikasi langsung bersama ${officialFullName}.`}
+        pageSubtitle={`Kanal komunikasi langsung, hotline WhatsApp tim dewan, korespondensi resmi, dan formulir aspirasi warga Daerah Pemilihan ${dapil} bersama ${officialFullName}.`}
       >
-        <FoliobloxKontakClient member={member} theme={effectiveTheme} subdomain={subdomain} />
+        {renderContent}
       </FoliobloxShell>
     );
   }
@@ -202,9 +242,9 @@ export default async function KontakPage({
         breadcrumbTitle="Saluran Aspirasi & Kontak"
         pageBadge="SALURAN ASPIRASI AKTIF"
         pageTitle="Kontak Dewan & Sekretariat Parlemen"
-        pageSubtitle={`Informasi alamat kantor perwakilan, rumah aspirasi Dapil ${dapil}, nomor pengaduan konstituen, dan layanan staf ahli dewan bersama ${officialFullName}.`}
+        pageSubtitle={`Kanal komunikasi langsung, hotline WhatsApp tim dewan, korespondensi resmi, dan formulir aspirasi warga Daerah Pemilihan ${dapil} bersama ${officialFullName}.`}
       >
-        <StudioEditorialKontakClient member={member} theme={effectiveTheme} subdomain={subdomain} />
+        {renderContent}
       </StudioEditorialShell>
     );
   }
@@ -222,9 +262,9 @@ export default async function KontakPage({
         breadcrumbTitle="Kontak & Sekretariat"
         pageBadge="Kanal Aspirasi & Kontak Resmi"
         pageTitle="Kontak & Sekretariat Resmi"
-        pageSubtitle={`Informasi alamat kantor perwakilan, posko aspirasi konstituen Daerah Pemilihan ${dapil}, layanan staf ahli dewan, dan saluran komunikasi langsung bersama ${officialFullName}.`}
+        pageSubtitle={`Kanal komunikasi langsung, hotline WhatsApp tim dewan, korespondensi resmi, dan formulir aspirasi warga Daerah Pemilihan ${dapil} bersama ${officialFullName}.`}
       >
-        <WarmPortfolioKontakClient member={member} theme={effectiveTheme} subdomain={subdomain} />
+        {renderContent}
       </WarmPortfolioShell>
     );
   }
@@ -242,7 +282,7 @@ export default async function KontakPage({
         pageSubtitle={`Sampaikan gagasan, laporan persoalan daerah, masukan regulasi, atau permohonan audiensi langsung kepada ${officialFullName}.`}
         showCta={false}
       >
-        <CrimsonNoirKontakClient member={member} theme={effectiveTheme} subdomain={subdomain} />
+        {renderContent}
       </CrimsonNoirShell>
     );
   }
@@ -259,7 +299,7 @@ export default async function KontakPage({
         pageTitle="Kontak & Saluran Aspirasi"
         pageSubtitle={`Sampaikan pengaduan, masukan kebijakan, atau permohonan audiensi langsung kepada ${officialFullName}.`}
       >
-        <GoldenSplitKontakClient member={member} theme={effectiveTheme} subdomain={subdomain} />
+        {renderContent}
       </GoldenSplitShell>
     );
   }
@@ -276,68 +316,86 @@ export default async function KontakPage({
         pageTitle="Kontak & Saluran Aspirasi"
         pageSubtitle={`Sampaikan aspirasi warga, permohonan audiensi, serta usulan perbaikan layanan publik langsung kepada ${officialFullName}.`}
       >
-        <BlushEditorialKontakClient member={member} theme={effectiveTheme} subdomain={subdomain} />
+        {renderContent}
       </BlushEditorialShell>
     );
   }
 
   if (templateId === PortalTemplateId.PARICHAY_AMBER || templateId === 'parichay-amber') {
     return (
-      <ParichayAmberKontakClient
+      <ParichayAmberShell
         member={member}
         theme={effectiveTheme}
         subdomain={subdomain}
-      />
+        activePage="kontak"
+      >
+        {renderContent}
+      </ParichayAmberShell>
     );
   }
 
   if (templateId === PortalTemplateId.ORIX_VIOLET || templateId === 'orix-violet') {
     return (
-      <OrixVioletKontakClient
+      <OrixVioletShell
         member={member}
         theme={effectiveTheme}
         subdomain={subdomain}
-      />
+        activePage="kontak"
+      >
+        {renderContent}
+      </OrixVioletShell>
     );
   }
 
   if (templateId === PortalTemplateId.AGETHA_RUBY || templateId === 'agetha-ruby') {
     return (
-      <AgethaRubyKontakClient
+      <AgethaRubyShell
         member={member}
         theme={effectiveTheme}
         subdomain={subdomain}
-      />
+        activePage="kontak"
+      >
+        {renderContent}
+      </AgethaRubyShell>
     );
   }
 
   if (templateId === PortalTemplateId.WASHOSKI_CYAN || templateId === 'washoski-cyan') {
     return (
-      <WashoskiCyanKontakClient
+      <WashoskiCyanShell
         member={member}
         theme={effectiveTheme}
         subdomain={subdomain}
-      />
+        activePage="kontak"
+      >
+        {renderContent}
+      </WashoskiCyanShell>
     );
   }
 
   if (templateId === PortalTemplateId.ARIK_NOIR || templateId === 'arik-noir') {
     return (
-      <ArikNoirKontakClient
+      <ArikNoirShell
         member={member}
         theme={effectiveTheme}
         subdomain={subdomain}
-      />
+        activePage="kontak"
+      >
+        {renderContent}
+      </ArikNoirShell>
     );
   }
 
   if (templateId === PortalTemplateId.ANIVIOX_EMERALD || templateId === 'aniviox-emerald') {
     return (
-      <AnivioxEmeraldKontakClient
+      <AnivioxEmeraldShell
         member={member}
         theme={effectiveTheme}
         subdomain={subdomain}
-      />
+        activePage="kontak"
+      >
+        {renderContent}
+      </AnivioxEmeraldShell>
     );
   }
 
@@ -373,14 +431,16 @@ export default async function KontakPage({
 
   if (templateId === (PortalTemplateId as any).TIARA_BURGUNDY || templateId === 'tiara-burgundy') {
     return (
-      <TiaraBurgundyKontakClient
+      <TiaraBurgundyShell
         member={member}
         theme={effectiveTheme}
         subdomain={subdomain}
-      />
+        activePage="kontak"
+      >
+        {renderContent}
+      </TiaraBurgundyShell>
     );
   }
-
 
   if (
     templateId === PortalTemplateId.NAYA_EDITORIAL ||
@@ -398,11 +458,7 @@ export default async function KontakPage({
         pageTitle="Posko Aspirasi & Kanal Kontak Resmi"
         pageSubtitle={`Sampaikan gagasan, laporan persoalan lingkungan daerah, masukan regulasi daerah, serta permohonan audiensi langsung kepada ${officialFullName}.`}
       >
-        <NayaEditorialKontakClient
-          member={member}
-          theme={effectiveTheme}
-          subdomain={subdomain}
-        />
+        {renderContent}
       </NayaEditorialShell>
     );
   }
@@ -419,7 +475,7 @@ export default async function KontakPage({
         pageTitle="Kontak & Sekretariat Resmi"
         pageSubtitle={`Informasi alamat kantor perwakilan, posko aspirasi konstituen Daerah Pemilihan ${dapil}, layanan staf ahli dewan, dan saluran komunikasi langsung bersama ${officialFullName}.`}
       >
-        <MidnightGoldKontakClient member={member} theme={effectiveTheme} subdomain={subdomain} />
+        {renderContent}
       </MidnightGoldShell>
     );
   }
@@ -436,7 +492,7 @@ export default async function KontakPage({
         pageTitle="Kontak & Sekretariat Resmi"
         pageSubtitle={`Informasi alamat kantor perwakilan, posko aspirasi konstituen Daerah Pemilihan ${dapil}, layanan staf ahli dewan, dan saluran komunikasi langsung bersama ${officialFullName}.`}
       >
-        <EmeraldTechKontakClient member={member} theme={effectiveTheme} subdomain={subdomain} />
+        {renderContent}
       </EmeraldTechShell>
     );
   }
@@ -453,7 +509,7 @@ export default async function KontakPage({
         pageTitle="Pintu Terbuka Saluran Komunikasi bagi Rakyat."
         pageSubtitle={`Informasi alamat kantor perwakilan, posko aspirasi konstituen Daerah Pemilihan ${dapil}, layanan staf ahli dewan, dan saluran komunikasi langsung bersama ${officialFullName}.`}
       >
-        <QurifolioKontakClient member={member} theme={effectiveTheme} subdomain={subdomain} />
+        {renderContent}
       </QurifolioShell>
     );
   }
@@ -470,7 +526,7 @@ export default async function KontakPage({
         pageTitle="Pintu Terbuka Saluran Komunikasi bagi Rakyat."
         pageSubtitle={`Informasi alamat kantor perwakilan, posko aspirasi konstituen Daerah Pemilihan ${dapil}, layanan staf ahli dewan, dan saluran komunikasi langsung bersama ${officialFullName}.`}
       >
-        <AmberPortfolioKontakClient member={member} theme={effectiveTheme} subdomain={subdomain} />
+        {renderContent}
       </AmberPortfolioShell>
     );
   }
@@ -487,7 +543,7 @@ export default async function KontakPage({
         pageTitle="Kontak Dewan & Posko Aspirasi"
         pageSubtitle={`Informasi alamat kantor perwakilan, posko aspirasi konstituen Daerah Pemilihan ${dapil}, layanan staf ahli dewan, dan saluran komunikasi langsung bersama ${officialFullName}.`}
       >
-        <CreatixLimeKontakClient member={member} theme={effectiveTheme} subdomain={subdomain} />
+        {renderContent}
       </CreatixLimeShell>
     );
   }
@@ -507,7 +563,7 @@ export default async function KontakPage({
         pageTitle="Pintu Terbuka Saluran Komunikasi bagi Rakyat."
         pageSubtitle={`Informasi alamat kantor perwakilan, posko aspirasi konstituen Daerah Pemilihan ${dapil}, layanan staf ahli dewan, dan saluran komunikasi langsung bersama ${officialFullName}.`}
       >
-        <MidnightLimeKontakClient member={member} theme={effectiveTheme} subdomain={subdomain} />
+        {renderContent}
       </MidnightLimeShell>
     );
   }
@@ -524,7 +580,7 @@ export default async function KontakPage({
         pageTitle="Pintu Terbuka Saluran Komunikasi bagi Rakyat."
         pageSubtitle={`Informasi alamat kantor perwakilan, posko aspirasi konstituen Daerah Pemilihan ${dapil}, layanan staf ahli dewan, dan saluran komunikasi langsung bersama ${officialFullName}.`}
       >
-        <PlatinumSlateKontakClient member={member} theme={effectiveTheme} subdomain={subdomain} />
+        {renderContent}
       </PlatinumSlateShell>
     );
   }
@@ -535,10 +591,9 @@ export default async function KontakPage({
       theme={effectiveTheme}
       subdomain={subdomain}
       activePage="kontak"
-      breadcrumbTitle="Kontak & Sekretariat"
-      pageBadge="Kanal Korespondensi & Layanan Konstituen"
-      pageTitle="Kontak & Sekretariat Resmi"
-      pageSubtitle={`Informasi alamat kantor perwakilan, posko aspirasi konstituen Daerah Pemilihan ${dapil}, layanan staf ahli dewan, dan saluran komunikasi langsung bersama ${officialFullName}.`}
+      breadcrumbTitle="Kontak & Kanal Aspirasi"
+      pageTitle="Kontak & Kanal Komunikasi Resmi"
+      pageSubtitle={dapil ? `Kanal komunikasi langsung, hotline WhatsApp tim dewan, korespondensi resmi, dan formulir penyampaian aspirasi konstituen Daerah Pemilihan ${dapil} bersama ${officialFullName}.` : `Kanal komunikasi langsung, hotline WhatsApp tim dewan, korespondensi resmi, dan formulir penyampaian aspirasi warga bersama ${officialFullName}.`}
     >
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10 sm:py-14">
         <KontakPageClient member={member} theme={effectiveTheme} subdomain={subdomain} />

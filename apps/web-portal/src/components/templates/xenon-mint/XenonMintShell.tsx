@@ -56,18 +56,15 @@ export function XenonMintShell({
           {/* Left: Brand Identity */}
           <Link
             href={href('/')}
-            className="flex items-center gap-3 group focus:outline-none"
+            className="flex items-center group focus:outline-none"
           >
-            <div className="w-9 h-9 rounded-xl bg-gradient-to-tr from-[#00D084] to-[#00E599] flex items-center justify-center text-slate-950 font-black shadow-[0_0_20px_rgba(0,229,153,0.35)] group-hover:scale-105 transition-transform">
-              <span className="text-base font-black">X</span>
-            </div>
             <div className="flex flex-col">
               <div className="flex items-center gap-2">
                 <span className="text-base sm:text-lg font-black tracking-tight text-white uppercase group-hover:text-[#00E599] transition-colors">
-                  {info.callName}
+                  {info.fullName}
                 </span>
                 <span className="hidden sm:inline-flex text-[10px] font-bold text-[#00E599] uppercase tracking-wider px-2 py-0.5 rounded-full bg-[#00E599]/10 border border-[#00E599]/25">
-                  DPR RI
+                  {(info.legislativeLevel || 'DPR RI').replace(/_/g, ' ')}
                 </span>
               </div>
               <span className="text-[10px] text-slate-400 font-semibold tracking-wide hidden sm:block">
@@ -168,10 +165,7 @@ export function XenonMintShell({
             
             {/* Col 1: Brand & Mandate */}
             <div className="md:col-span-5 space-y-5">
-              <div className="flex items-center gap-3">
-                <div className="w-8 h-8 rounded-xl bg-gradient-to-tr from-[#00D084] to-[#00E599] flex items-center justify-center text-slate-950 font-black shadow-[0_0_15px_rgba(0,229,153,0.3)]">
-                  <span className="text-sm font-black">X</span>
-                </div>
+              <div className="flex items-center">
                 <span className="text-xl font-black tracking-wider text-white uppercase">
                   {info.fullName}
                 </span>

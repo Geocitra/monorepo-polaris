@@ -18,40 +18,7 @@ export function PlatinumSlateInfografisGalleryClient({
 }: PlatinumSlateInfografisGalleryClientProps) {
   const [activeModalInfo, setActiveModalInfo] = useState<any | null>(null);
 
-  const defaultItems = [
-    {
-      id: 'slate-info-1',
-      title: 'Transparansi APBD Sektor Kesehatan & BPJS PBI',
-      category: 'Kesehatan Publik',
-      imageUrl: '/images/showcase-infografis-apbd.jpg',
-      featuredImageUrl: '/images/showcase-infografis-apbd.jpg',
-      excerpt: 'Visualisasi alokasi pos belanja jaminan kesehatan daerah bagi masyarakat prasejahtera.',
-      statPrimary: 'Rp 48.5 Miliar',
-      statLabel: 'Alokasi JKN PBI Daerah',
-    },
-    {
-      id: 'slate-info-2',
-      title: 'Peta Penyerapan Aspirasi & Realisasi Fisik Jalan Poros',
-      category: 'Infrastruktur',
-      imageUrl: '/images/showcase-poster-surya.jpg',
-      featuredImageUrl: '/images/showcase-poster-surya.jpg',
-      excerpt: 'Sebaran 32 titik perbaikan jalan penghubung antar-desa yang berhasil dituntaskan.',
-      statPrimary: '32 Titik Ruas',
-      statLabel: 'Tuntas Direvitalisasi',
-    },
-    {
-      id: 'slate-info-3',
-      title: 'Alokasi Beasiswa Siswa Kurang Mampu & Berprestasi',
-      category: 'Pendidikan',
-      imageUrl: '/images/qurifolio/header-infografis-bg.jpg',
-      featuredImageUrl: '/images/qurifolio/header-infografis-bg.jpg',
-      excerpt: 'Penyaluran beasiswa daerah bagi 2.400 pelajar dan mahasiswa di seluruh kecamatan dapil.',
-      statPrimary: '2.400 Pelajar',
-      statLabel: 'Penerima Manfaat Aktif',
-    },
-  ];
-
-  const displayList = infographics && infographics.length > 0 ? infographics : defaultItems;
+  const displayList = infographics || [];
 
   const getInfographicImg = (item: any, idx: number) => {
     const fallbacks = [
@@ -91,7 +58,13 @@ export function PlatinumSlateInfografisGalleryClient({
         </div>
 
         {/* ─── TALL PORTRAIT POSTER SHOWCASE CARDS (ASPECT [3/4]) ─── */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 sm:gap-8">
+        {displayList.length === 0 ? (
+          <div className="py-20 text-center space-y-3">
+            <FileText className="w-10 h-10 text-slate-600 mx-auto" />
+            <p className="text-sm text-slate-400">Belum ada dokumen infografis atau visualisasi capaian yang dipublikasikan saat ini.</p>
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 sm:gap-8">
           {displayList.map((item: any, idx: number) => {
             const formattedIdx = String(idx + 1).padStart(2, '0');
             const imgSrc = getInfographicImg(item, idx);
@@ -227,6 +200,7 @@ export function PlatinumSlateInfografisGalleryClient({
             );
           })}
         </div>
+        )}
 
       </div>
 

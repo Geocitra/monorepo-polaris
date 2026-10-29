@@ -4,27 +4,12 @@ import React from 'react';
 import Link from 'next/link';
 import { usePathname, useSearchParams } from 'next/navigation';
 import {
-  ArrowDown,
-  ChevronDown,
   ArrowRight,
   Calendar,
   Clock,
-  BookOpen,
-  Share2,
-  CheckCircle2,
-  FileText,
-  TrendingUp,
-  MessageSquare,
   Mail,
   Phone,
-  MapPin,
-  ExternalLink,
-  Twitter,
-  Facebook,
   Instagram,
-  Linkedin,
-  Youtube,
-  ShieldCheck,
   Menu,
   X,
 } from 'lucide-react';
@@ -50,7 +35,6 @@ export function DarkModernTemplate({
   const primaryColor = theme?.primaryHexColor || '#1877F2';
   const photoUrl = theme?.officialPhotoUrl || member?.photoUrl || '/images/default-avatar.png';
   const headline = theme?.headlineTagline || 'Mengawal aspirasi rakyat demi kemakmuran dan keadilan konstituen.';
-  const bio = theme?.bioBiography || `${member?.fullName} merupakan wakil rakyat terpilih dari Daerah Pemilihan ${member?.dapilName || 'Indonesia'} yang berkomitmen menjaga transparansi kebijakan legislatif.`;
 
   const pathname = usePathname();
   const searchParams = useSearchParams();
@@ -354,63 +338,6 @@ export function DarkModernTemplate({
         </div>
       </section>
 
-      {/* ─── 2.5 SECTION: TENTANG & CAPAIAN PARLEMEN (SEPARATE CLEAN SECTION) ─── */}
-      <section id="about" className="py-20 sm:py-24 border-b border-white/5 bg-[#0e0f11]">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-14">
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
-            <div className="lg:col-span-6 space-y-3">
-              <span className="text-xs font-bold text-blue-400 uppercase tracking-widest">
-                / TENTANG SAYA
-              </span>
-              <h2 className="text-2xl sm:text-3xl font-extrabold text-white leading-snug">
-                Berdedikasi mengawal hak & kemakmuran rakyat sejak 2014
-              </h2>
-              <p className="text-xs sm:text-sm text-slate-400 leading-relaxed max-w-xl">
-                {bio}
-              </p>
-              <div className="pt-2">
-                <Link
-                  href="/profil"
-                  className="inline-flex items-center gap-2 text-xs font-bold text-white hover:text-blue-400 border-b border-white hover:border-blue-400 pb-0.5 transition-all"
-                >
-                  <span>Selengkapnya tentang profil saya</span>
-                  <ArrowRight className="w-3.5 h-3.5" />
-                </Link>
-              </div>
-            </div>
-
-            <div className="lg:col-span-6 grid grid-cols-2 gap-6 sm:gap-8">
-              <div className="space-y-1">
-                <div className="text-4xl sm:text-5xl font-black text-white font-mono tracking-tight">
-                  10+ <span className="text-xs font-semibold uppercase text-slate-400 block font-sans">Tahun Pengabdian Parlemen</span>
-                </div>
-                <p className="text-[11px] text-slate-400 leading-relaxed pt-2">
-                  Pengalaman nyata merumuskan undang-undang dan pengawasan implementasi anggaran negara.
-                </p>
-              </div>
-
-              <div className="space-y-1">
-                <div className="text-4xl sm:text-5xl font-black text-white font-mono tracking-tight">
-                  150+ <span className="text-xs font-semibold uppercase text-slate-400 block font-sans">Program Teradvokasi</span>
-                </div>
-                <p className="text-[11px] text-slate-400 leading-relaxed pt-2">
-                  Bantuan sarana publik, beasiswa pendidikan, dan pendampingan hukum konstituen daerah pemilihan.
-                </p>
-              </div>
-            </div>
-          </div>
-
-          {/* ─── ENTITY / PARTNERS STRIP ─── */}
-          <div className="pt-8 border-t border-slate-800/40 flex flex-wrap items-center justify-between gap-6 text-slate-500 text-xs font-bold uppercase tracking-widest">
-            <span className="text-slate-400">LEMBAGA & MITRA KERJA</span>
-            <span>🏛️ DPR RI</span>
-            <span>📋 KOMISI {member?.commissionName || 'PARLEMEN'}</span>
-            <span>🇮🇩 DAPIL {member?.dapilName || 'NASIONAL'}</span>
-            <span>⚖️ BADAN LEGISLASI</span>
-          </div>
-        </div>
-      </section>
-
       {/* ─── 3. SECTION 2: ARTIKEL & KAJIAN KEBIJAKAN ─── */}
       <section id="articles" className="py-16 sm:py-20 border-b border-white/5 bg-[#111215]">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-10">
@@ -498,117 +425,65 @@ export function DarkModernTemplate({
         </div>
       </section>
 
-      {/* ─── 4. SECTION 3: INFOGRAFIS & METRIK AKUNTABILITAS ─── */}
+      {/* ─── 4. SECTION 3: INFOGRAFIS & DOKUMENTASI VISUAL ─── */}
       <section id="infografis" className="py-16 sm:py-20 border-b border-white/5 bg-[#111215]">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-12">
-          <div className="text-center max-w-2xl mx-auto space-y-2">
-            <span className="text-xs font-bold text-blue-400 uppercase tracking-widest">
-              / CAPAIAN & REKAM JEJAK
-            </span>
-            <h2 className="text-2xl sm:text-3xl font-black text-white">
-              Indikator Kinerja & Tanggung Jawab Konstituen
-            </h2>
-            <p className="text-xs text-slate-400">
-              Data akuntabilitas publik periode 2024–2029 yang dapat diawasi secara terbuka oleh seluruh warga dapil.
-            </p>
-          </div>
-
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-            <div className="p-6 rounded-2xl bg-[#0E1321] border border-slate-800 space-y-3">
-              <div className="w-10 h-10 rounded-xl bg-blue-500/10 border border-blue-500/20 text-blue-400 flex items-center justify-center font-bold">
-                <CheckCircle2 className="w-5 h-5" />
-              </div>
-              <div className="text-3xl font-black text-white font-mono">98.4%</div>
-              <div className="text-xs font-bold text-slate-300 uppercase">Tingkat Kehadiran Sidang</div>
-              <p className="text-[11px] text-slate-400 leading-relaxed">
-                Konsisten menghadiri rapat kerja komisi, pansus, dan sidang paripurna pengambilan keputusan.
-              </p>
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-10">
+          <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4 border-b border-white/5 pb-5">
+            <div>
+              <span className="text-xs font-bold text-blue-400 uppercase tracking-widest block">
+                / VISUALISASI DATA &amp; TRANSPARANSI
+              </span>
+              <h2 className="text-2xl sm:text-3xl font-black text-white mt-1">
+                Galeri Visual &amp; Infografis Publik
+              </h2>
             </div>
-
-            <div className="p-6 rounded-2xl bg-[#0E1321] border border-slate-800 space-y-3">
-              <div className="w-10 h-10 rounded-xl bg-blue-500/10 border border-blue-500/20 text-blue-400 flex items-center justify-center font-bold">
-                <FileText className="w-5 h-5" />
-              </div>
-              <div className="text-3xl font-black text-white font-mono">42 Naskah</div>
-              <div className="text-xs font-bold text-slate-300 uppercase">RUU & Catatan Kritis</div>
-              <p className="text-[11px] text-slate-400 leading-relaxed">
-                Menyusun daftar inventarisasi masalah (DIM) pro-rakyat pada regulasi strategis nasional.
+            <div className="flex flex-col sm:items-end gap-2">
+              <p className="text-xs text-slate-400 max-w-sm">
+                Visualisasi data capaian dan transparansi kebijakan yang dipublikasikan secara resmi.
               </p>
-            </div>
-
-            <div className="p-6 rounded-2xl bg-[#0E1321] border border-slate-800 space-y-3">
-              <div className="w-10 h-10 rounded-xl bg-blue-500/10 border border-blue-500/20 text-blue-400 flex items-center justify-center font-bold">
-                <TrendingUp className="w-5 h-5" />
-              </div>
-              <div className="text-3xl font-black text-white font-mono">1,420+</div>
-              <div className="text-xs font-bold text-slate-300 uppercase">Aspirasi Dapil Diserap</div>
-              <p className="text-[11px] text-slate-400 leading-relaxed">
-                Pengaduan infrastruktur, pendidikan, dan layanan publik yang diteruskan ke kementerian terkait.
-              </p>
-            </div>
-
-            <div className="p-6 rounded-2xl bg-[#0E1321] border border-slate-800 space-y-3">
-              <div className="w-10 h-10 rounded-xl bg-blue-500/10 border border-blue-500/20 text-blue-400 flex items-center justify-center font-bold">
-                <ShieldCheck className="w-5 h-5" />
-              </div>
-              <div className="text-3xl font-black text-white font-mono">100%</div>
-              <div className="text-xs font-bold text-slate-300 uppercase">Transparansi Dana Reses</div>
-              <p className="text-[11px] text-slate-400 leading-relaxed">
-                Laporan pertanggungjawaban kegiatan kunjungan daerah pemilihan terverifikasi independen.
-              </p>
+              <Link
+                href={getNavLinkHref('/infografis')}
+                className="text-xs font-bold text-blue-400 hover:text-blue-300 inline-flex items-center gap-1 group"
+              >
+                <span>Lihat Semua Infografis</span>
+                <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-1 transition-transform" />
+              </Link>
             </div>
           </div>
 
-          {/* GALERI KARTU INFOGRAFIS VISUAL */}
-          {infographics.length > 0 && (
-            <div className="pt-8 space-y-6 border-t border-slate-800/60">
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                <div>
-                  <h3 className="text-lg font-black text-white">
-                    Galeri Visual &amp; Infografis Publik
-                  </h3>
-                  <p className="text-xs text-slate-400">
-                    Visualisasi data capaian dan transparansi kebijakan yang dipublikasikan secara resmi.
-                  </p>
-                </div>
+          {infographics.length > 0 ? (
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+              {infographics.map((info) => (
                 <Link
+                  key={info.id}
                   href={getNavLinkHref('/infografis')}
-                  className="text-xs font-bold text-blue-400 hover:text-blue-300 inline-flex items-center gap-1 group"
+                  className="group rounded-2xl bg-[#16171b] border border-white/5 hover:border-blue-500/30 overflow-hidden transition-all duration-300 hover:-translate-y-1 hover:shadow-xl hover:shadow-black/50 block"
                 >
-                  <span>Lihat Semua Infografis</span>
-                  <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-1 transition-transform" />
+                  <div className="relative aspect-[16/10] overflow-hidden bg-slate-900">
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img
+                      src={info.imageUrl || info.posterUrl || info.featuredImageUrl || '/images/showcase-infografis-apbd.jpg'}
+                      alt={info.title}
+                      className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                    />
+                  </div>
+                  <div className="p-5 space-y-2">
+                    <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-blue-500/10 text-blue-400 border border-blue-500/20 uppercase">
+                      {info.category || 'INFOGRAFIS RESMI'}
+                    </span>
+                    <h4 className="text-sm font-bold text-white group-hover:text-blue-400 transition-colors line-clamp-2">
+                      {info.title}
+                    </h4>
+                    <p className="text-xs text-slate-400 line-clamp-2">
+                      {info.excerpt || info.prompt || 'Visualisasi data capaian kebijakan publik.'}
+                    </p>
+                  </div>
                 </Link>
-              </div>
-
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                {infographics.map((info) => (
-                  <Link
-                    key={info.id}
-                    href={getNavLinkHref('/infografis')}
-                    className="group rounded-2xl bg-[#16171b] border border-white/5 hover:border-blue-500/30 overflow-hidden transition-all duration-300 hover:-translate-y-1 hover:shadow-xl hover:shadow-black/50 block"
-                  >
-                    <div className="relative aspect-[16/10] overflow-hidden bg-slate-900">
-                      {/* eslint-disable-next-line @next/next/no-img-element */}
-                      <img
-                        src={info.imageUrl || info.posterUrl || info.featuredImageUrl || '/images/showcase-infografis-apbd.jpg'}
-                        alt={info.title}
-                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
-                      />
-                    </div>
-                    <div className="p-5 space-y-2">
-                      <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-blue-500/10 text-blue-400 border border-blue-500/20 uppercase">
-                        {info.category || 'INFOGRAFIS RESMI'}
-                      </span>
-                      <h4 className="text-sm font-bold text-white group-hover:text-blue-400 transition-colors line-clamp-2">
-                        {info.title}
-                      </h4>
-                      <p className="text-xs text-slate-400 line-clamp-2">
-                        {info.excerpt || info.prompt || 'Visualisasi data capaian kebijakan publik.'}
-                      </p>
-                    </div>
-                  </Link>
-                ))}
-              </div>
+              ))}
+            </div>
+          ) : (
+            <div className="text-center py-12 rounded-2xl border border-dashed border-slate-800 text-slate-500 text-xs">
+              Belum ada publikasi infografis data yang diterbitkan.
             </div>
           )}
         </div>

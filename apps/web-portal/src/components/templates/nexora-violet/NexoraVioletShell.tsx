@@ -3,8 +3,6 @@
 import React, { useState } from 'react';
 import Link from 'next/link';
 import {
-  Search,
-  User,
   Instagram,
   Sparkles,
   Menu,
@@ -47,65 +45,42 @@ export function NexoraVioletShell({
   ];
 
   return (
-    <div className="min-h-screen bg-[#ECE6FD] text-slate-900 font-sans selection:bg-[#7048E8] selection:text-white p-2 sm:p-4 md:p-6 lg:p-8">
-      {/* Outer Rounded Container matching the image mockup card */}
-      <div className="max-w-7xl mx-auto bg-white rounded-[28px] sm:rounded-[36px] lg:rounded-[42px] shadow-[0_20px_60px_-15px_rgba(112,72,232,0.12)] border border-purple-100/80 overflow-hidden flex flex-col">
-        
-        {/* ========================================================= */}
-        {/* TOP NAVBAR                                                */}
-        {/* ========================================================= */}
-        <header className="px-5 sm:px-8 lg:px-12 py-5 sm:py-6 border-b border-purple-50/80 flex items-center justify-between gap-4 relative z-30">
+    <div className="min-h-screen bg-white text-slate-900 font-sans selection:bg-[#7048E8] selection:text-white flex flex-col">
+      {/* ========================================================= */}
+      {/* TOP NAVBAR (STICKY FULL-WIDTH)                           */}
+      {/* ========================================================= */}
+      <header className="sticky top-0 z-40 bg-[#F4F0FF]/95 backdrop-blur-md border-b border-purple-200/80 shadow-xs">
+        <div className="relative max-w-7xl mx-auto px-5 sm:px-8 lg:px-12 py-4 sm:py-5 flex items-center justify-between gap-4">
           
-          {/* Left: Navigation Links (Desktop) & Brand (Mobile) */}
-          <div className="flex items-center gap-6 lg:gap-8">
+          {/* Left: Brand */}
+          <div className="flex items-center shrink-0 z-10">
             <Link
               href={href('/')}
-              className="md:hidden flex items-center gap-2 font-black text-sm text-slate-950"
+              className="flex items-center font-black text-sm sm:text-base text-slate-950 hover:text-[#7048E8] transition tracking-tight"
             >
-              <span>{info.callName}</span>
-              <span className="text-[10px] font-bold text-[#7048E8]">• DPR RI</span>
+              <span>{info.fullName}</span>
             </Link>
-
-            <nav className="hidden md:flex items-center gap-6 lg:gap-8">
-              {navLinks.map((link) => (
-                <Link
-                  key={link.label}
-                  href={link.href}
-                  className={`text-xs sm:text-sm font-semibold transition-colors duration-200 ${
-                    link.active
-                      ? 'text-[#7048E8] font-bold'
-                      : 'text-slate-800 hover:text-[#7048E8]'
-                  }`}
-                >
-                  {link.label}
-                </Link>
-              ))}
-            </nav>
           </div>
 
-          {/* Right: Search, Avatar & Instagram Pill Button */}
-          <div className="flex items-center gap-2.5 sm:gap-3.5">
-            <Link
-              href={href('/artikel')}
-              className="w-9 h-9 rounded-full bg-slate-50 hover:bg-purple-50 border border-slate-200/80 flex items-center justify-center text-slate-700 hover:text-[#7048E8] transition shadow-sm"
-              title="Cari Artikel"
-            >
-              <Search className="w-4 h-4" />
-            </Link>
+          {/* Center: Navigation Links (Centrally Aligned) */}
+          <nav className="hidden md:flex items-center justify-center gap-6 lg:gap-8 absolute left-1/2 -translate-x-1/2 top-1/2 -translate-y-1/2 z-10">
+            {navLinks.map((link) => (
+              <Link
+                key={link.label}
+                href={link.href}
+                className={`text-xs sm:text-sm font-semibold transition-colors duration-200 ${
+                  link.active
+                    ? 'text-[#7048E8] font-bold'
+                    : 'text-slate-800 hover:text-[#7048E8]'
+                }`}
+              >
+                {link.label}
+              </Link>
+            ))}
+          </nav>
 
-            <Link
-              href={href('/profil')}
-              className="w-9 h-9 rounded-full bg-purple-100 border-2 border-white overflow-hidden shadow-sm hover:scale-105 transition"
-              title="Profil Dewan"
-            >
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img
-                src={info.avatar}
-                alt={info.fullName}
-                className="w-full h-full object-cover object-top"
-              />
-            </Link>
-
+          {/* Right: Instagram Pill Button */}
+          <div className="flex items-center gap-2.5 sm:gap-3.5 shrink-0 z-10">
             {/* Pill Action Button: Instagram */}
             <a
               href={info.instagramUrl}
@@ -126,7 +101,8 @@ export function NexoraVioletShell({
               {mobileMenuOpen ? <X className="w-4 h-4" /> : <Menu className="w-4 h-4" />}
             </button>
           </div>
-        </header>
+        </div>
+      </header>
 
         {/* Mobile Navigation Drawer */}
         {mobileMenuOpen && (
@@ -160,26 +136,23 @@ export function NexoraVioletShell({
           </div>
         )}
 
-        {/* ========================================================= */}
-        {/* MAIN BODY CONTENT                                         */}
-        {/* ========================================================= */}
-        <main className="flex-1 w-full">{children}</main>
+      {/* ========================================================= */}
+      {/* MAIN BODY CONTENT                                         */}
+      {/* ========================================================= */}
+      <main className="flex-1 w-full flex flex-col">{children}</main>
 
-        {/* ========================================================= */}
-        {/* FOOTER (Nexora Violet Aesthetic)                           */}
-        {/* ========================================================= */}
-        <footer className="bg-slate-950 text-white mt-auto border-t border-purple-900/40">
+      {/* ========================================================= */}
+      {/* FOOTER (Full-Width Nexora Violet Aesthetic)                */}
+      {/* ========================================================= */}
+      <footer className="w-full bg-slate-950 text-white mt-auto border-t border-purple-900/40">
           <div className="max-w-7xl mx-auto px-6 sm:px-10 lg:px-16 py-12 lg:py-16">
             <div className="grid grid-cols-1 md:grid-cols-12 gap-8 lg:gap-12">
               
               {/* Col 1: Brand & Bio */}
               <div className="md:col-span-5 space-y-4">
                 <div className="flex items-center gap-2">
-                  <span className="text-3xl font-black tracking-widest text-white uppercase">
-                    NEXORA
-                  </span>
-                  <span className="px-2 py-0.5 rounded-full bg-[#7048E8] text-[10px] font-bold text-white uppercase tracking-wider">
-                    POLARIS
+                  <span className="text-xl sm:text-2xl font-black tracking-tight text-white uppercase">
+                    {info.fullName}
                   </span>
                 </div>
                 <p className="text-sm text-slate-400 leading-relaxed max-w-md">
@@ -214,7 +187,7 @@ export function NexoraVioletShell({
                   </li>
                   <li>
                     <Link href={href('/infografis')} className="hover:text-[#8262FE] transition">
-                      Infografis Kinerja APBD
+                      Infografis Kinerja Publik
                     </Link>
                   </li>
                   <li>
@@ -263,13 +236,11 @@ export function NexoraVioletShell({
                 © {new Date().getFullYear()} {info.fullName}. Hak Cipta Dilindungi Undang-Undang.
               </div>
               <div className="text-[11px] text-purple-400/80 font-mono">
-                Didukung oleh POLARIS Dewan System
+                Sistem Portal Resmi Dewan
               </div>
             </div>
           </div>
         </footer>
-
       </div>
-    </div>
-  );
-}
+    );
+  }

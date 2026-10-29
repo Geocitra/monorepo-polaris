@@ -57,16 +57,20 @@ export class CmsPublicPortalService {
     const [member] = await db
       .select({
         fullName: tenantMembers.fullName,
+        email: tenantMembers.email,
+        phoneNumber: tenantMembers.phoneNumber,
         photoUrl: tenantMembers.photoUrl,
         photoGallery: tenantMembers.photoGallery,
         partyAffiliation: tenantMembers.partyAffiliation,
         legislativeLevel: tenantMembers.legislativeLevel,
+        commissionName: tenantMembers.commissionName,
         dapilId: tenantMembers.electoralDistrictId,
         customDapil: tenantMembers.customDapilName,
         personalCoverage: tenantMembers.personalCoverage,
         education: tenantMembers.education,
         courses: tenantMembers.courses,
         issueInterests: tenantMembers.issueInterests,
+        username: tenantMembers.username,
       })
       .from(tenantMembers)
       .where(eq(tenantMembers.id, portal.tenantId))
@@ -111,9 +115,10 @@ export class CmsPublicPortalService {
       isSubscriptionActive &&
       (sub?.planTier === PlanTier.PRO || (sub?.planTier as any) === 'VIP');
 
-    const resolvedLayout = isPremiumTier
-      ? theme?.layoutTemplateId || 'standard-default'
-      : 'standard-default';
+    const resolvedLayout =
+      isPremiumTier || theme?.layoutTemplateId === 'polaris-insight'
+        ? theme?.layoutTemplateId || 'polaris-insight'
+        : 'polaris-insight';
 
     const socials = await db
       .select({
@@ -212,10 +217,20 @@ export class CmsPublicPortalService {
       },
       member: {
         fullName: member?.fullName,
+        email: member?.email || null,
+        phoneNumber: member?.phoneNumber || null,
         photoUrl: member?.photoUrl || theme?.officialPhotoUrl || null,
         photoGallery: Array.isArray(member?.photoGallery) ? member.photoGallery : [],
-        partyAffiliation: member?.partyAffiliation,
-        legislativeLevel: member?.legislativeLevel,
+        partyAffiliation: member?.partyAffiliation || null,
+        legislativeLevel: member?.legislativeLevel || null,
+        commissionName: member?.commissionName || null,
+        education: member?.education || null,
+        courses: Array.isArray(member?.courses) ? member.courses : [],
+        username: member?.username || null,
+        instagramHandle:
+          socials.find((s) => s.platform === 'INSTAGRAM')?.profileUrl?.replace(/^https?:\/\/(www\.)?instagram\.com\//, '').replace(/\/$/, '') ||
+          member?.username ||
+          null,
         dapilName,
         provinceName,
       },

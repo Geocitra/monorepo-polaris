@@ -39,11 +39,11 @@ export function LailaSakuraShell({
   const href = useLailaHref(subdomain);
 
   const navItems = [
-    { label: 'HOME', path: '/', id: 'beranda' },
-    { label: 'ABOUT', path: '/profil', id: 'profil' },
+    { label: 'BERANDA', path: '/', id: 'beranda' },
+    { label: 'PROFIL', path: '/profil', id: 'profil' },
     { label: 'ARTIKEL', path: '/artikel', id: 'artikel' },
     { label: 'INFOGRAFIS', path: '/infografis', id: 'infografis' },
-    { label: 'CONTACT', path: '/kontak', id: 'kontak' },
+    { label: 'KONTAK', path: '/kontak', id: 'kontak' },
   ];
 
   return (
@@ -173,7 +173,7 @@ export function LailaSakuraShell({
                 {info.headlineTagline}
               </p>
               <p className="text-xs text-[#64748B] leading-relaxed max-w-md">
-                {info.bio}
+                Portal resmi publikasi telaah kebijakan, transparansi kerja parlemen, dan advokasi aspirasi masyarakat.
               </p>
               <div className="pt-2 flex items-center gap-2">
                 <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-[#FF4D8D]/10 border border-[#FF4D8D]/30 text-[11px] font-mono text-[#FF4D8D]">

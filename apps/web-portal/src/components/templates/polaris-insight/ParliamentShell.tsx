@@ -2,7 +2,7 @@
 
 import React, { useState, createContext, useContext } from 'react';
 import Link from 'next/link';
-import { usePathname } from 'next/navigation';
+import { usePathname, useSearchParams } from 'next/navigation';
 import {
   Search,
   X,
@@ -60,18 +60,21 @@ export function ParliamentShell({
   const officialFullName =
     member?.fullName ||
     theme?.officialFullName ||
-    'Dr. Ir. Sangsoro Mowo Berkah, M.Sc.';
+    'Anggota Dewan';
 
   const partyName = member?.partyAffiliation || 'Fraksi Parlemen';
   const dapilName =
-    member?.dapilName || member?.customDapilName || member?.customDapil || 'Jawa Barat I';
+    member?.dapilName || member?.customDapilName || member?.customDapil || '';
   const heroBannerUrl =
     theme?.heroBannerUrl || '/images/parliament-panoramic-banner.png';
   const instagramUsername =
     member?.instagramHandle?.replace(/^@/, '') ||
-    member?.username ||
-    subdomain ||
-    'ahmadfauzi';
+    member?.socialMedia?.instagram?.replace(/^@/, '') ||
+    '';
+  const waNumber = member?.phoneNumber?.replace(/\D/g, '') || '';
+  const waHotlineLink = waNumber
+    ? `https://wa.me/${waNumber}?text=Halo%20Sekretariat%20Dewan,%20saya%20ingin%20mengajukan%20aspirasi.`
+    : `https://wa.me/?text=Halo%20Sekretariat%20Dewan,%20saya%20ingin%20mengajukan%20aspirasi.`;
 
   // State Management
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -80,12 +83,20 @@ export function ParliamentShell({
 
 
   const pathname = usePathname();
+  const searchParams = useSearchParams();
+  const previewTemplate = searchParams?.get('preview_template');
+  const previewColor = searchParams?.get('preview_color');
 
   const getNavLinkHref = (path: string) => {
+    let base = path;
     if (subdomain && pathname?.startsWith(`/${subdomain}`)) {
-      return path === '/' ? `/${subdomain}` : `/${subdomain}${path}`;
+      base = path === '/' ? `/${subdomain}` : `/${subdomain}${path}`;
     }
-    return path;
+    const params = new URLSearchParams();
+    if (previewTemplate) params.set('preview_template', previewTemplate);
+    if (previewColor) params.set('preview_color', previewColor);
+    const queryString = params.toString();
+    return queryString ? `${base}${base.includes('?') ? '&' : '?'}${queryString}` : base;
   };
 
   const navItems = [
@@ -151,33 +162,24 @@ export function ParliamentShell({
               })}
             </nav>
 
-            {/* Sisi Kanan: Search Icon + Instagram Pill Button + Mobile Hamburger */}
+            {/* Sisi Kanan: Instagram Pill Button + Mobile Hamburger */}
             <div className="flex items-center gap-2 sm:gap-2.5 shrink-0">
-              {/* Search Trigger Button */}
-              <button
-                type="button"
-                onClick={() => setSearchModalOpen(true)}
-                className="p-1.5 sm:p-2 rounded-full text-slate-500 hover:text-[#96702c] hover:bg-amber-50/80 transition-colors cursor-pointer"
-                aria-label="Pencarian Portal"
-                title="Cari artikel, regulasi, atau isu"
-              >
-                <Search className="w-4 h-4" />
-              </button>
-
               {/* Instagram Pill Button */}
-              <a
-                href={`https://instagram.com/${instagramUsername}`}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="inline-flex items-center gap-1.5 sm:gap-2 px-2.5 sm:px-4 py-1.5 sm:py-2 rounded-full text-white font-bold text-xs sm:text-[13px] shadow-md hover:opacity-95 hover:scale-105 active:scale-95 transition-all select-none shrink-0"
-                style={{
-                  background:
-                    'linear-gradient(90deg, #833AB4 0%, #C13584 35%, #E1306C 65%, #F77737 100%)',
-                }}
-              >
-                <Instagram className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-white shrink-0" />
-                <span className="hidden sm:inline truncate max-w-[90px] sm:max-w-none">@{instagramUsername}</span>
-              </a>
+              {instagramUsername && (
+                <a
+                  href={`https://instagram.com/${instagramUsername}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-1.5 sm:py-2 rounded-full text-white font-bold text-xs sm:text-[13px] shadow-md hover:opacity-95 hover:scale-105 active:scale-95 transition-all select-none shrink-0"
+                  style={{
+                    background:
+                      'linear-gradient(90deg, #833AB4 0%, #C13584 35%, #E1306C 65%, #F77737 100%)',
+                  }}
+                >
+                  <Instagram className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-white shrink-0" />
+                  <span>Instagram</span>
+                </a>
+              )}
 
               {/* Mobile / Tablet Drawer Hamburger */}
               <button
@@ -249,8 +251,7 @@ export function ParliamentShell({
 
               {/* Page Badge Pill */}
               {pageBadge && (
-                <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-[#96702c]/20 text-amber-300 border border-[#96702c]/40 text-xs font-bold uppercase tracking-wider backdrop-blur-xs">
-                  <ShieldCheck className="w-3.5 h-3.5 text-amber-400" />
+                <div className="inline-flex items-center px-3 py-1 rounded-full bg-[#96702c]/20 text-amber-300 border border-[#96702c]/40 text-xs font-bold uppercase tracking-wider backdrop-blur-xs">
                   <span>{pageBadge}</span>
                 </div>
               )}
@@ -298,7 +299,7 @@ export function ParliamentShell({
                   </span>
                 </div>
                 <p className="text-slate-400 text-xs leading-relaxed max-w-md">
-                  Website resmi akuntabilitas kerja parlemen dan saluran aspirasi konstituen Daerah Pemilihan {dapilName} • {partyName}.
+                  Website resmi akuntabilitas kerja parlemen dan saluran aspirasi konstituen {dapilName ? `Daerah Pemilihan ${dapilName}` : 'daerah pemilihan'} • {partyName}.
                 </p>
                 <div className="pt-2 flex items-center gap-3">
                   <Link
@@ -309,7 +310,7 @@ export function ParliamentShell({
                     <span>Kontak &amp; Aspirasi</span>
                   </Link>
                   <a
-                    href="https://wa.me/?text=Halo%20Sekretariat%20Dewan,%20saya%20ingin%20mengajukan%20aspirasi."
+                    href={waHotlineLink}
                     target="_blank"
                     rel="noopener noreferrer"
                     className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 text-[11px] font-bold transition border border-slate-700 cursor-pointer"
@@ -368,16 +369,18 @@ export function ParliamentShell({
                       Kanal Kontak & Sekretariat
                     </Link>
                   </li>
-                  <li>
-                    <a
-                      href={`https://instagram.com/${instagramUsername}`}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="hover:text-amber-400 transition-colors"
-                    >
-                      Instagram Resmi @{instagramUsername}
-                    </a>
-                  </li>
+                  {instagramUsername && (
+                    <li>
+                      <a
+                        href={`https://instagram.com/${instagramUsername}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="hover:text-amber-400 transition-colors"
+                      >
+                        Instagram Resmi @{instagramUsername}
+                      </a>
+                    </li>
+                  )}
                   <li>
                     <Link href={getNavLinkHref('/infografis')} className="hover:text-amber-400 transition-colors">
                       Laporan Kinerja & Triwulan
@@ -385,7 +388,7 @@ export function ParliamentShell({
                   </li>
                   <li>
                     <a
-                      href="https://wa.me/?text=Halo%20Sekretariat%20Dewan,%20saya%20ingin%20mengajukan%20aspirasi."
+                      href={waHotlineLink}
                       target="_blank"
                       rel="noopener noreferrer"
                       className="hover:text-amber-400 transition-colors flex items-center gap-1"
@@ -444,7 +447,7 @@ export function ParliamentShell({
               <div className="space-y-2 text-xs">
                 <span className="text-slate-400 font-semibold block">Topik Populer:</span>
                 <div className="flex flex-wrap gap-1.5">
-                  {['UU Cipta Kerja', 'Infrastruktur Jalan', 'Pendidikan Karakter', 'APBD & Anggaran', 'UMKM'].map(
+                  {['Kebijakan Publik', 'Infrastruktur', 'Pendidikan', 'Anggaran', 'Aspirasi Warga'].map(
                     (t) => (
                       <button
                         key={t}
@@ -461,7 +464,7 @@ export function ParliamentShell({
 
               <div className="pt-2 text-right">
                 <Link
-                  href={`/artikel?q=${encodeURIComponent(searchQuery)}`}
+                  href={getNavLinkHref(`/artikel?q=${encodeURIComponent(searchQuery)}`)}
                   onClick={() => setSearchModalOpen(false)}
                   className="inline-flex items-center gap-1 px-4 py-2 rounded-lg bg-[#96702c] text-white text-xs font-bold hover:bg-[#805f24] transition-colors"
                 >

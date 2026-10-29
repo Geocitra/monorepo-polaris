@@ -34,7 +34,7 @@ export function NexoraVioletArtikelCatalogClient({
   const href = useNexoraHref(subdomain);
 
   const [searchTerm, setSearchTerm] = useState('');
-  const [selectedCategory, setSelectedCategory] = useState('ALL');
+  const [selectedCategory, setSelectedCategory] = useState('SEMUA');
 
   const allArticles =
     articles && articles.length > 0
@@ -64,7 +64,7 @@ export function NexoraVioletArtikelCatalogClient({
 
   // Extract unique categories
   const categories = [
-    'ALL',
+    'SEMUA',
     ...Array.from(
       new Set(
         allArticles
@@ -80,20 +80,21 @@ export function NexoraVioletArtikelCatalogClient({
       article.title?.toLowerCase().includes(searchTerm.toLowerCase()) ||
       article.excerpt?.toLowerCase().includes(searchTerm.toLowerCase());
 
-    const matchCat = selectedCategory === 'ALL' || article.category === selectedCategory;
+    const matchCat = selectedCategory === 'SEMUA' || article.category === selectedCategory;
 
     return matchSearch && matchCat;
   });
 
   return (
     <NexoraVioletShell member={member} theme={theme} subdomain={subdomain} activePage="artikel">
-      <div className="px-6 sm:px-10 lg:px-16 py-12 sm:py-16 max-w-6xl mx-auto space-y-12">
-        
-        {/* Header */}
-        <div className="space-y-4">
-          <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-purple-100 text-[#7048E8] text-xs font-bold uppercase tracking-wider">
+      {/* ========================================================= */}
+      {/* HEADER BANNER: SIGNATURE NEXORA VIOLET PALETTE           */}
+      {/* ========================================================= */}
+      <div className="w-full bg-gradient-to-b from-[#ECE6FD] via-[#F4F0FF] to-white border-b border-purple-100/90 py-10 sm:py-14">
+        <div className="max-w-6xl mx-auto px-6 sm:px-10 lg:px-16 space-y-4">
+          <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-white/85 backdrop-blur-sm border border-purple-200/80 text-[#7048E8] text-xs font-bold uppercase tracking-wider shadow-xs">
             <BookOpen className="w-4 h-4" />
-            <span>Katalog Risalah & Kajian Kebijakan Publik</span>
+            <span>Katalog Risalah &amp; Kajian Kebijakan Publik</span>
           </div>
 
           <div className="flex flex-col md:flex-row md:items-end justify-between gap-6">
@@ -105,12 +106,15 @@ export function NexoraVioletArtikelCatalogClient({
                 ARTIKEL PUBLIKASI
               </h1>
             </div>
-            <p className="text-xs sm:text-sm font-semibold text-slate-500 max-w-md">
+            <p className="text-xs sm:text-sm font-semibold text-slate-600 max-w-md">
               Arsip pemikiran kenegaraan, analisis regulasi daerah, dan catatan kinerja legislasi resmi dari {info.fullName}.
             </p>
           </div>
         </div>
+      </div>
 
+      {/* Main Body */}
+      <div className="px-6 sm:px-10 lg:px-16 py-12 sm:py-16 max-w-6xl mx-auto space-y-12">
         {/* Filter Bar: Search + Category Pills */}
         <div className="space-y-4 bg-purple-50/70 p-5 rounded-3xl border border-purple-100">
           <div className="relative">
@@ -139,7 +143,7 @@ export function NexoraVioletArtikelCatalogClient({
                     : 'bg-white hover:bg-purple-100 text-slate-700 border border-purple-100'
                 }`}
               >
-                {cat === 'ALL' ? 'Semua Kategori' : cat}
+                {cat === 'SEMUA' ? 'Semua Kategori' : cat}
               </button>
             ))}
           </div>

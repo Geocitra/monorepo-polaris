@@ -21,7 +21,7 @@ export class PortalProfile {
 
   public updateLayoutTemplate(templateId: string, isPremiumTier: boolean): void {
     const cleanTemplateId = templateId.trim().toLowerCase();
-    if (cleanTemplateId !== 'standard-default' && !isPremiumTier) {
+    if (cleanTemplateId !== 'standard-default' && cleanTemplateId !== 'polaris-insight' && !isPremiumTier) {
       throw new Error(`[EntitlementViolation] Kustomisasi template layout tematik '${templateId}' memerlukan lisensi Premium.`);
     }
     this.layoutTemplateId = cleanTemplateId;
@@ -29,7 +29,7 @@ export class PortalProfile {
 
   public updateLayoutSchema(schema: any, isPremiumTier: boolean): void {
     const preset = (schema?.templatePreset || this.layoutTemplateId || '').trim().toLowerCase();
-    if (preset !== 'standard-default' && !isPremiumTier) {
+    if (preset !== 'standard-default' && preset !== 'polaris-insight' && !isPremiumTier) {
       throw new Error(`[EntitlementViolation] Kustomisasi template layout tematik '${preset}' memerlukan lisensi Premium.`);
     }
     this.layoutSchema = schema;

@@ -73,14 +73,19 @@ export function MidnightLimeTemplate({
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const previewTemplate = searchParams?.get('preview_template');
+  const previewColor = searchParams?.get('preview_color');
 
   const getNavLinkHref = (path: string) => {
     let base = path;
     if (subdomain && pathname?.startsWith(`/${subdomain}`)) {
       base = path === '/' ? `/${subdomain}` : `/${subdomain}${path}`;
     }
-    if (previewTemplate) {
-      base += `${base.includes('?') ? '&' : '?'}preview_template=${previewTemplate}`;
+    const params = new URLSearchParams();
+    if (previewTemplate) params.set('preview_template', previewTemplate);
+    if (previewColor) params.set('preview_color', previewColor);
+    const qs = params.toString();
+    if (qs) {
+      base += `${base.includes('?') ? '&' : '?'}${qs}`;
     }
     return base;
   };
@@ -565,8 +570,7 @@ export function MidnightLimeTemplate({
           {/* Section Header */}
           <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 pb-6 border-b border-white/10">
             <div className="space-y-2">
-              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[#D4F63D]/10 border border-[#D4F63D]/30 text-[#D4F63D] text-[11px] font-mono font-bold uppercase tracking-wider">
-                <Sparkles className="w-3.5 h-3.5" />
+              <div className="inline-flex items-center px-3 py-1 rounded-full bg-[#D4F63D]/10 border border-[#D4F63D]/30 text-[#D4F63D] text-[11px] font-mono font-bold uppercase tracking-wider">
                 <span>Data Visual &amp; Transparansi</span>
               </div>
               <h2 className="text-3xl sm:text-4xl md:text-5xl font-black text-white tracking-tight font-sans">

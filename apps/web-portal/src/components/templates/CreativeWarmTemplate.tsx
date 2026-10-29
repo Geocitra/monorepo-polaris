@@ -44,22 +44,22 @@ export function CreativeWarmTemplate({
   const photoUrl =
     theme?.officialPhotoUrl ||
     member?.photoUrl ||
-    '/images/dewan-ahmad-fauzi-cutout.webp';
+    '/images/dewan-standing-full.png';
   const headline =
     theme?.headlineTagline ||
     'Menjembatani harapan masyarakat menuju kebijakan publik yang berkeadilan dan bermartabat.';
   const officialFullName =
-    member?.fullName || theme?.officialFullName || 'Dr. H. Ahmad Fauzi, M.Si.';
+    member?.fullName || theme?.officialFullName || 'Anggota Dewan';
   const dapil =
-    member?.dapilName || member?.customDapilName || member?.customDapil || 'Jawa Barat I';
-  const party = member?.partyAffiliation || 'Fraksi Parlemen DPR RI';
-  const officialEmail = `aspirasi@${subdomain || 'dewan'}.polaris.id`;
-  const officialPhone = '+62 812-9876-5432';
+    member?.dapilName || member?.customDapilName || member?.customDapil || '';
+  const party = member?.partyAffiliation || 'Fraksi Parlemen';
+  const officialEmail = member?.email || (subdomain ? `aspirasi@${subdomain}.polaris.id` : 'aspirasi@polaris.id');
+  const officialPhone = member?.phoneNumber || '+62 812-3456-7890';
   const instagramUsername =
     member?.instagramHandle?.replace(/^@/, '') ||
     member?.username ||
     subdomain ||
-    'ahmadfauzi';
+    '';
 
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [activeModalInfo, setActiveModalInfo] = useState<any | null>(null);
@@ -67,16 +67,18 @@ export function CreativeWarmTemplate({
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const previewTemplate = searchParams?.get('preview_template');
+  const previewColor = searchParams?.get('preview_color');
 
   const getNavLinkHref = (path: string) => {
     let base = path;
     if (subdomain && pathname?.startsWith(`/${subdomain}`)) {
       base = path === '/' ? `/${subdomain}` : `/${subdomain}${path}`;
     }
-    if (previewTemplate) {
-      base += `${base.includes('?') ? '&' : '?'}preview_template=${previewTemplate}`;
-    }
-    return base;
+    const sp = new URLSearchParams();
+    if (previewTemplate) sp.set('preview_template', previewTemplate);
+    if (previewColor) sp.set('preview_color', previewColor);
+    const qs = sp.toString();
+    return qs ? `${base}${base.includes('?') ? '&' : '?'}${qs}` : base;
   };
 
   // Strictly use real generated articles and infographics from the user's account (NO dummy data fallback)

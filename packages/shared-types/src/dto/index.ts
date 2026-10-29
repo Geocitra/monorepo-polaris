@@ -204,6 +204,9 @@ export interface PortalLayoutSchemaDto {
   watermarkText?: string;
   visionMission?: VisionMissionItemDto[];
   careers?: CareerAssignmentItemDto[];
+  apexHeroDescription?: string;
+  templateContent?: Record<string, Record<string, any>>;
+  [key: string]: any;
 }
 
 export interface PortalDocumentItemDto {

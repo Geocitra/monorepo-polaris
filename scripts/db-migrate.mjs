@@ -699,6 +699,20 @@ async function runMigration() {
     await sql.unsafe(rlsSql);
     console.log('  -> Row-Level Security policies & tenant isolation kernel active.');
 
+    console.log('\n[5b/6] Applying Operator & Research Engine Migrations...');
+    const operatorSqlPath = path.join(rootDir, 'scripts/migrations_operator.sql');
+    if (fs.existsSync(operatorSqlPath)) {
+      const operatorSql = fs.readFileSync(operatorSqlPath, 'utf-8');
+      await sql.unsafe(operatorSql);
+      console.log('  -> Operator Schema & audit columns applied.');
+    }
+    const researchSqlPath = path.join(rootDir, 'packages/database/src/migrations_research.sql');
+    if (fs.existsSync(researchSqlPath)) {
+      const researchSql = fs.readFileSync(researchSqlPath, 'utf-8');
+      await sql.unsafe(researchSql);
+      console.log('  -> Research Engine schema applied.');
+    }
+
     console.log('\n[6/6] Verifying Database Integrity & Tables Summary...');
     const tables = await sql`
       SELECT table_name 

@@ -36,7 +36,7 @@ export function XenonMintArtikelCatalogClient({
   const rawArticles = articles || initialArticles || [];
 
   const [searchQuery, setSearchQuery] = useState('');
-  const [selectedCategory, setSelectedCategory] = useState('ALL');
+  const [selectedCategory, setSelectedCategory] = useState('SEMUA');
 
   // Map real API articles
   const allArticles = useMemo(() => {
@@ -73,13 +73,13 @@ export function XenonMintArtikelCatalogClient({
     allArticles.forEach((art) => {
       if (art.category) set.add(art.category);
     });
-    return ['ALL', ...Array.from(set)];
+    return ['SEMUA', ...Array.from(set)];
   }, [allArticles]);
 
   const filteredArticles = useMemo(() => {
     return allArticles.filter((art) => {
       const matchCat =
-        selectedCategory === 'ALL' || art.category === selectedCategory;
+        selectedCategory === 'SEMUA' || art.category === selectedCategory;
       const matchSearch =
         searchQuery === '' ||
         art.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -104,7 +104,7 @@ export function XenonMintArtikelCatalogClient({
           </h1>
 
           <p className="text-xs sm:text-sm text-slate-600 leading-relaxed font-medium">
-            Dokumentasi telaah regulasi komisi, pengawasan perimbangan anggaran daerah, serta catatan kunjungan lapangan resmi Anggota DPR RI {info.fullName}.
+            Dokumentasi telaah regulasi komisi, pengawasan perimbangan anggaran daerah, serta catatan kunjungan lapangan resmi Anggota {info.legislativeLevel || 'Parlemen'} {info.fullName}.
           </p>
         </div>
 
@@ -127,7 +127,7 @@ export function XenonMintArtikelCatalogClient({
                     : 'bg-white hover:bg-slate-200 text-slate-700 border border-slate-200'
                 }`}
               >
-                {cat === 'ALL' ? 'Semua' : cat}
+                {cat === 'SEMUA' ? 'Semua' : cat}
               </button>
             ))}
           </div>
@@ -207,11 +207,11 @@ export function XenonMintArtikelCatalogClient({
               <button
                 onClick={() => {
                   setSearchQuery('');
-                  setSelectedCategory('ALL');
+                  setSelectedCategory('SEMUA');
                 }}
                 className="inline-flex items-center gap-1.5 px-4 py-2 rounded-full bg-slate-950 text-white text-xs font-bold"
               >
-                Reset Filter
+                Atur Ulang Pencarian
               </button>
             )}
           </div>

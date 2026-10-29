@@ -7,7 +7,6 @@ import {
   ArrowRight,
   ArrowUpRight,
   Calendar,
-  Clock,
   Instagram,
   Menu,
   X,
@@ -22,6 +21,7 @@ import {
   FileText,
 } from 'lucide-react';
 import { formatDateIndonesian } from '@/lib/utils';
+import { resolvePortalMemberData } from '@/lib/template-resolver';
 
 interface TemplateProps {
   member: any;
@@ -40,26 +40,27 @@ export function PlatinumSlateTemplate({
   documents = [],
   subdomain,
 }: TemplateProps) {
-  const photoUrl =
-    theme?.officialPhotoUrl ||
-    member?.photoUrl ||
-    '/images/default-avatar.png';
+  const resolved = resolvePortalMemberData({
+    member,
+    theme,
+    subdomain,
+    defaultPrimaryColor: '#A0AFB7',
+  });
 
-  const officialFullName =
-    member?.fullName || theme?.officialFullName || 'Dr. Jonanda P. A. B';
-  const dapil =
-    member?.dapilName || member?.customDapilName || member?.customDapil || 'Dapil I';
-  const party = member?.partyAffiliation || 'Fraksi Parlemen';
-  const legislativeLevel = member?.legislativeLevel || 'DPRD PROVINSI';
+  const photoUrl = resolved.photoUrl;
+  const officialFullName = resolved.officialFullName;
+  const dapil = resolved.dapil || 'Dapil Terkait';
+  const party = resolved.party;
+  const legislativeLevel = resolved.legislativeLevel;
   const cleanLegislativeLevel = (legislativeLevel || 'DPR RI').replace(/_/g, ' ');
-  const commissionName = member?.commissionName || 'KOMISI I (PEMERINTAHAN & HUKUM)';
-  const officialEmail = `aspirasi@${subdomain || 'jonandabrahman'}.polaris.id`;
-  const officialPhone = '+62 812-3456-7890';
-  const instagramUsername =
-    member?.instagramHandle?.replace(/^@/, '') ||
-    member?.username ||
-    subdomain ||
-    'jonandabrahman';
+  const commissionName = resolved.commissionName;
+  const officialEmail = resolved.officialEmail;
+  const officialPhone = resolved.formattedPhoneNumber || resolved.phone || '';
+  const instagramUsername = resolved.instagramUsername;
+  const instagramUrl = resolved.instagramUrl;
+  const apexHeroDescription = resolved.apexHeroDescription;
+  const headlineTagline = resolved.headlineTagline;
+  const tagline = resolved.tagline;
 
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [selectedInfographic, setSelectedInfographic] = useState<any | null>(null);
@@ -90,84 +91,8 @@ export function PlatinumSlateTemplate({
         .join('')
     : 'AV';
 
-  // Fallback Articles (3 Cards matching exact layout of reference image)
-  const defaultArticles = [
-    {
-      id: 'art-1',
-      title: 'Perlindungan & Akses Permodalan UMKM Daerah Melalui Regulasi Parlemen',
-      slug: 'perlindungan-akses-permodalan-umkm',
-      category: 'Ekonomi Kerakyatan',
-      imageUrl: '/images/showcase-artikel-pertanian.jpg',
-      featuredImageUrl: '/images/showcase-artikel-pertanian.jpg',
-      excerpt: 'Inisiasi draf perancangan regulasi guna memperkuat subsidi bunga kredit dan perlindungan gerai usaha rakyat di 18 kecamatan.',
-      publishedAt: '2026-03-15',
-      readingTimeMinutes: 4,
-    },
-    {
-      id: 'art-2',
-      title: 'Transparansi Realisasi Pos Belanja APBD Sektor Kesehatan & BPJS PBI',
-      slug: 'transparansi-apbd-sektor-kesehatan',
-      category: 'Pengawasan Anggaran',
-      imageUrl: '/images/ref-article-1.jpg',
-      featuredImageUrl: '/images/ref-article-1.jpg',
-      excerpt: 'Hasil evaluasi triwulanan alokasi dana kesehatan daerah untuk memastikan kepesertaan masyarakat kurang mampu tetap terlindungi.',
-      publishedAt: '2026-03-10',
-      readingTimeMinutes: 6,
-    },
-    {
-      id: 'art-3',
-      title: 'Akselerasi Infrastruktur Jalan Poros Antardesa & Konektivitas Wilayah',
-      slug: 'akselerasi-infrastruktur-jalan-desa',
-      category: 'Pembangunan Wilayah',
-      imageUrl: '/images/ref-article-2.jpg',
-      featuredImageUrl: '/images/ref-article-2.jpg',
-      excerpt: 'Pengawalan percepatan perbaikan jalan poros lingkar kecamatan guna memangkas biaya logistik komoditas pertanian lokal.',
-      publishedAt: '2026-02-28',
-      readingTimeMinutes: 5,
-    },
-  ];
-
-  const articlesToDisplay =
-    recentArticles && recentArticles.length > 0 ? recentArticles.slice(0, 3) : defaultArticles;
-
-  // Fallback Infographics (3 Cards matching exact layout of reference image)
-  const defaultInfographics = [
-    {
-      id: 'info-1',
-      title: 'Transparansi APBD Sektor Kesehatan & BPJS PBI',
-      category: 'Kesehatan Publik',
-      imageUrl: '/images/showcase-infografis-apbd.jpg',
-      featuredImageUrl: '/images/showcase-infografis-apbd.jpg',
-      excerpt: 'Visualisasi alokasi pos belanja jaminan kesehatan daerah bagi masyarakat prasejahtera.',
-      statPrimary: 'Rp 48.5 Miliar',
-      statLabel: 'Alokasi JKN PBI Daerah',
-    },
-    {
-      id: 'info-2',
-      title: 'Peta Penyerapan Aspirasi & Realisasi Fisik Jalan Poros',
-      category: 'Infrastruktur',
-      imageUrl: '/images/showcase-poster-surya.jpg',
-      featuredImageUrl: '/images/showcase-poster-surya.jpg',
-      excerpt: 'Sebaran 32 titik perbaikan jalan penghubung antar-desa yang berhasil dituntaskan.',
-      statPrimary: '32 Titik Ruas',
-      statLabel: 'Tuntas Direvitalisasi',
-    },
-    {
-      id: 'info-3',
-      title: 'Alokasi Beasiswa Siswa Kurang Mampu & Berprestasi',
-      category: 'Pendidikan',
-      imageUrl: '/images/qurifolio/header-infografis-bg.jpg',
-      featuredImageUrl: '/images/qurifolio/header-infografis-bg.jpg',
-      excerpt: 'Penyaluran beasiswa daerah bagi 2.400 pelajar dan mahasiswa di seluruh kecamatan dapil.',
-      statPrimary: '2.400 Pelajar',
-      statLabel: 'Penerima Manfaat Aktif',
-    },
-  ];
-
-  const infographicsToDisplay =
-    recentInfographics && recentInfographics.length > 0
-      ? recentInfographics.slice(0, 3)
-      : defaultInfographics;
+  const articlesToDisplay = (recentArticles || []).slice(0, 3);
+  const infographicsToDisplay = (recentInfographics || []).slice(0, 3);
 
   const getArticleImg = (art: any, idx: number) => {
     const fallbacks = [
@@ -268,7 +193,7 @@ export function PlatinumSlateTemplate({
             {/* Right Action: Pill Button INSTAGRAM ↗ */}
             <div className="hidden sm:flex items-center">
               <a
-                href={`https://instagram.com/${instagramUsername}`}
+                href={instagramUrl || 'https://instagram.com'}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="px-5 py-2 sm:px-6 sm:py-2.5 rounded-full bg-gradient-to-r from-[#FFFFFF] via-[#E2E6EA] to-[#BAC2CC] text-slate-950 text-xs font-bold tracking-wider uppercase shadow-md hover:brightness-105 active:scale-95 transition-all flex items-center gap-2 cursor-pointer"
@@ -332,7 +257,7 @@ export function PlatinumSlateTemplate({
 
               <div className="pt-2 border-t border-white/10">
                 <a
-                  href={`https://instagram.com/${instagramUsername}`}
+                  href={instagramUrl || 'https://instagram.com'}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="w-full flex items-center justify-center gap-2 py-2.5 px-4 rounded-full bg-gradient-to-r from-white via-slate-200 to-slate-400 text-slate-950 text-xs font-bold uppercase tracking-wider shadow-md"
@@ -353,12 +278,12 @@ export function PlatinumSlateTemplate({
             {/* LEFT COLUMN: TITLE "WAKIL RAKYAT" PERSIS "DIGITAL DESIGNER" PADA GAMBAR */}
             <div className="lg:col-span-7 space-y-3.5 sm:space-y-4.5 lg:space-y-5 text-left">
               
-              {/* Top Tagline: Clean Minimalist Sans-Serif (Matching Reference Image) */}
+              {/* Top Tagline: Clean Minimalist Sans-Serif */}
               <div className="text-[#6D7785] text-[10px] sm:text-[11px] font-sans font-medium tracking-[0.24em] uppercase select-none">
-                PENGABDIAN &amp; AMANAH RAKYAT
+                {headlineTagline || 'PENGABDIAN & AMANAH RAKYAT'}
               </div>
 
-              {/* Giant Stacked Condensed Display with Dual-Tone Metallic Gradients (Matching Reference Image) */}
+              {/* Giant Stacked Condensed Display with Dual-Tone Metallic Gradients */}
               <h1 className="font-bebas text-7xl sm:text-8xl md:text-9xl lg:text-[7.6rem] xl:text-[8.8rem] 2xl:text-[9.8rem] font-black uppercase tracking-[-0.025em] leading-[0.80] text-white select-none">
                 <span className="block text-transparent bg-clip-text bg-gradient-to-b from-[#D5DAE2] via-[#9AA4B2] to-[#606A79]">
                   WAKIL
@@ -368,18 +293,18 @@ export function PlatinumSlateTemplate({
                 </span>
               </h1>
 
-              {/* Description Paragraph (Two-line editorial style) */}
+              {/* Description Paragraph (Two-line editorial style specifically for Apex) */}
               <p className="text-xs sm:text-[13px] md:text-[14px] text-[#7E8896] max-w-md leading-relaxed font-sans">
-                Mengawal amanah publik dengan integritas, ketegasan kebijakan, dan transparansi anggaran daerah demi kemakmuran nyata seluruh warga di Daerah Pemilihan {dapil}.
+                {apexHeroDescription}
               </p>
 
-              {/* Primary CTA Button: Sharp-Cornered Metallic Liquid Chrome (Matching Reference Image) */}
+              {/* Primary CTA Button: Sharp-Cornered Metallic Liquid Chrome */}
               <div className="pt-1 sm:pt-2">
                 <Link
                   href={getNavLinkHref('/artikel')}
                   className="inline-flex items-center gap-3 px-6 py-3.5 sm:px-7 sm:py-3.5 rounded-[2px] bg-gradient-to-r from-[#ECEEF1] via-[#D3D8E0] to-[#9BA5B4] hover:from-[#FFFFFF] hover:to-[#B6BFCB] text-slate-950 font-bold text-xs sm:text-[12.5px] tracking-wider uppercase shadow-md active:scale-95 transition-all cursor-pointer"
                 >
-                  <span>VIEW MY WORK</span>
+                  <span>TELAAH KINERJA RESMI</span>
                   <ArrowUpRight className="w-3.5 h-3.5 text-slate-950 stroke-[2.2]" />
                 </Link>
               </div>
@@ -483,74 +408,77 @@ export function PlatinumSlateTemplate({
           </div>
 
           {/* 3 Columns Grid matching reference image cards */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 sm:gap-8">
-            {articlesToDisplay.map((art, idx) => (
-              <Link
-                key={art.id || art.slug}
-                href={getNavLinkHref(`/artikel/${art.slug}`)}
-                className="group rounded-3xl bg-[#181B22] border border-white/10 hover:border-white/30 transition-all duration-300 overflow-hidden shadow-2xl flex flex-col justify-between"
-              >
-                {/* Visual Header Container with Article Image */}
-                <div className="aspect-[4/3] bg-[#0E1013] relative overflow-hidden border-b border-white/5">
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img
-                    src={getArticleImg(art, idx)}
-                    alt={art.title}
-                    className="absolute inset-0 w-full h-full object-cover group-hover:scale-105 transition-transform duration-500 brightness-90 group-hover:brightness-100"
-                    onError={(e) => {
-                      const target = e.currentTarget;
-                      const fallbacks = [
-                        '/images/showcase-artikel-pertanian.jpg',
-                        '/images/ref-article-1.jpg',
-                        '/images/ref-article-2.jpg',
-                      ];
-                      target.src = fallbacks[idx % fallbacks.length];
-                    }}
-                  />
-                  {/* Dark Gradient Overlay */}
-                  <div className="absolute inset-0 bg-gradient-to-t from-[#181B22] via-[#181B22]/30 to-black/50 pointer-events-none" />
+          {articlesToDisplay.length === 0 ? (
+            <div className="rounded-3xl bg-[#181B22] border border-white/10 p-12 text-center space-y-3">
+              <BookOpen className="w-10 h-10 text-slate-600 mx-auto" />
+              <p className="text-sm text-slate-400">Belum ada risalah atau artikel yang dipublikasikan saat ini.</p>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 sm:gap-8">
+              {articlesToDisplay.map((art, idx) => (
+                <Link
+                  key={art.id || art.slug}
+                  href={getNavLinkHref(`/artikel/${art.slug}`)}
+                  className="group rounded-3xl bg-[#181B22] border border-white/10 hover:border-white/30 transition-all duration-300 overflow-hidden shadow-2xl flex flex-col justify-between"
+                >
+                  {/* Visual Header Container with Article Image */}
+                  <div className="aspect-[4/3] bg-[#0E1013] relative overflow-hidden border-b border-white/5">
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img
+                      src={getArticleImg(art, idx)}
+                      alt={art.title}
+                      className="absolute inset-0 w-full h-full object-cover group-hover:scale-105 transition-transform duration-500 brightness-90 group-hover:brightness-100"
+                      onError={(e) => {
+                        const target = e.currentTarget;
+                        const fallbacks = [
+                          '/images/showcase-artikel-pertanian.jpg',
+                          '/images/ref-article-1.jpg',
+                          '/images/ref-article-2.jpg',
+                        ];
+                        target.src = fallbacks[idx % fallbacks.length];
+                      }}
+                    />
+                    {/* Dark Gradient Overlay */}
+                    <div className="absolute inset-0 bg-gradient-to-t from-[#181B22] via-[#181B22]/30 to-black/50 pointer-events-none" />
 
-                  {/* Floating Tags on Top */}
-                  <div className="relative z-10 p-5 flex items-center justify-between pointer-events-none">
-                    <span className="text-[10px] font-bold px-3 py-1 rounded-full bg-black/60 backdrop-blur-md text-white border border-white/20">
-                      {art.category || 'Kebijakan Publik'}
-                    </span>
-                    <span className="text-[10px] text-slate-200 px-2.5 py-1 rounded-full bg-black/60 backdrop-blur-md border border-white/10 flex items-center gap-1 font-mono">
-                      <Clock className="w-3 h-3 text-slate-300" />
-                      <span>{art.readingTimeMinutes || 5} min</span>
-                    </span>
-                  </div>
+                    {/* Floating Tags on Top */}
+                    <div className="relative z-10 p-5 flex items-center justify-between pointer-events-none">
+                      <span className="text-[10px] font-bold px-3 py-1 rounded-full bg-black/60 backdrop-blur-md text-white border border-white/20">
+                        {art.category || 'Kebijakan Publik'}
+                      </span>
+                    </div>
 
-                  {/* Circular Arrow Button at bottom right matching reference image */}
-                  <div className="absolute bottom-4 right-4 z-10">
-                    <div className="w-10 h-10 rounded-full bg-white/20 backdrop-blur-md group-hover:bg-white text-white group-hover:text-black flex items-center justify-center transition-all shadow-lg border border-white/30">
-                      <ArrowUpRight className="w-4 h-4 stroke-[2.5]" />
+                    {/* Circular Arrow Button at bottom right matching reference image */}
+                    <div className="absolute bottom-4 right-4 z-10">
+                      <div className="w-10 h-10 rounded-full bg-white/20 backdrop-blur-md group-hover:bg-white text-white group-hover:text-black flex items-center justify-center transition-all shadow-lg border border-white/30">
+                        <ArrowUpRight className="w-4 h-4 stroke-[2.5]" />
+                      </div>
                     </div>
                   </div>
-                </div>
 
-                {/* Card Title & Meta Content */}
-                <div className="p-6 space-y-2.5 text-left bg-[#181B22]">
-                  <h3 className="text-base sm:text-lg font-bold text-white group-hover:text-slate-200 transition-colors line-clamp-2 leading-snug">
-                    {art.title}
-                  </h3>
-                  <p className="text-xs text-slate-400 line-clamp-3 leading-relaxed">
-                    {art.excerpt || 'Uraian telaah regulasi dan catatan pembahasan komisi dewan.'}
-                  </p>
-                  <div className="pt-3 border-t border-white/5 flex items-center justify-between text-[11px] text-slate-500 font-mono">
-                    <div className="flex items-center gap-1.5">
-                      <Calendar className="w-3 h-3 text-slate-400" />
-                      <span>{formatDateIndonesian(art.publishedAt || art.createdAt)}</span>
+                  {/* Card Title & Meta Content */}
+                  <div className="p-6 space-y-2.5 text-left bg-[#181B22]">
+                    <h3 className="text-base sm:text-lg font-bold text-white group-hover:text-slate-200 transition-colors line-clamp-2 leading-snug">
+                      {art.title}
+                    </h3>
+                    <p className="text-xs text-slate-400 line-clamp-3 leading-relaxed">
+                      {art.excerpt || 'Uraian telaah regulasi dan catatan pembahasan komisi dewan.'}
+                    </p>
+                    <div className="pt-3 border-t border-white/5 flex items-center justify-between text-[11px] text-slate-500 font-mono">
+                      <div className="flex items-center gap-1.5">
+                        <Calendar className="w-3 h-3 text-slate-400" />
+                        <span>{formatDateIndonesian(art.publishedAt || art.createdAt)}</span>
+                      </div>
+                      <span className="text-slate-300 font-semibold group-hover:translate-x-1 transition-transform flex items-center gap-1">
+                        <span>Baca</span>
+                        <ChevronRight className="w-3 h-3" />
+                      </span>
                     </div>
-                    <span className="text-slate-300 font-semibold group-hover:translate-x-1 transition-transform flex items-center gap-1">
-                      <span>Baca</span>
-                      <ChevronRight className="w-3 h-3" />
-                    </span>
                   </div>
-                </div>
-              </Link>
-            ))}
-          </div>
+                </Link>
+              ))}
+            </div>
+          )}
 
         </div>
       </section>
@@ -579,76 +507,83 @@ export function PlatinumSlateTemplate({
           </div>
 
           {/* 3 Columns Grid matching reference image cards */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 sm:gap-8">
-            {infographicsToDisplay.map((info, idx) => (
-              <div
-                key={info.id}
-                className="group rounded-3xl bg-[#181B22] border border-white/10 hover:border-white/30 transition-all duration-300 overflow-hidden shadow-2xl flex flex-col justify-between"
-              >
-                {/* Visual Header Container with Infographic Image */}
-                <div className="aspect-[4/3] bg-[#0E1013] relative overflow-hidden border-b border-white/5">
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img
-                    src={getInfographicImg(info, idx)}
-                    alt={info.title}
-                    className="absolute inset-0 w-full h-full object-cover group-hover:scale-105 transition-transform duration-500 brightness-90 group-hover:brightness-100"
-                    onError={(e) => {
-                      const target = e.currentTarget;
-                      const fallbacks = [
-                        '/images/showcase-infografis-apbd.jpg',
-                        '/images/showcase-poster-surya.jpg',
-                        '/images/qurifolio/header-infografis-bg.jpg',
-                      ];
-                      target.src = fallbacks[idx % fallbacks.length];
-                    }}
-                  />
-                  {/* Top Right Maximize Button */}
-                  <div className="absolute top-3.5 right-3.5 z-10">
-                    <button
-                      onClick={() => setSelectedInfographic(info)}
-                      className="p-2 rounded-full bg-black/60 backdrop-blur-md border border-white/20 text-slate-300 hover:text-white hover:bg-white/20 transition-colors cursor-pointer shadow-lg"
-                      title="Perbesar Tampilan"
-                    >
-                      <Maximize2 className="w-3.5 h-3.5" />
-                    </button>
+          {infographicsToDisplay.length === 0 ? (
+            <div className="rounded-3xl bg-[#181B22] border border-white/10 p-12 text-center space-y-3">
+              <FileText className="w-10 h-10 text-slate-600 mx-auto" />
+              <p className="text-sm text-slate-400">Belum ada dokumen infografis atau visualisasi capaian yang dipublikasikan saat ini.</p>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 sm:gap-8">
+              {infographicsToDisplay.map((info, idx) => (
+                <div
+                  key={info.id}
+                  className="group rounded-3xl bg-[#181B22] border border-white/10 hover:border-white/30 transition-all duration-300 overflow-hidden shadow-2xl flex flex-col justify-between"
+                >
+                  {/* Visual Header Container with Infographic Image */}
+                  <div className="aspect-[4/3] bg-[#0E1013] relative overflow-hidden border-b border-white/5">
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img
+                      src={getInfographicImg(info, idx)}
+                      alt={info.title}
+                      className="absolute inset-0 w-full h-full object-cover group-hover:scale-105 transition-transform duration-500 brightness-90 group-hover:brightness-100"
+                      onError={(e) => {
+                        const target = e.currentTarget;
+                        const fallbacks = [
+                          '/images/showcase-infografis-apbd.jpg',
+                          '/images/showcase-poster-surya.jpg',
+                          '/images/qurifolio/header-infografis-bg.jpg',
+                        ];
+                        target.src = fallbacks[idx % fallbacks.length];
+                      }}
+                    />
+                    {/* Top Right Maximize Button */}
+                    <div className="absolute top-3.5 right-3.5 z-10">
+                      <button
+                        onClick={() => setSelectedInfographic(info)}
+                        className="p-2 rounded-full bg-black/60 backdrop-blur-md border border-white/20 text-slate-300 hover:text-white hover:bg-white/20 transition-colors cursor-pointer shadow-lg"
+                        title="Perbesar Tampilan"
+                      >
+                        <Maximize2 className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
+
+                    {/* Circular Arrow Button at bottom right */}
+                    <div className="absolute bottom-3.5 right-3.5 z-10">
+                      <button
+                        onClick={() => setSelectedInfographic(info)}
+                        className="w-10 h-10 rounded-full bg-white/20 backdrop-blur-md hover:bg-white text-white hover:text-black flex items-center justify-center transition-all cursor-pointer shadow-lg border border-white/30"
+                      >
+                        <ArrowUpRight className="w-4 h-4 stroke-[2.5]" />
+                      </button>
+                    </div>
                   </div>
 
-                  {/* Circular Arrow Button at bottom right */}
-                  <div className="absolute bottom-3.5 right-3.5 z-10">
-                    <button
-                      onClick={() => setSelectedInfographic(info)}
-                      className="w-10 h-10 rounded-full bg-white/20 backdrop-blur-md hover:bg-white text-white hover:text-black flex items-center justify-center transition-all cursor-pointer shadow-lg border border-white/30"
-                    >
-                      <ArrowUpRight className="w-4 h-4 stroke-[2.5]" />
-                    </button>
+                  {/* Card Title & Meta Content */}
+                  <div className="p-6 space-y-2.5 text-left bg-[#181B22]">
+                    <h3 className="text-base sm:text-lg font-bold text-white group-hover:text-slate-200 transition-colors line-clamp-2 leading-snug">
+                      {info.title}
+                    </h3>
+                    <p className="text-xs text-slate-400 line-clamp-3 leading-relaxed">
+                      {info.excerpt || 'Visualisasi data capaian dan transparansi alokasi belanja daerah.'}
+                    </p>
+                    <div className="pt-3 border-t border-white/5 flex items-center justify-between text-[11px] text-slate-500 font-mono">
+                      <span className="flex items-center gap-1 text-slate-400">
+                        <ShieldCheck className="w-3 h-3 text-slate-300" />
+                        <span>Data Terverifikasi</span>
+                      </span>
+                      <button
+                        onClick={() => setSelectedInfographic(info)}
+                        className="text-slate-300 font-semibold group-hover:translate-x-1 transition-transform flex items-center gap-1 cursor-pointer"
+                      >
+                        <span>Detail</span>
+                        <ChevronRight className="w-3 h-3" />
+                      </button>
+                    </div>
                   </div>
                 </div>
-
-                {/* Card Title & Meta Content */}
-                <div className="p-6 space-y-2.5 text-left bg-[#181B22]">
-                  <h3 className="text-base sm:text-lg font-bold text-white group-hover:text-slate-200 transition-colors line-clamp-2 leading-snug">
-                    {info.title}
-                  </h3>
-                  <p className="text-xs text-slate-400 line-clamp-3 leading-relaxed">
-                    {info.excerpt || 'Visualisasi data capaian dan transparansi alokasi belanja daerah.'}
-                  </p>
-                  <div className="pt-3 border-t border-white/5 flex items-center justify-between text-[11px] text-slate-500 font-mono">
-                    <span className="flex items-center gap-1 text-slate-400">
-                      <ShieldCheck className="w-3 h-3 text-slate-300" />
-                      <span>Data Terverifikasi</span>
-                    </span>
-                    <button
-                      onClick={() => setSelectedInfographic(info)}
-                      className="text-slate-300 font-semibold group-hover:translate-x-1 transition-transform flex items-center gap-1 cursor-pointer"
-                    >
-                      <span>Detail</span>
-                      <ChevronRight className="w-3 h-3" />
-                    </button>
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
+              ))}
+            </div>
+          )}
 
         </div>
       </section>
@@ -666,11 +601,11 @@ export function PlatinumSlateTemplate({
               <div className="lg:col-span-5 text-left space-y-2">
                 <div className="flex items-center gap-2">
                   <h3 className="font-bebas text-4xl sm:text-5xl md:text-6xl text-white tracking-wider leading-none">
-                    LET&apos;S CREATE SOMETHING EXTRAORDINARY ✦
+                    {tagline || 'SUARAKAN KEBUTUHAN WARGA ✦'}
                   </h3>
                 </div>
                 <p className="text-xs text-slate-400">
-                  Pengawalan perda, anggaran publik, dan transparansi kebijakan daerah demi kemajuan bersama di Dapil {dapil}.
+                  {dapil ? `Pengawalan perda, anggaran publik, dan transparansi kebijakan daerah demi kemajuan bersama di ${dapil}.` : 'Pengawalan perda, anggaran publik, dan transparansi kebijakan daerah demi kemajuan bersama.'}
                 </p>
               </div>
 
@@ -679,7 +614,7 @@ export function PlatinumSlateTemplate({
                   Pintu komunikasi resmi selalu terbuka untuk konsultasi kebijakan, kolaborasi daerah, dan audiensi kedewanan.
                 </p>
                 <a
-                  href={`https://instagram.com/${instagramUsername}`}
+                  href={instagramUrl || 'https://instagram.com'}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="inline-flex items-center gap-2 px-6 py-3.5 rounded-full bg-gradient-to-r from-white via-slate-200 to-slate-400 text-slate-950 font-bold text-xs tracking-wider uppercase shadow-lg hover:shadow-white/20 transition-all cursor-pointer"
@@ -697,7 +632,7 @@ export function PlatinumSlateTemplate({
                 </div>
                 <div className="flex items-center gap-2.5">
                   <Phone className="w-4 h-4 text-slate-400 shrink-0" />
-                  <span>{officialPhone}</span>
+                  <span>{officialPhone || 'Hubungi Sekretariat'}</span>
                 </div>
                 <div className="flex items-center gap-2.5">
                   <MapPin className="w-4 h-4 text-slate-400 shrink-0" />
@@ -716,7 +651,7 @@ export function PlatinumSlateTemplate({
             <div className="flex items-center gap-6">
               <span className="text-slate-500 uppercase tracking-widest">LET&apos;S CONNECT</span>
               <a
-                href={`https://instagram.com/${instagramUsername}`}
+                href={instagramUrl || 'https://instagram.com'}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="hover:text-white transition-colors flex items-center gap-1.5"

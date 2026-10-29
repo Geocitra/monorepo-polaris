@@ -45,19 +45,19 @@ export function MidnightGoldTemplate({
   const photoUrl =
     theme?.officialPhotoUrl ||
     member?.photoUrl ||
-    '/images/dewan-ahmad-fauzi-cutout.webp';
+    '/images/dewan-standing-full.png';
   const officialFullName =
-    member?.fullName || theme?.officialFullName || 'Dr. H. Ahmad Fauzi, M.Si.';
+    member?.fullName || theme?.officialFullName || 'Anggota Dewan';
   const dapil =
-    member?.dapilName || member?.customDapilName || member?.customDapil || 'Jawa Barat I';
-  const party = member?.partyAffiliation || 'Fraksi Parlemen DPR RI';
-  const officialEmail = `aspirasi@${subdomain || 'ahmadfauzi'}.polaris.id`;
-  const officialPhone = '+62 812-9876-5432';
+    member?.dapilName || member?.customDapilName || member?.customDapil || '';
+  const party = member?.partyAffiliation || 'Fraksi Parlemen';
+  const officialEmail = member?.email || (subdomain ? `aspirasi@${subdomain}.polaris.id` : 'aspirasi@polaris.id');
+  const officialPhone = member?.phoneNumber || '+62 812-3456-7890';
   const instagramUsername =
     member?.instagramHandle?.replace(/^@/, '') ||
     member?.username ||
     subdomain ||
-    'ahmadfauzi';
+    '';
 
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [activeModalInfo, setActiveModalInfo] = useState<any | null>(null);
@@ -65,33 +65,35 @@ export function MidnightGoldTemplate({
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const previewTemplate = searchParams?.get('preview_template');
+  const previewColor = searchParams?.get('preview_color');
 
   const getNavLinkHref = (path: string) => {
     let base = path;
     if (subdomain && pathname?.startsWith(`/${subdomain}`)) {
       base = path === '/' ? `/${subdomain}` : `/${subdomain}${path}`;
     }
-    if (previewTemplate) {
-      base += `${base.includes('?') ? '&' : '?'}preview_template=${previewTemplate}`;
-    }
-    return base;
+    const sp = new URLSearchParams();
+    if (previewTemplate) sp.set('preview_template', previewTemplate);
+    if (previewColor) sp.set('preview_color', previewColor);
+    const qs = sp.toString();
+    return qs ? `${base}${base.includes('?') ? '&' : '?'}${qs}` : base;
   };
 
   function parseCleanIdentity(fullName?: string) {
     if (!fullName) {
-      return { cleanName: 'Ahmad Fauzi', firstName: 'Ahmad', lastName: 'Fauzi', brandName: 'FAUZI' };
+      return { cleanName: 'Wakil Rakyat', firstName: 'Wakil', lastName: 'Rakyat', brandName: 'POLARIS' };
     }
     let clean = fullName.split(',')[0].trim();
     while (/^(dr|ir|drs|dra|h|hj|prof|kh|k\.h|haji|hajjah)\.?\s+/i.test(clean)) {
       clean = clean.replace(/^(dr|ir|drs|dra|h|hj|prof|kh|k\.h|haji|hajjah)\.?\s+/i, '').trim();
     }
     const words = clean.split(/\s+/).filter(Boolean);
-    const firstName = words[0] || 'Ahmad';
-    const lastName = words.length > 1 ? words.slice(1).join(' ') : 'Fauzi';
+    const firstName = words[0] || 'Wakil';
+    const lastName = words.length > 1 ? words.slice(1).join(' ') : '';
     const brandName = (words[words.length - 1] || firstName).toUpperCase();
 
     return {
-      cleanName: clean || 'Ahmad Fauzi',
+      cleanName: clean || 'Wakil Rakyat',
       firstName,
       lastName,
       brandName,

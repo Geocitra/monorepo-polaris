@@ -47,9 +47,56 @@ export async function generateMetadata({
   const data = await fetchPortalData(subdomain);
   if (!data) return { title: 'Infografis Kinerja - POLARIS' };
 
+  const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3001';
+  const { member, theme, portal } = data;
+  const officialFullName = member?.fullName || theme?.officialFullName || 'Anggota Dewan';
+  const dapil = member?.dapilName || member?.customDapilName || member?.customDapil || 'Daerah Pemilihan';
+  const party = member?.partyAffiliation || 'Parlemen';
+
+  const title = `Infografis Kinerja & Data Akuntabilitas - ${officialFullName}`;
+  const description = `Visualisasi ringkas mengenai realisasi anggaran, capaian legislasi daerah, dan transparansi advokasi kebijakan publik ${officialFullName} untuk konstituen di ${dapil}.`;
+
+  const canonicalUrl = portal?.customDomain
+    ? `https://${portal.customDomain}/infografis`
+    : `${baseUrl}/${subdomain}/infografis`;
+
+  const ogImageUrl = `/api/og?title=${encodeURIComponent(`Infografis Kinerja & Akuntabilitas`)}&author=${encodeURIComponent(officialFullName)}&dapil=${encodeURIComponent(dapil)}&party=${encodeURIComponent(party)}&color=${encodeURIComponent(theme?.primaryHexColor || '#1890FF')}`;
+
   return {
-    title: `Infografis Kinerja & Data Akuntabilitas - ${data.member.fullName}`,
-    description: `Visualisasi capaian legislasi, alokasi anggaran daerah, dan dampak konkret pembangunan untuk rakyat dari ${data.member.fullName}.`,
+    title,
+    description,
+    keywords: [
+      officialFullName,
+      'Infografis Parlemen',
+      'Transparansi Anggaran',
+      'Laporan Kinerja Dewan',
+      party,
+      dapil,
+      'Data Kebijakan',
+    ],
+    alternates: {
+      canonical: canonicalUrl,
+    },
+    openGraph: {
+      title,
+      description,
+      type: 'website',
+      url: canonicalUrl,
+      images: [
+        {
+          url: ogImageUrl,
+          width: 1200,
+          height: 630,
+          alt: title,
+        },
+      ],
+    },
+    twitter: {
+      card: 'summary_large_image',
+      title,
+      description,
+      images: [ogImageUrl],
+    },
   };
 }
 
@@ -76,9 +123,9 @@ export default async function InfografisIndexPage({
   const officialFullName =
     member?.fullName ||
     theme?.officialFullName ||
-    'Dr. Ir. Sangsoro Mowo Berkah, M.Sc.';
+    'Anggota Dewan';
   const dapil =
-    member?.dapilName || member?.customDapilName || member?.customDapil || 'Jawa Barat I';
+    member?.dapilName || member?.customDapilName || member?.customDapil || '';
 
   if (templateId === PortalTemplateId.BOLD_TYPOGRAPHY || templateId === 'bold-typography') {
     return (
@@ -88,7 +135,6 @@ export default async function InfografisIndexPage({
         subdomain={subdomain}
         activePage="infografis"
         breadcrumbTitle="Infografis Capaian"
-        pageBadge="Transparansi & Akuntabilitas Parlemen"
         pageTitle="Infografis Capaian Kinerja"
         pageSubtitle={`Ikhtisar visual berbasis data mengenai pengawasan anggaran, serapan aspirasi konstituen, dan realisasi program nyata bagi masyarakat di Daerah Pemilihan ${dapil}.`}
       >
@@ -111,7 +157,6 @@ export default async function InfografisIndexPage({
         subdomain={subdomain}
         activePage="infografis"
         breadcrumbTitle="Infografis Capaian"
-        pageBadge="Transparansi & Akuntabilitas Parlemen"
         pageTitle="Infografis Capaian Kinerja"
         pageSubtitle={`Ikhtisar visual berbasis data mengenai pengawasan anggaran, serapan aspirasi konstituen, dan realisasi program nyata bagi masyarakat di Daerah Pemilihan ${dapil}.`}
       >
@@ -134,7 +179,6 @@ export default async function InfografisIndexPage({
         subdomain={subdomain}
         activePage="infografis"
         breadcrumbTitle="Infografis Capaian"
-        pageBadge="Transparansi & Akuntabilitas Parlemen"
         pageTitle="Infografis Capaian Kinerja"
         pageSubtitle={`Ikhtisar visual berbasis data mengenai pengawasan anggaran, serapan aspirasi konstituen, dan realisasi program nyata bagi masyarakat di Daerah Pemilihan ${dapil}.`}
       >
@@ -620,9 +664,8 @@ export default async function InfografisIndexPage({
       subdomain={subdomain}
       activePage="infografis"
       breadcrumbTitle="Infografis Capaian"
-      pageBadge="Transparansi & Akuntabilitas Parlemen"
       pageTitle="Infografis Capaian Kinerja"
-      pageSubtitle={`Ikhtisar visual berbasis data mengenai pengawasan anggaran, serapan aspirasi konstituen, dan realisasi program nyata bagi masyarakat di Daerah Pemilihan ${dapil}.`}
+      pageSubtitle={dapil ? `Ikhtisar visual berbasis data mengenai pengawasan anggaran, serapan aspirasi konstituen, dan realisasi program nyata bagi masyarakat di Daerah Pemilihan ${dapil}.` : 'Ikhtisar visual berbasis data mengenai pengawasan anggaran, serapan aspirasi konstituen, dan realisasi program nyata bagi masyarakat.'}
     >
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10 sm:py-14">
         <InfografisGalleryClient

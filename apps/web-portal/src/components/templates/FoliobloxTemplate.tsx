@@ -29,6 +29,7 @@ import {
   Compass,
 } from 'lucide-react';
 import { formatDateIndonesian } from '@/lib/utils';
+import { resolvePortalMemberData } from '@/lib/template-resolver';
 
 interface TemplateProps {
   member: any;
@@ -47,35 +48,27 @@ export function FoliobloxTemplate({
   documents = [],
   subdomain,
 }: TemplateProps) {
-  const photoUrl =
-    theme?.officialPhotoUrl ||
-    member?.photoUrl ||
-    '/images/default-avatar.png';
+  const resolved = resolvePortalMemberData({
+    member,
+    theme,
+    subdomain,
+    defaultPrimaryColor: '#FF4500',
+  });
 
-  const officialFullName =
-    member?.fullName || theme?.officialFullName || 'Dr. Jonanda P. A. B';
-  const firstName =
-    officialFullName.replace(/^(Dr\.|Drs\.|H\.|Hj\.|Ir\.|Prof\.)\s*/i, '').split(' ')[0] || 'Alex';
-
-  const rawDapil = member?.dapilName || member?.customDapilName || member?.customDapil || 'Dapil I';
-  const dapil = rawDapil.replace(/_/g, ' ');
-
-  const rawParty = member?.partyAffiliation || 'Fraksi Parlemen';
-  const party = rawParty.replace(/_/g, ' ');
-
-  const rawLevel = member?.legislativeLevel || 'DPRD PROVINSI';
-  const legislativeLevel = rawLevel.replace(/_/g, ' ');
-
-  const rawCommission = member?.commissionName || 'KOMISI I (PEMERINTAHAN & HUKUM)';
-  const commissionName = rawCommission.replace(/_/g, ' ');
-
-  const officialEmail = `aspirasi@${subdomain || 'jonandabrahman'}.polaris.id`;
-  const officialPhone = '+62 812-3456-7890';
-  const instagramUsername =
-    member?.instagramHandle?.replace(/^@/, '') ||
-    member?.username ||
-    subdomain ||
-    'jonandabrahman';
+  const {
+    officialFullName,
+    firstName,
+    photoUrl,
+    party,
+    dapil,
+    legislativeLevel,
+    commissionName,
+    officialEmail,
+    formattedPhoneNumber,
+    waNumber,
+    waHotlineLink,
+    instagramUsername,
+  } = resolved;
 
   const [activeModalInfo, setActiveModalInfo] = useState<any | null>(null);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -90,16 +83,18 @@ export function FoliobloxTemplate({
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const previewTemplate = searchParams?.get('preview_template');
+  const previewColor = searchParams?.get('preview_color');
 
   const getNavLinkHref = (path: string) => {
     let base = path;
     if (subdomain && pathname?.startsWith(`/${subdomain}`)) {
       base = path === '/' ? `/${subdomain}` : `/${subdomain}${path}`;
     }
-    if (previewTemplate) {
-      base += `${base.includes('?') ? '&' : '?'}preview_template=${previewTemplate}`;
-    }
-    return base;
+    const sp = new URLSearchParams();
+    if (previewTemplate) sp.set('preview_template', previewTemplate);
+    if (previewColor) sp.set('preview_color', previewColor);
+    const qs = sp.toString();
+    return qs ? `${base}${base.includes('?') ? '&' : '?'}${qs}` : base;
   };
 
   const articlesHref = getNavLinkHref('/artikel');

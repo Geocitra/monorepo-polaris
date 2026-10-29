@@ -1,3 +1,4 @@
+import React from 'react';
 import { notFound } from 'next/navigation';
 import Link from 'next/link';
 import type { Metadata } from 'next';
@@ -53,7 +54,7 @@ function getFallbackArticle(slug: string) {
       category: 'Ekonomi & UMKM',
       issueCategory: 'Ekonomi & UMKM',
       publishedAt: '2026-09-01T08:00:00.000Z',
-      readingTime: '4 mnt baca',
+      readingTime: '4 menit baca',
       featuredImageUrl: '/images/ref-article-1.jpg',
       posterUrl: '/images/ref-article-1.jpg',
       thumbnailUrl: '/images/ref-article-1.jpg',
@@ -86,7 +87,7 @@ Sebagai wakil rakyat, kami berkomitmen untuk terus mengawal pelaksanaan aturan t
       category: 'Infrastruktur',
       issueCategory: 'Infrastruktur',
       publishedAt: '2026-08-30T09:00:00.000Z',
-      readingTime: '4 mnt baca',
+      readingTime: '4 menit baca',
       featuredImageUrl: '/images/ref-article-2.jpg',
       posterUrl: '/images/ref-article-2.jpg',
       thumbnailUrl: '/images/ref-article-2.jpg',
@@ -111,7 +112,7 @@ Kami mewajibkan tim teknis pelaksana untuk mematuhi standar spesifikasi beton da
       category: 'Pendidikan',
       issueCategory: 'Pendidikan',
       publishedAt: '2026-08-28T10:00:00.000Z',
-      readingTime: '3 mnt baca',
+      readingTime: '3 menit baca',
       featuredImageUrl: '/images/ref-article-3.jpg',
       posterUrl: '/images/ref-article-3.jpg',
       thumbnailUrl: '/images/ref-article-3.jpg',
@@ -202,25 +203,25 @@ export async function generateMetadata({
   const portalData = await fetchPortalData(subdomain);
 
   if (!portalData) {
-    return { title: 'Artikel Parlemen - POLARIS' };
+    return { title: 'Portal Tidak Ditemukan - POLARIS' };
   }
 
   const API_BASE_URL =
     process.env.INTERNAL_API_URL ||
     process.env.NEXT_PUBLIC_API_URL ||
     'http://localhost:4000/api/v1';
-  let article = null;
 
+  let article = null;
   try {
     const res = await fetch(`${API_BASE_URL}/cms/public/${subdomain}/article/${slug}`, {
       next: { revalidate: 60 },
-      signal: AbortSignal.timeout(6000),
+      signal: AbortSignal.timeout(4000),
     });
     if (res.ok) {
       article = await res.json();
     }
   } catch (err) {
-    // Backend offline or timeout -> fallback to mock article
+    // Ignore fetch error, use fallback below
   }
 
   if (!article) {
@@ -228,12 +229,19 @@ export async function generateMetadata({
   }
 
   if (!article) {
-    return { title: 'Artikel Tidak Ditemukan' };
+    return { title: 'Artikel Tidak Ditemukan - POLARIS' };
   }
 
-  const { member, theme } = portalData;
+  const { member, theme, portal } = portalData;
+  const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3001';
   const title = `${article.title} - ${member.fullName}`;
-  const description = article.excerpt;
+  const description = article.excerpt || `Telaah kebijakan dan risalah publik oleh ${member.fullName}.`;
+
+  const canonicalUrl =
+    article.canonicalUrl ||
+    (portal?.customDomain
+      ? `https://${portal.customDomain}/artikel/${slug}`
+      : `${baseUrl}/${subdomain}/artikel/${slug}`);
 
   const ogImageUrl =
     article.posterUrl ||
@@ -242,8 +250,17 @@ export async function generateMetadata({
   return {
     title,
     description,
+    keywords: [
+      article.title,
+      article.category || 'Kebijakan Publik',
+      member.fullName,
+      member.partyAffiliation,
+      member.dapilName,
+      'Telaah Parlemen',
+      'Regulasi',
+    ],
     alternates: {
-      canonical: article.canonicalUrl,
+      canonical: canonicalUrl,
     },
     openGraph: {
       title,
@@ -251,7 +268,7 @@ export async function generateMetadata({
       type: 'article',
       publishedTime: article.publishedAt,
       authors: [member.fullName],
-      url: article.canonicalUrl,
+      url: canonicalUrl,
       images: [
         {
           url: ogImageUrl,
@@ -270,51 +287,28 @@ export async function generateMetadata({
   };
 }
 
-export default async function TenantArticlePage({
-  params,
-  searchParams,
+
+
+  function renderArticleContent({
+  templateId,
+  article,
+  member,
+  effectiveTheme,
+  subdomain,
+  recentArticles,
+  documents,
+  slug,
 }: {
-  params: Promise<{ subdomain: string; slug: string }>;
-  searchParams?: Promise<{ preview_template?: string; preview_color?: string }>;
+  templateId: string;
+  article: any;
+  member: any;
+  effectiveTheme: any;
+  subdomain: string;
+  recentArticles: any[];
+  documents: any[];
+  slug: string;
 }) {
-  const { subdomain, slug } = await params;
-  const sp = searchParams ? await searchParams : {};
-  const portalData = await fetchPortalData(subdomain);
-
-  if (!portalData) notFound();
-
-  const API_BASE_URL =
-    process.env.INTERNAL_API_URL ||
-    process.env.NEXT_PUBLIC_API_URL ||
-    'http://localhost:4000/api/v1';
-  let article = null;
-
-  try {
-    const res = await fetch(`${API_BASE_URL}/cms/public/${subdomain}/article/${slug}`, {
-      next: { revalidate: 60 },
-      signal: AbortSignal.timeout(6000),
-    });
-    if (res.ok) {
-      article = await res.json();
-    }
-  } catch (err) {
-    // Backend offline or timeout -> fallback to mock article
-  }
-
-  if (!article) {
-    article = getFallbackArticle(slug);
-  }
-
-  if (!article) notFound();
-
-  const { member, theme, recentArticles = [], documents } = portalData;
-  const effectiveTheme = {
-    ...theme,
-    ...(sp.preview_template ? { layoutTemplateId: sp.preview_template } : {}),
-    ...(sp.preview_color ? { primaryHexColor: sp.preview_color } : {}),
-  };
-  const templateId = effectiveTheme?.layoutTemplateId || PortalTemplateId.POLARIS_INSIGHT;
-
+  const theme = effectiveTheme;
   if (templateId === PortalTemplateId.BOLD_TYPOGRAPHY || templateId === 'bold-typography') {
     return (
       <BoldTypographyShell
@@ -997,5 +991,139 @@ export default async function TenantArticlePage({
       </article>
     </div>
   </ParliamentShell>
+  );
+}
+
+
+export default async function TenantArticlePage({
+  params,
+  searchParams,
+}: {
+  params: Promise<{ subdomain: string; slug: string }>;
+  searchParams?: Promise<{ preview_template?: string; preview_color?: string }>;
+}) {
+  const { subdomain, slug } = await params;
+  const sp = searchParams ? await searchParams : {};
+  const portalData = await fetchPortalData(subdomain);
+
+  if (!portalData) notFound();
+
+  const API_BASE_URL =
+    process.env.INTERNAL_API_URL ||
+    process.env.NEXT_PUBLIC_API_URL ||
+    'http://localhost:4000/api/v1';
+  let article = null;
+
+  try {
+    const res = await fetch(`${API_BASE_URL}/cms/public/${subdomain}/article/${slug}`, {
+      next: { revalidate: 60 },
+      signal: AbortSignal.timeout(6000),
+    });
+    if (res.ok) {
+      article = await res.json();
+    }
+  } catch (err) {
+    // Backend offline or timeout -> fallback to mock article
+  }
+
+  const { member, theme, portal, recentArticles = [], documents } = portalData;
+  const effectiveTheme = {
+    ...theme,
+    ...(sp.preview_template ? { layoutTemplateId: sp.preview_template } : {}),
+    ...(sp.preview_color ? { primaryHexColor: sp.preview_color } : {}),
+  };
+  const templateId = effectiveTheme?.layoutTemplateId || PortalTemplateId.POLARIS_INSIGHT;
+
+  if (!article) {
+    article = getFallbackArticle(slug);
+  }
+
+  if (!article) notFound();
+
+  const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3001';
+  const canonicalUrl =
+    article.canonicalUrl ||
+    (portal?.customDomain
+      ? `https://${portal.customDomain}/artikel/${slug}`
+      : `${baseUrl}/${subdomain}/artikel/${slug}`);
+
+  const articleOgImage =
+    article.posterUrl ||
+    `${baseUrl}/api/og?title=${encodeURIComponent(article.title)}&author=${encodeURIComponent(member.fullName)}&dapil=${encodeURIComponent(member.dapilName)}&party=${encodeURIComponent(member.partyAffiliation)}&color=${encodeURIComponent(theme.primaryHexColor)}`;
+
+  const articleJsonLd = {
+    '@context': 'https://schema.org',
+    '@type': 'NewsArticle',
+    mainEntityOfPage: {
+      '@type': 'WebPage',
+      '@id': canonicalUrl,
+    },
+    headline: article.title,
+    description: article.excerpt,
+    image: [articleOgImage],
+    datePublished: article.publishedAt,
+    dateModified: article.updatedAt || article.publishedAt,
+    author: {
+      '@type': 'Person',
+      name: member.fullName,
+      jobTitle: `Anggota Parlemen (${member.legislativeLevel || 'DPR RI'})`,
+    },
+    publisher: {
+      '@type': 'Organization',
+      name: 'POLARIS Civic Intelligence',
+      logo: {
+        '@type': 'ImageObject',
+        url: `${baseUrl}/favicon.ico`,
+      },
+    },
+    articleSection: article.category || 'Kebijakan Publik',
+  };
+
+  const breadcrumbJsonLd = {
+    '@context': 'https://schema.org',
+    '@type': 'BreadcrumbList',
+    itemListElement: [
+      {
+        '@type': 'ListItem',
+        position: 1,
+        name: 'Beranda',
+        item: `${baseUrl}/${subdomain}`,
+      },
+      {
+        '@type': 'ListItem',
+        position: 2,
+        name: 'Artikel',
+        item: `${baseUrl}/${subdomain}/artikel`,
+      },
+      {
+        '@type': 'ListItem',
+        position: 3,
+        name: article.title,
+        item: canonicalUrl,
+      },
+    ],
+  };
+
+  return (
+    <>
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(articleJsonLd) }}
+      />
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbJsonLd) }}
+      />
+      {renderArticleContent({
+        templateId,
+        article,
+        member,
+        effectiveTheme,
+        subdomain,
+        recentArticles,
+        documents,
+        slug,
+      })}
+    </>
   );
 }

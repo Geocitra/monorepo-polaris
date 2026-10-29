@@ -52,16 +52,18 @@ export function NeonGlowShell({
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const previewTemplate = searchParams?.get('preview_template');
+  const previewColor = searchParams?.get('preview_color');
 
   const getNavLinkHref = (path: string) => {
     let base = path;
     if (subdomain && pathname?.startsWith(`/${subdomain}`)) {
       base = path === '/' ? `/${subdomain}` : `/${subdomain}${path}`;
     }
-    if (previewTemplate) {
-      base += `${base.includes('?') ? '&' : '?'}preview_template=${previewTemplate}`;
-    }
-    return base;
+    const sp = new URLSearchParams();
+    if (previewTemplate) sp.set('preview_template', previewTemplate);
+    if (previewColor) sp.set('preview_color', previewColor);
+    const qs = sp.toString();
+    return qs ? `${base}${base.includes('?') ? '&' : '?'}${qs}` : base;
   };
 
   const navItems = [
@@ -208,8 +210,7 @@ export function NeonGlowShell({
             {/* Title & Badge */}
             <div className="space-y-3">
               {pageBadge && (
-                <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[11px] font-bold font-mono uppercase tracking-widest bg-purple-500/10 text-purple-300 border border-purple-500/30 shadow-sm shadow-purple-500/20">
-                  <Terminal className="w-3.5 h-3.5 text-cyan-400 shrink-0" />
+                <div className="inline-flex items-center px-3 py-1 rounded-full text-[11px] font-bold font-mono uppercase tracking-widest bg-purple-500/10 text-purple-300 border border-purple-500/30 shadow-sm shadow-purple-500/20">
                   <span>{pageBadge}</span>
                 </div>
               )}

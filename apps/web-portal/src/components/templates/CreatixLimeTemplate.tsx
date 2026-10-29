@@ -123,14 +123,19 @@ export function CreatixLimeTemplate({
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const previewTemplate = searchParams?.get('preview_template');
+  const previewColor = searchParams?.get('preview_color');
 
   const getNavLinkHref = (path: string) => {
     let base = path;
     if (subdomain && pathname?.startsWith(`/${subdomain}`)) {
       base = path === '/' ? `/${subdomain}` : `/${subdomain}${path}`;
     }
-    if (previewTemplate) {
-      base += `${base.includes('?') ? '&' : '?'}preview_template=${previewTemplate}`;
+    const params = new URLSearchParams();
+    if (previewTemplate) params.set('preview_template', previewTemplate);
+    if (previewColor) params.set('preview_color', previewColor);
+    const qs = params.toString();
+    if (qs) {
+      base += `${base.includes('?') ? '&' : '?'}${qs}`;
     }
     return base;
   };

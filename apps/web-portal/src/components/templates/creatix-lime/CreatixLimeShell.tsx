@@ -44,6 +44,8 @@ export function LimeSparkle({ className = 'w-5 h-5' }: { className?: string }) {
   );
 }
 
+import { resolvePortalMemberData } from '@/lib/template-resolver';
+
 interface CreatixLimeShellProps {
   member: any;
   theme?: any;
@@ -73,40 +75,42 @@ export function CreatixLimeShell({
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const previewTemplate = searchParams?.get('preview_template');
+  const previewColor = searchParams?.get('preview_color');
 
-  const officialFullName =
-    member?.fullName || theme?.officialFullName || 'Dr. Jonanda P. A. B';
-  const firstName =
-    officialFullName.replace(/^(Dr\.|Drs\.|H\.|Hj\.|Ir\.|Prof\.)\s*/i, '').split(' ')[0] || 'Jonanda';
+  const resolved = resolvePortalMemberData({
+    member,
+    theme,
+    subdomain,
+    defaultPrimaryColor: '#84CC16',
+  });
 
-  const rawDapil =
-    member?.dapilName || member?.customDapilName || member?.customDapil || 'Dapil I';
-  const dapil = rawDapil.replace(/_/g, ' ');
+  const {
+    officialFullName,
+    firstName,
+    dapil,
+    party,
+    legislativeLevel,
+    commissionName,
+    officialEmail,
+  } = resolved;
 
-  const rawParty = member?.partyAffiliation || 'Fraksi Parlemen';
-  const party = rawParty.replace(/_/g, ' ');
-
-  const rawLevel = member?.legislativeLevel || 'DPRD PROVINSI';
-  const legislativeLevel = rawLevel.replace(/_/g, ' ');
-
-  const rawCommission =
-    member?.commissionName || 'KOMISI I (PEMERINTAHAN & HUKUM)';
-  const commissionName = rawCommission.replace(/_/g, ' ');
-
-  const officialEmail = `aspirasi@${subdomain || 'jonandabrahman'}.polaris.id`;
   const instagramUsername =
     member?.instagramHandle?.replace(/^@/, '') ||
     member?.username ||
     subdomain ||
-    'jonandabrahman';
+    '';
 
   const getNavLinkHref = (path: string) => {
     let base = path;
     if (subdomain && pathname?.startsWith(`/${subdomain}`)) {
       base = path === '/' ? `/${subdomain}` : `/${subdomain}${path}`;
     }
-    if (previewTemplate) {
-      base += `${base.includes('?') ? '&' : '?'}preview_template=${previewTemplate}`;
+    const params = new URLSearchParams();
+    if (previewTemplate) params.set('preview_template', previewTemplate);
+    if (previewColor) params.set('preview_color', previewColor);
+    const qs = params.toString();
+    if (qs) {
+      base += `${base.includes('?') ? '&' : '?'}${qs}`;
     }
     return base;
   };
@@ -251,8 +255,7 @@ export function CreatixLimeShell({
 
             {/* Badge with Lime Sparkle */}
             {pageBadge && (
-              <div className="inline-flex items-center gap-2 px-3.5 py-1 rounded-full bg-white/5 border border-white/10 text-xs font-bold uppercase tracking-wider text-[#84CC16]">
-                <LimeSparkle className="w-3.5 h-3.5 text-[#84CC16]" />
+              <div className="inline-flex items-center px-3.5 py-1 rounded-full bg-white/5 border border-white/10 text-xs font-bold uppercase tracking-wider text-[#84CC16]">
                 <span>{pageBadge}</span>
               </div>
             )}

@@ -22,9 +22,10 @@ import {
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 
-import { ThemeForm } from '@/components/branding/ThemeForm';
+import { ThemeForm, DEFAULT_WEBSITE_COLORS, DEFAULT_VISION_MISSION } from '@/components/branding/ThemeForm';
 import { DeviceSimulator } from '@/components/branding/DeviceSimulator';
 import { TEMPLATE_LAYOUTS } from '@/components/branding/TemplateLayoutSelector';
+import { TEMPLATE_DEFAULT_COLORS } from '@polaris/shared-types';
 
 const PARTY_COLOR_PRESETS = [
   { name: 'Golkar', primary: '#F5B800', secondary: '#001529' },
@@ -61,6 +62,8 @@ function WebsiteStudioContent() {
   const [layoutTemplateId, setLayoutTemplateId] = useState('standard-default');
   const [visionMission, setVisionMission] = useState<any[]>([]);
   const [careers, setCareers] = useState<any[]>([]);
+  const [activities, setActivities] = useState<any[]>([]);
+  const [akdAssignment, setAkdAssignment] = useState<any>(null);
   const [layoutSchema, setLayoutSchema] = useState<any>(null);
 
   useEffect(() => {
@@ -76,7 +79,7 @@ function WebsiteStudioContent() {
         if (portalData?.theme) {
           setPrimaryColor(portalData.theme.primaryHexColor || '#1890FF');
           setSecondaryColor(portalData.theme.secondaryHexColor || '#001529');
-          const initialPhoto = p?.photoUrl || portalData.theme.officialPhotoUrl || '';
+          const initialPhoto = portalData.theme.officialPhotoUrl || p?.photoUrl || '';
           setOfficialPhotoUrl(initialPhoto);
           setHeadlineTagline(portalData.theme.headlineTagline || '');
           setBioBiography(portalData.theme.bioBiography || '');
@@ -86,9 +89,17 @@ function WebsiteStudioContent() {
           setLayoutSchema(schema);
           if (Array.isArray(schema.visionMission) && schema.visionMission.length > 0) {
             setVisionMission(schema.visionMission);
+          } else {
+            setVisionMission(DEFAULT_VISION_MISSION);
           }
           if (Array.isArray(schema.careers) && schema.careers.length > 0) {
             setCareers(schema.careers);
+          }
+          if (Array.isArray(schema.activities) && schema.activities.length > 0) {
+            setActivities(schema.activities);
+          }
+          if (schema.akdAssignment) {
+            setAkdAssignment(schema.akdAssignment);
           }
         } else if (p?.photoUrl) {
           setOfficialPhotoUrl(p.photoUrl);
@@ -123,11 +134,18 @@ function WebsiteStudioContent() {
 
     try {
       const photoToSave = (officialPhotoUrl || profile?.photoUrl || '').trim();
+      const effectiveVisionMission =
+        Array.isArray(visionMission) && visionMission.length > 0
+          ? visionMission
+          : DEFAULT_VISION_MISSION;
+
       const updatedSchema = {
         ...(layoutSchema || {}),
         templatePreset: layoutTemplateId,
-        visionMission,
+        visionMission: effectiveVisionMission,
         careers,
+        activities,
+        akdAssignment,
       };
 
       await ApiClient.request<any>('/cms/theme', {
@@ -174,10 +192,22 @@ function WebsiteStudioContent() {
   const previewBaseUrl = subdomainSlug
     ? `http://${subdomainSlug}.localhost:3001`
     : 'http://default-portal.localhost:3001';
-  const previewUrl = `${previewBaseUrl}?preview_template=${encodeURIComponent(layoutTemplateId)}&preview_color=${encodeURIComponent(primaryColor)}`;
+  const photoParam = officialPhotoUrl && !officialPhotoUrl.startsWith('data:')
+    ? `&preview_photo=${encodeURIComponent(officialPhotoUrl)}`
+    : '';
+  const previewUrl = `${previewBaseUrl}?preview_template=${encodeURIComponent(layoutTemplateId)}&preview_color=${encodeURIComponent(primaryColor)}${photoParam}`;
 
   const handleLayoutTemplateChange = (newTemplateId: string) => {
     setLayoutTemplateId(newTemplateId);
+
+    // If user was using previous template's default color, automatically align to new template's default
+    const prevDefault = (TEMPLATE_DEFAULT_COLORS as any)[layoutTemplateId] || DEFAULT_WEBSITE_COLORS;
+    if (primaryColor.toLowerCase() === prevDefault.primary.toLowerCase()) {
+      const newDefault = (TEMPLATE_DEFAULT_COLORS as any)[newTemplateId] || DEFAULT_WEBSITE_COLORS;
+      setPrimaryColor(newDefault.primary);
+      setSecondaryColor(newDefault.secondary);
+    }
+
     try {
       iframeRef.current?.contentWindow?.postMessage(
         {
@@ -204,6 +234,20 @@ function WebsiteStudioContent() {
       console.error('Error posting color message to simulator:', err);
     }
   }, [primaryColor]);
+
+  useEffect(() => {
+    try {
+      iframeRef.current?.contentWindow?.postMessage(
+        {
+          type: 'POLARIS_PREVIEW_PHOTO_CHANGE',
+          photoUrl: officialPhotoUrl,
+        },
+        '*'
+      );
+    } catch (err) {
+      console.error('Error posting photo message to simulator:', err);
+    }
+  }, [officialPhotoUrl]);
 
   const activeTemplate =
     TEMPLATE_LAYOUTS.find((tpl) => tpl.id === layoutTemplateId) || TEMPLATE_LAYOUTS[0];
@@ -366,6 +410,7 @@ function WebsiteStudioContent() {
               officialPhotoUrl={officialPhotoUrl}
               onOfficialPhotoUrlChange={setOfficialPhotoUrl}
               profilePhotoUrl={profile?.photoUrl}
+              photoGallery={profile?.photoGallery || []}
               headlineTagline={headlineTagline}
               onHeadlineTaglineChange={setHeadlineTagline}
               bioBiography={bioBiography}
@@ -382,6 +427,12 @@ function WebsiteStudioContent() {
               onVisionMissionChange={setVisionMission}
               careers={careers}
               onCareersChange={setCareers}
+              activities={activities}
+              onActivitiesChange={setActivities}
+              akdAssignment={akdAssignment}
+              onAkdAssignmentChange={setAkdAssignment}
+              memberCommissionName={profile?.commissionName}
+              partyAffiliation={profile?.partyAffiliation}
               profileEducation={profile?.education}
               profileCourses={profile?.courses}
             />

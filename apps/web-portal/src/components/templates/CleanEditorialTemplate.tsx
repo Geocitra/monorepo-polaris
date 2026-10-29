@@ -5,26 +5,7 @@ import Link from 'next/link';
 import { usePathname, useSearchParams } from 'next/navigation';
 import {
   ArrowRight,
-  ArrowUpRight,
-  Download,
-  Calendar,
-  Clock,
-  Sparkles,
-  BookOpen,
-  Award,
-  Users,
-  ShieldCheck,
-  CheckCircle2,
-  TrendingUp,
-  Mail,
-  Phone,
-  MapPin,
-  ExternalLink,
   Instagram,
-  Smile,
-  Rocket,
-  Heart,
-  Landmark,
   Menu,
   X,
 } from 'lucide-react';
@@ -50,7 +31,6 @@ export function CleanEditorialTemplate({
   const primaryColor = theme?.primaryHexColor || '#6366F1';
   const photoUrl = theme?.officialPhotoUrl || member?.photoUrl || '/images/default-avatar.png';
   const headline = theme?.headlineTagline || 'Mendedikasikan kerja parlemen yang berdampak nyata bagi kemakmuran dan martabat rakyat.';
-  const bio = theme?.bioBiography || `${member?.fullName} mengemban amanah sebagai penyambung lidah rakyat Daerah Pemilihan ${member?.dapilName || 'Indonesia'} dengan integritas, keberanian sikap, dan akuntabilitas terbuka.`;
 
   const pathname = usePathname();
   const searchParams = useSearchParams();
@@ -73,7 +53,7 @@ export function CleanEditorialTemplate({
     member?.instagramHandle?.replace(/^@/, '') ||
     member?.username ||
     subdomain ||
-    'ahmadfauzi';
+    '';
 
   function formatLegislativeLevel(level?: string): string {
     if (!level) return 'DPR RI';
@@ -86,39 +66,7 @@ export function CleanEditorialTemplate({
 
   // Articles list (take up to 4 to match the 4-card project row in the reference image)
   const articles = recentArticles.slice(0, 4);
-
-  // Infographics fallback jika belum ada infografis yang diterbitkan
-  const fallbackInfographics = [
-    {
-      id: 'demo-info-1',
-      title: 'Transparansi APBD: Alokasi Belanja TIK Sekolah Desa 2026',
-      slug: 'transparansi-apbd-alokasi-belanja-tik-sekolah-desa',
-      imageUrl: '/images/showcase-infografis-apbd.jpg',
-      posterUrl: '/images/showcase-infografis-apbd.jpg',
-      category: 'ANGGARAN & APBD',
-      publishedAt: new Date().toISOString(),
-    },
-    {
-      id: 'demo-info-2',
-      title: 'Penguatan Ketahanan Pangan & Distribusi Pupuk Subsidi Petani',
-      slug: 'penguatan-ketahanan-pangan-distribusi-pupuk-subsidi',
-      imageUrl: '/images/showcase-artikel-pertanian.jpg',
-      posterUrl: '/images/showcase-artikel-pertanian.jpg',
-      category: 'PERTANIAN & PANGAN',
-      publishedAt: new Date().toISOString(),
-    },
-    {
-      id: 'demo-info-3',
-      title: 'Laboratorium Digital & Pemerataan Internet Sekolah 3T',
-      slug: 'laboratorium-digital-pemerataan-internet-sekolah',
-      imageUrl: '/images/showcase-poster-surya.jpg',
-      posterUrl: '/images/showcase-poster-surya.jpg',
-      category: 'PENDIDIKAN 3T',
-      publishedAt: new Date().toISOString(),
-    },
-  ];
-
-  const infographics = (recentInfographics.length > 0 ? recentInfographics : fallbackInfographics).slice(0, 4);
+  const infographics = (recentInfographics || []).slice(0, 4);
 
   // Robust parser to strip all academic and honorary titles (Dr., H., Hj., Prof., etc.)
   function parseCleanIdentity(fullName?: string) {
@@ -393,68 +341,9 @@ export function CleanEditorialTemplate({
 
 
 
-      {/* ─── 3. SECTION 2: 4-COLUMN FEATURE STRIP (DIVIDED GRID) ─── */}
-      <section id="features" className="border-b border-slate-200 bg-white py-10 sm:py-12">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 divide-y sm:divide-y-0 sm:divide-x divide-slate-100">
-            
-            {/* Feature 1 */}
-            <div className="py-4 sm:py-0 sm:px-6 first:pl-0 space-y-2">
-              <div className="w-10 h-10 rounded-lg bg-purple-50 text-purple-700 flex items-center justify-center">
-                <BookOpen className="w-5 h-5 stroke-[1.75]" />
-              </div>
-              <h3 className="text-xs font-bold uppercase tracking-wider text-slate-900">
-                LEGISLASI &amp; REGULASI
-              </h3>
-              <p className="text-[12px] text-slate-500 leading-relaxed">
-                Merumuskan perundangan dan perda yang berpihak pada keadilan serta perlindungan hak konstituen.
-              </p>
-            </div>
 
-            {/* Feature 2 */}
-            <div className="py-4 sm:py-0 sm:px-6 space-y-2">
-              <div className="w-10 h-10 rounded-lg bg-purple-50 text-purple-700 flex items-center justify-center">
-                <TrendingUp className="w-5 h-5 stroke-[1.75]" />
-              </div>
-              <h3 className="text-xs font-bold uppercase tracking-wider text-slate-900">
-                PENGAWALAN ANGGARAN
-              </h3>
-              <p className="text-[12px] text-slate-500 leading-relaxed">
-                Mengawal alokasi APBN/APBD agar tepat sasaran bagi pembangunan fasilitas publik dan ekonomi rakyat.
-              </p>
-            </div>
 
-            {/* Feature 3 */}
-            <div className="py-4 sm:py-0 sm:px-6 space-y-2">
-              <div className="w-10 h-10 rounded-lg bg-purple-50 text-purple-700 flex items-center justify-center">
-                <Users className="w-5 h-5 stroke-[1.75]" />
-              </div>
-              <h3 className="text-xs font-bold uppercase tracking-wider text-slate-900">
-                ADVOKASI KONSTITUEN
-              </h3>
-              <p className="text-[12px] text-slate-500 leading-relaxed">
-                Mendampingi warga dapil dalam memperjuangkan aspirasi, beasiswa, dan bantuan sarana umum.
-              </p>
-            </div>
-
-            {/* Feature 4 */}
-            <div className="py-4 sm:py-0 sm:px-6 last:pr-0 space-y-2">
-              <div className="w-10 h-10 rounded-lg bg-purple-50 text-purple-700 flex items-center justify-center">
-                <ShieldCheck className="w-5 h-5 stroke-[1.75]" />
-              </div>
-              <h3 className="text-xs font-bold uppercase tracking-wider text-slate-900">
-                TRANSPARANSI PUBLIK
-              </h3>
-              <p className="text-[12px] text-slate-500 leading-relaxed">
-                Membuka seluruh risalah rapat, sikap fraksi, dan pelaporan kegiatan dewan secara terbuka dan digital.
-              </p>
-            </div>
-
-          </div>
-        </div>
-      </section>
-
-      {/* ─── 4. SECTION 3: ARTIKEL & KAJIAN KEBIJAKAN (DEDICATED ARTICLES) ─── */}
+      {/* ─── 3. SECTION 2: ARTIKEL & KAJIAN KEBIJAKAN (DEDICATED ARTICLES) ─── */}
       <section id="articles" className="py-16 sm:py-20 bg-white border-b border-slate-200">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-10">
           
@@ -522,7 +411,7 @@ export function CleanEditorialTemplate({
         </div>
       </section>
 
-      {/* ─── 5. SECTION 4: INFOGRAFIS & CAPAIAN KINERJA (DEDICATED INFOGRAPHICS) ─── */}
+      {/* ─── 4. SECTION 3: INFOGRAFIS & CAPAIAN KINERJA (DEDICATED INFOGRAPHICS) ─── */}
       <section id="infografis" className="py-16 sm:py-20 bg-[#F8F9FD] border-b border-slate-200">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-10">
           
@@ -590,142 +479,18 @@ export function CleanEditorialTemplate({
         </div>
       </section>
 
-      {/* ─── 5. SECTION 4: ABOUT ME (QUOTE + FRAMED POSTER + STATS LIST) ─── */}
-      <section id="about" className="py-18 sm:py-24 bg-[#FAFAFC] border-b border-slate-200">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-10 lg:gap-12 items-center">
-            
-            {/* COLUMN 1: QUOTE, BIO & SIGNATURE */}
-            <div className="lg:col-span-5 space-y-5 text-left">
-              <span className="text-xs font-mono font-bold tracking-widest text-purple-700 uppercase block">
-                ABOUT ME
-              </span>
 
-              <h2 className="text-2xl sm:text-3xl lg:text-[2.15rem] font-serif font-black text-slate-900 leading-snug">
-                Design is not just what it looks like, it&apos;s how it works.
-              </h2>
 
-              <p className="text-xs sm:text-sm text-slate-600 leading-relaxed font-normal">
-                {bio}
-              </p>
-
-              {/* Script Signature */}
-              <div className="pt-1">
-                <span className="font-script-signature text-3xl sm:text-4xl text-[#6366F1] block">
-                  {cleanName}
-                </span>
-              </div>
-
-              {/* Download CV / Profil Button */}
-              <div className="pt-2">
-                <Link
-                  href={getNavLinkHref('/profil')}
-                  className="px-5 py-3 rounded-lg border border-slate-300 hover:border-slate-900 text-slate-800 hover:text-slate-950 font-bold text-xs uppercase tracking-wider transition-all inline-flex items-center gap-2 bg-white shadow-xs"
-                >
-                  <span>DOWNLOAD CV / PROFIL</span>
-                  <Download className="w-3.5 h-3.5" />
-                </Link>
-              </div>
-            </div>
-
-            {/* COLUMN 2: SLEEK PICTURE FRAME MOCKUP (GOOD DESIGN IS GOOD BUSINESS) */}
-            <div className="lg:col-span-4 flex justify-center">
-              <div className="p-4 sm:p-5 bg-white rounded-2xl shadow-xl shadow-slate-200/60 border border-slate-200 max-w-[280px] w-full">
-                {/* Black frame with white matting */}
-                <div className="border-[6px] border-slate-950 p-6 bg-slate-50 text-center space-y-3 select-none aspect-[3/4] flex flex-col justify-center items-center shadow-inner">
-                  <span className="text-[9px] font-mono tracking-widest text-slate-400 uppercase">
-                    POLARIS INTEGRITY
-                  </span>
-                  <div className="font-serif font-black text-2xl sm:text-[1.65rem] leading-[1.08] text-slate-950 uppercase tracking-tight">
-                    GOOD<br />DESIGN<br />IS GOOD<br />BUSINESS.
-                  </div>
-                  <div className="w-8 h-0.5 bg-[#6366F1] mx-auto" />
-                  <span className="text-[9.5px] font-serif italic text-slate-500 pt-0.5 block">
-                    Integritas &amp; Transparansi
-                  </span>
-                </div>
-              </div>
-            </div>
-
-            {/* COLUMN 3: VERTICAL STACK OF 4 STATS WITH OUTLINE ICONS */}
-            <div className="lg:col-span-3 space-y-6 sm:space-y-8 font-sans">
-              
-              {/* Stat 1 */}
-              <div className="flex items-center gap-4">
-                <div className="w-10 h-10 rounded-full border border-slate-200 flex items-center justify-center text-slate-700 shrink-0">
-                  <Smile className="w-5 h-5 stroke-[1.5]" />
-                </div>
-                <div>
-                  <div className="text-2xl sm:text-3xl font-black text-slate-900 font-mono tracking-tight">
-                    5+
-                  </div>
-                  <div className="text-[10px] font-bold tracking-wider text-slate-500 uppercase">
-                    YEARS OF EXPERIENCE
-                  </div>
-                </div>
-              </div>
-
-              {/* Stat 2 */}
-              <div className="flex items-center gap-4">
-                <div className="w-10 h-10 rounded-full border border-slate-200 flex items-center justify-center text-slate-700 shrink-0">
-                  <Rocket className="w-5 h-5 stroke-[1.5]" />
-                </div>
-                <div>
-                  <div className="text-2xl sm:text-3xl font-black text-slate-900 font-mono tracking-tight">
-                    150+
-                  </div>
-                  <div className="text-[10px] font-bold tracking-wider text-slate-500 uppercase">
-                    PROJECTS COMPLETED
-                  </div>
-                </div>
-              </div>
-
-              {/* Stat 3 */}
-              <div className="flex items-center gap-4">
-                <div className="w-10 h-10 rounded-full border border-slate-200 flex items-center justify-center text-slate-700 shrink-0">
-                  <Heart className="w-5 h-5 stroke-[1.5]" />
-                </div>
-                <div>
-                  <div className="text-2xl sm:text-3xl font-black text-slate-900 font-mono tracking-tight">
-                    100+
-                  </div>
-                  <div className="text-[10px] font-bold tracking-wider text-slate-500 uppercase">
-                    HAPPY CLIENTS
-                  </div>
-                </div>
-              </div>
-
-              {/* Stat 4 */}
-              <div className="flex items-center gap-4">
-                <div className="w-10 h-10 rounded-full border border-slate-200 flex items-center justify-center text-slate-700 shrink-0">
-                  <Award className="w-5 h-5 stroke-[1.5]" />
-                </div>
-                <div>
-                  <div className="text-2xl sm:text-3xl font-black text-slate-900 font-mono tracking-tight">
-                    20+
-                  </div>
-                  <div className="text-[10px] font-bold tracking-wider text-slate-500 uppercase">
-                    AWARDS RECEIVED
-                  </div>
-                </div>
-              </div>
-
-            </div>
-
-          </div>
-        </div>
-      </section>
-
-      {/* ─── 6. SECTION 5: LAVENDER CALLOUT BANNER ─── */}
+      {/* ─── 4. SECTION 4: CALLOUT BANNER ASPIRASI ─── */}
       <section className="py-14 bg-white">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="p-8 sm:p-12 rounded-3xl bg-[#EDE9FE] border border-purple-200/80 flex flex-col md:flex-row items-center justify-between gap-6 shadow-xs">
             <div className="space-y-1.5 text-center md:text-left">
               <span className="text-[11px] font-mono uppercase tracking-widest text-[#6366F1] font-bold block">
-                HAVE A PROJECT IN MIND?
+                KANAL ASPIRASI &amp; ADVOKASI WARGA
               </span>
               <h3 className="text-2xl sm:text-3xl lg:text-4xl font-serif font-black text-slate-950">
-                Let&apos;s Create Something Amazing Together.
+                Punya Masukan atau Isu Kebijakan di Dapil?
               </h3>
             </div>
 
@@ -733,7 +498,7 @@ export function CleanEditorialTemplate({
               href={getNavLinkHref('/kontak')}
               className="px-7 py-4 rounded-xl bg-slate-950 hover:bg-slate-800 text-white font-bold text-xs uppercase tracking-widest transition-all shadow-md shrink-0 inline-flex items-center gap-2"
             >
-              <span>LET&apos;S WORK TOGETHER</span>
+              <span>SAMPAIKAN ASPIRASI</span>
               <ArrowRight className="w-4 h-4" />
             </Link>
           </div>

@@ -39,8 +39,8 @@ export const TEMPLATE_LAYOUTS = [
     description: 'Arsitektur utama berwibawa khas negarawan parlemen: Foto standing jas & peci resmi, siluet megah Gedung Parlemen DPR RI, 3 kartu artikel berita terkini, dan 4 infografis visualisasi anggaran & capaian.',
     icon: Landmark,
     category: 'flagship' as TemplateCategory,
-    isPremium: true,
-    previewBadge: 'Flagship Parlemen',
+    isPremium: false,
+    previewBadge: 'Tersedia di Semua Paket',
   },
   {
     id: PortalTemplateId.PLATINUM_SLATE,
@@ -51,16 +51,6 @@ export const TEMPLATE_LAYOUTS = [
     category: 'flagship' as TemplateCategory,
     isPremium: true,
     previewBadge: 'Executive Suite',
-  },
-  {
-    id: PortalTemplateId.STANDARD_DEFAULT,
-    name: 'Standar Eksekutif (Default)',
-    tagline: 'Klasik, Resmi & Terstruktur',
-    description: 'Tata letak resmi berbobot seimbang antara profil pimpinan, warta kinerja, dan kanal aspirasi publik.',
-    icon: Layout,
-    category: 'flagship' as TemplateCategory,
-    isPremium: false,
-    previewBadge: 'Tersedia di Semua Paket',
   },
   {
     id: PortalTemplateId.DARK_MODERN,
@@ -95,8 +85,8 @@ export const TEMPLATE_LAYOUTS = [
   {
     id: PortalTemplateId.BOLD_TYPOGRAPHY,
     name: 'POLARIS Antares',
-    tagline: 'Tipografi Raksasa, High-Contrast & Alur Advokasi',
-    description: 'Teks raksasa kontras tinggi di belakang foto cutout profil, alur tahapan advokasi 5 langkah, dan kartu kutipan integritas merah berani.',
+    tagline: 'Tipografi Raksasa, High-Contrast & Data Transparansi',
+    description: 'Teks raksasa kontras tinggi di belakang foto cutout profil, kurasi artikel telaah kebijakan resmi, serta etalase visual infografis capaian kinerja parlemen.',
     icon: Flame,
     category: 'creative' as TemplateCategory,
     isPremium: true,
@@ -354,8 +344,23 @@ export function TemplateLayoutSelector({
   const [searchQuery, setSearchQuery] = useState('');
   const [viewMode, setViewMode] = useState<'detailed' | 'compact'>('detailed');
 
+  const isTemplateMatch = (tplId: string, currentId?: string | null) => {
+    if (!currentId) return false;
+    if (tplId === currentId) return true;
+    if (
+      tplId === PortalTemplateId.POLARIS_INSIGHT &&
+      (currentId === PortalTemplateId.STANDARD_DEFAULT || currentId === 'standard-default')
+    ) {
+      return true;
+    }
+    return false;
+  };
+
   const activeTemplate = useMemo(() => {
-    return TEMPLATE_LAYOUTS.find((tpl) => tpl.id === selectedTemplateId) || TEMPLATE_LAYOUTS[0];
+    return (
+      TEMPLATE_LAYOUTS.find((tpl) => isTemplateMatch(tpl.id, selectedTemplateId)) ||
+      TEMPLATE_LAYOUTS[0]
+    );
   }, [selectedTemplateId]);
 
   const filteredTemplates = useMemo(() => {
@@ -494,7 +499,7 @@ export function TemplateLayoutSelector({
         <div className="grid grid-cols-1 gap-3 max-h-[520px] overflow-y-auto pr-1">
           {filteredTemplates.map((tpl, idx) => {
             const Icon = tpl.icon;
-            const isSelected = selectedTemplateId === tpl.id;
+            const isSelected = isTemplateMatch(tpl.id, selectedTemplateId);
             const isLocked = tpl.isPremium && !isPremiumUnlocked;
 
             return (
@@ -585,7 +590,7 @@ export function TemplateLayoutSelector({
         <div className="grid grid-cols-2 gap-2 max-h-[520px] overflow-y-auto pr-1">
           {filteredTemplates.map((tpl, idx) => {
             const Icon = tpl.icon;
-            const isSelected = selectedTemplateId === tpl.id;
+            const isSelected = isTemplateMatch(tpl.id, selectedTemplateId);
             const isLocked = tpl.isPremium && !isPremiumUnlocked;
 
             return (

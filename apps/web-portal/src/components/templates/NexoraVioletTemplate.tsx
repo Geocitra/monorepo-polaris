@@ -88,7 +88,7 @@ export function NexoraVioletTemplate({
       ? rawInfographics.map((inf: any, i: number) => ({
           id: inf.id || `info-${i}`,
           title: inf.title,
-          category: inf.category || inf.categoryName || 'Visual Data',
+          category: inf.category || inf.categoryName || 'Visual Kebijakan',
           badge:
             inf.badge ||
             (inf.assetType === 'DALLE_POSTER' ? 'Poster Kebijakan' : 'Infografis Resmi'),
@@ -117,216 +117,191 @@ export function NexoraVioletTemplate({
       {/* =================================================================== */}
       {/* SECTION 1: FULL SCREEN HERO (100VH ON FIRST OPEN)                   */}
       {/* =================================================================== */}
-      <section className="min-h-[calc(100vh-80px)] lg:h-[calc(100vh-80px)] lg:max-h-[100dvh] p-4 sm:p-6 lg:p-8 flex flex-col justify-between overflow-hidden">
-        
-        {/* Massive Split Headlines (Matching Exact Layout in Reference Image) */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 items-end pb-4 pt-1 sm:pt-2">
+      <section className="w-full bg-[#FAF9FD] border-b border-purple-100/60 min-h-[calc(100vh-69px)] lg:h-[calc(100vh-69px)] flex flex-col justify-between overflow-hidden">
+        <div className="max-w-7xl mx-auto w-full px-4 sm:px-6 lg:px-8 py-3 lg:py-5 flex-1 flex flex-col justify-between gap-3 sm:gap-4">
           
-          {/* Top Left Headline: "Define Your" (Italic Serif) + "STYLE" (Massive Purple) */}
-          <div className="space-y-0">
-            <span className="block text-2xl sm:text-3xl lg:text-4xl font-serif italic text-slate-900 tracking-tight">
-              Define Your
-            </span>
-            <h1 className="text-5xl sm:text-7xl lg:text-8xl font-black text-[#7B61FF] tracking-tight leading-none uppercase select-none">
-              STYLE
-            </h1>
-          </div>
-
-          {/* Top Right Headline: "Own Your" (Italic Serif) ✦ + "WORLD" (Massive Purple) */}
-          <div className="space-y-0 md:text-right">
-            <div className="inline-flex items-center gap-2 md:justify-end">
-              <span className="text-2xl sm:text-3xl lg:text-4xl font-serif italic text-slate-900 tracking-tight">
-                Own Your
-              </span>
-              <span className="text-2xl sm:text-3xl text-[#7B61FF]">✦</span>
-            </div>
-            <div className="text-5xl sm:text-7xl lg:text-8xl font-black text-[#7B61FF] tracking-tight leading-none uppercase select-none">
-              WORLD
-            </div>
-          </div>
-        </div>
-
-        {/* Central Rounded Purple Hero Card (Exact Nexora Purple Canvas Layout) */}
-        <div className="relative flex-1 rounded-[28px] sm:rounded-[36px] bg-[#8262FE] overflow-hidden shadow-2xl flex flex-col lg:flex-row items-center justify-between p-6 sm:p-8 lg:p-12 min-h-[460px]">
-          
-          {/* Concentric Organic Wave Background Overlay (SVG) */}
-          <div className="absolute inset-0 pointer-events-none opacity-25 overflow-hidden">
-            <svg
-              className="w-full h-full object-cover"
-              viewBox="0 0 1000 600"
-              fill="none"
-              xmlns="http://www.w3.org/2000/svg"
-            >
-              <ellipse cx="500" cy="300" rx="420" ry="240" stroke="white" strokeWidth="60" strokeDasharray="30 20" />
-              <ellipse cx="500" cy="300" rx="320" ry="180" stroke="white" strokeWidth="40" />
-              <ellipse cx="500" cy="300" rx="200" ry="120" stroke="white" strokeWidth="30" />
-            </svg>
-          </div>
-
-          {/* Left Column inside Purple Card: Headline, Description, Button, Social Proof */}
-          <div className="relative z-10 w-full lg:w-5/12 space-y-5 text-white flex flex-col justify-between h-full py-2">
-            <div className="space-y-4">
-              {/* Badge (✦ New Collection -> ✦ Mandat & Visi Baru) */}
-              <div className="inline-flex items-center gap-1.5 text-xs font-semibold text-purple-200 tracking-wider">
-                <span>✦</span>
-                <span>Mandat & Visi Pengabdian</span>
-              </div>
-
-              {/* Main Headline (Where Comfort Meets Confidence -> Integritas Mengabdi, Membawa Perubahan) */}
-              <h2 className="text-2xl sm:text-3xl lg:text-4xl font-black text-white leading-tight tracking-tight">
-                Where Integrity Meets Dedication
-              </h2>
-
-              {/* Description (Elevate your everyday look with pieces that speak you) */}
-              <p className="text-xs sm:text-sm text-purple-100/90 leading-relaxed max-w-sm">
-                Mendorong akselerasi ekonomi kerakyatan, memastikan transparansi anggaran perimbangan, dan mengawal aspirasi masyarakat Daerah Pemilihan {info.dapil}.
-              </p>
-
-              {/* Action Button (Explore Now ->) */}
-              <div className="pt-1">
-                <Link
-                  href={href('/artikel')}
-                  className="inline-flex items-center gap-3 px-6 py-3 rounded-full bg-slate-950 hover:bg-slate-900 text-white text-xs font-bold transition-transform hover:scale-105 shadow-xl group"
-                >
-                  <span>Explore Now</span>
-                  <div className="w-5 h-5 rounded-full border border-white/40 flex items-center justify-center group-hover:translate-x-1 transition-transform">
-                    <ArrowRight className="w-3 h-3" />
-                  </div>
-                </Link>
-              </div>
-            </div>
-
-            {/* Social Proof Pill (Loved by 20K+ Trendsetters ♥) */}
-            <div className="pt-4">
-              <div className="inline-flex items-center gap-3 px-4 py-2 rounded-full bg-white/20 backdrop-blur-md border border-white/30 shadow-md">
-                <div className="flex -space-x-2">
-                  <div className="w-7 h-7 rounded-full border-2 border-white overflow-hidden bg-purple-200">
-                    {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img
-                      src="/images/ref-article-1.jpg"
-                      alt="Avatar 1"
-                      className="w-full h-full object-cover"
-                    />
-                  </div>
-                  <div className="w-7 h-7 rounded-full border-2 border-white overflow-hidden bg-purple-300">
-                    {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img
-                      src="/images/ref-article-2.jpg"
-                      alt="Avatar 2"
-                      className="w-full h-full object-cover"
-                    />
-                  </div>
-                  <div className="w-7 h-7 rounded-full border-2 border-white overflow-hidden bg-purple-400">
-                    {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img
-                      src="/images/ref-article-3.jpg"
-                      alt="Avatar 3"
-                      className="w-full h-full object-cover"
-                    />
-                  </div>
-                </div>
-                <span className="text-[11px] font-bold text-white tracking-wide">
-                  Loved by 20K+ Konstituen ♥
-                </span>
-              </div>
-            </div>
-          </div>
-
-          {/* Center Column: Charismatic Character / Hero Portrait */}
-          <div className="relative z-10 w-full lg:w-4/12 flex items-center justify-center py-4 lg:py-0">
-            <div className="relative w-64 sm:w-72 lg:w-80 aspect-[3/4] max-h-[380px] lg:max-h-[440px] flex items-end justify-center">
-              
-              {/* Back Graphic Stamp matching the "NEXORA" shirt print in image */}
-              <div className="absolute top-8 w-44 h-44 rounded-full bg-white/15 backdrop-blur-sm flex flex-col items-center justify-center text-center p-3 border border-white/25 pointer-events-none">
-                <div className="text-xl font-black text-white tracking-widest uppercase">
-                  NEXORA
-                </div>
-                <div className="text-[9px] font-mono tracking-widest text-purple-200 uppercase mt-0.5">
-                  BE YOU. DO YOU. FOR YOU.
-                </div>
-                <div className="text-xs text-white mt-1">✦ ✦ ✦</div>
-              </div>
-
-              {/* Main Portrait */}
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img
-                src={info.avatar}
-                alt={info.fullName}
-                className="relative z-10 w-full h-full object-cover object-top drop-shadow-[0_20px_35px_rgba(0,0,0,0.35)] rounded-2xl"
-              />
-            </div>
-          </div>
-
-          {/* Right Column: 3 Feature Badges & Featured Look / Focus Card */}
-          <div className="relative z-10 w-full lg:w-3/12 space-y-6 flex flex-col justify-between items-end h-full py-2">
+          {/* Massive Split Headlines (Dignified Civic Indonesian Typography) */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-2 sm:gap-4 items-end pb-1 pt-1">
             
-            {/* Top 3 Horizontal Badges (Premium Quality, Sustainable Fashion, Limited Edition) */}
-            <div className="flex items-center justify-end gap-4 text-center">
-              <div className="flex flex-col items-center gap-1 text-white">
-                <div className="w-8 h-8 rounded-full bg-white/20 flex items-center justify-center">
-                  <ShieldCheck className="w-4 h-4 text-white" />
-                </div>
-                <div className="text-[10px] font-bold leading-tight">
-                  Integritas
-                  <br />
-                  <span className="text-purple-200 font-normal">Parlemen</span>
-                </div>
-              </div>
-
-              <div className="flex flex-col items-center gap-1 text-white">
-                <div className="w-8 h-8 rounded-full bg-white/20 flex items-center justify-center">
-                  <Compass className="w-4 h-4 text-white" />
-                </div>
-                <div className="text-[10px] font-bold leading-tight">
-                  Kebijakan
-                  <br />
-                  <span className="text-purple-200 font-normal">Transparan</span>
-                </div>
-              </div>
-
-              <div className="flex flex-col items-center gap-1 text-white">
-                <div className="w-8 h-8 rounded-full bg-white/20 flex items-center justify-center">
-                  <Award className="w-4 h-4 text-white" />
-                </div>
-                <div className="text-[10px] font-bold leading-tight">
-                  Dedikasi
-                  <br />
-                  <span className="text-purple-200 font-normal">Penuh</span>
-                </div>
-              </div>
+            {/* Top Left Headline: "Dedikasi Untuk" (Italic Serif) + "RAKYAT" (Massive Purple) */}
+            <div className="space-y-0">
+              <span className="block text-xl sm:text-2xl lg:text-3xl font-serif italic text-slate-900 tracking-tight">
+                Dedikasi Untuk
+              </span>
+              <h1 className="text-4xl sm:text-6xl lg:text-7xl font-black text-[#7B61FF] tracking-tight leading-none uppercase select-none">
+                RAKYAT
+              </h1>
             </div>
 
-            {/* Featured Look / Focus Card (White Floating Card matching the image) */}
-            {displayArticles.length > 0 && (
-              <div className="w-full sm:w-56 space-y-2">
-                <div className="text-xs font-semibold text-purple-200 text-right pr-1">
-                  Featured Focus
+            {/* Top Right Headline: "Amanah Bagi" (Italic Serif) ✦ + "NEGERI" (Massive Purple) */}
+            <div className="space-y-0 md:text-right">
+              <div className="inline-flex items-center gap-2 md:justify-end">
+                <span className="text-xl sm:text-2xl lg:text-3xl font-serif italic text-slate-900 tracking-tight">
+                  Amanah Bagi
+                </span>
+                <span className="text-xl sm:text-2xl text-[#7B61FF]">✦</span>
+              </div>
+              <div className="text-4xl sm:text-6xl lg:text-7xl font-black text-[#7B61FF] tracking-tight leading-none uppercase select-none">
+                NEGERI
+              </div>
+            </div>
+          </div>
+
+          {/* Central Rounded Purple Hero Card (Firmly grounded, not floating) */}
+          <div className="relative flex-1 rounded-[28px] sm:rounded-[36px] bg-gradient-to-br from-[#8262FE] via-[#7854F7] to-[#693EE0] overflow-hidden shadow-2xl flex flex-col lg:flex-row items-stretch lg:items-end justify-between p-6 sm:p-8 lg:px-10 lg:pt-8 lg:pb-0 min-h-[460px]">
+            
+            {/* Concentric Organic Wave Background Overlay (SVG) */}
+            <div className="absolute inset-0 pointer-events-none opacity-20 overflow-hidden">
+              <svg
+                className="w-full h-full object-cover"
+                viewBox="0 0 1000 600"
+                fill="none"
+                xmlns="http://www.w3.org/2000/svg"
+              >
+                <ellipse cx="500" cy="300" rx="420" ry="240" stroke="white" strokeWidth="60" strokeDasharray="30 20" />
+                <ellipse cx="500" cy="300" rx="320" ry="180" stroke="white" strokeWidth="40" />
+                <ellipse cx="500" cy="300" rx="200" ry="120" stroke="white" strokeWidth="30" />
+              </svg>
+            </div>
+
+            {/* Left Column: Headline, Description, Button, Mandate */}
+            <div className="relative z-10 w-full lg:w-4/12 space-y-4 text-white flex flex-col justify-between py-2 lg:py-6 self-center h-full">
+              <div className="space-y-3.5">
+                {/* Badge */}
+                <div className="inline-flex items-center gap-1.5 text-xs font-semibold text-purple-200 tracking-wider">
+                  <span>✦</span>
+                  <span>Mandat &amp; Visi Pengabdian</span>
                 </div>
-                <div className="bg-white rounded-2xl p-3 shadow-2xl text-slate-900 border border-purple-100">
-                  <div className="aspect-[4/3] rounded-xl overflow-hidden bg-purple-50 mb-2">
-                    {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img
-                      src={displayArticles[0].imageUrl}
-                      alt={displayArticles[0].title}
-                      className="w-full h-full object-cover hover:scale-105 transition duration-500"
-                    />
-                  </div>
-                  <div className="text-xs font-black text-slate-900 line-clamp-1">
-                    {displayArticles[0].title}
-                  </div>
-                  <div className="text-[10px] text-slate-500 font-medium mb-3">
-                    {displayArticles[0].category}
-                  </div>
+
+                {/* Main Headline */}
+                <h2 className="text-2xl sm:text-3xl lg:text-4xl font-black text-white leading-tight tracking-tight">
+                  Integritas Nyata &amp; Dedikasi Berkelanjutan
+                </h2>
+
+                {/* Description */}
+                <p className="text-xs sm:text-sm text-purple-100/90 leading-relaxed max-w-sm">
+                  Mendorong akselerasi ekonomi kerakyatan, memastikan transparansi anggaran perimbangan, dan mengawal aspirasi masyarakat Daerah Pemilihan {info.dapil}.
+                </p>
+
+                {/* Action Button */}
+                <div className="pt-1">
                   <Link
-                    href={href(`/artikel/${displayArticles[0].slug}`)}
-                    className="w-full py-2 rounded-xl bg-[#7048E8] hover:bg-[#5F3DC4] text-white text-[11px] font-extrabold flex items-center justify-center gap-1.5 transition shadow-sm"
+                    href={href('/artikel')}
+                    className="inline-flex items-center gap-3 px-6 py-3 rounded-full bg-slate-950 hover:bg-slate-900 text-white text-xs font-bold transition-transform hover:scale-105 shadow-xl group"
                   >
-                    <BookOpen className="w-3.5 h-3.5" />
-                    <span>Baca Telaah ↗</span>
+                    <span>BACA ARTIKEL</span>
+                    <div className="w-5 h-5 rounded-full border border-white/40 flex items-center justify-center group-hover:translate-x-1 transition-transform">
+                      <ArrowRight className="w-3 h-3" />
+                    </div>
                   </Link>
                 </div>
               </div>
-            )}
+
+              {/* Official Mandate Badge */}
+              <div className="pt-2">
+                <div className="inline-flex items-center gap-2.5 px-4 py-2 rounded-full bg-white/20 backdrop-blur-md border border-white/30 shadow-md text-white text-xs font-bold">
+                  <ShieldCheck className="w-4 h-4 text-purple-200 shrink-0" />
+                  <span>Mandat Fraksi {info.party} • Dapil {info.dapil}</span>
+                </div>
+              </div>
+            </div>
+
+            {/* Center Column: Charismatic Character / Hero Portrait (Firmly grounded at bottom-0, NOT floating) */}
+            <div className="relative z-10 w-full lg:w-5/12 flex items-end justify-center self-end h-full pt-4 lg:pt-0">
+              <div className="relative w-full max-w-[340px] sm:max-w-[380px] lg:max-w-[420px] h-[360px] sm:h-[420px] lg:h-[480px] flex items-end justify-center">
+                
+                {/* Back Graphic Stamp */}
+                <div className="absolute top-12 w-44 h-44 rounded-full bg-white/15 backdrop-blur-sm flex flex-col items-center justify-center text-center p-3 border border-white/25 pointer-events-none z-0">
+                  <div className="text-base sm:text-lg font-black text-white tracking-widest uppercase">
+                    {info.legislativeLevel ? info.legislativeLevel.replace(/_/g, ' ') : 'PARLEMEN'}
+                  </div>
+                  <div className="text-[8px] sm:text-[9px] font-mono tracking-widest text-purple-200 uppercase mt-0.5">
+                    ASPIRASI • AKUNTABILITAS
+                  </div>
+                  <div className="text-xs text-white mt-1">✦ ✦ ✦</div>
+                </div>
+
+                {/* Main Portrait - Resting firmly on bottom edge */}
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src={info.avatar}
+                  alt={info.fullName}
+                  className="relative z-10 max-h-full w-auto object-contain object-bottom select-none pointer-events-none"
+                />
+              </div>
+            </div>
+
+            {/* Right Column: 3 Feature Badges & Featured Look / Focus Card */}
+            <div className="relative z-10 w-full lg:w-3/12 space-y-4 flex flex-col justify-between items-end h-full py-2 lg:py-6 self-between">
+              
+              {/* Top 3 Horizontal Badges */}
+              <div className="flex items-center justify-end gap-3 text-center">
+                <div className="flex flex-col items-center gap-1 text-white">
+                  <div className="w-8 h-8 rounded-full bg-white/20 flex items-center justify-center">
+                    <ShieldCheck className="w-4 h-4 text-white" />
+                  </div>
+                  <div className="text-[10px] font-bold leading-tight">
+                    Integritas
+                    <br />
+                    <span className="text-purple-200 font-normal">Parlemen</span>
+                  </div>
+                </div>
+
+                <div className="flex flex-col items-center gap-1 text-white">
+                  <div className="w-8 h-8 rounded-full bg-white/20 flex items-center justify-center">
+                    <Compass className="w-4 h-4 text-white" />
+                  </div>
+                  <div className="text-[10px] font-bold leading-tight">
+                    Kebijakan
+                    <br />
+                    <span className="text-purple-200 font-normal">Transparan</span>
+                  </div>
+                </div>
+
+                <div className="flex flex-col items-center gap-1 text-white">
+                  <div className="w-8 h-8 rounded-full bg-white/20 flex items-center justify-center">
+                    <Award className="w-4 h-4 text-white" />
+                  </div>
+                  <div className="text-[10px] font-bold leading-tight">
+                    Dedikasi
+                    <br />
+                    <span className="text-purple-200 font-normal">Penuh</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Kajian Pilihan (Compact Floating Card) */}
+              {displayArticles.length > 0 && (
+                <div className="w-full sm:w-56 space-y-1.5">
+                  <div className="text-xs font-semibold text-purple-200 text-right pr-1">
+                    Kajian Pilihan
+                  </div>
+                  <div className="bg-white rounded-2xl p-3 shadow-2xl text-slate-900 border border-purple-100">
+                    <div className="aspect-[16/10] rounded-xl overflow-hidden bg-purple-50 mb-2">
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img
+                        src={displayArticles[0].imageUrl}
+                        alt={displayArticles[0].title}
+                        className="w-full h-full object-cover hover:scale-105 transition duration-500"
+                      />
+                    </div>
+                    <div className="text-xs font-black text-slate-900 line-clamp-1">
+                      {displayArticles[0].title}
+                    </div>
+                    <div className="text-[10px] text-slate-500 font-medium mb-2.5">
+                      {displayArticles[0].category}
+                    </div>
+                    <Link
+                      href={href(`/artikel/${displayArticles[0].slug}`)}
+                      className="w-full py-2 rounded-xl bg-[#7048E8] hover:bg-[#5F3DC4] text-white text-[11px] font-extrabold flex items-center justify-center gap-1.5 transition shadow-sm"
+                    >
+                      <BookOpen className="w-3.5 h-3.5" />
+                      <span>Baca Telaah ↗</span>
+                    </Link>
+                  </div>
+                </div>
+              )}
+            </div>
           </div>
         </div>
       </section>
@@ -334,8 +309,8 @@ export function NexoraVioletTemplate({
       {/* =================================================================== */}
       {/* SECTION 2: ARTIKEL & REKAM JEJAK KEBIJAKAN                          */}
       {/* =================================================================== */}
-      <section className="px-6 sm:px-10 lg:px-12 py-16 sm:py-20 border-t border-purple-100/80 bg-gradient-to-b from-white to-purple-50/40">
-        <div className="max-w-6xl mx-auto space-y-12">
+      <section className="w-full px-6 sm:px-10 lg:px-12 py-20 sm:py-24 border-t border-purple-100/80 bg-[#FAF8FF]">
+        <div className="max-w-7xl mx-auto space-y-12">
           
           {/* Section Header in Nexora Style */}
           <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
@@ -420,14 +395,14 @@ export function NexoraVioletTemplate({
       {/* =================================================================== */}
       {/* SECTION 3: INFOGRAFIS KINERJA & AKUNTABILITAS (MODAL LIGHTBOX)       */}
       {/* =================================================================== */}
-      <section className="px-6 sm:px-10 lg:px-12 py-16 sm:py-20 border-t border-purple-100/80 bg-white">
-        <div className="max-w-6xl mx-auto space-y-12">
+      <section className="w-full px-6 sm:px-10 lg:px-12 py-20 sm:py-24 border-t border-purple-100/80 bg-white">
+        <div className="max-w-7xl mx-auto space-y-12">
           
           {/* Section Header */}
           <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
             <div className="space-y-1">
               <span className="text-xl sm:text-2xl font-serif italic text-slate-800 tracking-tight">
-                Visual Data & Akuntabilitas
+                Publikasi Data & Akuntabilitas
               </span>
               <h2 className="text-4xl sm:text-5xl lg:text-6xl font-black text-[#7B61FF] tracking-tight leading-none uppercase">
                 INFOGRAFIS KINERJA

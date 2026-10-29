@@ -1,4 +1,5 @@
 import './globals.css';
+import './polaris-theme.css';
 import type { Metadata } from 'next';
 
 export const metadata: Metadata = {
@@ -13,8 +14,10 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="id">
-      <body className="min-h-screen flex flex-col">{children}</body>
+    <html lang="id" suppressHydrationWarning>
+      <body className="min-h-screen flex flex-col" suppressHydrationWarning>
+        {children}
+      </body>
     </html>
   );
 }

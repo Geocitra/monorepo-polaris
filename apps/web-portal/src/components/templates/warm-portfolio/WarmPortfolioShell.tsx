@@ -12,6 +12,8 @@ import {
   Sparkles,
 } from 'lucide-react';
 
+import { resolvePortalMemberData } from '@/lib/template-resolver';
+
 export interface WarmPortfolioShellProps {
   member: any;
   theme?: any;
@@ -37,26 +39,45 @@ export function WarmPortfolioShell({
   children,
   showMasthead = true,
 }: WarmPortfolioShellProps) {
-  const officialFullName = member?.fullName || theme?.officialFullName || 'Dr. H. Ahmad Fauzi, M.Si.';
+  const resolved = resolvePortalMemberData({
+    member,
+    theme,
+    subdomain,
+    defaultPrimaryColor: '#F59E0B',
+  });
+
+  const {
+    officialFullName,
+    dapil,
+    party,
+    formattedPhoneNumber,
+    officialEmail,
+  } = resolved;
+
   const instagramUsername =
     member?.instagramHandle?.replace(/^@/, '') ||
     member?.username ||
     subdomain ||
-    'ahmadfauzi';
+    '';
 
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const previewTemplate = searchParams?.get('preview_template');
+  const previewColor = searchParams?.get('preview_color');
 
   const getNavLinkHref = (path: string) => {
     let base = path;
     if (subdomain && pathname?.startsWith(`/${subdomain}`)) {
       base = path === '/' ? `/${subdomain}` : `/${subdomain}${path}`;
     }
-    if (previewTemplate) {
-      base += `${base.includes('?') ? '&' : '?'}preview_template=${previewTemplate}`;
+    const params = new URLSearchParams();
+    if (previewTemplate) params.set('preview_template', previewTemplate);
+    if (previewColor) params.set('preview_color', previewColor);
+    const qs = params.toString();
+    if (qs) {
+      base += `${base.includes('?') ? '&' : '?'}${qs}`;
     }
     return base;
   };
@@ -197,8 +218,7 @@ export function WarmPortfolioShell({
           {/* Section badge + Title */}
           <div className="flex flex-col gap-3">
             {pageBadge && (
-              <div className="inline-flex items-center gap-2 w-fit px-3.5 py-1.5 rounded-full bg-white text-stone-800 text-xs font-bold border border-stone-200 shadow-sm">
-                <span className="w-2 h-2 rounded-full bg-[#F59E0B] animate-pulse" />
+              <div className="inline-flex items-center w-fit px-3.5 py-1.5 rounded-full bg-white text-stone-800 text-xs font-bold border border-stone-200 shadow-sm">
                 <span>{pageBadge}</span>
               </div>
             )}

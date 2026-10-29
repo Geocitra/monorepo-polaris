@@ -247,66 +247,65 @@ export function AnivioxEmeraldTemplate({
           )}
 
           {/* ─── 1B. MAIN HERO CONTENT AREA (3-COLUMN BALANCED COMPOSITION) ─── */}
-          <div className="flex-1 min-h-0 px-6 sm:px-10 lg:px-14 flex items-center relative z-20 py-2 sm:py-3">
-            <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 lg:gap-4 items-end w-full h-full">
+          <div className="flex-1 min-h-0 px-6 sm:px-10 lg:px-14 flex items-center relative z-20 py-4 sm:py-6 lg:py-8">
+            <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-6 items-center lg:items-end w-full h-full">
               
-              {/* SISI KIRI: Hey, We're + Giant Bold Stacked Title (Persis "Digital Marketing Experts" di Gambar) */}
-              <div className="lg:col-span-4 flex flex-col justify-center space-y-2.5 lg:space-y-3 pb-2 text-left">
-                <p className="text-xs sm:text-sm font-medium text-[#A7F3D0] tracking-wide">
+              {/* SISI KIRI: Hey, We're + Giant Bold Stacked Title */}
+              <div className="lg:col-span-4 flex flex-col justify-center space-y-3 sm:space-y-4 lg:space-y-5 lg:self-center text-left">
+                <p className="text-xs sm:text-sm font-semibold text-[#A7F3D0] tracking-wider uppercase font-mono">
                   Hey, Kami Siap Mengabdi
                 </p>
 
-                <h1 className="text-4xl sm:text-5xl md:text-6xl lg:text-[66px] xl:text-[76px] font-black tracking-tight text-white leading-[0.93]">
+                <h1 className="text-4xl sm:text-5xl md:text-6xl lg:text-[64px] xl:text-[74px] font-black tracking-tight text-white leading-[0.95]">
                   Wakil <br />
                   <span style={{ color: info.primaryColor }}>Rakyat</span> <br />
                   Berdampak.
                 </h1>
 
-                <p className="text-xs text-[#8BA496] max-w-xs leading-relaxed pt-0.5">
+                <p className="text-xs sm:text-sm text-[#8BA496] max-w-sm leading-relaxed pt-1">
                   {info.headlineTagline}
                 </p>
               </div>
 
-              {/* TENGAH: Foto Dewan Berdiri Menyatu dengan Ambient Emerald (Kokoh di Atas Dasar) */}
+              {/* TENGAH: Foto Dewan Berdiri Megah & Proporsional Mengisi Ruang */}
               <div className="lg:col-span-4 flex items-end justify-center h-full relative">
-                <div className="relative w-[260px] sm:w-[320px] md:w-[360px] lg:w-[400px] xl:w-[430px] h-[260px] sm:h-[320px] md:h-[360px] lg:h-[400px] xl:h-[430px] flex items-end justify-center">
+                <div className="relative w-[300px] sm:w-[380px] md:w-[420px] lg:w-[480px] xl:w-[520px] h-[360px] sm:h-[440px] md:h-[500px] lg:h-[540px] xl:h-[600px] max-h-[72vh] flex items-end justify-center">
                   
                   {/* Glowing Emerald Aura Behind Silhouette */}
                   <div
-                    className="absolute bottom-6 left-1/2 -translate-x-1/2 w-[280px] sm:w-[340px] h-[280px] sm:h-[340px] rounded-full blur-[70px] pointer-events-none opacity-40"
+                    className="absolute bottom-8 left-1/2 -translate-x-1/2 w-[320px] sm:w-[420px] h-[320px] sm:h-[420px] rounded-full blur-[80px] pointer-events-none opacity-45"
                     style={{ backgroundColor: info.primaryColor }}
                   />
 
                   <img
                     src={info.photoUrl || '/images/aniviox-hero-portrait.jpg'}
                     alt={info.officialFullName}
-                    className="w-full h-full object-contain object-bottom relative z-10 filter brightness-105 contrast-105"
+                    className="w-full h-full object-contain object-bottom relative z-10 filter brightness-105 contrast-105 drop-shadow-[0_15px_40px_rgba(0,240,118,0.25)]"
                     style={{
                       maskImage:
-                        'linear-gradient(to bottom, #000 78%, rgba(0,0,0,0.8) 90%, transparent 100%)',
+                        'linear-gradient(to bottom, #000 80%, rgba(0,0,0,0.85) 92%, transparent 100%)',
                       WebkitMaskImage:
-                        'linear-gradient(to bottom, #000 78%, rgba(0,0,0,0.8) 90%, transparent 100%)',
+                        'linear-gradient(to bottom, #000 80%, rgba(0,0,0,0.85) 92%, transparent 100%)',
                     }}
                   />
                 </div>
               </div>
 
-              {/* SISI KANAN: Statement (Persis "We turn attention into action." di Gambar) */}
-              <div className="lg:col-span-4 flex flex-col justify-center space-y-3 lg:pl-6 pb-2 text-left">
-                <h2 className="text-xl sm:text-2xl lg:text-[30px] font-bold text-white tracking-tight leading-snug">
+              {/* SISI KANAN: Statement Kebijakan & CTA */}
+              <div className="lg:col-span-4 flex flex-col justify-center space-y-3.5 sm:space-y-4 lg:pl-6 lg:self-center text-left">
+                <h2 className="text-xl sm:text-2xl lg:text-[32px] font-bold text-white tracking-tight leading-snug">
                   Mengawal aspirasi nyata menjadi aksi kebijakan.
                 </h2>
                 <p className="text-xs sm:text-sm text-[#9BB2A5] leading-relaxed max-w-sm">
                   Strategi terukur dan advokasi berbasis data untuk mengawal kebijakan daerah, memperkuat transparansi APBD, dan memberi manfaat berkelanjutan bagi seluruh warga.
                 </p>
-                <div className="pt-1">
+                <div className="pt-2">
                   <Link
                     href={href('/profil')}
-                    className="inline-flex items-center gap-2 text-xs font-mono font-bold uppercase tracking-wider hover:text-white transition-colors group"
-                    style={{ color: info.primaryColor }}
+                    className="inline-flex items-center gap-2.5 px-6 py-2.5 rounded-full bg-[#0E2E1E] hover:bg-[#143B25] border border-[#1A4D30] text-xs font-mono font-bold uppercase tracking-wider text-white hover:text-[#00F076] transition-all shadow-md group"
                   >
                     <span>Kenali Rekam Jejak Dewan</span>
-                    <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-1 transition-transform" />
+                    <ArrowRight className="w-3.5 h-3.5 text-[#00F076] group-hover:translate-x-1 transition-transform" />
                   </Link>
                 </div>
               </div>
@@ -314,60 +313,7 @@ export function AnivioxEmeraldTemplate({
             </div>
           </div>
 
-          {/* ─── 1C. EMPAT PILAR (PERSIS #01, #02, #03, #04 DI GAMBAR) ─── */}
-          <div className="shrink-0 px-6 sm:px-10 lg:px-14 py-3 sm:py-3.5 border-t border-[#143B25]/80 bg-[#06180F]/50">
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-              
-              <div className="space-y-0.5">
-                <span
-                  className="text-xs font-mono font-extrabold block"
-                  style={{ color: info.primaryColor }}
-                >
-                  #01
-                </span>
-                <p className="text-xs sm:text-sm font-semibold text-white tracking-wide truncate">
-                  Advokasi Kebijakan
-                </p>
-              </div>
 
-              <div className="space-y-0.5">
-                <span
-                  className="text-xs font-mono font-extrabold block"
-                  style={{ color: info.primaryColor }}
-                >
-                  #02
-                </span>
-                <p className="text-xs sm:text-sm font-semibold text-white tracking-wide truncate">
-                  Aspirasi Warga Dapil
-                </p>
-              </div>
-
-              <div className="space-y-0.5">
-                <span
-                  className="text-xs font-mono font-extrabold block"
-                  style={{ color: info.primaryColor }}
-                >
-                  #03
-                </span>
-                <p className="text-xs sm:text-sm font-semibold text-white tracking-wide truncate">
-                  Pengawasan APBD
-                </p>
-              </div>
-
-              <div className="space-y-0.5">
-                <span
-                  className="text-xs font-mono font-extrabold block"
-                  style={{ color: info.primaryColor }}
-                >
-                  #04
-                </span>
-                <p className="text-xs sm:text-sm font-semibold text-white tracking-wide truncate">
-                  Legislasi Berkelanjutan
-                </p>
-              </div>
-
-            </div>
-          </div>
 
           {/* ─── 1D. BRAND PARTNER STRIP DI DASAR HERO CARD (PERSIS DI GAMBAR) ─── */}
           <div className="shrink-0 w-full bg-[#050C08] border-t border-[#122419] py-3 sm:py-3.5 px-6 sm:px-12">

@@ -76,13 +76,14 @@ export function NexoraVioletKontakClient({
 
   return (
     <NexoraVioletShell member={member} theme={theme} subdomain={subdomain} activePage="kontak">
-      <div className="px-6 sm:px-10 lg:px-16 py-12 sm:py-16 max-w-6xl mx-auto space-y-16">
-        
-        {/* Header */}
-        <div className="space-y-4">
-          <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-purple-100 text-[#7048E8] text-xs font-bold uppercase tracking-wider">
+      {/* ========================================================= */}
+      {/* HEADER BANNER: SIGNATURE NEXORA VIOLET PALETTE           */}
+      {/* ========================================================= */}
+      <div className="w-full bg-gradient-to-b from-[#ECE6FD] via-[#F4F0FF] to-white border-b border-purple-100/90 py-10 sm:py-14">
+        <div className="max-w-6xl mx-auto px-6 sm:px-10 lg:px-16 space-y-4">
+          <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-white/85 backdrop-blur-sm border border-purple-200/80 text-[#7048E8] text-xs font-bold uppercase tracking-wider shadow-xs">
             <MessageSquare className="w-4 h-4" />
-            <span>Kanal Aspirasi & Sekretariat Resmi</span>
+            <span>Kanal Aspirasi &amp; Sekretariat Resmi</span>
           </div>
 
           <div className="flex flex-col md:flex-row md:items-end justify-between gap-6">
@@ -94,12 +95,15 @@ export function NexoraVioletKontakClient({
                 KONTAK DEWAN
               </h1>
             </div>
-            <p className="text-xs sm:text-sm font-semibold text-slate-500 max-w-md">
+            <p className="text-xs sm:text-sm font-semibold text-slate-600 max-w-md">
               Sampaikan usulan, laporan masalah lingkungan, serta permohonan audiensi langsung kepada {info.fullName}.
             </p>
           </div>
         </div>
+      </div>
 
+      {/* Main Body */}
+      <div className="px-6 sm:px-10 lg:px-16 py-12 sm:py-16 max-w-6xl mx-auto space-y-16">
         {/* 2-Column Grid: Left Contact Info, Right Form */}
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-12">
           
