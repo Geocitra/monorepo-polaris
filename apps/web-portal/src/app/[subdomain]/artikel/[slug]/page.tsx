@@ -2,7 +2,7 @@ import React from 'react';
 import { notFound } from 'next/navigation';
 import Link from 'next/link';
 import type { Metadata } from 'next';
-import { fetchPortalData } from '@/lib/api';
+import { fetchPortalData, getNormalizedApiUrl } from '@/lib/api';
 import { formatDateIndonesian, calculateReadingTime } from '@/lib/utils';
 import { PortalTemplateId } from '@polaris/shared-types';
 
@@ -206,10 +206,11 @@ export async function generateMetadata({
     return { title: 'Portal Tidak Ditemukan - POLARIS' };
   }
 
-  const API_BASE_URL =
-    process.env.INTERNAL_API_URL ||
-    process.env.NEXT_PUBLIC_API_URL ||
-    'http://localhost:4000/api/v1';
+  const API_BASE_URL = getNormalizedApiUrl();
+
+
+
+
 
   let article = null;
   try {
@@ -1008,10 +1009,11 @@ export default async function TenantArticlePage({
 
   if (!portalData) notFound();
 
-  const API_BASE_URL =
-    process.env.INTERNAL_API_URL ||
-    process.env.NEXT_PUBLIC_API_URL ||
-    'http://localhost:4000/api/v1';
+  const API_BASE_URL = getNormalizedApiUrl();
+
+
+
+
   let article = null;
 
   try {
