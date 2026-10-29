@@ -46,7 +46,9 @@ export function NexoraVioletArtikelDetailClient({
     ? new Date(currentArticle.publishedAt).toLocaleDateString('id-ID', {
         dateStyle: 'long',
       })
-    : 'Oktober 2026';
+    : new Date().toLocaleDateString('id-ID', {
+        dateStyle: 'long',
+      });
 
   const coverImage =
     currentArticle?.featuredImageUrl ||
@@ -54,7 +56,7 @@ export function NexoraVioletArtikelDetailClient({
     currentArticle?.coverImageUrl ||
     currentArticle?.imageUrl ||
     currentArticle?.thumbnailUrl ||
-    '/images/ref-article-1.jpg';
+    '/images/default-article.jpg';
 
   const articleContent =
     currentArticle?.bodyContentMarkdown ||
@@ -65,43 +67,51 @@ export function NexoraVioletArtikelDetailClient({
 
   return (
     <NexoraVioletShell member={member} theme={theme} subdomain={subdomain} activePage="artikel">
-      <div className="px-6 sm:px-10 lg:px-16 py-10 sm:py-14 max-w-4xl mx-auto space-y-10">
-        
-        {/* Back Link */}
-        <div>
-          <Link
-            href={href('/artikel')}
-            className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-purple-50 hover:bg-purple-100 text-[#7048E8] text-xs font-bold transition shadow-sm"
-          >
-            <ArrowLeft className="w-3.5 h-3.5" />
-            <span>Kembali ke Katalog Artikel</span>
-          </Link>
+      {/* ========================================================= */}
+      {/* HEADER BANNER: SIGNATURE NEXORA VIOLET PALETTE           */}
+      {/* ========================================================= */}
+      <div className="w-full bg-gradient-to-b from-[#ECE6FD] via-[#F4F0FF] to-white border-b border-purple-100/90 py-10 sm:py-14">
+        <div className="max-w-4xl mx-auto px-6 sm:px-10 lg:px-16 space-y-6">
+          {/* Back Link */}
+          <div>
+            <Link
+              href={href('/artikel')}
+              className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-white/85 hover:bg-white text-[#7048E8] text-xs font-bold transition shadow-xs border border-purple-200/80"
+            >
+              <ArrowLeft className="w-3.5 h-3.5" />
+              <span>Kembali ke Katalog Artikel</span>
+            </Link>
+          </div>
+
+          {/* Article Header */}
+          <header className="space-y-4">
+            <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-white/85 backdrop-blur-sm border border-purple-200/80 text-[#7048E8] text-xs font-bold uppercase tracking-wider shadow-xs">
+              {currentArticle?.category || currentArticle?.issueCategory || 'Kebijakan Publik'}
+            </div>
+
+            <h1 className="text-3xl sm:text-4xl lg:text-5xl font-black text-slate-900 tracking-tight leading-tight">
+              {currentArticle?.title}
+            </h1>
+
+            <div className="flex flex-wrap items-center gap-4 text-xs text-slate-600 pt-2">
+              <span className="flex items-center gap-1.5 font-medium">
+                <Calendar className="w-4 h-4 text-[#7048E8]" />
+                <span>{formattedDate}</span>
+              </span>
+              <span>•</span>
+              <span className="flex items-center gap-1.5 font-medium">
+                <Clock className="w-4 h-4 text-[#7048E8]" />
+                <span>{currentArticle?.readingTime || '5 menit baca'}</span>
+              </span>
+              <span>•</span>
+              <span className="text-[#7048E8] font-bold">Oleh {info.fullName}</span>
+            </div>
+          </header>
         </div>
+      </div>
 
-        {/* Article Header */}
-        <header className="space-y-4">
-          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-purple-100 text-[#7048E8] text-xs font-bold uppercase tracking-wider">
-            {currentArticle?.category || currentArticle?.issueCategory || 'Kebijakan Publik'}
-          </div>
-
-          <h1 className="text-3xl sm:text-4xl lg:text-5xl font-black text-slate-900 tracking-tight leading-tight">
-            {currentArticle?.title}
-          </h1>
-
-          <div className="flex flex-wrap items-center gap-4 text-xs text-slate-500 pt-2 border-b border-purple-100 pb-4">
-            <span className="flex items-center gap-1.5 font-medium">
-              <Calendar className="w-4 h-4 text-purple-400" />
-              <span>{formattedDate}</span>
-            </span>
-            <span>•</span>
-            <span className="flex items-center gap-1.5 font-medium">
-              <Clock className="w-4 h-4 text-purple-400" />
-              <span>{currentArticle?.readingTime || '5 menit baca'}</span>
-            </span>
-            <span>•</span>
-            <span className="text-[#7048E8] font-bold">Oleh {info.fullName}</span>
-          </div>
-        </header>
+      {/* Main Body */}
+      <div className="px-6 sm:px-10 lg:px-16 py-10 sm:py-14 max-w-4xl mx-auto space-y-10">
 
         {/* Big Cover Image */}
         <div className="relative aspect-[16/9] rounded-3xl overflow-hidden bg-slate-100 shadow-xl border border-purple-100">
@@ -178,7 +188,7 @@ export function NexoraVioletArtikelDetailClient({
                           rel.posterUrl ||
                           rel.coverImageUrl ||
                           rel.imageUrl ||
-                          `/images/ref-article-${(idx % 3) + 1}.jpg`
+                          '/images/default-article.jpg'
                         }
                         alt={rel.title}
                         className="w-full h-full object-cover group-hover:scale-105 transition duration-300"
@@ -189,7 +199,7 @@ export function NexoraVioletArtikelDetailClient({
                     </div>
                   </div>
                   <div className="pt-2 text-[10px] text-slate-500 flex items-center justify-between">
-                    <span>{rel.readingTime || '4 mnt baca'}</span>
+                    <span>{rel.readingTime || '5 menit baca'}</span>
                     <span className="font-bold text-[#7048E8] flex items-center gap-1">
                       Baca ↗
                     </span>

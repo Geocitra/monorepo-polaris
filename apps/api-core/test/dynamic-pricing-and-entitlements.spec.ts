@@ -144,7 +144,7 @@ describe('Dynamic Pricing & Entitlement Domain Invariants (Craig Larman Protecte
   });
 
   describe('PortalProfile & CMS Layout Entitlement Gate', () => {
-    it('allows standard-default layout on any plan tier (including STARTER)', () => {
+    it('allows standard-default and polaris-insight layout on any plan tier (including STARTER)', () => {
       const portal = new PortalProfile(
         'portal-1',
         'tenant-starter-1',
@@ -156,8 +156,12 @@ describe('Dynamic Pricing & Entitlement Domain Invariants (Craig Larman Protecte
       expect(() => {
         portal.updateLayoutTemplate('standard-default', false);
       }).not.toThrow();
-
       expect(portal.layoutTemplateId).toBe('standard-default');
+
+      expect(() => {
+        portal.updateLayoutTemplate('polaris-insight', false);
+      }).not.toThrow();
+      expect(portal.layoutTemplateId).toBe('polaris-insight');
     });
 
     it('strictly forbids non-default thematic layouts when isPremiumTier is false (STARTER)', () => {

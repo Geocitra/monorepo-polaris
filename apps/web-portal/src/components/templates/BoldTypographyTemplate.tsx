@@ -6,19 +6,10 @@ import { usePathname, useSearchParams } from 'next/navigation';
 import {
   ArrowRight,
   ArrowUpRight,
-  Calendar,
-  Quote,
   Landmark,
-  Search,
-  Lightbulb,
-  FileCode,
-  Send,
-  CheckCircle,
   Mail,
   Phone,
   MapPin,
-  ExternalLink,
-  Laptop,
   Instagram,
   Menu,
   X,
@@ -78,13 +69,18 @@ export function BoldTypographyTemplate({
   const watermarkText = theme?.layoutSchema?.watermarkText || theme?.watermarkText || 'PARLEMEN';
   const [firstName, lastName] = getStackedName(member?.fullName);
   const articles = recentArticles.slice(0, 3);
+  const infographics = (recentInfographics || []).slice(0, 3);
+  const homeStats: any[] =
+    Array.isArray(theme?.layoutSchema?.stats) && theme.layoutSchema.stats.length > 0
+      ? theme.layoutSchema.stats.filter((s: any) => s && (s.label?.trim() || s.value?.trim())).slice(0, 3)
+      : [];
   const [mobileMenuOpen, setMobileMenuOpen] = React.useState(false);
   const officialFullName = member?.fullName || 'Wakil Rakyat';
   const instagramUsername =
     member?.instagramHandle?.replace(/^@/, '') ||
     member?.username ||
     subdomain ||
-    'ahmadfauzi';
+    '';
 
   return (
     <div className="min-h-screen bg-[#070707] text-slate-100 font-sans selection:bg-red-600 selection:text-white">
@@ -296,53 +292,37 @@ export function BoldTypographyTemplate({
                 </p>
               </div>
 
-              {/* 3 Stats: Horizontal on Tablet (sm:), Vertical on Mobile & Desktop */}
-              <div className="grid grid-cols-1 sm:grid-cols-3 lg:grid-cols-1 gap-4 sm:gap-6 lg:gap-0 lg:space-y-4 max-w-none lg:max-w-[260px] lg:ml-auto w-full">
-                {/* Stat 1 */}
-                <div className="flex items-center gap-3 sm:gap-4">
-                  <span
-                    className="font-bebas text-4xl sm:text-5xl lg:text-7xl font-black leading-none shrink-0"
-                    style={{ color: primaryColor }}
-                  >
-                    10+
-                  </span>
-                  <div className="text-[10px] sm:text-[11px] font-sans font-bold tracking-wider text-slate-300 uppercase leading-tight">
-                    TAHUN
-                    <br />
-                    <span className="text-slate-400">PENGABDIAN</span>
-                  </div>
+              {/* 3 Stats: Hanya tampil jika dikonfigurasi resmi di layoutSchema dewan */}
+              {homeStats.length > 0 && (
+                <div className="grid grid-cols-1 sm:grid-cols-3 lg:grid-cols-1 gap-4 sm:gap-6 lg:gap-0 lg:space-y-4 max-w-none lg:max-w-[260px] lg:ml-auto w-full">
+                  {homeStats.map((st: any, sIdx: number) => (
+                    <div
+                      key={sIdx}
+                      className={`${
+                        sIdx > 0
+                          ? 'border-t sm:border-t-0 sm:border-l lg:border-l-0 lg:border-t border-white/10 pt-4 sm:pt-0 sm:pl-4 lg:pl-0 lg:pt-4'
+                          : ''
+                      } flex items-center gap-3 sm:gap-4`}
+                    >
+                      <span
+                        className="font-bebas text-4xl sm:text-5xl lg:text-7xl font-black leading-none shrink-0"
+                        style={{ color: primaryColor }}
+                      >
+                        {st.value}
+                      </span>
+                      <div className="text-[10px] sm:text-[11px] font-sans font-bold tracking-wider text-white uppercase leading-tight">
+                        {st.label}
+                        {st.sublabel && (
+                          <>
+                            <br />
+                            <span className="text-slate-400">{st.sublabel}</span>
+                          </>
+                        )}
+                      </div>
+                    </div>
+                  ))}
                 </div>
-
-                {/* Stat 2 */}
-                <div className="border-t sm:border-t-0 sm:border-l lg:border-l-0 lg:border-t border-white/10 pt-4 sm:pt-0 sm:pl-4 lg:pl-0 lg:pt-4 flex items-center gap-3 sm:gap-4">
-                  <span
-                    className="font-bebas text-4xl sm:text-5xl lg:text-7xl font-black leading-none shrink-0"
-                    style={{ color: primaryColor }}
-                  >
-                    42+
-                  </span>
-                  <div className="text-[10px] sm:text-[11px] font-sans font-bold tracking-wider text-slate-300 uppercase leading-tight">
-                    RUU &amp; PERDA
-                    <br />
-                    <span className="text-slate-400">TERKAWAL</span>
-                  </div>
-                </div>
-
-                {/* Stat 3 */}
-                <div className="border-t sm:border-t-0 sm:border-l lg:border-l-0 lg:border-t border-white/10 pt-4 sm:pt-0 sm:pl-4 lg:pl-0 lg:pt-4 flex items-center gap-3 sm:gap-4">
-                  <span
-                    className="font-bebas text-4xl sm:text-5xl lg:text-7xl font-black leading-none shrink-0"
-                    style={{ color: primaryColor }}
-                  >
-                    100%
-                  </span>
-                  <div className="text-[10px] sm:text-[11px] font-sans font-bold tracking-wider text-slate-300 uppercase leading-tight">
-                    TRANSPARANSI
-                    <br />
-                    <span className="text-slate-400">PUBLIK</span>
-                  </div>
-                </div>
-              </div>
+              )}
             </div>
 
           </div>
@@ -403,105 +383,87 @@ export function BoldTypographyTemplate({
         </div>
       </section>
 
-      {/* ─── SECTION 3: WORK PROCESS & RED QUOTE BLOCK (EXACT TO DESIGN 2) ─── */}
-      <section id="metrics" className="py-16 sm:py-20 border-b border-white/10">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
-            
-            {/* COLUMN 1: PENDIDIKAN & REKAM JEJAK */}
-            <div className="md:col-span-6 lg:col-span-4 space-y-6">
-              <div className="border-b border-white/10 pb-3 text-xs font-mono uppercase tracking-widest text-red-500 font-bold">
-                REKAM JEJAK & AMANAH
-              </div>
+      {/* ─── SECTION 3: INFOGRAFIS CAPAIAN & TRANSPARANSI ─── */}
+      <section id="infografis" className="py-16 sm:py-20 border-b border-white/10 bg-[#070707]">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-10">
+          <div className="flex items-center justify-between border-b border-white/10 pb-4 text-xs font-mono uppercase tracking-widest">
+            <span className="font-bold text-white">INFOGRAFIS CAPAIAN &amp; TRANSPARANSI</span>
+            <Link
+              href={getNavLinkHref('/infografis')}
+              className="text-red-400 hover:text-white flex items-center gap-1 transition-colors"
+              style={{ color: primaryColor }}
+            >
+              <span>LIHAT SEMUA INFOGRAFIS</span>
+              <ArrowRight className="w-3 h-3" />
+            </Link>
+          </div>
 
-              <div className="space-y-4">
-                <div className="space-y-1">
-                  <div className="text-xs text-red-400 font-mono font-bold uppercase">DAERAH PEMILIHAN</div>
-                  <div className="text-sm font-bold text-white">{member?.dapilName || 'Jawa Barat I'}</div>
-                  <div className="text-xs text-slate-400">Pengawalan aspirasi 8 wilayah kota & kabupaten konstituen.</div>
-                </div>
-
-                <div className="space-y-1 pt-3 border-t border-white/5">
-                  <div className="text-xs text-red-400 font-mono font-bold uppercase">PENUGASAN KOMISI</div>
-                  <div className="text-sm font-bold text-white">{member?.commissionName || 'Komisi X DPR RI'}</div>
-                  <div className="text-xs text-slate-400">Fokus legislasi, anggaran pendidikan, pemuda, olahraga, dan pariwisata.</div>
-                </div>
-
-                <div className="space-y-1 pt-3 border-t border-white/5">
-                  <div className="text-xs text-red-400 font-mono font-bold uppercase">FRAKSI PARLEMEN</div>
-                  <div className="text-sm font-bold text-white">{member?.partyAffiliation || 'FRAKSI UTAMA'}</div>
-                  <div className="text-xs text-slate-400">Menjaga disiplin mandat ideologis demi keadilan sosial rakyat.</div>
-                </div>
-              </div>
-            </div>
-
-            {/* COLUMN 2: WORK PROCESS TIMELINE */}
-            <div className="md:col-span-6 lg:col-span-4 space-y-6">
-              <div className="border-b border-white/10 pb-3 text-xs font-mono uppercase tracking-widest text-red-500 font-bold">
-                ALUR ADVOKASI KEBIJAKAN
-              </div>
-
-              <div className="space-y-4 font-mono text-xs">
-                <div className="flex items-start gap-3 p-2.5 rounded-lg bg-white/5">
-                  <span className="text-red-500 font-bold">01</span>
-                  <div>
-                    <span className="text-white font-bold block">SERAP ASPIRASI</span>
-                    <span className="text-slate-400 text-[11px]">Rembuk warga, kunjungan reses, & pengaduan online.</span>
-                  </div>
-                </div>
-
-                <div className="flex items-start gap-3 p-2.5 rounded-lg bg-white/5">
-                  <span className="text-red-500 font-bold">02</span>
-                  <div>
-                    <span className="text-white font-bold block">TELAAH & KAJIAN HUKUM</span>
-                    <span className="text-slate-400 text-[11px]">Menyusun draf risalah bersama tim pakar & staf ahli.</span>
-                  </div>
-                </div>
-
-                <div className="flex items-start gap-3 p-2.5 rounded-lg bg-white/5">
-                  <span className="text-red-500 font-bold">03</span>
-                  <div>
-                    <span className="text-white font-bold block">DEBAT KOMISI PARLEMEN</span>
-                    <span className="text-slate-400 text-[11px]">Memperjuangkan alokasi APBN kementerian terkait.</span>
-                  </div>
-                </div>
-
-                <div className="flex items-start gap-3 p-2.5 rounded-lg bg-white/5">
-                  <span className="text-red-500 font-bold">04</span>
-                  <div>
-                    <span className="text-white font-bold block">PENGAWASAN LAPANGAN</span>
-                    <span className="text-slate-400 text-[11px]">Memastikan program benar-benar sampai ke tangan warga.</span>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            {/* COLUMN 3: RED QUOTE CARD (EXACT TO DESIGN 2) */}
-            <div className="md:col-span-12 lg:col-span-4">
-              <div
-                className="p-8 rounded-2xl text-white space-y-6 shadow-2xl relative overflow-hidden"
-                style={{ backgroundColor: primaryColor }}
-              >
-                <Quote className="w-10 h-10 text-white/30" />
-                <p className="text-sm sm:text-base font-serif italic leading-relaxed font-semibold">
-                  &ldquo;Amanah rakyat bukanlah sekadar retorika mimbar, melainkan mandat nyata yang harus diwujudkan dalam setiap rupiah anggaran dan pasal undang-undang.&rdquo;
-                </p>
-
-                <div className="pt-4 border-t border-white/20 flex items-center justify-between text-xs font-mono">
-                  <div>
-                    <span className="font-bold block uppercase">{member?.fullName?.split(',')[0]}</span>
-                    <span className="text-white/80 text-[10px]">Tanda Tangan Integritas</span>
-                  </div>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            {infographics.length > 0 ? (
+              infographics.map((info: any, idx: number) => {
+                const infoImg =
+                  info.imageUrl ||
+                  info.posterUrl ||
+                  info.featuredImageUrl ||
+                  '/images/showcase-infografis-apbd.jpg';
+                return (
                   <Link
-                    href={getNavLinkHref('/kontak')}
-                    className="px-3 py-1.5 rounded-lg bg-black hover:bg-black/80 text-white text-[11px] font-bold transition-all shadow-sm"
+                    key={info.id || idx}
+                    href={getNavLinkHref('/infografis')}
+                    className="group block p-5 rounded-xl bg-[#111111] border border-white/5 hover:border-red-600/50 transition-all duration-300 space-y-4"
                   >
-                    KIRIM ASPIRASI →
-                  </Link>
-                </div>
-              </div>
-            </div>
+                    <div className="relative aspect-[4/3] rounded-lg overflow-hidden bg-slate-900 border border-white/10">
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img
+                        src={infoImg}
+                        alt={info.title || 'Infografis Capaian'}
+                        className="w-full h-full object-cover object-top group-hover:scale-105 transition-transform duration-500"
+                        onError={(e) => {
+                          const target = e.currentTarget;
+                          if (!target.src.includes('/images/showcase-infografis-apbd.jpg')) {
+                            target.src = '/images/showcase-infografis-apbd.jpg';
+                          }
+                        }}
+                      />
+                      <div className="absolute top-2.5 left-2.5">
+                        <span
+                          className="px-2.5 py-1 rounded text-[10px] font-mono font-bold uppercase tracking-wider text-white shadow-sm"
+                          style={{ backgroundColor: primaryColor }}
+                        >
+                          {info.category || info.issueCategory || 'DATA KINERJA'}
+                        </span>
+                      </div>
+                    </div>
 
+                    <div className="space-y-2">
+                      <div className="flex items-center justify-between text-xs font-mono">
+                        <span className="font-bold" style={{ color: primaryColor }}>
+                          0{idx + 1}
+                        </span>
+                        <span className="text-slate-500">
+                          {info.publishedAt
+                            ? formatDateIndonesian(info.publishedAt)
+                            : (info.date || 'PUBLIKASI RESMI')}
+                        </span>
+                        <ArrowUpRight className="w-4 h-4 text-slate-500 group-hover:text-red-400 group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-all" />
+                      </div>
+
+                      <h3 className="text-sm sm:text-base font-bold text-white group-hover:text-red-400 transition-colors leading-snug line-clamp-2">
+                        {info.title}
+                      </h3>
+
+                      <p className="text-xs text-slate-400 line-clamp-2 leading-relaxed font-normal">
+                        {info.summary || info.excerpt || info.description || 'Visualisasi data capaian kebijakan publik dan akuntabilitas parlemen.'}
+                      </p>
+                    </div>
+                  </Link>
+                );
+              })
+            ) : (
+              <div className="col-span-3 text-center py-12 text-slate-500 font-mono text-xs border border-dashed border-white/10 rounded-xl">
+                Belum ada infografis publikasi resmi yang diterbitkan.
+              </div>
+            )}
           </div>
         </div>
       </section>

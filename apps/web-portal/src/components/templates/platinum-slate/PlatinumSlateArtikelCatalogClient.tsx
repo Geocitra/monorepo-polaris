@@ -3,7 +3,7 @@
 import React from 'react';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
-import { BookOpen, Calendar, Clock, ArrowUpRight } from 'lucide-react';
+import { BookOpen, Calendar, ArrowUpRight } from 'lucide-react';
 import { formatDateIndonesian } from '@/lib/utils';
 
 interface PlatinumSlateArtikelCatalogClientProps {
@@ -22,43 +22,7 @@ export function PlatinumSlateArtikelCatalogClient({
   const searchParams = useSearchParams();
   const previewTemplate = searchParams?.get('preview_template');
 
-  const fallbackArticles = [
-    {
-      id: 'art-1',
-      title: 'Perlindungan & Akses Permodalan UMKM Daerah Melalui Regulasi Parlemen',
-      slug: 'perlindungan-akses-permodalan-umkm',
-      category: 'Ekonomi Kerakyatan',
-      imageUrl: '/images/showcase-artikel-pertanian.jpg',
-      featuredImageUrl: '/images/showcase-artikel-pertanian.jpg',
-      excerpt: 'Inisiasi draf perancangan regulasi guna memperkuat subsidi bunga kredit dan perlindungan gerai usaha rakyat di 18 kecamatan.',
-      publishedAt: '2026-03-15',
-      readingTimeMinutes: 4,
-    },
-    {
-      id: 'art-2',
-      title: 'Transparansi Realisasi Pos Belanja APBD Sektor Kesehatan & BPJS PBI',
-      slug: 'transparansi-apbd-sektor-kesehatan',
-      category: 'Pengawasan Anggaran',
-      imageUrl: '/images/ref-article-1.jpg',
-      featuredImageUrl: '/images/ref-article-1.jpg',
-      excerpt: 'Hasil evaluasi triwulanan alokasi dana kesehatan daerah untuk memastikan kepesertaan masyarakat kurang mampu tetap terlindungi.',
-      publishedAt: '2026-03-10',
-      readingTimeMinutes: 6,
-    },
-    {
-      id: 'art-3',
-      title: 'Akselerasi Infrastruktur Jalan Poros Antardesa & Konektivitas Wilayah',
-      slug: 'akselerasi-infrastruktur-jalan-desa',
-      category: 'Pembangunan Wilayah',
-      imageUrl: '/images/ref-article-2.jpg',
-      featuredImageUrl: '/images/ref-article-2.jpg',
-      excerpt: 'Pengawalan percepatan perbaikan jalan poros lingkar kecamatan guna memangkas biaya logistik komoditas pertanian lokal.',
-      publishedAt: '2026-02-28',
-      readingTimeMinutes: 5,
-    },
-  ];
-
-  const sourceArticles = articles && articles.length > 0 ? articles : fallbackArticles;
+  const sourceArticles = articles || [];
 
   const getArticleUrl = (slug: string) => {
     let base = subdomain ? `/${subdomain}/artikel/${slug}` : `/artikel/${slug}`;
@@ -149,13 +113,8 @@ export function PlatinumSlateArtikelCatalogClient({
                           01 UTAMA
                         </span>
                         <div className="flex items-center gap-1.5 text-xs text-slate-400 font-mono">
-                          <Clock className="w-3.5 h-3.5 text-slate-400" />
-                          <span>
-                            {leadArticle.readingTimeMinutes
-                              ? `${leadArticle.readingTimeMinutes} min`
-                              : (leadArticle.readingTime || '5 min')}{' '}
-                            baca
-                          </span>
+                          <Calendar className="w-3.5 h-3.5 text-slate-400" />
+                          <span>{formatDateIndonesian(leadArticle.publishedAt || leadArticle.createdAt || leadArticle.date)}</span>
                         </div>
                       </div>
 
@@ -268,16 +227,6 @@ export function PlatinumSlateArtikelCatalogClient({
                             <div className="flex items-center gap-1.5 text-slate-400 font-mono text-[11px]">
                               <Calendar className="w-3 h-3 text-slate-400" />
                               <span>{formatDateIndonesian(art.publishedAt || art.createdAt || art.date)}</span>
-                            </div>
-                            <span className="text-slate-600 hidden sm:inline">•</span>
-                            <div className="hidden sm:flex items-center gap-1.5 text-slate-400 font-mono text-[11px]">
-                              <Clock className="w-3 h-3 text-slate-400" />
-                              <span>
-                                {art.readingTimeMinutes
-                                  ? `${art.readingTimeMinutes} min`
-                                  : (art.readingTime || '5 min')}{' '}
-                                baca
-                              </span>
                             </div>
                           </div>
 

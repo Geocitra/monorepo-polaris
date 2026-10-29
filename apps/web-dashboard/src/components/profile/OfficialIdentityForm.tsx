@@ -358,7 +358,7 @@ export function OfficialIdentityForm({
           {/* PREVIEW BOX */}
           <div className="relative shrink-0">
             <div
-              className="w-16 h-20 sm:w-20 sm:h-24 rounded-lg border border-slate-300 flex items-center justify-center overflow-hidden bg-white relative shadow-2xs"
+              className="w-16 h-20 sm:w-20 sm:h-25 rounded-lg border border-slate-300 flex items-center justify-center overflow-hidden bg-white relative shadow-2xs"
               style={{
                 backgroundImage:
                   'linear-gradient(45deg, #cbd5e1 25%, transparent 25%), linear-gradient(-45deg, #cbd5e1 25%, transparent 25%), linear-gradient(45deg, transparent 75%, #cbd5e1 75%), linear-gradient(-45deg, transparent 75%, #cbd5e1 75%)',

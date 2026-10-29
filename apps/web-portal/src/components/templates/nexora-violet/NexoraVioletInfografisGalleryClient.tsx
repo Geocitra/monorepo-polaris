@@ -37,7 +37,7 @@ export function NexoraVioletInfografisGalleryClient({
   const effectiveInfographics = infographics || initialInfographics || [];
 
   const [selectedInfographic, setSelectedInfographic] = useState<any | null>(null);
-  const [selectedCategory, setSelectedCategory] = useState<string>('ALL');
+  const [selectedCategory, setSelectedCategory] = useState<string>('SEMUA');
 
   const allInfographics = useMemo(() => {
     if (effectiveInfographics && effectiveInfographics.length > 0) {
@@ -72,25 +72,26 @@ export function NexoraVioletInfografisGalleryClient({
     allInfographics.forEach((item) => {
       if (item.category) set.add(item.category);
     });
-    return ['ALL', ...Array.from(set)];
+    return ['SEMUA', ...Array.from(set)];
   }, [allInfographics]);
 
   const filteredInfographics = useMemo(() => {
     return allInfographics.filter((inf: any) => {
-      if (selectedCategory === 'ALL') return true;
+      if (selectedCategory === 'SEMUA') return true;
       return inf.category === selectedCategory;
     });
   }, [allInfographics, selectedCategory]);
 
   return (
     <NexoraVioletShell member={member} theme={theme} subdomain={subdomain} activePage="infografis">
-      <div className="px-6 sm:px-10 lg:px-16 py-12 sm:py-16 max-w-6xl mx-auto space-y-12">
-        
-        {/* Header */}
-        <div className="space-y-4">
-          <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-purple-100 text-[#7048E8] text-xs font-bold uppercase tracking-wider">
+      {/* ========================================================= */}
+      {/* HEADER BANNER: SIGNATURE NEXORA VIOLET PALETTE           */}
+      {/* ========================================================= */}
+      <div className="w-full bg-gradient-to-b from-[#ECE6FD] via-[#F4F0FF] to-white border-b border-purple-100/90 py-10 sm:py-14">
+        <div className="max-w-6xl mx-auto px-6 sm:px-10 lg:px-16 space-y-4">
+          <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-white/85 backdrop-blur-sm border border-purple-200/80 text-[#7048E8] text-xs font-bold uppercase tracking-wider shadow-xs">
             <BarChart3 className="w-4 h-4" />
-            <span>Transparansi Kinerja & Akuntabilitas Publik</span>
+            <span>Transparansi Kinerja &amp; Akuntabilitas Publik</span>
           </div>
 
           <div className="flex flex-col md:flex-row md:items-end justify-between gap-6">
@@ -102,12 +103,15 @@ export function NexoraVioletInfografisGalleryClient({
                 INFOGRAFIS KINERJA
               </h1>
             </div>
-            <p className="text-xs sm:text-sm font-semibold text-slate-500 max-w-md">
+            <p className="text-xs sm:text-sm font-semibold text-slate-600 max-w-md">
               Ikhtisar visual data serapan anggaran, capaian regulasi parlemen, dan program nyata bagi warga Daerah Pemilihan {info.dapil}.
             </p>
           </div>
         </div>
+      </div>
 
+      {/* Main Body */}
+      <div className="px-6 sm:px-10 lg:px-16 py-12 sm:py-16 max-w-6xl mx-auto space-y-12">
         {/* Category Pills */}
         <div className="flex flex-wrap items-center gap-2 bg-purple-50/70 p-4 rounded-2xl border border-purple-100">
           <span className="text-xs font-bold text-slate-500 flex items-center gap-1 mr-2">
@@ -124,7 +128,7 @@ export function NexoraVioletInfografisGalleryClient({
                   : 'bg-white hover:bg-purple-100 text-slate-700 border border-purple-100'
               }`}
             >
-              {cat === 'ALL' ? 'Semua Infografis' : cat}
+              {cat === 'SEMUA' ? 'Semua Infografis' : cat}
             </button>
           ))}
         </div>

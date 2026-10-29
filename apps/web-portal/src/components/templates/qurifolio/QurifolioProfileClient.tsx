@@ -2,21 +2,31 @@
 
 import React, { useState } from 'react';
 import Link from 'next/link';
-import { usePathname, useSearchParams } from 'next/navigation';
+import { useSearchParams } from 'next/navigation';
 import {
   ShieldCheck,
-  MapPin,
-  Building2,
-  BookOpen,
-  ArrowRight,
-  GraduationCap,
+  Scale,
+  Activity,
+  Landmark,
   Briefcase,
-  FileText,
-  Clock,
+  GraduationCap,
+  Building2,
+  HeartHandshake,
   CheckCircle2,
-  Award,
+  Calendar,
+  MapPin,
+  Compass,
   Users,
+  Camera,
+  ArrowRight,
+  MessageCircle,
+  Phone,
+  Sparkles,
+  Award,
+  BookOpen,
 } from 'lucide-react';
+import { resolvePortalMemberData } from '@/lib/template-resolver';
+import { PortalPhotoGallery } from '@/components/profile/PortalPhotoGallery';
 
 interface QurifolioProfileClientProps {
   member: any;
@@ -29,119 +39,109 @@ export function QurifolioProfileClient({
   theme,
   subdomain,
 }: QurifolioProfileClientProps) {
-  const photoUrl =
-    theme?.officialPhotoUrl ||
-    member?.photoUrl ||
-    '/images/dewan-ahmad-fauzi-cutout.webp';
-  const officialFullName =
-    member?.fullName || theme?.officialFullName || 'Dr. H. Ahmad Fauzi, M.Si.';
-  const dapil =
-    member?.dapilName || member?.customDapilName || member?.customDapil || 'Jawa Barat I';
-  const party = member?.partyAffiliation || 'Fraksi Parlemen DPR RI';
-  const bio =
-    theme?.bioBiography ||
-    `${officialFullName} telah mendedikasikan bertahun-tahun masa pengabdian untuk mendampingi masyarakat di Daerah Pemilihan ${dapil}. Dengan integritas, ketulusan mendengar, dan kecermatan merumuskan regulasi, beliau senantiasa hadir mengawal setiap aspirasi konstituen menuju kemakmuran bersama.`;
+  // 1. Resolve dynamic real data from member & theme
+  const resolved = resolvePortalMemberData({
+    member,
+    theme,
+    subdomain,
+    defaultPrimaryColor: '#FF6B00',
+  });
 
-  const [activeTab, setActiveTab] = useState<'semua' | 'visi' | 'pendidikan' | 'karier' | 'komisi'>('semua');
+  const {
+    officialFullName,
+    firstName,
+    photoUrl,
+    party,
+    dapil,
+    legislativeLevel,
+    commissionName,
+    bio,
+    headlineTagline,
+    visionPillars,
+    educationList,
+    careersList,
+    akdAssignment,
+    activities,
+    waNumber,
+    waHotlineLink,
+    formattedPhoneNumber,
+    officialEmail,
+  } = resolved;
 
-  const pathname = usePathname();
+  const primaryColor = theme?.primaryHexColor || '#FF6B00';
+  const cleanLegislativeLevel = (legislativeLevel || 'DPR RI').replace(/_/g, ' ');
+
+  const [activeTab, setActiveTab] = useState<
+    'semua' | 'komisi' | 'visi' | 'pendidikan' | 'karier' | 'lapangan'
+  >('semua');
+
   const searchParams = useSearchParams();
   const previewTemplate = searchParams?.get('preview_template');
+  const previewColor = searchParams?.get('preview_color');
 
   const getNavLinkHref = (path: string) => {
-    let base = path;
-    if (subdomain && pathname?.startsWith(`/${subdomain}`)) {
-      base = path === '/' ? `/${subdomain}` : `/${subdomain}${path}`;
-    }
-    if (previewTemplate) {
-      base += `${base.includes('?') ? '&' : '?'}preview_template=${previewTemplate}`;
-    }
-    return base;
+    let base = subdomain ? `/${subdomain}${path}` : path;
+    const sp = new URLSearchParams();
+    if (previewTemplate) sp.set('preview_template', previewTemplate);
+    if (previewColor) sp.set('preview_color', previewColor);
+    const qs = sp.toString();
+    return qs ? `${base}${base.includes('?') ? '&' : '?'}${qs}` : base;
   };
 
-  function parseCleanIdentity(fullName?: string) {
-    if (!fullName) {
-      return { cleanName: 'Ahmad Fauzi', firstName: 'Ahmad', lastName: 'Fauzi' };
-    }
-    let clean = fullName.split(',')[0].trim();
-    while (/^(dr|ir|drs|dra|h|hj|prof|kh|k\.h|haji|hajjah)\.?\s+/i.test(clean)) {
-      clean = clean.replace(/^(dr|ir|drs|dra|h|hj|prof|kh|k\.h|haji|hajjah)\.?\s+/i, '').trim();
-    }
-    const words = clean.split(/\s+/).filter(Boolean);
-    const firstName = words[0] || 'Ahmad';
-    const lastName = words.length > 1 ? words.slice(1).join(' ') : 'Fauzi';
+  // 2. AKD Resolvers
+  const commissionData = akdAssignment?.commission;
+  const activeCommissionName =
+    commissionData?.name?.trim() || commissionName?.trim() || (member?.commissionName ? member.commissionName.trim() : '');
+  const commissionRole =
+    commissionData?.role?.trim() || (activeCommissionName ? 'Anggota Komisi' : '');
+  const commissionScope = commissionData?.scope?.trim() || '';
+  const commissionPartners = commissionData?.partners?.trim() || '';
+  const factionRole = akdAssignment?.factionRole?.trim() || '';
+  const akdBodies: any[] = Array.isArray(akdAssignment?.akdBodies)
+    ? akdAssignment.akdBodies.filter((b: any) => b && b.name?.trim())
+    : [];
+  const hasAnyAkd = Boolean(activeCommissionName || factionRole || akdBodies.length > 0);
 
-    return {
-      cleanName: clean || 'Ahmad Fauzi',
-      firstName,
-      lastName,
-    };
-  }
+  // 3. Courses / Certifications
+  const courses: string[] = Array.isArray(member?.courses)
+    ? member.courses.filter(Boolean)
+    : typeof member?.courses === 'string'
+    ? member.courses.split(/[\n,;]+/).map((s: string) => s.trim()).filter(Boolean)
+    : [];
 
-  const { firstName, cleanName } = parseCleanIdentity(member?.fullName);
+  // 4. Custom Stats from theme layoutSchema (HANYA jika diisi dari dashboard)
+  const customStats: any[] =
+    Array.isArray(theme?.layoutSchema?.stats) && theme.layoutSchema.stats.length > 0
+      ? theme.layoutSchema.stats.filter((s: any) => s && (s.label?.trim() || s.value?.trim()))
+      : [];
 
-  const educations = [
-    {
-      degree: 'Doktor Ilmu Kebijakan Publik (S3)',
-      institution: 'Universitas Indonesia (UI)',
-      year: '2016 - 2020',
-      description: 'Disertasi mengenai efektivitas desentralisasi fiskal dan tata kelola anggaran daerah berbasis kesejahteraan rakyat.',
-    },
-    {
-      degree: 'Magister Sains Administrasi Publik (S2)',
-      institution: 'Universitas Gadjah Mada (UGM)',
-      year: '2008 - 2011',
-      description: 'Fokus riset reformasi birokrasi, digitalisasi layanan publik daerah, dan pengawasan parlemen.',
-    },
-    {
-      degree: 'Sarjana Ilmu Pemerintahan (S1)',
-      institution: 'Universitas Padjadjaran (UNPAD)',
-      year: '2001 - 2005',
-      description: 'Aktif dalam organisasi kepemudaan mahasiswa dan perumusan advokasi kesejahteraan masyarakat lokal.',
-    },
-  ];
+  // 5. Verified activities resolver
+  const verifiedActivities =
+    theme?.layoutSchema?.verifiedActivities ||
+    theme?.layoutSchema?.activities ||
+    member?.activities;
+  const displayActivities: any[] = Array.isArray(verifiedActivities)
+    ? verifiedActivities.filter((a: any) => a && a.title?.trim())
+    : [];
 
-  const careers = [
-    {
-      role: 'Anggota Komisi XI DPR RI',
-      period: '2024 - Sekarang',
-      description: 'Membidangi Keuangan, Perencanaan Pembangunan Nasional, Moneter, dan Sektor Jasa Keuangan.',
-    },
-    {
-      role: 'Wakil Ketua Badan Legislasi (Baleg)',
-      period: '2019 - 2024',
-      description: 'Memimpin harmonisasi lebih dari 40 RUU strategis dan penyusunan naskah akademik perlindungan UMKM.',
-    },
-    {
-      role: 'Tenaga Ahli Madya Kebijakan Fiskal',
-      period: '2014 - 2019',
-      description: 'Memberikan analisis dampak ekonomi terhadap perumusan nota keuangan APBN dan alokasi transfer daerah.',
-    },
-  ];
-
-  const visions = [
-    {
-      title: 'Transparansi Anggaran & Akuntabilitas Penuh',
-      description: 'Memastikan alokasi APBN dan dana aspirasi di Dapil dapat diawasi secara terbuka oleh publik melalui portal digital.',
-    },
-    {
-      title: 'Kemandirian Ekonomi Kerakyatan & UMKM',
-      description: 'Memperjuangkan perluasan modal usaha berbunga rendah dan kepastian akses pasar bagi pelaku usaha mikro dan petani.',
-    },
-    {
-      title: 'Pemerataan Infrastruktur & Pendidikan Digital',
-      description: 'Mendorong modernisasi laboratorium komputasi sekolah pelosok dan konektivitas jaringan jalan poros desa.',
-    },
-  ];
+  // 6. Career list resolver
+  const customCareers =
+    Array.isArray(theme?.layoutSchema?.careers) && theme.layoutSchema.careers.length > 0
+      ? theme.layoutSchema.careers.filter((c: any) => c && c.role?.trim())
+      : Array.isArray(careersList) && careersList.length > 0
+      ? careersList
+      : Array.isArray(member?.career)
+      ? member.career
+      : [];
 
   return (
-    <div className="space-y-16">
+    <div className="space-y-14 sm:space-y-16">
 
-      {/* ─── DUAL TONE HERO PROFILE CARD (MATCHING GAMBAR: HELLO I'M ANTHONY + CUTOUT) ─── */}
-      <section className="rounded-3xl bg-[#181818] text-white p-8 sm:p-12 lg:p-16 relative overflow-hidden shadow-2xl border border-stone-800">
+      {/* ─── 1. DUAL TONE HERO PROFILE CARD (SIRIUS CONTRAST STYLE) ─── */}
+      <section className="rounded-3xl bg-[#181818] text-white p-6 sm:p-10 lg:p-14 relative overflow-hidden shadow-2xl border border-stone-800">
         
         {/* Subtle grid pattern background */}
-        <div 
+        <div
           className="absolute inset-0 opacity-[0.03] pointer-events-none"
           style={{
             backgroundImage: `radial-gradient(circle at 1px 1px, #ffffff 1px, transparent 0)`,
@@ -149,75 +149,121 @@ export function QurifolioProfileClient({
           }}
         />
 
-        <div className="relative z-10 grid grid-cols-1 lg:grid-cols-12 gap-12 items-center">
+        {/* Ambient Orange Geometric Glow */}
+        <div
+          className="absolute -top-24 -left-24 w-96 h-96 rounded-full blur-[110px] pointer-events-none opacity-20"
+          style={{ backgroundColor: primaryColor }}
+        />
+
+        <div className="relative z-10 grid grid-cols-1 lg:grid-cols-12 gap-10 lg:gap-12 items-center">
           
-          {/* Left Column: Hello I'M [Name] + Bio + 3 Metrics with Checkmark */}
-          <div className="lg:col-span-7 space-y-8">
+          {/* Left Column: Headline, Bio, Telemetry & Actions */}
+          <div className="lg:col-span-7 space-y-6 sm:space-y-7 text-left">
+            
             <div className="space-y-2">
-              <span className="text-xs sm:text-sm font-black uppercase tracking-[0.25em] text-[#FF6B00]">
-                WAKIL RAKYAT & PARLEMEN
-              </span>
-              <h2 className="text-3xl sm:text-4xl md:text-5xl font-black text-white tracking-tight uppercase">
-                {cleanName}
-              </h2>
+              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[#FF6B00]/15 text-[#FF6B00] border border-[#FF6B00]/30 text-[11px] font-black uppercase tracking-[0.2em]">
+                <Sparkles className="w-3.5 h-3.5 text-[#FF6B00]" />
+                <span>Mandat Parlemen &amp; Akuntabilitas Publik</span>
+              </div>
+              <h1 className="text-3xl sm:text-4xl md:text-5xl font-black text-white tracking-tight uppercase">
+                {officialFullName}
+              </h1>
+              <p className="text-xs sm:text-sm font-bold text-stone-300">
+                {cleanLegislativeLevel} • {party} • {dapil?.toLowerCase().startsWith('dapil') ? dapil : `Dapil ${dapil}`}
+              </p>
             </div>
 
-            <p className="text-sm sm:text-base text-stone-400 leading-relaxed max-w-xl">
+            <p className="text-xs sm:text-sm text-stone-300 leading-relaxed max-w-xl font-normal">
               {bio}
             </p>
 
-            {/* 3 Metrics with checkmarks (Persis pada gambar) */}
-            <div className="space-y-4 pt-2">
-              <div className="flex items-center gap-3.5 group">
-                <div className="w-6 h-6 rounded-full bg-white text-[#181818] flex items-center justify-center shrink-0 shadow-sm">
-                  <CheckCircle2 className="w-4 h-4 text-[#181818] fill-white" />
-                </div>
-                <div className="flex items-baseline gap-3">
-                  <span className="text-lg sm:text-xl font-black text-white tracking-tight">10+</span>
-                  <span className="text-xs sm:text-sm font-semibold text-stone-400">Tahun Pengabdian Parlemen</span>
-                </div>
+            {/* Mandat Telemetry Diagnostics */}
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 pt-1">
+              <div className="p-3 rounded-xl bg-[#222222] border border-stone-800 text-left">
+                <span className="text-[10px] uppercase font-bold text-stone-400 block tracking-wider">
+                  Lembaga
+                </span>
+                <span className="text-xs font-black text-white truncate block mt-0.5">
+                  {cleanLegislativeLevel}
+                </span>
               </div>
 
-              <div className="flex items-center gap-3.5 group">
-                <div className="w-6 h-6 rounded-full bg-white text-[#181818] flex items-center justify-center shrink-0 shadow-sm">
-                  <CheckCircle2 className="w-4 h-4 text-[#181818] fill-white" />
-                </div>
-                <div className="flex items-baseline gap-3">
-                  <span className="text-lg sm:text-xl font-black text-white tracking-tight">124+</span>
-                  <span className="text-xs sm:text-sm font-semibold text-stone-400">RUU & Regulasi Dikawal</span>
-                </div>
+              <div className="p-3 rounded-xl bg-[#222222] border border-stone-800 text-left">
+                <span className="text-[10px] uppercase font-bold text-stone-400 block tracking-wider">
+                  Penugasan
+                </span>
+                <span className="text-xs font-black text-[#FF6B00] truncate block mt-0.5">
+                  {activeCommissionName || 'Komisi Terkait'}
+                </span>
               </div>
 
-              <div className="flex items-center gap-3.5 group">
-                <div className="w-6 h-6 rounded-full bg-white text-[#181818] flex items-center justify-center shrink-0 shadow-sm">
-                  <CheckCircle2 className="w-4 h-4 text-[#181818] fill-white" />
-                </div>
-                <div className="flex items-baseline gap-3">
-                  <span className="text-lg sm:text-xl font-black text-white tracking-tight">1,500+</span>
-                  <span className="text-xs sm:text-sm font-semibold text-stone-400">Aspirasi Konstituen Tuntas</span>
-                </div>
+              <div className="p-3 rounded-xl bg-[#222222] border border-stone-800 text-left">
+                <span className="text-[10px] uppercase font-bold text-stone-400 block tracking-wider">
+                  Fraksi
+                </span>
+                <span className="text-xs font-black text-white truncate block mt-0.5">
+                  {party}
+                </span>
+              </div>
+
+              <div className="p-3 rounded-xl bg-[#222222] border border-stone-800 text-left">
+                <span className="text-[10px] uppercase font-bold text-stone-400 block tracking-wider">
+                  Status
+                </span>
+                <span className="text-xs font-black text-emerald-400 truncate block mt-0.5 flex items-center gap-1">
+                  <CheckCircle2 className="w-3 h-3 text-emerald-400 shrink-0" />
+                  <span>Aktif</span>
+                </span>
               </div>
             </div>
 
-            {/* Quick Link Buttons */}
-            <div className="flex flex-wrap items-center gap-4 pt-4">
+            {/* Dynamic Custom Stats Ribbon (Hanya jika diatur riil di dashboard) */}
+            {customStats.length > 0 && (
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 pt-2 border-t border-stone-800">
+                {customStats.map((st: any, sIdx: number) => (
+                  <div key={sIdx} className="flex items-center gap-3 group">
+                    <div className="w-6 h-6 rounded-full bg-white text-[#181818] flex items-center justify-center shrink-0 shadow-sm">
+                      <CheckCircle2 className="w-4 h-4 text-[#181818] fill-white" />
+                    </div>
+                    <div className="flex flex-col">
+                      <span className="text-lg sm:text-xl font-black text-white tracking-tight">
+                        {st.value}
+                      </span>
+                      <span className="text-xs font-semibold text-stone-400 truncate">
+                        {st.label}
+                      </span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {/* Quick Action Buttons */}
+            <div className="flex flex-wrap items-center gap-3 pt-2">
               <Link
                 href={getNavLinkHref('/kontak')}
-                className="inline-flex items-center gap-2 px-6 py-3 rounded-xl bg-[#FF6B00] hover:bg-[#e65c00] text-white font-extrabold text-xs uppercase tracking-wider transition-all shadow-md"
+                className="inline-flex items-center gap-2 px-6 py-3 rounded-xl bg-[#FF6B00] hover:bg-[#e65c00] text-white font-extrabold text-xs uppercase tracking-wider transition-all shadow-md active:scale-95"
               >
-                <span>Hubungi Dewan</span>
+                <span>Sampaikan Aspirasi Langsung</span>
                 <ArrowRight className="w-4 h-4" />
               </Link>
-              <Link
-                href={getNavLinkHref('/artikel')}
-                className="inline-flex items-center gap-2 px-6 py-3 rounded-xl bg-stone-800 hover:bg-stone-700 text-white font-extrabold text-xs uppercase tracking-wider transition-all"
-              >
-                <span>Baca Gagasan Kebijakan</span>
-              </Link>
+
+              {waHotlineLink && (
+                <a
+                  href={waHotlineLink}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-2 px-5 py-3 rounded-xl bg-stone-900 border border-stone-700 hover:border-[#FF6B00] text-[#FF6B00] font-extrabold text-xs uppercase tracking-wider transition-all active:scale-95"
+                >
+                  <MessageCircle className="w-4 h-4 text-[#FF6B00]" />
+                  <span>WhatsApp Hotline</span>
+                </a>
+              )}
             </div>
+
           </div>
 
-          {/* Right Column: Photo Cutout with Orange Doodle Rays & Wavy Accent (Persis pada gambar) */}
+          {/* Right Column: Photo Cutout with Orange Doodle Rays & Wavy Accent */}
           <div className="lg:col-span-5 flex justify-center lg:justify-end relative">
             <div className="relative max-w-sm w-full">
               
@@ -234,39 +280,48 @@ export function QurifolioProfileClient({
                 <div className="w-10 h-1 rounded-full bg-[#FF6B00] transform -rotate-3" />
               </div>
 
-              {/* Cutout Image */}
-              <div className="relative z-10 overflow-hidden rounded-2xl bg-gradient-to-t from-black/80 via-transparent to-transparent">
+              {/* Cutout Image Frame */}
+              <div className="relative z-10 overflow-hidden rounded-2xl bg-gradient-to-t from-black/80 via-transparent to-transparent flex items-end justify-center min-h-[360px] sm:min-h-[420px]">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img
                   src={photoUrl}
                   alt={officialFullName}
-                  className="w-full h-auto object-cover filter grayscale contrast-110 drop-shadow-2xl"
+                  className="w-full h-auto max-h-[440px] object-contain object-bottom filter grayscale contrast-115 drop-shadow-2xl select-none"
+                  onError={(e) => {
+                    const target = e.currentTarget;
+                    if (!target.src.includes('/images/default-avatar.png')) {
+                      target.src = '/images/default-avatar.png';
+                    }
+                  }}
                 />
               </div>
 
               {/* Official Credential Pill */}
               <div className="absolute -bottom-4 left-4 right-4 z-20 bg-white text-[#161616] p-3 rounded-xl shadow-xl border border-stone-200 text-center">
                 <span className="text-[10px] font-black uppercase tracking-wider text-[#FF6B00] block">
-                  Mandat Konstitusi
+                  Mandat Konstitusi Resmi
                 </span>
                 <span className="font-extrabold text-xs text-[#161616] block truncate">
                   {officialFullName}
                 </span>
               </div>
+
             </div>
           </div>
 
         </div>
       </section>
 
-      {/* ─── TAB FILTER BUTTONS ─── */}
-      <section className="space-y-8">
+      {/* ─── 2. TAB FILTER BUTTONS ─── */}
+      <section className="space-y-10">
         <div className="flex flex-wrap items-center gap-2 border-b border-stone-200 pb-4">
           {[
             { id: 'semua', label: 'Semua Rekam Jejak' },
-            { id: 'visi', label: 'Visi & Misi' },
+            { id: 'komisi', label: 'Komisi & AKD' },
+            { id: 'visi', label: '3 Pilar Pengabdian' },
             { id: 'pendidikan', label: 'Riwayat Pendidikan' },
-            { id: 'karier', label: 'Karier & Pengabdian' },
-            { id: 'komisi', label: 'Tugas Komisi DPR' },
+            { id: 'karier', label: 'Karier & Organisasi' },
+            { id: 'lapangan', label: 'Aksi Nyata Dapil' },
           ].map((tab) => (
             <button
               key={tab.id}
@@ -282,27 +337,133 @@ export function QurifolioProfileClient({
           ))}
         </div>
 
-        {/* Tab 1: Visi & Misi */}
-        {(activeTab === 'semua' || activeTab === 'visi') && (
-          <div className="space-y-4">
+        {/* ─── 3. PENUGASAN KOMISI & AKD ─── */}
+        {(activeTab === 'semua' || activeTab === 'komisi') && (
+          <div className="space-y-4 text-left">
             <h3 className="text-xl font-black text-[#161616] uppercase tracking-tight flex items-center gap-2">
               <span className="w-2.5 h-2.5 rounded-full bg-[#FF6B00]" />
-              <span>Pilar Visi Perjuangan Legislatif</span>
+              <span>Tugas Komisi &amp; Alat Kelengkapan Dewan (AKD)</span>
+            </h3>
+
+            {hasAnyAkd ? (
+              <div className="bg-white p-6 sm:p-8 rounded-2xl border border-stone-200/90 shadow-sm space-y-6">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-stone-200">
+                  <div className="flex items-center gap-3">
+                    <div className="w-12 h-12 rounded-xl bg-[#161616] text-[#FF6B00] flex items-center justify-center shrink-0">
+                      <Landmark className="w-6 h-6 text-[#FF6B00]" />
+                    </div>
+                    <div>
+                      <span className="text-[10px] font-black uppercase tracking-wider text-[#FF6B00] block">
+                        Penugasan Komisi Parlemen
+                      </span>
+                      <h4 className="text-lg sm:text-xl font-black text-[#161616]">
+                        {activeCommissionName || 'Komisi DPR'}
+                      </h4>
+                    </div>
+                  </div>
+
+                  <div className="flex flex-wrap items-center gap-2">
+                    {commissionRole && (
+                      <span className="px-3.5 py-1.5 rounded-lg bg-[#FF6B00] text-white text-xs font-black uppercase tracking-wider">
+                        {commissionRole}
+                      </span>
+                    )}
+                    {factionRole && (
+                      <span className="px-3 py-1.5 rounded-lg bg-stone-100 text-[#161616] border border-stone-200 text-xs font-bold">
+                        {factionRole}
+                      </span>
+                    )}
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  {commissionScope && (
+                    <div className="space-y-2 p-5 rounded-xl bg-stone-50 border border-stone-200">
+                      <div className="flex items-center gap-2 text-[#FF6B00] font-black text-xs uppercase tracking-wider">
+                        <BookOpen className="w-4 h-4" />
+                        <span>Ruang Lingkup &amp; Bidang Komisi</span>
+                      </div>
+                      <p className="text-xs text-stone-700 leading-relaxed font-normal">
+                        {commissionScope}
+                      </p>
+                    </div>
+                  )}
+
+                  {commissionPartners && (
+                    <div className="space-y-2 p-5 rounded-xl bg-stone-50 border border-stone-200">
+                      <div className="flex items-center gap-2 text-[#FF6B00] font-black text-xs uppercase tracking-wider">
+                        <Users className="w-4 h-4" />
+                        <span>Mitra Kerja Kementerian &amp; Lembaga</span>
+                      </div>
+                      <p className="text-xs text-stone-700 leading-relaxed font-normal">
+                        {commissionPartners}
+                      </p>
+                    </div>
+                  )}
+                </div>
+
+                {/* AKD Lainnya */}
+                {akdBodies.length > 0 && (
+                  <div className="space-y-3 pt-2">
+                    <span className="text-xs font-black uppercase tracking-wider text-[#161616] block">
+                      Penugasan Alat Kelengkapan Dewan (AKD) Lainnya:
+                    </span>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
+                      {akdBodies.map((body: any, bIdx: number) => (
+                        <div
+                          key={bIdx}
+                          className="p-3.5 rounded-xl bg-stone-50 border border-stone-200 flex items-start gap-2.5"
+                        >
+                          <ShieldCheck className="w-4 h-4 text-[#FF6B00] shrink-0 mt-0.5" />
+                          <div>
+                            <div className="text-xs font-bold text-[#161616]">{body.name}</div>
+                            {body.role && (
+                              <div className="text-[11px] font-semibold text-[#FF6B00] mt-0.5">
+                                {body.role}
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            ) : (
+              <div className="bg-white p-8 rounded-2xl border border-stone-200 text-center space-y-2">
+                <Landmark className="w-8 h-8 text-[#FF6B00] mx-auto opacity-70" />
+                <h4 className="text-sm font-bold text-[#161616]">
+                  Informasi penugasan komisi &amp; AKD sedang dalam tahap pemutakhiran
+                </h4>
+                <p className="text-xs text-stone-500 max-w-md mx-auto">
+                  Data pembagian komisi, badan, dan mitra kementerian terkait akan tampil di sini setelah ditetapkan.
+                </p>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* ─── 4. PILAR VISI PENGABDIAN (TRIFUNGSI) ─── */}
+        {(activeTab === 'semua' || activeTab === 'visi') && (
+          <div className="space-y-4 text-left">
+            <h3 className="text-xl font-black text-[#161616] uppercase tracking-tight flex items-center gap-2">
+              <span className="w-2.5 h-2.5 rounded-full bg-[#FF6B00]" />
+              <span>3 Pilar Fokus Pengabdian Legislatif</span>
             </h3>
 
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-              {visions.map((v, i) => (
+              {visionPillars.map((v: any, i: number) => (
                 <div
                   key={i}
                   className="bg-white p-6 sm:p-8 rounded-2xl border border-stone-200/90 shadow-sm hover:border-[#FF6B00] transition-all space-y-3"
                 >
-                  <div className="w-9 h-9 rounded-xl bg-orange-50 text-[#FF6B00] flex items-center justify-center font-black text-sm">
+                  <div className="w-10 h-10 rounded-xl bg-orange-50 text-[#FF6B00] flex items-center justify-center font-black text-base">
                     0{i + 1}
                   </div>
                   <h4 className="font-extrabold text-base text-[#161616]">
                     {v.title}
                   </h4>
-                  <p className="text-xs text-stone-600 leading-relaxed">
+                  <p className="text-xs text-stone-600 leading-relaxed font-normal">
                     {v.description}
                   </p>
                 </div>
@@ -311,120 +472,276 @@ export function QurifolioProfileClient({
           </div>
         )}
 
-        {/* Tab 2: Riwayat Pendidikan */}
+        {/* ─── 5. RIWAYAT PENDIDIKAN AKADEMIK & PELATIHAN ─── */}
         {(activeTab === 'semua' || activeTab === 'pendidikan') && (
-          <div className="space-y-4 pt-4">
+          <div className="space-y-4 text-left">
             <h3 className="text-xl font-black text-[#161616] uppercase tracking-tight flex items-center gap-2">
               <span className="w-2.5 h-2.5 rounded-full bg-[#FF6B00]" />
-              <span>Riwayat Pendidikan Akademik</span>
+              <span>Riwayat Pendidikan Akademik &amp; Pelatihan</span>
             </h3>
 
             <div className="space-y-4">
-              {educations.map((edu, idx) => (
-                <div
-                  key={idx}
-                  className="bg-white p-6 rounded-2xl border border-stone-200 shadow-sm hover:border-[#FF6B00] transition-all flex flex-col sm:flex-row sm:items-center justify-between gap-4"
-                >
-                  <div className="flex items-start gap-4">
-                    <div className="w-12 h-12 rounded-xl bg-[#161616] text-white flex items-center justify-center shrink-0">
-                      <GraduationCap className="w-6 h-6 text-[#FF6B00]" />
+              {educationList.length > 0 ? (
+                educationList.map((edu: string, idx: number) => (
+                  <div
+                    key={idx}
+                    className="bg-white p-5 sm:p-6 rounded-2xl border border-stone-200 shadow-sm hover:border-[#FF6B00] transition-all flex flex-col sm:flex-row sm:items-center justify-between gap-4"
+                  >
+                    <div className="flex items-start gap-4">
+                      <div className="w-12 h-12 rounded-xl bg-[#161616] text-[#FF6B00] flex items-center justify-center shrink-0">
+                        <GraduationCap className="w-6 h-6 text-[#FF6B00]" />
+                      </div>
+                      <div className="space-y-1">
+                        <h4 className="font-extrabold text-base text-[#161616]">
+                          {edu}
+                        </h4>
+                        <p className="text-xs font-semibold text-[#FF6B00]">
+                          Kredensial Pendidikan Terverifikasi
+                        </p>
+                      </div>
                     </div>
-                    <div className="space-y-1">
-                      <h4 className="font-extrabold text-base text-[#161616]">
-                        {edu.degree}
-                      </h4>
-                      <p className="text-xs font-semibold text-stone-500">
-                        {edu.institution}
-                      </p>
-                      <p className="text-xs text-stone-600 pt-1">
-                        {edu.description}
-                      </p>
-                    </div>
+                    <span className="px-3.5 py-1.5 rounded-lg bg-stone-100 text-[#161616] font-black text-xs self-start sm:self-auto shrink-0 border border-stone-200">
+                      Gelar Formal
+                    </span>
                   </div>
-                  <span className="px-3.5 py-1.5 rounded-lg bg-stone-100 text-[#161616] font-black text-xs self-start sm:self-auto shrink-0 border border-stone-200">
-                    {edu.year}
-                  </span>
+                ))
+              ) : (
+                <div className="bg-white p-8 rounded-2xl border border-stone-200 text-center space-y-2">
+                  <GraduationCap className="w-8 h-8 text-[#FF6B00] mx-auto opacity-70" />
+                  <h4 className="text-sm font-bold text-[#161616]">
+                    Informasi riwayat pendidikan belum ditambahkan
+                  </h4>
+                  <p className="text-xs text-stone-500 max-w-md mx-auto">
+                    Data riwayat studi akademik formal akan tampil di sini setelah diperbarui.
+                  </p>
                 </div>
-              ))}
+              )}
+
+              {courses.length > 0 && (
+                <div className="bg-white p-6 rounded-2xl border border-stone-200 space-y-3">
+                  <div className="flex items-center gap-2 text-xs font-black uppercase tracking-wider text-[#FF6B00]">
+                    <Award className="w-4 h-4" />
+                    <span>Pelatihan &amp; Sertifikasi Keparlemenan:</span>
+                  </div>
+                  <div className="flex flex-wrap gap-2">
+                    {courses.map((course: string, cIdx: number) => (
+                      <span
+                        key={cIdx}
+                        className="px-3 py-1.5 rounded-lg bg-stone-100 border border-stone-200 text-xs font-bold text-stone-800"
+                      >
+                        {course}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              )}
             </div>
           </div>
         )}
 
-        {/* Tab 3: Karier & Pengabdian */}
+        {/* ─── 6. KARIER & PENGABDIAN PUBLIK ─── */}
         {(activeTab === 'semua' || activeTab === 'karier') && (
-          <div className="space-y-4 pt-4">
+          <div className="space-y-4 text-left">
             <h3 className="text-xl font-black text-[#161616] uppercase tracking-tight flex items-center gap-2">
               <span className="w-2.5 h-2.5 rounded-full bg-[#FF6B00]" />
-              <span>Karier & Rekam Pengabdian Publik</span>
+              <span>Karier &amp; Rekam Pengabdian Publik</span>
             </h3>
 
             <div className="space-y-4">
-              {careers.map((c, idx) => (
-                <div
-                  key={idx}
-                  className="bg-white p-6 rounded-2xl border border-stone-200 shadow-sm hover:border-[#FF6B00] transition-all flex flex-col sm:flex-row sm:items-center justify-between gap-4"
-                >
-                  <div className="flex items-start gap-4">
-                    <div className="w-12 h-12 rounded-xl bg-[#FF6B00] text-white flex items-center justify-center shrink-0 font-black text-base">
-                      <Briefcase className="w-6 h-6" />
+              {customCareers.length > 0 ? (
+                customCareers.map((c: any, idx: number) => (
+                  <div
+                    key={idx}
+                    className="bg-white p-5 sm:p-6 rounded-2xl border border-stone-200 shadow-sm hover:border-[#FF6B00] transition-all flex flex-col sm:flex-row sm:items-center justify-between gap-4"
+                  >
+                    <div className="flex items-start gap-4">
+                      <div className="w-12 h-12 rounded-xl bg-[#FF6B00] text-white flex items-center justify-center shrink-0 font-black text-base">
+                        <Briefcase className="w-6 h-6" />
+                      </div>
+                      <div className="space-y-1">
+                        <h4 className="font-extrabold text-base text-[#161616]">
+                          {c.role}
+                        </h4>
+                        {(c.organization || c.period) && (
+                          <p className="text-xs font-bold text-[#FF6B00]">
+                            {c.organization ? `${c.organization} ` : ''}
+                            {c.period ? `(${c.period})` : ''}
+                          </p>
+                        )}
+                        {c.description && (
+                          <p className="text-xs text-stone-600 pt-1 leading-relaxed font-normal">
+                            {c.description}
+                          </p>
+                        )}
+                      </div>
                     </div>
-                    <div className="space-y-1">
-                      <h4 className="font-extrabold text-base text-[#161616]">
-                        {c.role}
-                      </h4>
-                      <p className="text-xs text-stone-600 pt-1">
-                        {c.description}
-                      </p>
-                    </div>
+                    {c.period && (
+                      <span className="px-3.5 py-1.5 rounded-lg bg-[#161616] text-white font-black text-xs self-start sm:self-auto shrink-0">
+                        {c.period}
+                      </span>
+                    )}
                   </div>
-                  <span className="px-3.5 py-1.5 rounded-lg bg-[#161616] text-white font-black text-xs self-start sm:self-auto shrink-0">
-                    {c.period}
-                  </span>
+                ))
+              ) : (
+                <div className="bg-white p-8 rounded-2xl border border-stone-200 text-center space-y-2">
+                  <Briefcase className="w-8 h-8 text-[#FF6B00] mx-auto opacity-70" />
+                  <h4 className="text-sm font-bold text-[#161616]">
+                    Informasi rekam jejak karier belum ditambahkan
+                  </h4>
+                  <p className="text-xs text-stone-500 max-w-md mx-auto">
+                    Riwayat jabatan publik, institusi parlemen, dan organisasi kemasyarakatan akan tampil di sini setelah diperbarui.
+                  </p>
                 </div>
-              ))}
+              )}
             </div>
           </div>
         )}
 
-        {/* Tab 4: Tugas Komisi */}
-        {(activeTab === 'semua' || activeTab === 'komisi') && (
-          <div className="space-y-4 pt-4">
+        {/* ─── 7. DOKUMENTASI KINERJA TURUN KE DAPIL (AKSI NYATA LAPANGAN) ─── */}
+        {(activeTab === 'semua' || activeTab === 'lapangan') && (
+          <div className="space-y-4 text-left">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+              <h3 className="text-xl font-black text-[#161616] uppercase tracking-tight flex items-center gap-2">
+                <span className="w-2.5 h-2.5 rounded-full bg-[#FF6B00]" />
+                <span>Dokumentasi Kinerja Turun ke Dapil</span>
+              </h3>
+              <span className="text-xs font-black uppercase tracking-wider text-[#FF6B00] bg-orange-50 border border-orange-200 px-3 py-1 rounded-full self-start sm:self-auto">
+                Aksi Nyata Lapangan
+              </span>
+            </div>
+
+            {displayActivities.length > 0 ? (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {displayActivities.map((act: any, aIdx: number) => (
+                  <div
+                    key={aIdx}
+                    className="group rounded-2xl bg-white border border-stone-200 overflow-hidden hover:border-[#FF6B00] transition-all shadow-sm flex flex-col justify-between"
+                  >
+                    <div>
+                      {act.photoUrl ? (
+                        <div className="relative aspect-[16/10] overflow-hidden bg-stone-900">
+                          {/* eslint-disable-next-line @next/next/no-img-element */}
+                          <img
+                            src={act.photoUrl}
+                            alt={act.title}
+                            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                          />
+                          <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent pointer-events-none" />
+
+                          {act.date && (
+                            <div className="absolute top-3 left-3 bg-black/80 backdrop-blur-md text-[#FF6B00] px-2.5 py-1 rounded-lg text-[10px] font-bold flex items-center gap-1.5 shadow-sm">
+                              <Calendar className="w-3 h-3 text-[#FF6B00]" />
+                              <span>{act.date}</span>
+                            </div>
+                          )}
+
+                          {act.location && (
+                            <div className="absolute bottom-3 left-3 bg-black/80 backdrop-blur-md text-white px-2.5 py-1 rounded-lg text-[10px] font-bold flex items-center gap-1.5 shadow-sm">
+                              <MapPin className="w-3 h-3 text-[#FF6B00]" />
+                              <span className="truncate max-w-[150px]">{act.location}</span>
+                            </div>
+                          )}
+                        </div>
+                      ) : (
+                        <div className="aspect-[16/10] bg-stone-100 flex flex-col items-center justify-center gap-2 text-stone-400">
+                          <Camera className="w-8 h-8 text-[#FF6B00]/60" />
+                          <span className="text-xs font-semibold">Dokumentasi Lapangan</span>
+                        </div>
+                      )}
+
+                      <div className="p-5 space-y-2 text-left">
+                        <h4 className="text-base font-bold text-[#161616] group-hover:text-[#FF6B00] transition-colors line-clamp-2 leading-snug">
+                          {act.title}
+                        </h4>
+                        {act.description && (
+                          <p className="text-xs text-stone-600 leading-relaxed line-clamp-3 font-normal">
+                            {act.description}
+                          </p>
+                        )}
+                      </div>
+                    </div>
+
+                    <div className="p-5 pt-0 border-t border-stone-100 mt-2 flex items-center justify-between text-[11px] text-[#FF6B00] font-bold">
+                      <span className="uppercase tracking-wider flex items-center gap-1">
+                        <CheckCircle2 className="w-3.5 h-3.5 text-[#FF6B00]" />
+                        <span>Kinerja Terverifikasi</span>
+                      </span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="bg-white p-8 rounded-2xl border border-stone-200 text-center space-y-2">
+                <Camera className="w-8 h-8 text-[#FF6B00] mx-auto opacity-70" />
+                <h4 className="text-sm font-bold text-[#161616]">
+                  Informasi dokumentasi kegiatan belum ditambahkan
+                </h4>
+                <p className="text-xs text-stone-500 max-w-md mx-auto">
+                  Dokumentasi aksi nyata dan kunjungan konstituen ke daerah pemilihan akan tampil di sini setelah diperbarui.
+                </p>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* ─── 8. GALERI FOTO RESMI (JIKA TERSEDIA) ─── */}
+        {member?.photoGallery && Array.isArray(member.photoGallery) && member.photoGallery.length > 0 && (
+          <div className="space-y-4 pt-2 text-left">
             <h3 className="text-xl font-black text-[#161616] uppercase tracking-tight flex items-center gap-2">
               <span className="w-2.5 h-2.5 rounded-full bg-[#FF6B00]" />
-              <span>Fokus & Mandat Komisi Parlemen</span>
+              <span>Galeri Foto Resmi Parlemen</span>
             </h3>
-
-            <div className="bg-white p-6 sm:p-8 rounded-2xl border border-stone-200 shadow-sm space-y-6">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div className="space-y-3">
-                  <div className="flex items-center gap-2 text-[#FF6B00]">
-                    <ShieldCheck className="w-5 h-5" />
-                    <span className="text-xs font-black uppercase tracking-wider">Fungsi Pengawasan</span>
-                  </div>
-                  <h4 className="font-extrabold text-base text-[#161616]">
-                    Audit Kinerja dan Efektivitas Belanja Negara
-                  </h4>
-                  <p className="text-xs text-stone-600 leading-relaxed">
-                    Mengawal audit berkala program bantuan sosial, subsidi sektor pertanian, dan belanja transfer ke daerah (TKD) untuk menekan kebocoran fiskal.
-                  </p>
-                </div>
-
-                <div className="space-y-3">
-                  <div className="flex items-center gap-2 text-[#FF6B00]">
-                    <BookOpen className="w-5 h-5" />
-                    <span className="text-xs font-black uppercase tracking-wider">Fungsi Legislasi</span>
-                  </div>
-                  <h4 className="font-extrabold text-base text-[#161616]">
-                    Penyusunan RUU Pemberdayaan Ekonomi & Perlindungan Data
-                  </h4>
-                  <p className="text-xs text-stone-600 leading-relaxed">
-                    Merumuskan regulasi penguatan kapasitas hukum perbankan syariah, koperasi, dan perlindungan keamanan transaksi digital bagi jutaan pelaku UMKM nasional.
-                  </p>
-                </div>
-              </div>
-            </div>
+            <PortalPhotoGallery photos={member.photoGallery} memberName={officialFullName} />
           </div>
         )}
+
+        {/* ─── 9. CALL TO ACTION SALURAN ASPIRASI KONSTITUEN ─── */}
+        <section className="rounded-3xl bg-[#181818] text-white p-8 sm:p-12 relative overflow-hidden shadow-2xl border border-stone-800 text-left">
+          {/* Subtle Orange Asterisk in Background */}
+          <div className="absolute top-1/2 -right-12 -translate-y-1/2 w-64 h-64 opacity-10 pointer-events-none select-none">
+            <svg viewBox="0 0 100 100" className="w-full h-full fill-[#FF6B00]">
+              <g fill="#FF6B00">
+                <rect x="41.75" y="4" width="16.5" height="92" />
+                <rect x="4" y="41.75" width="92" height="16.5" />
+                <rect x="41.75" y="4" width="16.5" height="92" transform="rotate(45 50 50)" />
+                <rect x="41.75" y="4" width="16.5" height="92" transform="rotate(135 50 50)" />
+              </g>
+            </svg>
+          </div>
+
+          <div className="max-w-3xl space-y-4 relative z-10">
+            <div className="inline-flex items-center px-3 py-1 rounded-full bg-[#FF6B00]/15 text-[#FF6B00] border border-[#FF6B00]/30 text-[11px] font-black uppercase tracking-wider">
+              <span>Saluran Aspirasi Langsung Konstituen</span>
+            </div>
+            <h3 className="text-2xl sm:text-3xl font-black text-white tracking-tight">
+              Ingin Menyampaikan Masukan Langsung Kepada {officialFullName}?
+            </h3>
+            <p className="text-xs sm:text-sm text-stone-300 leading-relaxed font-normal">
+              Tim sekretariat dan staf ahli dewan siap menerima laporan permasalahan jalan, bantuan sosial, pupuk subsidi, atau usulan perbaikan layanan publik di wilayah Anda.
+            </p>
+            <div className="pt-2 flex flex-wrap items-center gap-4">
+              <Link
+                href={getNavLinkHref('/kontak')}
+                className="inline-flex items-center gap-2 px-6 py-3.5 rounded-xl bg-[#FF6B00] hover:bg-[#e65c00] text-white font-extrabold text-xs uppercase tracking-wider shadow-lg hover:scale-105 active:scale-95 transition-all"
+              >
+                <span>Buka Kanal Kontak &amp; Aspirasi</span>
+                <ArrowRight className="w-4 h-4 text-white" />
+              </Link>
+
+              {waHotlineLink && (
+                <a
+                  href={waHotlineLink}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-2 px-6 py-3.5 rounded-xl bg-stone-900 border border-stone-700 hover:border-[#FF6B00] text-[#FF6B00] font-extrabold text-xs uppercase tracking-wider transition-all"
+                >
+                  <MessageCircle className="w-4 h-4 text-[#FF6B00]" />
+                  <span>WhatsApp Hotline</span>
+                </a>
+              )}
+            </div>
+          </div>
+        </section>
 
       </section>
 

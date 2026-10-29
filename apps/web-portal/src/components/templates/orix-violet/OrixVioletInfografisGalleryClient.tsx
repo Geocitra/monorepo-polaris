@@ -69,8 +69,7 @@ export function OrixVioletInfografisGalleryClient({
 
         <div className="max-w-[1240px] mx-auto px-6 lg:px-12 relative z-10">
           <div className="max-w-2xl space-y-4">
-            <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-white/15 backdrop-blur-md text-xs font-bold tracking-widest text-violet-200 uppercase">
-              <Sparkles className="w-3.5 h-3.5 text-yellow-300" />
+            <div className="inline-flex items-center px-3.5 py-1.5 rounded-full bg-white/15 backdrop-blur-md text-xs font-bold tracking-widest text-violet-200 uppercase">
               Galeri Data & Transparansi
             </div>
             <h1 className="text-4xl lg:text-5xl font-black tracking-tight text-white">

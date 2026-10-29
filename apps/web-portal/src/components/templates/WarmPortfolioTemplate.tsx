@@ -47,23 +47,24 @@ export function WarmPortfolioTemplate({
   const [activeModalInfo, setActiveModalInfo] = useState<any | null>(null);
 
   const officialFullName =
-    member?.fullName || theme?.officialFullName || 'Dr. H. Ahmad Fauzi, M.Si.';
+    member?.fullName || theme?.officialFullName || 'Anggota Dewan';
   const dapil =
     (member?.dapilName || member?.customDapilName || member?.customDapil || 'Dapil I').replace(/_/g, ' ');
   const party = (member?.partyAffiliation || 'Fraksi Parlemen').replace(/_/g, ' ');
   const legislativeLevel = (member?.legislativeLevel || 'DPRD PROVINSI').replace(/_/g, ' ');
   const commissionName = (member?.commissionName || 'KOMISI I (PEMERINTAHAN & HUKUM)').replace(/_/g, ' ');
-  const officialEmail = `kontak@${subdomain || 'ahmadfauzi'}.polaris.id`;
-  const officialPhone = '+62 812-3456-7890';
+  const officialEmail = member?.email || (subdomain ? `kontak@${subdomain}.polaris.id` : 'kontak@polaris.id');
+  const officialPhone = member?.phoneNumber || '+62 812-3456-7890';
   const instagramUsername =
     member?.instagramHandle?.replace(/^@/, '') ||
     member?.username ||
     subdomain ||
-    'ahmadfauzi';
+    '';
 
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const previewTemplate = searchParams?.get('preview_template');
+  const previewColor = searchParams?.get('preview_color');
 
   const isHomePage =
     !pathname ||
@@ -76,8 +77,12 @@ export function WarmPortfolioTemplate({
     if (subdomain && pathname?.startsWith(`/${subdomain}`)) {
       base = path === '/' ? `/${subdomain}` : `/${subdomain}${path}`;
     }
-    if (previewTemplate) {
-      base += `${base.includes('?') ? '&' : '?'}preview_template=${previewTemplate}`;
+    const params = new URLSearchParams();
+    if (previewTemplate) params.set('preview_template', previewTemplate);
+    if (previewColor) params.set('preview_color', previewColor);
+    const qs = params.toString();
+    if (qs) {
+      base += `${base.includes('?') ? '&' : '?'}${qs}`;
     }
     return base;
   };
@@ -87,22 +92,22 @@ export function WarmPortfolioTemplate({
 
   function parseCleanIdentity(fullName?: string) {
     if (!fullName) {
-      return { cleanName: 'Ahmad Fauzi', firstName: 'Ahmad', lastName: 'Fauzi', initial: 'A' };
+      return { cleanName: 'Wakil Rakyat', firstName: 'Wakil', lastName: 'Rakyat', initial: 'W' };
     }
     let clean = fullName.split(',')[0].trim();
     while (/^(dr|ir|drs|dra|h|hj|prof|kh|k\.h|haji|hajjah)\.?\s+/i.test(clean)) {
       clean = clean.replace(/^(dr|ir|drs|dra|h|hj|prof|kh|k\.h|haji|hajjah)\.?\s+/i, '').trim();
     }
     const words = clean.split(/\s+/).filter(Boolean);
-    const firstName = words[0] || 'Ahmad';
-    const lastName = words.length > 1 ? words.slice(1).join(' ') : 'Fauzi';
+    const firstName = words[0] || 'Wakil';
+    const lastName = words.length > 1 ? words.slice(1).join(' ') : '';
     const initial = firstName.charAt(0).toUpperCase();
 
     return {
-      cleanName: clean || 'Ahmad Fauzi',
+      cleanName: clean || 'Wakil Rakyat',
       firstName,
       lastName,
-      initial: initial || 'A',
+      initial: initial || 'W',
     };
   }
 
@@ -447,8 +452,7 @@ export function WarmPortfolioTemplate({
                 <span className="px-3 py-1 rounded-full bg-[#F59E0B] text-stone-950 font-sans text-[11px] font-bold shadow-xs">
                   Pengawasan APBN
                 </span>
-                <span className="px-3 py-1 rounded-full bg-[#181311] text-white font-sans text-[11px] font-semibold flex items-center gap-1 shadow-xs">
-                  <Sparkles className="w-3 h-3 text-[#F59E0B]" />
+                <span className="px-3 py-1 rounded-full bg-[#181311] text-white font-sans text-[11px] font-semibold shadow-xs">
                   Advokasi UMKM
                 </span>
                 <span className="px-3 py-1 rounded-full bg-[#181311] text-white font-sans text-[11px] font-semibold shadow-xs">

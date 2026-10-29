@@ -13,12 +13,8 @@ import {
   Eye,
   X,
   ArrowRight,
-  ExternalLink,
   ChevronRight,
   Instagram,
-  Facebook,
-  Linkedin,
-  FileText,
   BookOpen,
   Mail,
 } from 'lucide-react';
@@ -26,12 +22,13 @@ import { LailaSakuraShell } from './laila-sakura/LailaSakuraShell';
 import {
   getLailaMemberInfo,
   useLailaHref,
-  LAILA_SAKURA,
 } from './laila-sakura/utils';
 
 interface LailaSakuraTemplateProps {
   member: any;
   theme: any;
+  articles?: any[];
+  infographics?: any[];
   recentArticles?: any[];
   recentInfographics?: any[];
   documents?: any[];
@@ -41,6 +38,8 @@ interface LailaSakuraTemplateProps {
 export function LailaSakuraTemplate({
   member,
   theme,
+  articles,
+  infographics,
   recentArticles = [],
   recentInfographics = [],
   documents = [],
@@ -50,10 +49,13 @@ export function LailaSakuraTemplate({
   const href = useLailaHref(subdomain);
   const [selectedInfographic, setSelectedInfographic] = useState<any | null>(null);
 
+  const rawArticles = articles || recentArticles || [];
+  const rawInfographics = infographics || recentInfographics || [];
+
   // Normalize articles from REAL API (no dummy fallback)
   const displayArticles =
-    recentArticles && recentArticles.length > 0
-      ? recentArticles.map((a: any, i: number) => ({
+    rawArticles && rawArticles.length > 0
+      ? rawArticles.map((a: any, i: number) => ({
           id: a.id || `art-${i}`,
           slug: a.slug || a.id || `artikel-${i}`,
           title: a.title,
@@ -81,8 +83,8 @@ export function LailaSakuraTemplate({
 
   // Normalize infographics from REAL API (no dummy fallback)
   const displayInfographics =
-    recentInfographics && recentInfographics.length > 0
-      ? recentInfographics.map((inf: any, i: number) => ({
+    rawInfographics && rawInfographics.length > 0
+      ? rawInfographics.map((inf: any, i: number) => ({
           id: inf.id || `info-${i}`,
           title: inf.title,
           category: inf.category || inf.categoryName || 'Visual Kebijakan',
@@ -116,10 +118,9 @@ export function LailaSakuraTemplate({
     >
       {/* ══════════════════════════════════════════════════════════════════
           SECTION 1: HERO VIEWPORT (100% SATU HALAMAN PENUH / FULL SCREEN)
-          - Floating pink capsule navbar di atas
-          - Kiri: Tagline + "🌸 Hi, I'm LAILA 🌸" + "Suara Rakyat, Aksi Nyata|" + Tombol Download CV + Socials
-          - Kanan: Potret berlatar aura neon pink menyala
-          - Bawah: Strip Kemitraan & Parlemen (React, Vue, Tailwind, Next style)
+          - Kiri: Tagline + Nama + Slogan Pink dengan Kursor Berkedip + Tombol Aksi & Sosmed
+          - Kanan: Potret Dewan Berlatar Glowing Neon Pink Aura (Grounded di Bawah)
+          - Dasar Hero: Kemitraan Komisi & Ruang Kerja Parlemen
       ══════════════════════════════════════════════════════════════════ */}
       <section className="relative w-full min-h-[calc(100vh-80px)] lg:h-[calc(100vh-80px)] lg:max-h-[100dvh] flex flex-col justify-between pt-4 sm:pt-6 pb-0 bg-[#080D1A] overflow-hidden">
         
@@ -155,11 +156,8 @@ export function LailaSakuraTemplate({
                 <span className="text-2xl sm:text-3xl font-light text-[#FF4D8D] animate-pulse">|</span>
               </div>
 
-              <p className="text-xs sm:text-sm text-[#94A3B8] leading-relaxed max-w-xl">
-                {info.bio}
-              </p>
 
-              {/* Action Buttons: Hot Pink Pill + Circular Socials (Persis Gambar) */}
+              {/* Action Buttons: Hot Pink Pill + Circular Socials */}
               <div className="pt-2 flex flex-wrap items-center gap-4">
                 <Link
                   href={href('/profil')}
@@ -168,7 +166,7 @@ export function LailaSakuraTemplate({
                     background: `linear-gradient(135deg, ${info.primaryColor}, #FF1493)`,
                   }}
                 >
-                  <Download className="w-4 h-4" />
+                  <Sparkles className="w-4 h-4" />
                   <span>Lihat Rekam Jejak</span>
                 </Link>
 
@@ -226,7 +224,7 @@ export function LailaSakuraTemplate({
           </div>
         </div>
 
-        {/* 1B. PARTNER STRIP DI DASAR HERO VIEWPORT (PERSIS DI GAMBAR) */}
+        {/* 1B. PARTNER STRIP DI DASAR HERO VIEWPORT */}
         <div className="w-full bg-[#050811] border-t border-[#1E2B42] py-3.5 px-6 sm:px-12 shrink-0">
           <div className="max-w-[1320px] mx-auto flex flex-col md:flex-row items-center justify-between gap-4">
             <span className="text-[11px] font-mono uppercase tracking-[0.2em] text-[#64748B] font-semibold">
@@ -261,311 +259,149 @@ export function LailaSakuraTemplate({
       </section>
 
       {/* ══════════════════════════════════════════════════════════════════
-          SECTION 2: ARTIKEL (PERSIS SECTION "About Me" & "Certificates" DI GAMBAR)
-          - Kiri: GET TO KNOW ME + 🌸 About Me 🌸 + 4 Stat Angka (2x2)
-          - Tengah: Kipas Tradisional Sakura Jepang Bercahaya Pink
-          - Kanan: 2 Kartu Filosofi & Misi
-          - Bawah: 🌸 Certificates 🌸 -> Publikasi & Risalah Kebijakan dengan Gambar Cover Jelas
+          SECTION 2: ARTIKEL (PUBLIKASI & TELAAH KEBIJAKAN)
       ══════════════════════════════════════════════════════════════════ */}
-      <section className="py-20 lg:py-28 bg-[#080D1A] border-t border-[#1E2B42]">
-        <div className="max-w-[1320px] mx-auto px-6 lg:px-12 space-y-24">
+      <section className="py-20 lg:py-28 bg-[#080D1A] border-t border-[#1E2B42] relative overflow-hidden">
+        {/* Ambient Subtle Pink Aura */}
+        <div
+          className="absolute top-1/2 left-1/4 -translate-y-1/2 w-[500px] h-[500px] rounded-full blur-[180px] pointer-events-none opacity-10"
+          style={{ backgroundColor: info.primaryColor }}
+        />
+
+        <div className="max-w-[1320px] mx-auto px-6 lg:px-12 space-y-12 relative z-10">
           
-          {/* 2A. BAGIAN ATAS: 3-KOLOM (ABOUT + KIPAS SAKURA + KARTU MISI) */}
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-10 items-center">
-            
-            {/* Kiri: Teks Tentang & 4 Stat 2x2 */}
-            <div className="lg:col-span-4 space-y-5 text-left">
-              <span
-                className="text-xs font-mono font-bold uppercase tracking-[0.25em] block"
-                style={{ color: info.primaryColor }}
-              >
-                GET TO KNOW ME
-              </span>
-
-              <h2 className="text-3xl sm:text-4xl font-black text-white tracking-tight">
-                🌸 Tentang Pengabdian 🌸
-              </h2>
-
-              <p className="text-xs sm:text-sm text-[#94A3B8] leading-relaxed">
-                Mendedikasikan waktu dan tenaga untuk menjembatani aspirasi masyarakat ke dalam perumusan kebijakan strategis daerah yang adil, transparan, dan berdampak langsung.
-              </p>
-
-              {/* 4 Stats Grid 2x2 */}
-              <div className="grid grid-cols-2 gap-4 pt-3 border-t border-[#1E2B42]">
-                <div className="space-y-0.5">
-                  <span
-                    className="text-2xl sm:text-3xl font-black font-mono"
-                    style={{ color: info.primaryColor }}
-                  >
-                    10+
-                  </span>
-                  <p className="text-[11px] font-semibold text-white uppercase tracking-wider">
-                    Tahun Pengabdian
-                  </p>
-                </div>
-
-                <div className="space-y-0.5">
-                  <span
-                    className="text-2xl sm:text-3xl font-black font-mono"
-                    style={{ color: info.primaryColor }}
-                  >
-                    120+
-                  </span>
-                  <p className="text-[11px] font-semibold text-white uppercase tracking-wider">
-                    Aspirasi Tuntas
-                  </p>
-                </div>
-
-                <div className="space-y-0.5">
-                  <span
-                    className="text-2xl sm:text-3xl font-black font-mono"
-                    style={{ color: info.primaryColor }}
-                  >
-                    100%
-                  </span>
-                  <p className="text-[11px] font-semibold text-white uppercase tracking-wider">
-                    Kehadiran Sidang
-                  </p>
-                </div>
-
-                <div className="space-y-0.5">
-                  <span
-                    className="text-2xl sm:text-3xl font-black font-mono"
-                    style={{ color: info.primaryColor }}
-                  >
-                    24/7
-                  </span>
-                  <p className="text-[11px] font-semibold text-white uppercase tracking-wider">
-                    Rumah Aspirasi
-                  </p>
-                </div>
-              </div>
-            </div>
-
-            {/* Tengah: Ikon Kipas Sakura Tradisional Bercahaya Neon Pink */}
-            <div className="lg:col-span-4 flex items-center justify-center py-6">
-              <div className="relative w-[280px] sm:w-[320px] md:w-[350px] aspect-square flex items-center justify-center">
-                
-                {/* Radial Glow Orb */}
-                <div
-                  className="absolute inset-0 rounded-full blur-[80px] opacity-40 pointer-events-none"
-                  style={{ backgroundColor: info.primaryColor }}
-                />
-
-                {/* SVG Artistic Japanese Sakura Fan */}
-                <div className="relative z-10 w-full h-full flex flex-col items-center justify-center transform hover:scale-105 transition-transform duration-500">
-                  <svg
-                    viewBox="0 0 400 300"
-                    className="w-full h-full drop-shadow-[0_12px_40px_rgba(255,77,141,0.45)]"
-                    fill="none"
-                    xmlns="http://www.w3.org/2000/svg"
-                  >
-                    <defs>
-                      <linearGradient id="fanGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-                        <stop offset="0%" stopColor="#FFAEC9" />
-                        <stop offset="50%" stopColor="#FF4D8D" />
-                        <stop offset="100%" stopColor="#9C1248" />
-                      </linearGradient>
-                      <linearGradient id="ribGrad" x1="0%" y1="0%" x2="0%" y2="100%">
-                        <stop offset="0%" stopColor="#2D111E" />
-                        <stop offset="100%" stopColor="#0B0508" />
-                      </linearGradient>
-                    </defs>
-
-                    {/* Outer Fan Arc Shape */}
-                    <path
-                      d="M 50 240 A 180 180 0 0 1 350 240 L 230 260 A 40 40 0 0 0 170 260 Z"
-                      fill="url(#fanGrad)"
-                      stroke="#FF6EA7"
-                      strokeWidth="2"
-                    />
-
-                    {/* Fan Rib Lines */}
-                    {[70, 100, 130, 160, 200, 240, 270, 300, 330].map((x, i) => (
-                      <line
-                        key={i}
-                        x1="200"
-                        y1="260"
-                        x2={x}
-                        y2={120 + Math.abs(x - 200) * 0.4}
-                        stroke="#FFB7C5"
-                        strokeWidth="1.5"
-                        opacity="0.6"
-                      />
-                    ))}
-
-                    {/* Sakura Blossoms on Fan */}
-                    <circle cx="150" cy="180" r="10" fill="#FFFFFF" opacity="0.9" />
-                    <circle cx="150" cy="180" r="4" fill="#FF1493" />
-                    <circle cx="250" cy="190" r="12" fill="#FFFFFF" opacity="0.9" />
-                    <circle cx="250" cy="190" r="5" fill="#FF1493" />
-                    <circle cx="200" cy="160" r="14" fill="#FFFFFF" opacity="0.95" />
-                    <circle cx="200" cy="160" r="6" fill="#FF2E74" />
-                    <circle cx="180" cy="205" r="9" fill="#FFFFFF" opacity="0.9" />
-                    <circle cx="225" cy="200" r="8" fill="#FFFFFF" opacity="0.9" />
-
-                    {/* Fan Base & Hanging Tassel */}
-                    <circle cx="200" cy="260" r="10" fill="#FF4D8D" stroke="#FFFFFF" strokeWidth="2" />
-                    <line x1="200" y1="270" x2="200" y2="295" stroke="#FF4D8D" strokeWidth="3" />
-                    <path d="M 195 295 L 205 295 L 207 315 L 193 315 Z" fill="#FF4D8D" />
-                  </svg>
-                </div>
-              </div>
-            </div>
-
-            {/* Kanan: 2 Kartu Filosofi & Misi */}
-            <div className="lg:col-span-4 space-y-4">
-              
-              <div className="p-6 rounded-3xl bg-[#0D1527] border border-[#1E2B42] hover:border-[#FF4D8D]/50 transition-all space-y-2 shadow-lg">
-                <h4
-                  className="text-sm font-bold tracking-wide"
-                  style={{ color: info.primaryColor }}
-                >
-                  Filosofi Pengabdian
-                </h4>
-                <p className="text-xs text-[#A0ABC0] leading-relaxed">
-                  Memadukan integritas moral, keahlian hukum perundang-undangan, dan kepekaan sosial dalam melahirkan regulasi yang benar-benar melindungi martabat seluruh warga.
-                </p>
-              </div>
-
-              <div className="p-6 rounded-3xl bg-[#0D1527] border border-[#1E2B42] hover:border-[#FF4D8D]/50 transition-all space-y-2 shadow-lg">
-                <h4
-                  className="text-sm font-bold tracking-wide"
-                  style={{ color: info.primaryColor }}
-                >
-                  Misi & Mandat Rakyat
-                </h4>
-                <p className="text-xs text-[#A0ABC0] leading-relaxed">
-                  Mentransformasikan suara dan harapan konstituen menjadi program nyata dalam APBD serta mengawal akuntabilitas setiap rupiah dana publik tanpa kompromi.
-                </p>
-              </div>
-
-            </div>
-
+          {/* Header Section 2 */}
+          <div className="text-center space-y-3 max-w-3xl mx-auto">
+            <span
+              className="text-xs font-mono font-bold uppercase tracking-[0.25em] block"
+              style={{ color: info.primaryColor }}
+            >
+              🌸 PUBLIKASI & ARTIKEL KEBIJAKAN 🌸
+            </span>
+            <h2 className="text-3xl sm:text-4xl lg:text-5xl font-black text-white tracking-tight leading-tight">
+              Risalah & Gagasan Parlemen
+            </h2>
+            <p className="text-xs sm:text-sm text-[#8E9BB0] leading-relaxed">
+              Arsip telaah regulasi daerah, transparansi anggaran, serta catatan advokasi kebijakan publik untuk kemaslahatan masyarakat.
+            </p>
           </div>
 
-          {/* 2B. BAGIAN BAWAH: ARTIKEL (PERSIS GAYA "Certificates" DI GAMBAR) */}
-          <div className="space-y-12">
-            
-            <div className="text-center space-y-2">
-              <h3 className="text-3xl sm:text-4xl font-black text-white tracking-tight flex items-center justify-center gap-3">
-                <span>🌸</span>
-                <span>Publikasi & Risalah Kebijakan</span>
-                <span>🌸</span>
-              </h3>
-              <p className="text-xs sm:text-sm text-[#8E9BB0]">
-                Arsip telaah regulasi, analisis APBD, dan gagasan legislasi terbuka
-              </p>
+          {/* Grid Kartu Artikel */}
+          {displayArticles.length === 0 ? (
+            <div className="text-center py-16 bg-[#0D1527] rounded-3xl border border-[#1E2B42]">
+              <BookOpen className="w-10 h-10 text-[#64748B] mx-auto mb-3" />
+              <p className="text-sm text-[#8E9BB0]">Belum ada artikel resmi yang dipublikasikan saat ini.</p>
             </div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 lg:gap-8">
+              {displayArticles.slice(0, 3).map((art: any) => (
+                <article
+                  key={art.id}
+                  className="group flex flex-col bg-[#0D1527] border border-[#1E2B42] rounded-3xl overflow-hidden hover:border-[#FF4D8D]/70 transition-all duration-300 hover:shadow-[0_8px_30px_rgba(255,77,141,0.25)]"
+                >
+                  {/* Gambar Cover Artikel */}
+                  <div className="relative aspect-[16/10] overflow-hidden bg-[#070B14]">
+                    <img
+                      src={art.imageUrl}
+                      alt={art.title}
+                      className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500 filter brightness-95 group-hover:brightness-105"
+                    />
+                    <div className="absolute top-3 left-3">
+                      <span
+                        className="px-3 py-1 rounded-full text-[10px] font-mono font-bold bg-[#080D1A]/90 backdrop-blur-md border border-[#1E2B42]"
+                        style={{ color: info.primaryColor }}
+                      >
+                        {art.category}
+                      </span>
+                    </div>
+                  </div>
 
-            {/* Grid Kartu Artikel Menampilkan Cover Image Jelas */}
-            {displayArticles.length === 0 ? (
-              <div className="text-center py-16 bg-[#0D1527] rounded-3xl border border-[#1E2B42]">
-                <BookOpen className="w-10 h-10 text-[#64748B] mx-auto mb-3" />
-                <p className="text-sm text-[#8E9BB0]">Belum ada artikel resmi yang dipublikasikan saat ini.</p>
-              </div>
-            ) : (
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {displayArticles.slice(0, 3).map((art: any) => (
-                  <article
-                    key={art.id}
-                    className="group flex flex-col bg-[#0D1527] border border-[#1E2B42] rounded-3xl overflow-hidden hover:border-[#FF4D8D]/70 transition-all duration-300 hover:shadow-[0_8px_30px_rgba(255,77,141,0.25)]"
-                  >
-                    {/* Gambar Cover Artikel Jelas */}
-                    <div className="relative aspect-[16/10] overflow-hidden bg-[#070B14]">
-                      <img
-                        src={art.imageUrl}
-                        alt={art.title}
-                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500 filter brightness-95 group-hover:brightness-105"
-                      />
-                      <div className="absolute top-3 left-3">
+                  {/* Konten Artikel */}
+                  <div className="p-6 flex-1 flex flex-col justify-between space-y-4 text-left">
+                    <div className="space-y-2.5">
+                      <div className="flex items-center justify-between text-xs font-mono">
+                        <span className="text-[#64748B] flex items-center gap-1.5">
+                          <Calendar className="w-3.5 h-3.5 text-[#FF4D8D]" />
+                          <span>{art.date}</span>
+                        </span>
                         <span
-                          className="px-3 py-1 rounded-full text-[10px] font-mono font-bold bg-[#080D1A]/90 backdrop-blur-md border border-[#1E2B42]"
+                          className="font-bold text-xs"
                           style={{ color: info.primaryColor }}
                         >
-                          {art.category}
+                          Publikasi Resmi
                         </span>
                       </div>
+
+                      <h3 className="font-bold text-base sm:text-lg text-white group-hover:text-[#FF4D8D] transition-colors leading-snug">
+                        {art.title}
+                      </h3>
+
+                      <p className="text-xs text-[#94A3B8] line-clamp-3 leading-relaxed">
+                        {art.excerpt}
+                      </p>
                     </div>
 
-                    {/* Konten Artikel */}
-                    <div className="p-6 flex-1 flex flex-col justify-between space-y-4 text-left">
-                      <div className="space-y-2.5">
-                        <div className="flex items-center justify-between text-xs font-mono">
-                          <span className="text-[#64748B] flex items-center gap-1.5">
-                            <Calendar className="w-3.5 h-3.5 text-[#FF4D8D]" />
-                            <span>{art.date}</span>
-                          </span>
-                          <span
-                            className="font-bold text-xs"
-                            style={{ color: info.primaryColor }}
-                          >
-                            {art.date}
-                          </span>
-                        </div>
-
-                        <h4 className="font-bold text-base text-white group-hover:text-[#FF4D8D] transition-colors leading-snug">
-                          {art.title}
-                        </h4>
-
-                        <p className="text-xs text-[#94A3B8] line-clamp-3 leading-relaxed">
-                          {art.excerpt}
-                        </p>
-                      </div>
-
-                      <div className="pt-3 border-t border-[#1E2B42]">
-                        <Link
-                          href={href(`/artikel/${art.slug}`)}
-                          className="inline-flex items-center gap-2 text-xs font-mono font-bold transition-colors group-hover:translate-x-1 duration-300"
-                          style={{ color: info.primaryColor }}
-                        >
-                          <span>Baca Risalah Lengkap 🌸</span>
-                          <ArrowRight className="w-3.5 h-3.5" />
-                        </Link>
-                      </div>
+                    <div className="pt-3 border-t border-[#1E2B42]">
+                      <Link
+                        href={href(`/artikel/${art.slug}`)}
+                        className="inline-flex items-center gap-2 text-xs font-mono font-bold transition-colors group-hover:translate-x-1 duration-300"
+                        style={{ color: info.primaryColor }}
+                      >
+                        <span>Baca Risalah Lengkap 🌸</span>
+                        <ArrowRight className="w-3.5 h-3.5" />
+                      </Link>
                     </div>
-                  </article>
-                ))}
-              </div>
-            )}
-
-            <div className="text-center pt-2">
-              <Link
-                href={href('/artikel')}
-                className="inline-flex items-center gap-2 text-xs font-mono font-bold uppercase tracking-wider text-[#FF4D8D] hover:text-white transition-colors"
-              >
-                <span>Lihat Seluruh Arsip Artikel & Kebijakan</span>
-                <ChevronRight className="w-4 h-4" />
-              </Link>
+                  </div>
+                </article>
+              ))}
             </div>
+          )}
 
+          <div className="text-center pt-2">
+            <Link
+              href={href('/artikel')}
+              className="inline-flex items-center gap-2 px-6 py-3 rounded-full bg-[#0D1527] border border-[#1E2B42] text-xs font-mono font-bold uppercase tracking-wider text-[#FF4D8D] hover:bg-[#FF4D8D] hover:text-white transition-all shadow-md"
+            >
+              <span>Lihat Seluruh Arsip Artikel & Kebijakan</span>
+              <ChevronRight className="w-4 h-4" />
+            </Link>
           </div>
 
         </div>
       </section>
 
       {/* ══════════════════════════════════════════════════════════════════
-          SECTION 3: INFOGRAFIS (PERSIS SECTION "Education" DI GAMBAR)
-          - Kiri: Tangkai Bunga Sakura Bercahaya Neon Pink (Cherry Blossom Branch)
-          - Kanan: Galeri Poster Infografis dengan Gambar Nyata & Modal Interaktif
+          SECTION 3: INFOGRAFIS (VISUALISASI DATA & KEBIJAKAN)
+          - Kiri: Tangkai Bunga Sakura Bercahaya Pink
+          - Kanan: Galeri Poster Infografis dengan Modal Interaktif
       ══════════════════════════════════════════════════════════════════ */}
-      <section className="py-20 lg:py-28 bg-[#060A14] border-t border-[#1E2B42]">
-        <div className="max-w-[1320px] mx-auto px-6 lg:px-12 space-y-16">
+      <section className="py-20 lg:py-28 bg-[#060A14] border-t border-[#1E2B42] relative overflow-hidden">
+        {/* Ambient Subtle Pink Glow */}
+        <div
+          className="absolute top-1/2 right-1/4 -translate-y-1/2 w-[500px] h-[500px] rounded-full blur-[180px] pointer-events-none opacity-10"
+          style={{ backgroundColor: info.primaryColor }}
+        />
+
+        <div className="max-w-[1320px] mx-auto px-6 lg:px-12 space-y-16 relative z-10">
           
-          <div className="text-center space-y-2">
-            <h3 className="text-3xl sm:text-4xl font-black text-white tracking-tight flex items-center justify-center gap-3">
-              <span>🌸</span>
-              <span>Galeri Infografis Parlemen</span>
-              <span>🌸</span>
-            </h3>
-            <p className="text-xs sm:text-sm text-[#8E9BB0]">
-              Visualisasi data APBD, serapan aspirasi warga, dan roadmap peraturan daerah
+          <div className="text-center space-y-3 max-w-3xl mx-auto">
+            <span
+              className="text-xs font-mono font-bold uppercase tracking-[0.25em] block"
+              style={{ color: info.primaryColor }}
+            >
+              🌸 VISUALISASI DATA & KEBIJAKAN 🌸
+            </span>
+            <h2 className="text-3xl sm:text-4xl lg:text-5xl font-black text-white tracking-tight leading-tight">
+              Galeri Infografis Parlemen
+            </h2>
+            <p className="text-xs sm:text-sm text-[#8E9BB0] leading-relaxed">
+              Visualisasi data APBD, serapan aspirasi warga, dan ringkasan regulasi daerah yang disajikan secara transparan dan mudah dipahami.
             </p>
           </div>
 
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-10 items-center">
             
-            {/* Kiri: Ilustrasi Tangkai Bunga Sakura Bercahaya Pink (Persis di Gambar Bawah) */}
+            {/* Kiri: Ilustrasi Tangkai Bunga Sakura Bercahaya Pink */}
             <div className="lg:col-span-4 flex justify-center">
               <div className="relative w-[280px] sm:w-[320px] h-[380px] sm:h-[420px] flex items-center justify-center">
                 {/* Glowing Pink Backdrop */}
@@ -619,7 +455,6 @@ export function LailaSakuraTemplate({
                       <circle cx={flw.cx} cy={flw.cy} r={flw.r} fill="#FFAEC9" opacity="0.9" />
                       <circle cx={flw.cx} cy={flw.cy} r={flw.r * 0.7} fill="#FFFFFF" opacity="0.95" />
                       <circle cx={flw.cx} cy={flw.cy} r={flw.r * 0.28} fill="#FF1493" />
-                      {/* Petal hints */}
                       <circle cx={flw.cx - flw.r * 0.4} cy={flw.cy - flw.r * 0.3} r={flw.r * 0.45} fill="#FF80AB" opacity="0.8" />
                       <circle cx={flw.cx + flw.r * 0.4} cy={flw.cy - flw.r * 0.3} r={flw.r * 0.45} fill="#FF80AB" opacity="0.8" />
                       <circle cx={flw.cx} cy={flw.cy + flw.r * 0.45} r={flw.r * 0.45} fill="#FF80AB" opacity="0.8" />
@@ -671,9 +506,9 @@ export function LailaSakuraTemplate({
                         </span>
                       </div>
 
-                      <h4 className="font-bold text-base text-white group-hover:text-[#FF4D8D] transition-colors leading-snug">
+                      <h3 className="font-bold text-base text-white group-hover:text-[#FF4D8D] transition-colors leading-snug">
                         {item.title}
-                      </h4>
+                      </h3>
 
                       <p className="text-xs text-[#94A3B8] leading-relaxed">
                         {item.summary}
@@ -699,7 +534,10 @@ export function LailaSakuraTemplate({
           <div className="text-center pt-2">
             <Link
               href={href('/infografis')}
-              className="inline-flex items-center gap-2 text-xs font-mono font-bold uppercase tracking-wider text-[#FF4D8D] hover:text-white transition-colors"
+              className="inline-flex items-center gap-2.5 px-7 py-3.5 rounded-full text-white font-extrabold text-xs tracking-wider transition-all duration-300 shadow-[0_4px_24px_rgba(255,77,141,0.3)] hover:shadow-[0_6px_30px_rgba(255,77,141,0.5)] hover:scale-105"
+              style={{
+                background: `linear-gradient(135deg, ${info.primaryColor}, #FF1493)`,
+              }}
             >
               <span>Jelajahi Semua Infografis Parlemen</span>
               <ChevronRight className="w-4 h-4" />
@@ -734,6 +572,7 @@ export function LailaSakuraTemplate({
               <button
                 onClick={() => setSelectedInfographic(null)}
                 className="p-2 text-[#A0ABC0] hover:text-white rounded-xl hover:bg-[#1E2B42] transition-colors"
+                aria-label="Tutup pratinjau"
               >
                 <X className="w-6 h-6" />
               </button>

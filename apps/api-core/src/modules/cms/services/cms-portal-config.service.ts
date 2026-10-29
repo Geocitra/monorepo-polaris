@@ -159,7 +159,7 @@ export class CmsPortalConfigService {
 
       if (dto.layoutTemplateId !== undefined) {
         const cleanLayout = dto.layoutTemplateId.trim().toLowerCase();
-        if (cleanLayout !== 'standard-default' && !isPremium) {
+        if (cleanLayout !== 'standard-default' && cleanLayout !== 'polaris-insight' && !isPremium) {
           throw new ForbiddenException(
             'Pemilihan template layout tematik eksklusif memerlukan lisensi PRO (Eksekutif Suite). Akun Standar Parlemen hanya mendukung tata letak standar.'
           );
@@ -181,7 +181,7 @@ export class CmsPortalConfigService {
         )
           .trim()
           .toLowerCase();
-        if (preset !== 'standard-default' && !isPremium) {
+        if (preset !== 'standard-default' && preset !== 'polaris-insight' && !isPremium) {
           throw new ForbiddenException(
             'Pemilihan template layout tematik eksklusif memerlukan lisensi PRO (Eksekutif Suite). Akun Standar Parlemen hanya mendukung tata letak standar.'
           );

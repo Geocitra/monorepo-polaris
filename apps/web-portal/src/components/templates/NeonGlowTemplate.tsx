@@ -55,54 +55,27 @@ export function NeonGlowTemplate({
     member?.instagramHandle?.replace(/^@/, '') ||
     member?.username ||
     subdomain ||
-    'ahmadfauzi';
+    '';
 
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const previewTemplate = searchParams?.get('preview_template');
+  const previewColor = searchParams?.get('preview_color');
 
   const getNavLinkHref = (path: string) => {
     let base = path;
     if (subdomain && pathname?.startsWith(`/${subdomain}`)) {
       base = path === '/' ? `/${subdomain}` : `/${subdomain}${path}`;
     }
-    if (previewTemplate) {
-      base += `${base.includes('?') ? '&' : '?'}preview_template=${previewTemplate}`;
-    }
-    return base;
+    const sp = new URLSearchParams();
+    if (previewTemplate) sp.set('preview_template', previewTemplate);
+    if (previewColor) sp.set('preview_color', previewColor);
+    const qs = sp.toString();
+    return qs ? `${base}${base.includes('?') ? '&' : '?'}${qs}` : base;
   };
 
   const articles = recentArticles.slice(0, 3);
-
-  const fallbackInfographics = [
-    {
-      id: 'demo-info-1',
-      title: 'Transparansi APBD: Alokasi Belanja TIK Sekolah Desa 2026',
-      slug: 'transparansi-apbd-alokasi-belanja-tik-sekolah-desa',
-      imageUrl: '/images/showcase-infografis-apbd.jpg',
-      posterUrl: '/images/showcase-infografis-apbd.jpg',
-      category: 'ANGGARAN & APBD',
-      excerpt:
-        'Rincian alokasi anggaran pengadaan laboratorium komputer dan sarana digital di 45 sekolah pelosok daerah pemilihan.',
-      publishedAt: '2026-09-01T00:00:00.000Z',
-    },
-    {
-      id: 'demo-info-2',
-      title: 'Penguatan Ketahanan Pangan & Distribusi Pupuk Subsidi Petani',
-      slug: 'penguatan-ketahanan-pangan-distribusi-pupuk-subsidi',
-      imageUrl: '/images/showcase-artikel-pertanian.jpg',
-      posterUrl: '/images/showcase-artikel-pertanian.jpg',
-      category: 'PERTANIAN & PANGAN',
-      excerpt:
-        'Sistem digitalisasi penebusan pupuk bersubsidi dan pengawasan kuota kelompok tani untuk mencegah kelangkaan panen raya.',
-      publishedAt: '2026-08-25T00:00:00.000Z',
-    },
-  ];
-
-  const infographics =
-    recentInfographics && recentInfographics.length > 0
-      ? recentInfographics
-      : fallbackInfographics;
+  const infographics = recentInfographics || [];
 
   return (
     <div className="min-h-screen bg-[#070913] text-slate-100 font-sans selection:bg-purple-600 selection:text-white">
@@ -292,53 +265,6 @@ export function NeonGlowTemplate({
             </div>
 
           </div>
-
-          {/* ─── 4 NEON GLASS STATS CARDS ─── */}
-          <div id="about" className="mt-14 sm:mt-20 pt-8 sm:pt-12 border-t border-purple-900/30 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">
-            <div className="p-6 rounded-2xl bg-[#0C1022]/90 border border-purple-900/40 shadow-lg space-y-2 hover:border-purple-500/50 transition-all">
-              <div className="w-10 h-10 rounded-xl bg-purple-500/10 border border-purple-500/20 text-purple-400 flex items-center justify-center font-bold">
-                <Calendar className="w-5 h-5" />
-              </div>
-              <div className="text-3xl font-black text-white font-mono">10+</div>
-              <div className="text-xs font-bold text-slate-300">Tahun Pengabdian</div>
-              <p className="text-[11px] text-slate-400 leading-relaxed">
-                Dedikasi berkelanjutan memperjuangkan hak dan perlindungan warga daerah pemilihan.
-              </p>
-            </div>
-
-            <div className="p-6 rounded-2xl bg-[#0C1022]/90 border border-purple-900/40 shadow-lg space-y-2 hover:border-purple-500/50 transition-all">
-              <div className="w-10 h-10 rounded-xl bg-indigo-500/10 border border-indigo-500/20 text-indigo-400 flex items-center justify-center font-bold">
-                <Award className="w-5 h-5" />
-              </div>
-              <div className="text-3xl font-black text-white font-mono">50+</div>
-              <div className="text-xs font-bold text-slate-300">Rilis Telaah Kebijakan</div>
-              <p className="text-[11px] text-slate-400 leading-relaxed">
-                Catatan kritis terhadap kebijakan publik dan evaluasi efektivitas anggaran kementerian.
-              </p>
-            </div>
-
-            <div className="p-6 rounded-2xl bg-[#0C1022]/90 border border-purple-900/40 shadow-lg space-y-2 hover:border-purple-500/50 transition-all">
-              <div className="w-10 h-10 rounded-xl bg-cyan-500/10 border border-cyan-500/20 text-cyan-400 flex items-center justify-center font-bold">
-                <Users className="w-5 h-5" />
-              </div>
-              <div className="text-3xl font-black text-white font-mono">1,200+</div>
-              <div className="text-xs font-bold text-slate-300">Konstituen Terdampingi</div>
-              <p className="text-[11px] text-slate-400 leading-relaxed">
-                Penerima manfaat program advokasi, beasiswa, bantuan sarana dan fasilitas umum.
-              </p>
-            </div>
-
-            <div className="p-6 rounded-2xl bg-[#0C1022]/90 border border-purple-900/40 shadow-lg space-y-2 hover:border-purple-500/50 transition-all">
-              <div className="w-10 h-10 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 flex items-center justify-center font-bold">
-                <CheckCircle className="w-5 h-5" />
-              </div>
-              <div className="text-3xl font-black text-white font-mono">100%</div>
-              <div className="text-xs font-bold text-slate-300">Indeks Akuntabilitas</div>
-              <p className="text-[11px] text-slate-400 leading-relaxed">
-                Seluruh aktivitas dan naskah kerja tercatat secara digital pada sistem POLARIS.
-              </p>
-            </div>
-          </div>
         </div>
       </section>
 
@@ -424,8 +350,7 @@ export function NeonGlowTemplate({
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-10">
           <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4 border-b border-purple-900/40 pb-5">
             <div>
-              <span className="text-xs font-mono uppercase text-cyan-400 tracking-widest font-bold flex items-center gap-1.5">
-                <Sparkles className="w-3.5 h-3.5" />
+              <span className="text-xs font-mono uppercase text-cyan-400 tracking-widest font-bold flex items-center">
                 DATA VISUALIZATION &amp; PUBLIC TRANSPARENCY
               </span>
               <h2 className="text-2xl sm:text-3xl font-black text-white mt-1">

@@ -15,6 +15,7 @@ import {
   Phone,
   MapPin,
 } from 'lucide-react';
+import { resolvePortalMemberData } from '@/lib/template-resolver';
 
 export interface PlatinumSlateShellProps {
   member: any;
@@ -41,19 +42,21 @@ export function PlatinumSlateShell({
   children,
   showMasthead = true,
 }: PlatinumSlateShellProps) {
-  const officialFullName =
-    member?.fullName || theme?.officialFullName || 'Dr. Jonanda P. A. B';
-  const dapil =
-    member?.dapilName || member?.customDapilName || member?.customDapil || 'Dapil I';
-  const party = member?.partyAffiliation || 'Fraksi Parlemen';
-  const legislativeLevel = member?.legislativeLevel || 'DPRD PROVINSI';
-  const officialEmail = `aspirasi@${subdomain || 'jonandabrahman'}.polaris.id`;
-  const officialPhone = '+62 812-3456-7890';
-  const instagramUsername =
-    member?.instagramHandle?.replace(/^@/, '') ||
-    member?.username ||
-    subdomain ||
-    'jonandabrahman';
+  const resolved = resolvePortalMemberData({
+    member,
+    theme,
+    subdomain,
+    defaultPrimaryColor: '#A0AFB7',
+  });
+
+  const officialFullName = resolved.officialFullName;
+  const dapil = resolved.dapil || 'Dapil Terkait';
+  const party = resolved.party;
+  const legislativeLevel = resolved.legislativeLevel;
+  const officialEmail = resolved.officialEmail;
+  const officialPhone = resolved.formattedPhoneNumber || resolved.phone || '';
+  const instagramUsername = resolved.instagramUsername;
+  const instagramUrl = resolved.instagramUrl;
 
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
@@ -161,7 +164,7 @@ export function PlatinumSlateShell({
           {/* Right Action: Pill Button INSTAGRAM ↗ */}
           <div className="hidden sm:flex items-center">
             <a
-              href={`https://instagram.com/${instagramUsername}`}
+              href={instagramUrl || 'https://instagram.com'}
               target="_blank"
               rel="noopener noreferrer"
               className="px-5 py-2 sm:px-6 sm:py-2.5 rounded-full bg-gradient-to-r from-[#FFFFFF] via-[#E2E6EA] to-[#BAC2CC] text-slate-950 text-xs font-bold tracking-wider uppercase shadow-md hover:brightness-105 active:scale-95 transition-all flex items-center gap-2 cursor-pointer"
@@ -235,7 +238,7 @@ export function PlatinumSlateShell({
 
             <div className="pt-2 border-t border-white/10">
               <a
-                href={`https://instagram.com/${instagramUsername}`}
+                href={instagramUrl || 'https://instagram.com'}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="w-full flex items-center justify-center gap-2 py-2.5 px-4 rounded-full bg-gradient-to-r from-white via-slate-200 to-slate-400 text-slate-950 text-xs font-bold uppercase tracking-wider shadow-md"
@@ -267,8 +270,7 @@ export function PlatinumSlateShell({
 
             {pageBadge && (
               <div>
-                <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[10px] font-bold tracking-widest uppercase bg-white/10 text-white border border-white/15">
-                  <Sparkles className="w-3 h-3 text-slate-300" />
+                <span className="inline-flex items-center px-3 py-1 rounded-full text-[10px] font-bold tracking-widest uppercase bg-white/10 text-white border border-white/15">
                   <span>{pageBadge}</span>
                 </span>
               </div>
@@ -319,7 +321,7 @@ export function PlatinumSlateShell({
                   Pintu komunikasi resmi selalu terbuka untuk konsultasi kebijakan, kolaborasi daerah, dan audiensi kedewanan.
                 </p>
                 <a
-                  href={`https://instagram.com/${instagramUsername}`}
+                  href={instagramUrl || 'https://instagram.com'}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="inline-flex items-center gap-2 px-6 py-3.5 rounded-full bg-gradient-to-r from-white via-slate-200 to-slate-400 text-slate-950 font-bold text-xs tracking-wider uppercase shadow-lg hover:shadow-white/20 transition-all cursor-pointer"
@@ -337,7 +339,7 @@ export function PlatinumSlateShell({
                 </div>
                 <div className="flex items-center gap-2.5">
                   <Phone className="w-4 h-4 text-slate-400 shrink-0" />
-                  <span>{officialPhone}</span>
+                  <span>{officialPhone || 'Hubungi Sekretariat'}</span>
                 </div>
                 <div className="flex items-center gap-2.5">
                   <MapPin className="w-4 h-4 text-slate-400 shrink-0" />
@@ -356,7 +358,7 @@ export function PlatinumSlateShell({
             <div className="flex items-center gap-6">
               <span className="text-slate-500 uppercase tracking-widest">LET&apos;S CONNECT</span>
               <a
-                href={`https://instagram.com/${instagramUsername}`}
+                href={instagramUrl || 'https://instagram.com'}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="hover:text-slate-300 transition-colors flex items-center gap-1.5"

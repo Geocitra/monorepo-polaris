@@ -91,11 +91,10 @@ export function OrixVioletArtikelCatalogClient({
       >
         <div className="max-w-[1320px] mx-auto px-6 lg:px-12 xl:px-16 relative z-10">
           <div className="max-w-2xl space-y-3">
-            <div className="flex items-center gap-2">
+            <div className="flex items-center">
               <span className="text-xs font-black uppercase tracking-[0.2em] text-[#A78BFA]">
                 PUBLIKASI &amp; RISET KEBIJAKAN
               </span>
-              <Sparkles className="w-3.5 h-3.5 text-[#A78BFA]" />
             </div>
             <h1 className="font-extrabold text-4xl sm:text-5xl text-white tracking-tight">
               Katalog Artikel &amp; Risalah

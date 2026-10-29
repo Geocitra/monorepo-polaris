@@ -43,19 +43,19 @@ export function QurifolioTemplate({
   const photoUrl =
     theme?.officialPhotoUrl ||
     member?.photoUrl ||
-    '/images/dewan-ahmad-fauzi-cutout.webp';
+    '/images/dewan-standing-full.png';
   const officialFullName =
-    member?.fullName || theme?.officialFullName || 'Dr. H. Ahmad Fauzi, M.Si.';
+    member?.fullName || theme?.officialFullName || 'Anggota Dewan';
   const dapil =
-    member?.dapilName || member?.customDapilName || member?.customDapil || 'Jawa Barat I';
-  const party = member?.partyAffiliation || 'Fraksi Parlemen DPR RI';
-  const officialEmail = `aspirasi@${subdomain || 'ahmadfauzi'}.polaris.id`;
-  const officialPhone = '+62 812-9876-5432';
+    member?.dapilName || member?.customDapilName || member?.customDapil || '';
+  const party = member?.partyAffiliation || 'Fraksi Parlemen';
+  const officialEmail = member?.email || (subdomain ? `aspirasi@${subdomain}.polaris.id` : 'aspirasi@polaris.id');
+  const officialPhone = member?.phoneNumber || '+62 812-3456-7890';
   const instagramUsername =
     member?.instagramHandle?.replace(/^@/, '') ||
     member?.username ||
     subdomain ||
-    'ahmadfauzi';
+    '';
 
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [activeModalInfo, setActiveModalInfo] = useState<any | null>(null);
@@ -63,35 +63,40 @@ export function QurifolioTemplate({
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const previewTemplate = searchParams?.get('preview_template');
+  const previewColor = searchParams?.get('preview_color');
 
   const getNavLinkHref = (path: string) => {
     let base = path;
     if (subdomain && pathname?.startsWith(`/${subdomain}`)) {
       base = path === '/' ? `/${subdomain}` : `/${subdomain}${path}`;
     }
-    if (previewTemplate) {
-      base += `${base.includes('?') ? '&' : '?'}preview_template=${previewTemplate}`;
+    const params = new URLSearchParams();
+    if (previewTemplate) params.set('preview_template', previewTemplate);
+    if (previewColor) params.set('preview_color', previewColor);
+    const qs = params.toString();
+    if (qs) {
+      base += `${base.includes('?') ? '&' : '?'}${qs}`;
     }
     return base;
   };
 
   function parseCleanIdentity(fullName?: string) {
     if (!fullName) {
-      return { cleanName: 'Ahmad Fauzi', firstName: 'Ahmad', lastName: 'Fauzi', brandName: 'Ahmad Fauzi' };
+      return { cleanName: 'Wakil Rakyat', firstName: 'Wakil', lastName: 'Rakyat', brandName: 'Wakil Rakyat' };
     }
     let clean = fullName.split(',')[0].trim();
     while (/^(dr|ir|drs|dra|h|hj|prof|kh|k\.h|haji|hajjah)\.?\s+/i.test(clean)) {
       clean = clean.replace(/^(dr|ir|drs|dra|h|hj|prof|kh|k\.h|haji|hajjah)\.?\s+/i, '').trim();
     }
     const words = clean.split(/\s+/).filter(Boolean);
-    const firstName = words[0] || 'Ahmad';
-    const lastName = words.length > 1 ? words.slice(1).join(' ') : 'Fauzi';
+    const firstName = words[0] || 'Wakil';
+    const lastName = words.length > 1 ? words.slice(1).join(' ') : '';
 
     return {
-      cleanName: clean || 'Ahmad Fauzi',
+      cleanName: clean || 'Wakil Rakyat',
       firstName,
       lastName,
-      brandName: clean || 'Ahmad Fauzi',
+      brandName: clean || 'Wakil Rakyat',
     };
   }
 
@@ -309,8 +314,8 @@ export function QurifolioTemplate({
         <button
           type="button"
           onClick={() => {
-            const sec2 = document.getElementById('section-2');
-            sec2?.scrollIntoView({ behavior: 'smooth' });
+            const nextSec = document.getElementById('section-artikel');
+            nextSec?.scrollIntoView({ behavior: 'smooth' });
           }}
           className="pointer-events-auto cursor-pointer group focus:outline-hidden"
           style={{
@@ -319,7 +324,7 @@ export function QurifolioTemplate({
             top: 0,
             transform: 'translate(-50%, -50%)',
           }}
-          aria-label="Gulir ke Section 2"
+          aria-label="Gulir ke Artikel"
         >
           <div className="relative w-24 h-24 sm:w-28 sm:h-28 md:w-32 md:h-32 rounded-full bg-[#222222] border-2 border-stone-800 shadow-[0_12px_40px_rgba(0,0,0,0.6)] flex items-center justify-center group-hover:scale-105 transition-transform duration-300">
             
@@ -350,143 +355,6 @@ export function QurifolioTemplate({
           </div>
         </button>
       </div>
-
-      {/* ─── SECTION 2: PROFILE & METRICS (PERSIS PERSIS SESUAI GAMBAR ACUAN) ─── */}
-      <section id="section-2" className="relative overflow-hidden bg-[#181818] text-white pt-28 sm:pt-36 pb-24 sm:pb-32 border-t border-stone-800">
-        <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
-          
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-10 lg:gap-14 items-center">
-            
-            {/* Left Column: HELLO, I'M {NAMA}, Description, 3 Checklist Metrics (PERSIS GAMBAR) */}
-            <div className="lg:col-span-7 space-y-6">
-              
-              {/* Line 1: HELLO in muted gray uppercase (PERSIS GAMBAR) */}
-              <span className="text-xl sm:text-2xl font-bold uppercase tracking-wider text-stone-500 block">
-                HELLO
-              </span>
-
-              {/* Line 2: I'M {NAME} in bold white font-black (PERSIS GAMBAR) */}
-              <h2 className="text-4xl sm:text-5xl md:text-6xl font-black uppercase tracking-tight leading-tight text-white">
-                I&apos;M {cleanName.toUpperCase()}
-              </h2>
-
-              {/* Line 3: Description paragraph in muted stone-400 (PERSIS GAMBAR) */}
-              <p className="text-xs sm:text-sm text-stone-400 leading-relaxed max-w-md font-normal">
-                Mewakili Daerah Pemilihan {dapil}. Berkomitmen penuh mengawal naskah risalah kebijakan, memfasilitasi aspirasi konstituen, dan memastikan setiap regulasi bermuara pada pemerataan kemakmuran warga.
-              </p>
-
-              {/* Line 4: 3 Metrics with White Circular Checkmark Badges (PERSIS GAMBAR: 10+, 64+, 151+) */}
-              <div className="space-y-4 sm:space-y-5 pt-3">
-                
-                {/* Metric 1 */}
-                <div className="flex items-center gap-3.5 sm:gap-4">
-                  <div className="w-6 h-6 rounded-full bg-white flex items-center justify-center shrink-0 shadow-sm">
-                    <svg className="w-3.5 h-3.5 text-black stroke-[3.5]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.75l6 6 9-13.5" />
-                    </svg>
-                  </div>
-                  <span className="font-black text-2xl sm:text-3xl text-white tracking-tight shrink-0 min-w-[70px]">
-                    10+
-                  </span>
-                  <span className="text-xs sm:text-sm text-stone-400 font-medium">
-                    Tahun Masa Pengabdian Parlemen
-                  </span>
-                </div>
-
-                {/* Metric 2 */}
-                <div className="flex items-center gap-3.5 sm:gap-4">
-                  <div className="w-6 h-6 rounded-full bg-white flex items-center justify-center shrink-0 shadow-sm">
-                    <svg className="w-3.5 h-3.5 text-black stroke-[3.5]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.75l6 6 9-13.5" />
-                    </svg>
-                  </div>
-                  <span className="font-black text-2xl sm:text-3xl text-white tracking-tight shrink-0 min-w-[70px]">
-                    64+
-                  </span>
-                  <span className="text-xs sm:text-sm text-stone-400 font-medium">
-                    Program Aspirasi Tuntas
-                  </span>
-                </div>
-
-                {/* Metric 3 */}
-                <div className="flex items-center gap-3.5 sm:gap-4">
-                  <div className="w-6 h-6 rounded-full bg-white flex items-center justify-center shrink-0 shadow-sm">
-                    <svg className="w-3.5 h-3.5 text-black stroke-[3.5]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.75l6 6 9-13.5" />
-                    </svg>
-                  </div>
-                  <span className="font-black text-2xl sm:text-3xl text-white tracking-tight shrink-0 min-w-[70px]">
-                    151+
-                  </span>
-                  <span className="text-xs sm:text-sm text-stone-400 font-medium">
-                    Titik Temu &amp; Dialog Konstituen
-                  </span>
-                </div>
-
-              </div>
-
-            </div>
-
-            {/* Right Column: Cutout Portrait with Graphic Accents (PERSIS GAMBAR) */}
-            <div className="lg:col-span-5 flex justify-center relative">
-              <div className="relative w-full max-w-[340px] sm:max-w-[380px] flex justify-center items-end min-h-[420px] sm:min-h-[480px]">
-                
-                {/* 1. Subtle 3x3 Checkerboard Grid behind top right of photo (PERSIS GAMBAR) */}
-                <div className="absolute top-4 right-2 sm:right-6 grid grid-cols-3 gap-2 opacity-15 pointer-events-none select-none z-0">
-                  <div className="w-10 h-10 sm:w-12 sm:h-12 bg-white/20 rounded-xs" />
-                  <div className="w-10 h-10 sm:w-12 sm:h-12 bg-white/5 rounded-xs" />
-                  <div className="w-10 h-10 sm:w-12 sm:h-12 bg-white/20 rounded-xs" />
-                  <div className="w-10 h-10 sm:w-12 sm:h-12 bg-white/5 rounded-xs" />
-                  <div className="w-10 h-10 sm:w-12 sm:h-12 bg-white/20 rounded-xs" />
-                  <div className="w-10 h-10 sm:w-12 sm:h-12 bg-white/5 rounded-xs" />
-                  <div className="w-10 h-10 sm:w-12 sm:h-12 bg-white/20 rounded-xs" />
-                  <div className="w-10 h-10 sm:w-12 sm:h-12 bg-white/5 rounded-xs" />
-                  <div className="w-10 h-10 sm:w-12 sm:h-12 bg-white/20 rounded-xs" />
-                </div>
-
-                {/* 2. Concentric Radial Arc Lines behind torso on left (PERSIS GAMBAR) */}
-                <div className="absolute bottom-16 -left-6 sm:-left-10 w-40 sm:w-48 h-40 sm:h-48 opacity-20 pointer-events-none select-none z-0">
-                  <svg viewBox="0 0 100 100" className="w-full h-full stroke-stone-300 fill-none stroke-[1.5]">
-                    <circle cx="10" cy="90" r="30" />
-                    <circle cx="10" cy="90" r="48" />
-                    <circle cx="10" cy="90" r="66" />
-                    <circle cx="10" cy="90" r="84" />
-                  </svg>
-                </div>
-
-                {/* 3. Three Doodle Rays above Head: White, Orange, White (PERSIS GAMBAR) */}
-                <div className="absolute -top-7 right-20 sm:right-24 flex items-center gap-1.5 z-20 pointer-events-none">
-                  <span className="w-1 h-4 bg-white rounded-full rotate-[-25deg] block shadow-xs" />
-                  <span className="w-1 h-5 bg-[#FF6B00] rounded-full rotate-[15deg] block -mt-1 shadow-xs" />
-                  <span className="w-3.5 h-1 bg-white rounded-full block mt-2 shadow-xs" />
-                </div>
-
-                {/* 4. Two Wavy Doodle Lines near Elbow: Orange top, White bottom (PERSIS GAMBAR) */}
-                <div className="absolute bottom-28 right-0 sm:right-2 z-20 space-y-1.5 pointer-events-none">
-                  <svg width="42" height="10" viewBox="0 0 42 10" fill="none" className="stroke-[#FF6B00] stroke-[2.5] stroke-linecap-round">
-                    <path d="M 2 5 Q 8 0 14 5 T 26 5 T 38 5" />
-                  </svg>
-                  <svg width="42" height="10" viewBox="0 0 42 10" fill="none" className="stroke-white stroke-[2.5] stroke-linecap-round">
-                    <path d="M 2 5 Q 8 0 14 5 T 26 5 T 38 5" />
-                  </svg>
-                </div>
-
-                {/* 5. Cutout Photo */}
-                <div className="relative z-10 w-full flex justify-center">
-                  <img
-                    src={photoUrl}
-                    alt={officialFullName}
-                    className="w-full h-auto max-h-[460px] sm:max-h-[500px] object-contain object-bottom drop-shadow-[0_20px_50px_rgba(0,0,0,0.85)]"
-                  />
-                </div>
-
-              </div>
-            </div>
-
-          </div>
-
-        </div>
-      </section>
 
       {/* ─── SECTION 3: ARTIKEL & KAJIAN KEBIJAKAN (DIPISAH KE SECTION SELANJUTNYA) ─── */}
       <section id="section-artikel" className="relative overflow-hidden py-24 sm:py-32 bg-[#F4EFEA] border-t border-stone-200">

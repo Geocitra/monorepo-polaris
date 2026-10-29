@@ -2,7 +2,7 @@
 
 import React, { useState } from 'react';
 import Link from 'next/link';
-import { usePathname, useSearchParams } from 'next/navigation';
+import { useSearchParams } from 'next/navigation';
 import {
   ShieldCheck,
   Building2,
@@ -15,9 +15,17 @@ import {
   Award,
   ArrowRight,
   Sparkles,
+  CheckCircle2,
+  Calendar,
+  Users,
+  Camera,
+  MessageCircle,
+  Landmark,
+  BookOpen,
 } from 'lucide-react';
 import { PortalPhotoGallery } from '@/components/profile/PortalPhotoGallery';
 import { LimeStarburst, LimeSparkle } from './CreatixLimeShell';
+import { resolvePortalMemberData } from '@/lib/template-resolver';
 
 interface CreatixLimeProfileClientProps {
   member: any;
@@ -30,49 +38,106 @@ export function CreatixLimeProfileClient({
   theme,
   subdomain,
 }: CreatixLimeProfileClientProps) {
-  const [activeTab, setActiveTab] = useState<'pillars' | 'experience' | 'education'>('pillars');
+  // 1. Resolve dynamic real data from member & theme
+  const resolved = resolvePortalMemberData({
+    member,
+    theme,
+    subdomain,
+    defaultPrimaryColor: '#84CC16',
+  });
 
-  const pathname = usePathname();
+  const {
+    officialFullName,
+    firstName,
+    photoUrl,
+    party,
+    dapil,
+    legislativeLevel,
+    commissionName,
+    bio,
+    headlineTagline,
+    visionPillars,
+    educationList,
+    careersList,
+    akdAssignment,
+    activities,
+    waNumber,
+    waHotlineLink,
+    formattedPhoneNumber,
+    officialEmail,
+  } = resolved;
+
+  const primaryColor = theme?.primaryHexColor || '#84CC16';
+  const cleanLegislativeLevel = (legislativeLevel || 'DPR RI').replace(/_/g, ' ');
+
+  const [activeTab, setActiveTab] = useState<
+    'all' | 'komisi' | 'pillars' | 'education' | 'experience' | 'activities'
+  >('all');
+
   const searchParams = useSearchParams();
   const previewTemplate = searchParams?.get('preview_template');
+  const previewColor = searchParams?.get('preview_color');
 
   const getNavLinkHref = (path: string) => {
-    let base = path;
-    if (subdomain && pathname?.startsWith(`/${subdomain}`)) {
-      base = path === '/' ? `/${subdomain}` : `/${subdomain}${path}`;
-    }
-    if (previewTemplate) {
-      base += `${base.includes('?') ? '&' : '?'}preview_template=${previewTemplate}`;
-    }
-    return base;
+    let base = subdomain ? `/${subdomain}${path}` : path;
+    const sp = new URLSearchParams();
+    if (previewTemplate) sp.set('preview_template', previewTemplate);
+    if (previewColor) sp.set('preview_color', previewColor);
+    const qs = sp.toString();
+    return qs ? `${base}${base.includes('?') ? '&' : '?'}${qs}` : base;
   };
 
-  const officialFullName =
-    member?.fullName ||
-    theme?.officialFullName ||
-    'Dr. Ir. Sangsoro Mowo Berkah, M.Sc.';
+  // 2. AKD Resolvers
+  const commissionData = akdAssignment?.commission;
+  const activeCommissionName =
+    commissionData?.name?.trim() || commissionName?.trim() || (member?.commissionName ? member.commissionName.trim() : '');
+  const commissionRole =
+    commissionData?.role?.trim() || (activeCommissionName ? 'Anggota Komisi' : '');
+  const commissionScope = commissionData?.scope?.trim() || '';
+  const commissionPartners = commissionData?.partners?.trim() || '';
+  const factionRole = akdAssignment?.factionRole?.trim() || '';
+  const akdBodies: any[] = Array.isArray(akdAssignment?.akdBodies)
+    ? akdAssignment.akdBodies.filter((b: any) => b && b.name?.trim())
+    : [];
+  const hasAnyAkd = Boolean(activeCommissionName || factionRole || akdBodies.length > 0);
 
-  const photoUrl =
-    theme?.officialPhotoUrl ||
-    member?.photoUrl ||
-    '/images/dewan-standing-full.png';
+  // 3. Courses / Certifications
+  const courses: string[] = Array.isArray(member?.courses)
+    ? member.courses.filter(Boolean)
+    : typeof member?.courses === 'string'
+    ? member.courses.split(/[\n,;]+/).map((s: string) => s.trim()).filter(Boolean)
+    : [];
 
-  const rawDapil =
-    member?.dapilName || member?.customDapilName || member?.customDapil || 'Jawa Barat I';
-  const dapil = rawDapil.replace(/_/g, ' ');
+  // 4. Custom Stats from theme layoutSchema (HANYA jika diatur dari dashboard)
+  const customStats: any[] =
+    Array.isArray(theme?.layoutSchema?.stats) && theme.layoutSchema.stats.length > 0
+      ? theme.layoutSchema.stats.filter((s: any) => s && (s.label?.trim() || s.value?.trim()))
+      : [];
 
-  const rawParty = member?.partyAffiliation || 'Fraksi Parlemen';
-  const party = rawParty.replace(/_/g, ' ');
+  // 5. Verified activities resolver
+  const verifiedActivities =
+    theme?.layoutSchema?.verifiedActivities ||
+    theme?.layoutSchema?.activities ||
+    member?.activities;
+  const displayActivities: any[] = Array.isArray(verifiedActivities)
+    ? verifiedActivities.filter((a: any) => a && a.title?.trim())
+    : [];
 
-  const rawLevel = member?.legislativeLevel || 'DPR RI';
-  const legislativeLevel = rawLevel.replace(/_/g, ' ');
+  // 6. Career list resolver
+  const customCareers =
+    Array.isArray(theme?.layoutSchema?.careers) && theme.layoutSchema.careers.length > 0
+      ? theme.layoutSchema.careers.filter((c: any) => c && c.role?.trim())
+      : Array.isArray(careersList) && careersList.length > 0
+      ? careersList
+      : Array.isArray(member?.career)
+      ? member.career
+      : [];
 
-  const rawCommission =
-    member?.commissionName || 'KOMISI V (INFRASTRUKTUR & PERHUBUNGAN)';
-  const commissionName = rawCommission.replace(/_/g, ' ');
+  // 7. Pillar icons
+  const pillarIcons = [Compass, Building2, HeartHandshake, BarChart3];
 
   return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10 sm:py-16 space-y-16">
+    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10 sm:py-16 space-y-16 text-left font-sans">
       
       {/* ──────────────────────────────────────────────────────────────────────────
           SECTION 1: MONOLITHIC WHITE HERO PROFILE CARD (CREATIX RIGEL SIGNATURE)
@@ -93,12 +158,16 @@ export function CreatixLimeProfileClient({
               <div className="absolute bottom-0 left-1/2 -translate-x-1/2 w-64 h-64 sm:w-72 sm:h-72 rounded-full bg-[#F3F4F6] border border-slate-200 pointer-events-none z-0" />
 
               {/* Foto Dewan */}
+              {/* eslint-disable-next-line @next/next/no-img-element */}
               <img
                 src={photoUrl}
                 alt={officialFullName}
                 className="max-h-[360px] sm:max-h-[420px] w-auto object-contain object-bottom drop-shadow-2xl relative z-10"
                 onError={(e) => {
-                  (e.target as HTMLImageElement).src = '/images/default-avatar.png';
+                  const target = e.currentTarget;
+                  if (!target.src.includes('/images/default-avatar.png')) {
+                    target.src = '/images/default-avatar.png';
+                  }
                 }}
               />
 
@@ -110,10 +179,10 @@ export function CreatixLimeProfileClient({
               {/* Floating Mandat Capsule */}
               <div className="absolute bottom-2 inset-x-2 z-20 bg-slate-950/90 backdrop-blur-md rounded-2xl p-3 shadow-xl border border-white/10 text-white text-center">
                 <span className="text-[10px] font-bold text-[#84CC16] uppercase tracking-wider block">
-                  Mandat Konstituen
+                  Mandat Konstituen Resmi
                 </span>
                 <span className="text-xs font-black truncate block">
-                  {legislativeLevel} • Dapil {dapil}
+                  {cleanLegislativeLevel} • {dapil?.toLowerCase().startsWith('dapil') ? dapil : `Dapil ${dapil}`}
                 </span>
               </div>
             </div>
@@ -130,7 +199,7 @@ export function CreatixLimeProfileClient({
               </span>
               <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-slate-100 text-slate-700 text-xs font-semibold">
                 <MapPin className="w-3.5 h-3.5 text-slate-500" />
-                <span>Dapil {dapil}</span>
+                <span>{dapil?.toLowerCase().startsWith('dapil') ? dapil : `Dapil ${dapil}`}</span>
               </span>
             </div>
 
@@ -143,12 +212,12 @@ export function CreatixLimeProfileClient({
                   Profil Pejabat Publik
                 </span>
               </div>
-              <h2 className="text-2xl sm:text-3xl lg:text-4xl font-black text-slate-950 tracking-tight leading-tight">
+              <h1 className="text-2xl sm:text-3xl lg:text-4xl font-black text-slate-950 tracking-tight leading-tight">
                 {officialFullName}
-              </h2>
+              </h1>
               <p className="text-xs sm:text-sm font-bold text-slate-700 flex items-center gap-2">
                 <Building2 className="w-4 h-4 shrink-0 text-[#84CC16]" />
-                <span>{commissionName}</span>
+                <span>{activeCommissionName || 'Komisi Terkait DPR'}</span>
               </p>
             </div>
 
@@ -158,56 +227,80 @@ export function CreatixLimeProfileClient({
                 <span>Visi &amp; Komitmen Pengabdian</span>
                 <LimeSparkle className="w-3.5 h-3.5 text-[#84CC16]" />
               </div>
-              <p className="text-xs sm:text-sm italic leading-relaxed text-slate-300">
-                &ldquo;
-                {theme?.bioBiography ||
-                  'Mendedikasikan seluruh amanah rakyat untuk memperjuangkan keadilan sosial, mendorong pemerataan infrastruktur ekonomi di daerah pemilihan, dan menegakkan fungsi pengawasan anggaran yang transparan dan akuntabel demi kesejahteraan bersama.'}
-                &rdquo;
+              <p className="text-xs sm:text-sm italic leading-relaxed text-slate-300 font-normal">
+                &ldquo;{bio}&rdquo;
               </p>
             </div>
 
-            {/* Counter Ribbon */}
+            {/* Diagnostics Telemetry Grid */}
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 pt-1">
               <div className="p-3.5 rounded-xl bg-slate-100 border border-slate-200">
-                <div className="text-[10px] font-bold uppercase text-slate-500">Kehadiran Rapat</div>
-                <div className="text-xl sm:text-2xl font-black text-slate-950 mt-0.5">100%</div>
-                <div className="text-[9px] text-[#84CC16] font-extrabold uppercase">Paripurna &amp; Komisi</div>
+                <div className="text-[10px] font-bold uppercase text-slate-500">Lembaga</div>
+                <div className="text-xs sm:text-sm font-black text-slate-950 mt-0.5 truncate">
+                  {cleanLegislativeLevel}
+                </div>
+                <div className="text-[9px] text-[#84CC16] font-extrabold uppercase">Terpilih</div>
               </div>
 
               <div className="p-3.5 rounded-xl bg-slate-100 border border-slate-200">
-                <div className="text-[10px] font-bold uppercase text-slate-500">Kajian Regulasi</div>
-                <div className="text-xl sm:text-2xl font-black text-slate-950 mt-0.5">14 Raperda</div>
-                <div className="text-[9px] text-slate-600 font-semibold">Inisiasi &amp; Masukan</div>
+                <div className="text-[10px] font-bold uppercase text-slate-500">Penugasan</div>
+                <div className="text-xs sm:text-sm font-black text-slate-950 mt-0.5 truncate">
+                  {activeCommissionName || 'Komisi Terkait'}
+                </div>
+                <div className="text-[9px] text-slate-600 font-semibold truncate">{commissionRole}</div>
               </div>
 
               <div className="p-3.5 rounded-xl bg-slate-100 border border-slate-200">
-                <div className="text-[10px] font-bold uppercase text-slate-500">Kunjungan Dapil</div>
-                <div className="text-xl sm:text-2xl font-black text-slate-950 mt-0.5">48+ Titik</div>
-                <div className="text-[9px] text-slate-600 font-semibold">Reses &amp; Dialog</div>
+                <div className="text-[10px] font-bold uppercase text-slate-500">Fraksi</div>
+                <div className="text-xs sm:text-sm font-black text-slate-950 mt-0.5 truncate">
+                  {party}
+                </div>
+                <div className="text-[9px] text-slate-600 font-semibold">Parlemen</div>
               </div>
 
               <div className="p-3.5 rounded-xl bg-slate-100 border border-slate-200">
-                <div className="text-[10px] font-bold uppercase text-slate-500">Aspirasi Tuntas</div>
-                <div className="text-xl sm:text-2xl font-black text-slate-950 mt-0.5">1.200+</div>
-                <div className="text-[9px] text-[#84CC16] font-extrabold uppercase">Tervalidasi</div>
+                <div className="text-[10px] font-bold uppercase text-slate-500">Status Mandat</div>
+                <div className="text-xs sm:text-sm font-black text-emerald-600 mt-0.5 flex items-center gap-1">
+                  <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
+                  <span>Aktif</span>
+                </div>
+                <div className="text-[9px] text-[#84CC16] font-extrabold uppercase">Terverifikasi</div>
               </div>
             </div>
+
+            {/* Dynamic Custom Stats Ribbon (Hanya jika diatur riil di dashboard) */}
+            {customStats.length > 0 && (
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 pt-2 border-t border-slate-200">
+                {customStats.map((st: any, sIdx: number) => (
+                  <div key={sIdx} className="p-3.5 rounded-xl bg-slate-50 border border-slate-200">
+                    <div className="text-lg sm:text-xl font-black text-slate-950">{st.value}</div>
+                    <div className="text-xs font-bold text-slate-600 truncate">{st.label}</div>
+                  </div>
+                ))}
+              </div>
+            )}
 
             {/* Quick Action Buttons */}
             <div className="pt-2 flex flex-wrap items-center gap-3">
               <Link
-                href={getNavLinkHref('/artikel')}
+                href={getNavLinkHref('/kontak')}
                 className="inline-flex items-center gap-2 px-6 py-3 rounded-full bg-slate-950 text-white text-xs font-bold hover:bg-slate-800 transition-colors shadow-sm"
               >
-                <span>Lihat Risalah Kebijakan</span>
+                <span>Sampaikan Aspirasi Langsung</span>
                 <ArrowRight className="w-3.5 h-3.5 text-[#84CC16]" />
               </Link>
-              <Link
-                href={getNavLinkHref('/kontak')}
-                className="inline-flex items-center gap-2 px-6 py-3 rounded-full bg-white text-slate-900 border border-slate-300 text-xs font-bold hover:bg-slate-100 transition-colors"
-              >
-                <span>Kontak Staf Ahli</span>
-              </Link>
+
+              {waHotlineLink && (
+                <a
+                  href={waHotlineLink}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-2 px-6 py-3 rounded-full bg-white text-slate-900 border border-slate-300 text-xs font-bold hover:bg-slate-100 transition-colors"
+                >
+                  <MessageCircle className="w-3.5 h-3.5 text-[#84CC16]" />
+                  <span>WhatsApp Hotline</span>
+                </a>
+              )}
             </div>
 
           </div>
@@ -222,40 +315,28 @@ export function CreatixLimeProfileClient({
         
         {/* Tab Controls */}
         <div className="flex items-center justify-between border-b border-white/10 pb-4 flex-wrap gap-4">
-          <div className="flex items-center gap-2 sm:gap-4">
-            <button
-              type="button"
-              onClick={() => setActiveTab('pillars')}
-              className={`px-4 sm:px-6 py-2.5 rounded-full text-xs sm:text-sm font-bold uppercase tracking-wider transition-all cursor-pointer ${
-                activeTab === 'pillars'
-                  ? 'bg-[#84CC16] text-slate-950 shadow-md font-black'
-                  : 'bg-[#0E150E] text-slate-400 hover:text-white border border-white/10'
-              }`}
-            >
-              Fokus Pengabdian
-            </button>
-            <button
-              type="button"
-              onClick={() => setActiveTab('experience')}
-              className={`px-4 sm:px-6 py-2.5 rounded-full text-xs sm:text-sm font-bold uppercase tracking-wider transition-all cursor-pointer ${
-                activeTab === 'experience'
-                  ? 'bg-[#84CC16] text-slate-950 shadow-md font-black'
-                  : 'bg-[#0E150E] text-slate-400 hover:text-white border border-white/10'
-              }`}
-            >
-              Penugasan Parlemen
-            </button>
-            <button
-              type="button"
-              onClick={() => setActiveTab('education')}
-              className={`px-4 sm:px-6 py-2.5 rounded-full text-xs sm:text-sm font-bold uppercase tracking-wider transition-all cursor-pointer ${
-                activeTab === 'education'
-                  ? 'bg-[#84CC16] text-slate-950 shadow-md font-black'
-                  : 'bg-[#0E150E] text-slate-400 hover:text-white border border-white/10'
-              }`}
-            >
-              Pendidikan Formal
-            </button>
+          <div className="flex flex-wrap items-center gap-2 sm:gap-3">
+            {[
+              { id: 'all', label: 'Semua Rekam Jejak' },
+              { id: 'komisi', label: 'Komisi & AKD' },
+              { id: 'pillars', label: '3 Pilar Pengabdian' },
+              { id: 'education', label: 'Pendidikan Formal' },
+              { id: 'experience', label: 'Karier & Organisasi' },
+              { id: 'activities', label: 'Aksi Nyata Dapil' },
+            ].map((tab) => (
+              <button
+                key={tab.id}
+                type="button"
+                onClick={() => setActiveTab(tab.id as any)}
+                className={`px-4 sm:px-5 py-2 rounded-full text-xs sm:text-[13px] font-bold uppercase tracking-wider transition-all cursor-pointer select-none ${
+                  activeTab === tab.id
+                    ? 'bg-[#84CC16] text-slate-950 shadow-md font-black'
+                    : 'bg-[#0E150E] text-slate-400 hover:text-white border border-white/10'
+                }`}
+              >
+                {tab.label}
+              </button>
+            ))}
           </div>
 
           <div className="flex items-center gap-1.5 text-xs text-[#84CC16] font-bold">
@@ -264,142 +345,148 @@ export function CreatixLimeProfileClient({
           </div>
         </div>
 
-        {/* Tab 1: 4 Pilar Fokus Pengabdian */}
-        {activeTab === 'pillars' && (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-            
-            {/* Pilar 1 */}
-            <div className="p-6 rounded-2xl bg-[#0D120D] border border-white/10 hover:border-[#84CC16]/60 transition-all space-y-4">
-              <div className="w-12 h-12 rounded-xl bg-white/5 border border-white/10 text-[#84CC16] flex items-center justify-center font-black">
-                <Compass className="w-6 h-6" />
-              </div>
-              <div className="space-y-1">
-                <span className="text-[10px] font-bold uppercase tracking-widest text-[#84CC16] block">
-                  Fungsi Legislasi
-                </span>
-                <h3 className="text-base sm:text-lg font-black text-white">
-                  Regulasi Pro Rakyat
-                </h3>
-              </div>
-              <p className="text-xs text-slate-400 leading-relaxed">
-                Mengawal penyusunan peraturan perundang-undangan daerah yang berpihak pada kemudahan berusaha UMKM, perlindungan buruh tani, dan kepastian hukum.
-              </p>
-            </div>
-
-            {/* Pilar 2 */}
-            <div className="p-6 rounded-2xl bg-[#0D120D] border border-white/10 hover:border-[#84CC16]/60 transition-all space-y-4">
-              <div className="w-12 h-12 rounded-xl bg-white/5 border border-white/10 text-[#84CC16] flex items-center justify-center font-black">
-                <Building2 className="w-6 h-6" />
-              </div>
-              <div className="space-y-1">
-                <span className="text-[10px] font-bold uppercase tracking-widest text-[#84CC16] block">
-                  Fungsi Anggaran
-                </span>
-                <h3 className="text-base sm:text-lg font-black text-white">
-                  Akuntabilitas APBD
-                </h3>
-              </div>
-              <p className="text-xs text-slate-400 leading-relaxed">
-                Memastikan setiap alokasi APBD dan dana transfer tepat sasaran, bebas inefisiensi, serta benar-benar dinikmati masyarakat melalui proyek konektivitas jalan desa.
-              </p>
-            </div>
-
-            {/* Pilar 3 */}
-            <div className="p-6 rounded-2xl bg-[#0D120D] border border-white/10 hover:border-[#84CC16]/60 transition-all space-y-4">
-              <div className="w-12 h-12 rounded-xl bg-white/5 border border-white/10 text-[#84CC16] flex items-center justify-center font-black">
-                <HeartHandshake className="w-6 h-6" />
-              </div>
-              <div className="space-y-1">
-                <span className="text-[10px] font-bold uppercase tracking-widest text-[#84CC16] block">
-                  Fungsi Representasi
-                </span>
-                <h3 className="text-base sm:text-lg font-black text-white">
-                  Advokasi Konstituen
-                </h3>
-              </div>
-              <p className="text-xs text-slate-400 leading-relaxed">
-                Menjaga dialog terbuka bersama warga di akar rumput melalui agenda reses berkala, forum dengar pendapat, dan bantuan kemanusiaan darurat di Dapil {dapil}.
-              </p>
-            </div>
-
-            {/* Pilar 4 */}
-            <div className="p-6 rounded-2xl bg-[#0D120D] border border-white/10 hover:border-[#84CC16]/60 transition-all space-y-4">
-              <div className="w-12 h-12 rounded-xl bg-white/5 border border-white/10 text-[#84CC16] flex items-center justify-center font-black">
-                <BarChart3 className="w-6 h-6" />
-              </div>
-              <div className="space-y-1">
-                <span className="text-[10px] font-bold uppercase tracking-widest text-[#84CC16] block">
-                  Fungsi Pengawasan
-                </span>
-                <h3 className="text-base sm:text-lg font-black text-white">
-                  Kinerja Pelayanan Publik
-                </h3>
-              </div>
-              <p className="text-xs text-slate-400 leading-relaxed">
-                Sidak lapangan berkala untuk memastikan mutu konstruksi fasilitas umum, jembatan penyeberangan, serta ketersediaan pasokan pupuk dan layanan kesehatan puskesmas.
-              </p>
-            </div>
-
-          </div>
-        )}
-
-        {/* Tab 2: Penugasan Parlemen (AKD) */}
-        {activeTab === 'experience' && (
+        {/* ─── TAB: KOMISI & AKD ─── */}
+        {(activeTab === 'all' || activeTab === 'komisi') && (
           <div className="p-6 sm:p-8 rounded-3xl bg-[#0D120D] border border-white/10 space-y-6">
-            <div className="flex items-center gap-3 pb-4 border-b border-white/10">
-              <div className="w-10 h-10 rounded-xl bg-white/5 text-[#84CC16] flex items-center justify-center">
-                <Briefcase className="w-5 h-5" />
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-white/10">
+              <div className="flex items-center gap-3">
+                <div className="w-12 h-12 rounded-2xl bg-white/5 text-[#84CC16] flex items-center justify-center shrink-0">
+                  <Landmark className="w-6 h-6 text-[#84CC16]" />
+                </div>
+                <div>
+                  <span className="text-[10px] font-mono font-bold uppercase tracking-wider text-[#84CC16] block">
+                    Penugasan Komisi Parlemen
+                  </span>
+                  <h3 className="text-lg sm:text-xl font-black text-white">
+                    {activeCommissionName || 'Komisi Terkait DPR'}
+                  </h3>
+                </div>
               </div>
-              <div>
-                <h3 className="text-base sm:text-lg font-black text-white">
-                  Penugasan Alat Kelengkapan Dewan (AKD)
-                </h3>
-                <p className="text-xs text-slate-400">Rekam jejak amanah keparlemenan kenegaraan</p>
+
+              <div className="flex flex-wrap items-center gap-2">
+                {commissionRole && (
+                  <span className="px-3.5 py-1.5 rounded-full bg-[#84CC16] text-slate-950 text-xs font-black uppercase tracking-wider">
+                    {commissionRole}
+                  </span>
+                )}
+                {factionRole && (
+                  <span className="px-3.5 py-1.5 rounded-full bg-white/5 border border-white/10 text-slate-300 text-xs font-semibold">
+                    {factionRole}
+                  </span>
+                )}
               </div>
             </div>
 
-            <div className="space-y-4">
-              <div className="flex items-start gap-4 p-4 rounded-2xl bg-[#080B08] border border-white/5">
-                <span className="w-2 h-2 rounded-full bg-[#84CC16] mt-2 shrink-0" />
-                <div className="space-y-1">
-                  <h4 className="text-sm font-bold text-white">
-                    Anggota {legislativeLevel} • Periode 2024 – 2029
-                  </h4>
-                  <p className="text-xs text-slate-400">
-                    Mewakili konstituen di Daerah Pemilihan {dapil} melalui Fraksi {party}.
-                  </p>
-                </div>
-              </div>
+            {hasAnyAkd ? (
+              <div className="space-y-6">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  {commissionScope && (
+                    <div className="space-y-2 p-5 rounded-2xl bg-[#080B08] border border-white/5">
+                      <div className="flex items-center gap-2 text-[#84CC16] font-bold text-xs uppercase tracking-wider">
+                        <BookOpen className="w-4 h-4" />
+                        <span>Ruang Lingkup &amp; Bidang Komisi</span>
+                      </div>
+                      <p className="text-xs text-slate-300 leading-relaxed font-normal">
+                        {commissionScope}
+                      </p>
+                    </div>
+                  )}
 
-              <div className="flex items-start gap-4 p-4 rounded-2xl bg-[#080B08] border border-white/5">
-                <span className="w-2 h-2 rounded-full bg-[#84CC16] mt-2 shrink-0" />
-                <div className="space-y-1">
-                  <h4 className="text-sm font-bold text-white">
-                    Anggota {commissionName}
-                  </h4>
-                  <p className="text-xs text-slate-400">
-                    Memimpin pengawasan proyek pembangunan infrastruktur logistik dan perhubungan antarkabupaten.
-                  </p>
+                  {commissionPartners && (
+                    <div className="space-y-2 p-5 rounded-2xl bg-[#080B08] border border-white/5">
+                      <div className="flex items-center gap-2 text-[#84CC16] font-bold text-xs uppercase tracking-wider">
+                        <Users className="w-4 h-4" />
+                        <span>Mitra Kerja Kementerian &amp; Lembaga</span>
+                      </div>
+                      <p className="text-xs text-slate-300 leading-relaxed font-normal">
+                        {commissionPartners}
+                      </p>
+                    </div>
+                  )}
                 </div>
-              </div>
 
-              <div className="flex items-start gap-4 p-4 rounded-2xl bg-[#080B08] border border-white/5">
-                <span className="w-2 h-2 rounded-full bg-[#84CC16] mt-2 shrink-0" />
-                <div className="space-y-1">
-                  <h4 className="text-sm font-bold text-white">
-                    Anggota Badan Anggaran (Banggar)
-                  </h4>
-                  <p className="text-xs text-slate-400">
-                    Mengawal postur belanja transfer daerah, alokasi subsidi pupuk, dan anggaran penanganan stunting.
-                  </p>
-                </div>
+                {/* AKD Lainnya */}
+                {akdBodies.length > 0 && (
+                  <div className="space-y-3 pt-2">
+                    <span className="text-xs font-bold uppercase tracking-wider text-slate-400 block font-mono">
+                      Penugasan Alat Kelengkapan Dewan (AKD) Lainnya:
+                    </span>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
+                      {akdBodies.map((body: any, bIdx: number) => (
+                        <div
+                          key={bIdx}
+                          className="p-3.5 rounded-2xl bg-[#080B08] border border-white/5 flex items-start gap-2.5"
+                        >
+                          <ShieldCheck className="w-4 h-4 text-[#84CC16] shrink-0 mt-0.5" />
+                          <div>
+                            <div className="text-xs font-bold text-white">{body.name}</div>
+                            {body.role && (
+                              <div className="text-[11px] font-semibold text-[#84CC16] mt-0.5">
+                                {body.role}
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
               </div>
+            ) : (
+              <div className="p-8 rounded-2xl bg-[#080B08] border border-white/5 text-center space-y-2">
+                <Landmark className="w-8 h-8 text-[#84CC16] mx-auto opacity-70" />
+                <h4 className="text-sm font-bold text-white">
+                  Informasi penugasan komisi &amp; AKD sedang dalam tahap pemutakhiran
+                </h4>
+                <p className="text-xs text-slate-400 max-w-md mx-auto">
+                  Data pembagian komisi, badan, dan mitra kementerian terkait akan tampil di sini setelah ditetapkan.
+                </p>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* ─── TAB: 3 PILAR FOKUS PENGABDIAN ─── */}
+        {(activeTab === 'all' || activeTab === 'pillars') && (
+          <div className="space-y-4">
+            <div className="flex items-center gap-2">
+              <span className="w-2.5 h-2.5 rounded-full bg-[#84CC16]" />
+              <h3 className="text-lg sm:text-xl font-black text-white uppercase tracking-tight">
+                3 Pilar Fokus Pengabdian Legislatif
+              </h3>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+              {visionPillars.map((v: any, i: number) => {
+                const IconComp = pillarIcons[i % pillarIcons.length];
+                return (
+                  <div
+                    key={i}
+                    className="p-6 rounded-2xl bg-[#0D120D] border border-white/10 hover:border-[#84CC16]/60 transition-all space-y-4"
+                  >
+                    <div className="w-12 h-12 rounded-xl bg-white/5 border border-white/10 text-[#84CC16] flex items-center justify-center font-black">
+                      <IconComp className="w-6 h-6" />
+                    </div>
+                    <div className="space-y-1">
+                      <span className="text-[10px] font-bold uppercase tracking-widest text-[#84CC16] block">
+                        Pilar Ke-0{i + 1}
+                      </span>
+                      <h4 className="text-base sm:text-lg font-black text-white">
+                        {v.title}
+                      </h4>
+                    </div>
+                    <p className="text-xs text-slate-400 leading-relaxed font-normal">
+                      {v.description}
+                    </p>
+                  </div>
+                );
+              })}
             </div>
           </div>
         )}
 
-        {/* Tab 3: Pendidikan Formal */}
-        {activeTab === 'education' && (
+        {/* ─── TAB: PENDIDIKAN FORMAL ─── */}
+        {(activeTab === 'all' || activeTab === 'education') && (
           <div className="p-6 sm:p-8 rounded-3xl bg-[#0D120D] border border-white/10 space-y-6">
             <div className="flex items-center gap-3 pb-4 border-b border-white/10">
               <div className="w-10 h-10 rounded-xl bg-white/5 text-[#84CC16] flex items-center justify-center">
@@ -414,42 +501,186 @@ export function CreatixLimeProfileClient({
             </div>
 
             <div className="space-y-4">
-              <div className="flex items-start gap-4 p-4 rounded-2xl bg-[#080B08] border border-white/5">
-                <span className="w-2 h-2 rounded-full bg-[#84CC16] mt-2 shrink-0" />
-                <div className="space-y-1">
-                  <h4 className="text-sm font-bold text-white">
-                    Doktor (S3) Ilmu Kebijakan Publik &amp; Tata Kelola
-                  </h4>
-                  <p className="text-xs text-slate-400">
-                    Universitas Indonesia • Lulus dengan Predikat Pujian (Cum Laude)
+              {educationList.length > 0 ? (
+                educationList.map((edu: string, idx: number) => (
+                  <div key={idx} className="flex items-start gap-4 p-4 rounded-2xl bg-[#080B08] border border-white/5">
+                    <span className="w-2 h-2 rounded-full bg-[#84CC16] mt-2 shrink-0" />
+                    <div className="space-y-1">
+                      <h4 className="text-sm font-bold text-white">{edu}</h4>
+                      <p className="text-xs font-semibold text-[#84CC16]">
+                        Kredensial Pendidikan Terverifikasi
+                      </p>
+                    </div>
+                  </div>
+                ))
+              ) : (
+                <div className="py-6 text-center space-y-1.5">
+                  <p className="text-xs font-semibold text-slate-300">
+                    Informasi riwayat pendidikan belum ditambahkan.
+                  </p>
+                  <p className="text-[11px] text-slate-500">
+                    Data riwayat studi akademik formal akan tampil di sini setelah diperbarui.
                   </p>
                 </div>
-              </div>
+              )}
 
-              <div className="flex items-start gap-4 p-4 rounded-2xl bg-[#080B08] border border-white/5">
-                <span className="w-2 h-2 rounded-full bg-[#84CC16] mt-2 shrink-0" />
-                <div className="space-y-1">
-                  <h4 className="text-sm font-bold text-white">
-                    Master of Science (M.Sc.) Perencanaan Pembangunan
-                  </h4>
-                  <p className="text-xs text-slate-400">
-                    Program Pascasarjana Terakreditasi Unggul
-                  </p>
+              {courses.length > 0 && (
+                <div className="pt-4 border-t border-white/10 space-y-3">
+                  <span className="text-[10px] font-mono font-bold text-[#84CC16] uppercase tracking-wide block">
+                    Pelatihan &amp; Sertifikasi Keparlemenan:
+                  </span>
+                  <div className="flex flex-wrap gap-2">
+                    {courses.map((course: string, cIdx: number) => (
+                      <span
+                        key={cIdx}
+                        className="px-3 py-1.5 rounded-lg bg-black/60 border border-white/10 text-xs font-mono text-slate-300"
+                      >
+                        {course}
+                      </span>
+                    ))}
+                  </div>
                 </div>
-              </div>
+              )}
+            </div>
+          </div>
+        )}
 
-              <div className="flex items-start gap-4 p-4 rounded-2xl bg-[#080B08] border border-white/5">
-                <span className="w-2 h-2 rounded-full bg-[#84CC16] mt-2 shrink-0" />
-                <div className="space-y-1">
-                  <h4 className="text-sm font-bold text-white">
-                    Sarjana Teknik (S.T. / Ir.) Infrastruktur Sipil
-                  </h4>
-                  <p className="text-xs text-slate-400">
-                    Institut Teknologi Terkemuka Indonesia
-                  </p>
-                </div>
+        {/* ─── TAB: KARIER & ORGANISASI ─── */}
+        {(activeTab === 'all' || activeTab === 'experience') && (
+          <div className="p-6 sm:p-8 rounded-3xl bg-[#0D120D] border border-white/10 space-y-6">
+            <div className="flex items-center gap-3 pb-4 border-b border-white/10">
+              <div className="w-10 h-10 rounded-xl bg-white/5 text-[#84CC16] flex items-center justify-center">
+                <Briefcase className="w-5 h-5" />
+              </div>
+              <div>
+                <h3 className="text-base sm:text-lg font-black text-white">
+                  Penugasan Parlemen, Karier &amp; Organisasi
+                </h3>
+                <p className="text-xs text-slate-400">Rekam jejak amanah publik &amp; kepemimpinan</p>
               </div>
             </div>
+
+            <div className="space-y-4">
+              {customCareers.length > 0 ? (
+                customCareers.map((car: any, idx: number) => (
+                  <div key={idx} className="flex items-start gap-4 p-4 rounded-2xl bg-[#080B08] border border-white/5">
+                    <span className="w-2 h-2 rounded-full bg-[#84CC16] mt-2 shrink-0" />
+                    <div className="space-y-1">
+                      <h4 className="text-sm font-bold text-white">{car.role}</h4>
+                      {(car.organization || car.period) && (
+                        <p className="text-xs font-semibold text-[#84CC16]">
+                          {car.organization ? `${car.organization} ` : ''}
+                          {car.period ? `(${car.period})` : ''}
+                        </p>
+                      )}
+                      {car.description && (
+                        <p className="text-xs text-slate-400 leading-relaxed pt-0.5 font-normal">
+                          {car.description}
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                ))
+              ) : (
+                <div className="py-6 text-center space-y-1.5">
+                  <p className="text-xs font-semibold text-slate-300">
+                    Informasi rekam jejak karier belum ditambahkan.
+                  </p>
+                  <p className="text-[11px] text-slate-500">
+                    Riwayat penugasan komisi, badan, dan organisasi publik akan tampil di sini setelah diperbarui.
+                  </p>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* ─── TAB: AKSI NYATA LAPANGAN & DAPIL ─── */}
+        {(activeTab === 'all' || activeTab === 'activities') && (
+          <div className="space-y-6">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-white/10 pb-4">
+              <div className="space-y-1">
+                <span className="text-xs font-bold uppercase tracking-widest text-[#84CC16] font-mono">
+                  Dokumentasi Lapangan
+                </span>
+                <h3 className="text-xl sm:text-2xl font-black text-white">
+                  Dokumentasi Kinerja Turun ke Dapil
+                </h3>
+              </div>
+              <span className="text-xs font-mono font-bold text-[#84CC16] bg-[#84CC16]/10 border border-[#84CC16]/30 px-3.5 py-1 rounded-full shrink-0">
+                Aksi Nyata Lapangan
+              </span>
+            </div>
+
+            {displayActivities.length > 0 ? (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {displayActivities.map((act: any, aIdx: number) => (
+                  <div
+                    key={aIdx}
+                    className="group rounded-3xl bg-[#0D120D] border border-white/10 overflow-hidden hover:border-[#84CC16]/50 transition-all duration-300 flex flex-col justify-between"
+                  >
+                    <div>
+                      {act.photoUrl ? (
+                        <div className="relative aspect-[16/10] overflow-hidden bg-black">
+                          {/* eslint-disable-next-line @next/next/no-img-element */}
+                          <img
+                            src={act.photoUrl}
+                            alt={act.title}
+                            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                          />
+                          <div className="absolute inset-0 bg-gradient-to-t from-[#0D120D] via-transparent to-transparent pointer-events-none" />
+
+                          {act.date && (
+                            <div className="absolute top-3 left-3 bg-black/80 backdrop-blur-md border border-white/10 text-[#84CC16] px-2.5 py-1 rounded-lg text-[10px] font-mono font-bold flex items-center gap-1.5 shadow-sm">
+                              <Calendar className="w-3 h-3 text-[#84CC16]" />
+                              <span>{act.date}</span>
+                            </div>
+                          )}
+
+                          {act.location && (
+                            <div className="absolute bottom-3 left-3 bg-black/80 backdrop-blur-md border border-white/10 text-white px-2.5 py-1 rounded-lg text-[10px] font-mono font-bold flex items-center gap-1.5 shadow-sm">
+                              <MapPin className="w-3 h-3 text-[#84CC16]" />
+                              <span className="truncate max-w-[170px]">{act.location}</span>
+                            </div>
+                          )}
+                        </div>
+                      ) : (
+                        <div className="aspect-[16/10] bg-black/40 flex flex-col items-center justify-center gap-2 text-slate-500">
+                          <Camera className="w-8 h-8 text-[#84CC16]/60" />
+                          <span className="text-xs font-mono font-medium">Dokumentasi Lapangan</span>
+                        </div>
+                      )}
+
+                      <div className="p-5 sm:p-6 space-y-2">
+                        <h4 className="text-base font-bold text-white group-hover:text-[#84CC16] transition-colors line-clamp-2 leading-snug">
+                          {act.title}
+                        </h4>
+                        {act.description && (
+                          <p className="text-xs text-slate-400 leading-relaxed line-clamp-3">
+                            {act.description}
+                          </p>
+                        )}
+                      </div>
+                    </div>
+
+                    <div className="p-5 sm:p-6 pt-0 border-t border-white/5 mt-2 flex items-center justify-between text-[11px] font-mono text-[#84CC16]">
+                      <span className="font-bold uppercase tracking-wider flex items-center gap-1">
+                        <CheckCircle2 className="w-3.5 h-3.5 text-[#84CC16]" />
+                        <span>Kinerja Terverifikasi</span>
+                      </span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="p-8 sm:p-12 rounded-3xl bg-[#0D120D] border border-white/10 text-center space-y-2">
+                <Camera className="w-8 h-8 text-[#84CC16] mx-auto opacity-80" />
+                <h4 className="text-sm font-bold text-white">Informasi dokumentasi kinerja belum ditambahkan</h4>
+                <p className="text-xs text-slate-400 max-w-sm mx-auto">
+                  Dokumentasi aksi nyata dan kunjungan dapil akan tampil di sini setelah diperbarui melalui dashboard.
+                </p>
+              </div>
+            )}
           </div>
         )}
 
@@ -462,10 +693,10 @@ export function CreatixLimeProfileClient({
         <section className="space-y-6">
           <div className="border-b border-white/10 pb-3 flex items-center justify-between">
             <h3 className="text-xl sm:text-2xl font-black text-white tracking-tight">
-              Dokumentasi Kegiatan &amp; Aspirasi
+              Galeri Foto Resmi Parlemen
             </h3>
             <span className="text-xs font-bold uppercase tracking-wider text-[#84CC16]">
-              Galeri Resmi Dewan
+              Dokumentasi Visual
             </span>
           </div>
           <PortalPhotoGallery photos={member.photoGallery} memberName={officialFullName} />
@@ -490,25 +721,32 @@ export function CreatixLimeProfileClient({
             Ingin Menyampaikan Masukan Langsung Kepada {officialFullName}?
           </h3>
 
-          <p className="text-xs sm:text-sm text-slate-300 leading-relaxed">
+          <p className="text-xs sm:text-sm text-slate-300 leading-relaxed font-light">
             Staf ahli dewan senantiasa menerima telaah persoalan lingkungan, masalah bansos, jalan rusak, pupuk subsidi, dan usulan pokok pikiran masyarakat Daerah Pemilihan {dapil}.
           </p>
 
-          <div className="pt-2">
+          <div className="pt-2 flex flex-wrap items-center gap-3">
             <div className="inline-flex items-center p-1 sm:p-1.5 rounded-full bg-black/90 backdrop-blur-md border border-white/20 shadow-2xl">
               <Link
                 href={getNavLinkHref('/kontak')}
                 className="inline-flex items-center gap-1.5 px-5 sm:px-6 py-2.5 rounded-full bg-[#84CC16] text-slate-950 font-black text-xs sm:text-[13px] hover:bg-[#74BC12] transition-colors shadow-sm"
               >
                 <span>Kirim Aspirasi Sekarang</span>
-              </Link>
-              <Link
-                href={getNavLinkHref('/kontak')}
-                className="inline-flex items-center px-4 sm:px-5 py-2.5 rounded-full text-white/90 hover:text-[#84CC16] font-semibold text-xs sm:text-[13px] transition-colors"
-              >
-                <span>Kontak Posko</span>
+                <ArrowRight className="w-3.5 h-3.5 text-slate-950" />
               </Link>
             </div>
+
+            {waHotlineLink && (
+              <a
+                href={waHotlineLink}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-2 px-6 py-3 rounded-full bg-black/80 border border-white/15 hover:border-[#84CC16] text-[#84CC16] font-bold text-xs uppercase tracking-wider transition-all"
+              >
+                <MessageCircle className="w-4 h-4 text-[#84CC16]" />
+                <span>WhatsApp Hotline</span>
+              </a>
+            )}
           </div>
         </div>
       </section>

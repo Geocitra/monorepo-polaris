@@ -27,73 +27,7 @@ export function NayaEditorialInfografisGalleryClient({
   const [activeModalInfo, setActiveModalInfo] = useState<any | null>(null);
   const [copied, setCopied] = useState(false);
 
-  const fallbackInfographics = [
-    {
-      id: 'demo-info-1',
-      title: 'Transparansi Postur Realisasi APBD Sektor Pendidikan & Beasiswa',
-      category: 'APBD & Anggaran',
-      metric: 'Rp 45,2 M',
-      metricLabel: 'Alokasi Kawalan',
-      imageUrl: '/images/showcase-infografis-apbd.jpg',
-      createdAt: new Date().toISOString(),
-      description: 'Perincian alokasi anggaran fungsi pendidikan, bantuan operasional, dan beasiswa perguruan tinggi bagi putra-putri daerah berprestasi.',
-    },
-    {
-      id: 'demo-info-2',
-      title: 'Peta Capaian Pembangunan Infrastruktur Konektivitas Desa',
-      category: 'Infrastruktur',
-      metric: '98,4%',
-      metricLabel: 'Target Tuntas',
-      imageUrl: '/images/showcase-poster-surya.jpg',
-      createdAt: new Date(Date.now() - 86400000 * 3).toISOString(),
-      description: 'Monitoring berkala perbaikan jalan poros desa, jembatan penghubung antar-kecamatan, dan drainase pengendali banjir.',
-    },
-    {
-      id: 'demo-info-3',
-      title: 'Distribusi Bantuan Sarana Alsintan & Pupuk Bersubsidi Petani',
-      category: 'Pertanian & Pangan',
-      metric: '1.420+',
-      metricLabel: 'Kelompok Tani',
-      imageUrl: '/images/article-crop-2.png',
-      createdAt: new Date(Date.now() - 86400000 * 7).toISOString(),
-      description: 'Penyaluran traktor roda dua, pompa air sawah tadah hujan, dan alokasi pupuk bersubsidi tepat sasaran di seluruh pelosok dapil.',
-    },
-    {
-      id: 'demo-info-4',
-      title: 'Kanal Layanan Aspirasi & Advokasi Hak Konstituen 24/7',
-      category: 'Pelayanan Publik',
-      metric: '24/7',
-      metricLabel: 'Respon Cepat',
-      imageUrl: '/images/parliament-panoramic-banner.png',
-      createdAt: new Date(Date.now() - 86400000 * 10).toISOString(),
-      description: 'Rekapitulasi berkala tindak lanjut aspirasi warga melalui rapat dengar pendapat umum (RDPU) dan advokasi lintas komisi kedewanan.',
-    },
-    {
-      id: 'demo-info-5',
-      title: 'Perlindungan & Peningkatan Fasilitas Puskesmas Rawat Inap',
-      category: 'Kesehatan',
-      metric: '32 Unit',
-      metricLabel: 'Fasilitas Revitalisasi',
-      imageUrl: '/images/showcase-artikel-pertanian.jpg',
-      createdAt: new Date(Date.now() - 86400000 * 14).toISOString(),
-      description: 'Pengadaan armada ambulans siaga desa dan peningkatan ketersediaan obat generik esensial di tingkat kecamatan.',
-    },
-    {
-      id: 'demo-info-6',
-      title: 'Digitalisasi Sentra UMKM & Pasar Tradisional Daerah',
-      category: 'Ekonomi Kerakyatan',
-      metric: '850+ Gerai',
-      metricLabel: 'Pedagang Binaan',
-      imageUrl: '/images/article-crop-1.png',
-      createdAt: new Date(Date.now() - 86400000 * 18).toISOString(),
-      description: 'Pelatihan transaksi non-tunai QRIS, bantuan sertifikasi halal gratis, dan fasilitasi pendaftaran merek dagang usaha mikro.',
-    },
-  ];
-
-  const infographics =
-    initialInfographics && initialInfographics.length > 0
-      ? initialInfographics
-      : fallbackInfographics;
+  const infographics = initialInfographics || [];
 
   const categories = useMemo(() => {
     const set = new Set<string>();

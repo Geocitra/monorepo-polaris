@@ -44,19 +44,19 @@ export function EmeraldTechTemplate({
   const photoUrl =
     theme?.officialPhotoUrl ||
     member?.photoUrl ||
-    '/images/dewan-ahmad-fauzi-cutout.webp';
+    '/images/dewan-standing-full.png';
   const officialFullName =
-    member?.fullName || theme?.officialFullName || 'Dr. H. Ahmad Fauzi, M.Si.';
+    member?.fullName || theme?.officialFullName || 'Anggota Dewan';
   const dapil =
-    member?.dapilName || member?.customDapilName || member?.customDapil || 'Jawa Barat I';
-  const party = member?.partyAffiliation || 'Fraksi Parlemen DPR RI';
-  const officialEmail = `aspirasi@${subdomain || 'ahmadfauzi'}.polaris.id`;
-  const officialPhone = '+62 812-9876-5432';
+    member?.dapilName || member?.customDapilName || member?.customDapil || '';
+  const party = member?.partyAffiliation || 'Fraksi Parlemen';
+  const officialEmail = member?.email || (subdomain ? `aspirasi@${subdomain}.polaris.id` : 'aspirasi@polaris.id');
+  const officialPhone = member?.phoneNumber || '+62 812-3456-7890';
   const instagramUsername =
     member?.instagramHandle?.replace(/^@/, '') ||
     member?.username ||
     subdomain ||
-    'ahmadfauzi';
+    '';
 
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [activeModalInfo, setActiveModalInfo] = useState<any | null>(null);
@@ -78,22 +78,22 @@ export function EmeraldTechTemplate({
 
   function parseCleanIdentity(fullName?: string) {
     if (!fullName) {
-      return { cleanName: 'Ahmad Fauzi', firstName: 'Ahmad', lastName: 'Fauzi', initial: 'A' };
+      return { cleanName: 'Wakil Rakyat', firstName: 'Wakil', lastName: 'Rakyat', initial: 'W' };
     }
     let clean = fullName.split(',')[0].trim();
     while (/^(dr|ir|drs|dra|h|hj|prof|kh|k\.h|haji|hajjah)\.?\s+/i.test(clean)) {
       clean = clean.replace(/^(dr|ir|drs|dra|h|hj|prof|kh|k\.h|haji|hajjah)\.?\s+/i, '').trim();
     }
     const words = clean.split(/\s+/).filter(Boolean);
-    const firstName = words[0] || 'Ahmad';
-    const lastName = words.length > 1 ? words.slice(1).join(' ') : 'Fauzi';
+    const firstName = words[0] || 'Wakil';
+    const lastName = words.length > 1 ? words.slice(1).join(' ') : '';
     const initial = firstName.charAt(0).toUpperCase();
 
     return {
-      cleanName: clean || 'Ahmad Fauzi',
+      cleanName: clean || 'Wakil Rakyat',
       firstName,
       lastName,
-      initial: initial || 'A',
+      initial: initial || 'W',
     };
   }
 
@@ -283,83 +283,34 @@ export function EmeraldTechTemplate({
 
       </div>
 
-      {/* ─── SECTION 2: ARTIKEL (KAJIAN KEBIJAKAN DENGAN GAMBAR ASLI) ─── */}
+      {/* ─── SECTION 2: ARTIKEL (KAJIAN KEBIJAKAN TERKINI) ─── */}
       <section className="relative overflow-hidden py-20 sm:py-28 border-t border-white/[0.08] max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         
-        {/* Editorial Banner with Glowing Neon Emerald 3D Ring */}
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-10 lg:gap-14 items-center mb-16">
-          
-          {/* Left Column: Cutout Photo with Floating Glowing Green 3D Ring */}
-          <div className="lg:col-span-5 flex justify-center relative">
-            <div className="relative w-full max-w-[340px] sm:max-w-[380px] flex justify-center items-end">
-              
-              <div className="relative z-10 w-full flex justify-center">
-                <img
-                  src={photoUrl}
-                  alt={officialFullName}
-                  className="w-auto max-h-[420px] sm:max-h-[460px] object-contain object-bottom drop-shadow-[0_20px_40px_rgba(0,0,0,0.9)]"
-                />
-              </div>
-
-              {/* Glowing Neon Green 3D Ring */}
-              <div
-                className="absolute bottom-6 left-1/2 -translate-x-1/2 w-56 sm:w-64 h-16 rounded-[100%] border-[5px] border-[#00DF82] shadow-[0_0_25px_#00DF82,inset_0_0_15px_#00DF82] -rotate-6 z-20 pointer-events-none"
-              />
-
+        {/* Section Heading */}
+        <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4 mb-14">
+          <div>
+            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[#00DF82]/10 border border-[#00DF82]/30 text-[#00DF82] text-xs font-bold uppercase tracking-wider mb-2">
+              <span>GAGASAN &amp; PUBLIKASI RESMI</span>
             </div>
-          </div>
-
-          {/* Right Column: Section Heading & Vision Statement */}
-          <div className="lg:col-span-7 space-y-5">
-            
-            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[#00DF82]/10 border border-[#00DF82]/30 text-[#00DF82] text-xs font-bold uppercase tracking-wider">
-              <span>GAGASAN & PUBLIKASI RESMI</span>
-            </div>
-
-            <h2 className="text-3xl sm:text-4xl md:text-5xl font-black tracking-tight uppercase leading-tight">
+            <h2 className="text-3xl sm:text-4xl font-black tracking-tight uppercase">
               <span className="text-[#00DF82]">Kajian Kebijakan </span>
-              <span className="text-white">& Risalah Parlemen</span>
+              <span className="text-white">&amp; Risalah Parlemen</span>
             </h2>
-
-            <p className="text-xs sm:text-sm text-stone-300 leading-relaxed max-w-xl">
-              Naskah akademik, risalah analisis regulasi, dan telaah perundang-undangan kenegaraan resmi dari parlemen. Kami merumuskan kajian strategis berbasis data lapangan untuk memastikan setiap pasal dan aturan hukum berpihak pada kesejahteraan rakyat dan konstituen di Daerah Pemilihan {dapil}.
+            <p className="text-stone-400 text-xs sm:text-sm max-w-xl mt-2 leading-relaxed">
+              Naskah akademik, risalah analisis regulasi, dan telaah perundang-undangan kenegaraan resmi dari parlemen Daerah Pemilihan {dapil}.
             </p>
-
-            <p className="text-xs sm:text-sm text-stone-400 leading-relaxed max-w-xl">
-              Keterbukaan informasi dan pertanggungjawaban publik adalah fondasi utama pengabdian kenegaraan. Kebijakan publik yang dirumuskan tidak boleh berhenti sebagai naskah di meja persidangan, melainkan wajib diuji efektivitasnya secara nyata.
-            </p>
-
-            <div className="pt-2">
-              <Link
-                href={getNavLinkHref('/artikel')}
-                className="inline-flex items-center gap-2 bg-[#00DF82] hover:bg-[#00c974] text-black font-extrabold text-xs uppercase tracking-wider px-7 py-3.5 shadow-[0_0_20px_rgba(0,223,130,0.3)] hover:scale-105 active:scale-95 transition-all rounded-xs"
-              >
-                <span>Lihat Seluruh Arsip Artikel</span>
-                <ArrowRight className="w-3.5 h-3.5" />
-              </Link>
-            </div>
-
           </div>
 
+          {articles.length > 0 && (
+            <Link
+              href={getNavLinkHref('/artikel')}
+              className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xs bg-[#181818] hover:bg-[#222222] border border-white/[0.1] text-xs font-bold text-[#00DF82] hover:border-[#00DF82] transition-all shrink-0 self-start sm:self-auto"
+            >
+              <span>Semua Artikel ({articles.length})</span>
+              <ArrowUpRight className="w-4 h-4" />
+            </Link>
+          )}
         </div>
-
-        {/* Real Generated Articles Grid with Images */}
-        <div className="pt-8">
-          <div className="flex items-center justify-between gap-4 mb-8">
-            <div>
-              <h3 className="text-xl sm:text-2xl font-black text-white">Artikel Kebijakan Terkini</h3>
-              <p className="text-xs text-stone-400 mt-1">Publikasi tulisan dan pandangan legislasi resmi yang diterbitkan dewan.</p>
-            </div>
-            {articles.length > 0 && (
-              <Link
-                href={getNavLinkHref('/artikel')}
-                className="hidden sm:inline-flex items-center gap-1.5 text-xs font-bold text-[#00DF82] hover:underline"
-              >
-                <span>Lihat Semua ({articles.length})</span>
-                <ArrowUpRight className="w-3.5 h-3.5" />
-              </Link>
-            )}
-          </div>
 
           {articles.length > 0 ? (
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6 sm:gap-8">
@@ -426,7 +377,6 @@ export function EmeraldTechTemplate({
               </p>
             </div>
           )}
-        </div>
 
       </section>
 

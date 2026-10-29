@@ -13,6 +13,7 @@ import {
   Sparkles,
   ArrowUpRight,
 } from 'lucide-react';
+import { resolvePortalMemberData } from '@/lib/template-resolver';
 
 interface PlatinumSlateKontakClientProps {
   member: any;
@@ -25,18 +26,20 @@ export function PlatinumSlateKontakClient({
   theme,
   subdomain,
 }: PlatinumSlateKontakClientProps) {
-  const officialFullName =
-    member?.fullName || theme?.officialFullName || 'Dr. Jonanda P. A. B';
-  const dapil =
-    member?.dapilName || member?.customDapilName || member?.customDapil || 'Dapil I';
-  const legislativeLevel = member?.legislativeLevel || 'DPRD PROVINSI';
-  const officialEmail = `aspirasi@${subdomain || 'jonandabrahman'}.polaris.id`;
-  const officialPhone = '+62 812-3456-7890';
-  const instagramUsername =
-    member?.instagramHandle?.replace(/^@/, '') ||
-    member?.username ||
-    subdomain ||
-    'jonandabrahman';
+  const resolved = resolvePortalMemberData({
+    member,
+    theme,
+    subdomain,
+    defaultPrimaryColor: '#A0AFB7',
+  });
+
+  const officialFullName = resolved.officialFullName;
+  const dapil = resolved.dapil || 'Dapil Terkait';
+  const legislativeLevel = resolved.legislativeLevel;
+  const officialEmail = resolved.officialEmail;
+  const officialPhone = resolved.formattedPhoneNumber || resolved.phone || '';
+  const instagramUsername = resolved.instagramUsername;
+  const instagramUrl = resolved.instagramUrl;
 
   const [formSubmitted, setFormSubmitted] = useState(false);
   const [formData, setFormData] = useState({
@@ -98,7 +101,7 @@ export function PlatinumSlateKontakClient({
                 </div>
                 <div>
                   <h4 className="text-xs font-bold text-white uppercase tracking-wider">WhatsApp Aspirasi Langsung</h4>
-                  <p className="text-xs text-white font-mono font-bold mt-1">{officialPhone}</p>
+                  <p className="text-xs text-white font-mono font-bold mt-1">{officialPhone || 'Hubungi Sekretariat'}</p>
                   <p className="text-[10px] text-slate-500">Senin - Jumat: 08.00 - 16.00 WIB</p>
                 </div>
               </div>
@@ -121,12 +124,12 @@ export function PlatinumSlateKontakClient({
                 <div>
                   <h4 className="text-xs font-bold text-white uppercase tracking-wider">Kanal Media Sosial</h4>
                   <a
-                    href={`https://instagram.com/${instagramUsername}`}
+                    href={instagramUrl || 'https://instagram.com'}
                     target="_blank"
                     rel="noopener noreferrer"
                     className="text-xs text-white hover:underline block mt-1"
                   >
-                    @{instagramUsername}
+                    {instagramUsername ? `@${instagramUsername}` : 'Instagram Resmi'}
                   </a>
                   <p className="text-[10px] text-slate-500">Dokumentasi kegiatan kedewanan dan reses</p>
                 </div>

@@ -12,6 +12,8 @@ import {
   Send,
 } from 'lucide-react';
 
+import { resolvePortalMemberData } from '@/lib/template-resolver';
+
 export interface AmberPortfolioShellProps {
   member: any;
   theme?: any;
@@ -37,33 +39,47 @@ export function AmberPortfolioShell({
   children,
   showMasthead = true,
 }: AmberPortfolioShellProps) {
+  const resolved = resolvePortalMemberData({
+    member,
+    theme,
+    subdomain,
+    defaultPrimaryColor: '#EA580C',
+  });
+
+  const {
+    officialFullName,
+    dapil,
+    party,
+    formattedPhoneNumber,
+    officialEmail,
+  } = resolved;
+
   const primaryColor = theme?.primaryHexColor || '#EA580C';
-  const officialFullName =
-    member?.fullName || theme?.officialFullName || 'Dr. Jonanda P. A. B';
-  const dapil =
-    member?.dapilName || member?.customDapilName || member?.customDapil || 'Dapil I';
-  const party = member?.partyAffiliation || 'Fraksi Parlemen';
-  const officialEmail = `aspirasi@${subdomain || 'jonandabrahman'}.polaris.id`;
-  const officialPhone = '+62 812-3456-7890';
+  const officialPhone = formattedPhoneNumber || '+62 812-3456-7890';
   const instagramUsername =
     member?.instagramHandle?.replace(/^@/, '') ||
     member?.username ||
     subdomain ||
-    'jonandabrahman';
+    '';
 
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const previewTemplate = searchParams?.get('preview_template');
+  const previewColor = searchParams?.get('preview_color');
 
   const getNavLinkHref = (path: string) => {
     let base = path;
     if (subdomain && pathname?.startsWith(`/${subdomain}`)) {
       base = path === '/' ? `/${subdomain}` : `/${subdomain}${path}`;
     }
-    if (previewTemplate) {
-      base += `${base.includes('?') ? '&' : '?'}preview_template=${previewTemplate}`;
+    const params = new URLSearchParams();
+    if (previewTemplate) params.set('preview_template', previewTemplate);
+    if (previewColor) params.set('preview_color', previewColor);
+    const qs = params.toString();
+    if (qs) {
+      base += `${base.includes('?') ? '&' : '?'}${qs}`;
     }
     return base;
   };
@@ -248,8 +264,7 @@ export function AmberPortfolioShell({
             </div>
 
             {pageBadge && (
-              <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-orange-500/15 text-orange-400 border border-orange-500/30 text-[11px] font-bold uppercase tracking-wider mb-3">
-                <span className="w-1.5 h-1.5 rounded-full bg-orange-400" />
+              <span className="inline-flex items-center px-3 py-1 rounded-full bg-orange-500/15 text-orange-400 border border-orange-500/30 text-[11px] font-bold uppercase tracking-wider mb-3">
                 {pageBadge}
               </span>
             )}

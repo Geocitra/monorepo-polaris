@@ -2,7 +2,7 @@
 
 import React, { useState } from 'react';
 import Link from 'next/link';
-import { usePathname } from 'next/navigation';
+import { usePathname, useSearchParams } from 'next/navigation';
 import {
   ArrowRight,
   Search,
@@ -43,11 +43,11 @@ export function PolarisInsightTemplate({
   documents = [],
   subdomain,
 }: TemplateProps) {
-  // 1. Data Resolvers
+  // 1. Data Resolvers (Menggunakan Data Riil)
   const officialFullName =
     member?.fullName ||
     theme?.officialFullName ||
-    'Dr. Ir. Sangsoro Mowo Berkah, M.Sc.';
+    'Anggota Dewan';
 
   const officialPhotoUrl =
     theme?.officialPhotoUrl ||
@@ -55,15 +55,23 @@ export function PolarisInsightTemplate({
     '/images/dewan-standing-full.png';
 
   const partyName = member?.partyAffiliation || 'Fraksi Parlemen';
-  const dapilName = member?.dapilName || member?.customDapilName || 'Jawa Barat I';
+  const dapilName =
+    member?.dapilName || member?.customDapilName || member?.customDapil || 'Daerah Pemilihan';
   const heroBannerUrl =
     theme?.heroBannerUrl ||
     '/images/parliament-panoramic-banner.png';
   const instagramUsername =
     member?.instagramHandle?.replace(/^@/, '') ||
-    member?.username ||
-    subdomain ||
-    'ahmadfauzi';
+    member?.socialMedia?.instagram?.replace(/^@/, '') ||
+    '';
+  const heroHeadline =
+    theme?.headlineTagline ||
+    theme?.heroHeadline ||
+    (member?.fullName ? 'MENGABDI DENGAN INTEGRITAS.' : 'MELAYANI DENGAN INTEGRITAS.');
+  const heroTagline =
+    theme?.tagline ||
+    member?.tagline ||
+    (dapilName && dapilName !== 'Daerah Pemilihan' ? `SUARA RAKYAT ${dapilName.toUpperCase()}.` : 'MENGABDI UNTUK RAKYAT.');
 
   // State Management
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -71,61 +79,41 @@ export function PolarisInsightTemplate({
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedInfographic, setSelectedInfographic] = useState<any | null>(null);
 
-  // Default Reference Articles exactly matching the reference image
-  const defaultArticles = [
-    {
-      id: 'ref-art-1',
-      title: 'Undang-Undang Cipta Kerja: Dampak bagi UMKM',
-      slug: 'undang-undang-cipta-kerja-dampak-bagi-umkm',
-      category: 'Ekonomi',
-      date: '01 Sep 2026',
-      summary:
-        'Mendorong pertumbuhan ekonomi lokal melalui penyederhanaan regulasi dan dukungan bagi usaha mikro.',
-      thumbnail: '/images/ref-article-1.jpg',
-    },
-    {
-      id: 'ref-art-2',
-      title: 'Program Pembangunan Infrastruktur',
-      slug: 'program-pembangunan-infrastruktur',
-      category: 'Infrastruktur',
-      date: '30 Agu 2026',
-      summary:
-        'Mengawal realisasi proyek jalan dan jembatan untuk konektivitas dan kesejahteraan masyarakat.',
-      thumbnail: '/images/ref-article-2.jpg',
-    },
-    {
-      id: 'ref-art-3',
-      title: 'Sosialisasi Pendidikan Karakter di Sekolah',
-      slug: 'sosialisasi-pendidikan-karakter-di-sekolah',
-      category: 'Pendidikan',
-      date: '28 Agu 2026',
-      summary:
-        'Meningkatkan kualitas pendidikan dengan fokus pada nilai-nilai kebangsaan dan moralitas.',
-      thumbnail: '/images/ref-article-3.jpg',
-    },
-  ];
+  // Artikel Riil (Tanpa Data Dummy)
+  const displayArticles = (recentArticles || []).map((a, idx) => ({
+    id: a.id || `art-${idx}`,
+    title: a.title,
+    slug: a.slug || `artikel-${idx}`,
+    category: a.sector || a.issueCategory || 'Kebijakan Publik',
+    date: a.publishedAt
+      ? formatDateIndonesian(a.publishedAt)
+      : a.createdAt
+      ? formatDateIndonesian(a.createdAt)
+      : 'Terbaru',
+    summary: a.excerpt || a.summary || '',
+    thumbnail: a.thumbnailUrl || a.featuredImageUrl || a.posterUrl || '',
+  }));
 
-  // Merge real articles if available with reference styling
-  const displayArticles =
-    recentArticles.length >= 3
-      ? recentArticles.slice(0, 3).map((a, idx) => ({
-          id: a.id || `art-${idx}`,
-          title: a.title,
-          slug: a.slug || `artikel-${idx}`,
-          category: a.sector || (idx === 0 ? 'Ekonomi' : idx === 1 ? 'Infrastruktur' : 'Pendidikan'),
-          date: a.publishedAt ? formatDateIndonesian(a.publishedAt) : defaultArticles[idx]?.date || '01 Sep 2026',
-          summary: a.excerpt || a.summary || defaultArticles[idx]?.summary,
-          thumbnail: a.thumbnailUrl || a.featuredImageUrl || defaultArticles[idx]?.thumbnail || '/images/ref-article-1.jpg',
-        }))
-      : defaultArticles;
+  const popularTopics =
+    displayArticles.length > 0
+      ? Array.from(new Set(displayArticles.map((a) => a.category))).slice(0, 5)
+      : [];
 
   const pathname = usePathname();
+  const searchParams = useSearchParams();
+  const previewTemplate = searchParams?.get('preview_template');
+  const previewColor = searchParams?.get('preview_color');
 
   const getNavLinkHref = (path: string) => {
+    let base = path;
     if (subdomain && pathname?.startsWith(`/${subdomain}`)) {
-      return path === '/' ? `/${subdomain}` : `/${subdomain}${path}`;
+      base = path === '/' ? `/${subdomain}` : `/${subdomain}${path}`;
     }
-    return path;
+    const params = new URLSearchParams();
+    if (previewTemplate) params.set('preview_template', previewTemplate);
+    if (previewColor) params.set('preview_color', previewColor);
+    const queryString = params.toString();
+    return queryString ? `${base}${base.includes('?') ? '&' : '?'}${queryString}` : base;
   };
 
   return (
@@ -176,18 +164,20 @@ export function PolarisInsightTemplate({
 
           {/* Sisi Kanan: Instagram Pill Button + Mobile Hamburger */}
           <div className="flex items-center gap-2 sm:gap-2.5 shrink-0">
-            <a
-              href={`https://instagram.com/${instagramUsername}`}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="inline-flex items-center gap-1.5 sm:gap-2 px-2.5 sm:px-4 py-1.5 sm:py-2 rounded-full text-white font-bold text-xs sm:text-[13px] shadow-md hover:opacity-95 hover:scale-105 active:scale-95 transition-all select-none shrink-0"
-              style={{
-                background: 'linear-gradient(90deg, #833AB4 0%, #C13584 35%, #E1306C 65%, #F77737 100%)',
-              }}
-            >
-              <Instagram className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-white shrink-0" />
-              <span className="hidden sm:inline truncate max-w-[90px] sm:max-w-none">@{instagramUsername}</span>
-            </a>
+            {instagramUsername && (
+              <a
+                href={`https://instagram.com/${instagramUsername}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-1.5 sm:py-2 rounded-full text-white font-bold text-xs sm:text-[13px] shadow-md hover:opacity-95 hover:scale-105 active:scale-95 transition-all select-none shrink-0"
+                style={{
+                  background: 'linear-gradient(90deg, #833AB4 0%, #C13584 35%, #E1306C 65%, #F77737 100%)',
+                }}
+              >
+                <Instagram className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-white shrink-0" />
+                <span>Instagram</span>
+              </a>
+            )}
 
             {/* Mobile / Tablet Drawer Hamburger (Tampil di < lg) */}
             <button
@@ -277,9 +267,9 @@ export function PolarisInsightTemplate({
             </div>
 
             <h1 className="text-xs xs:text-sm sm:text-lg font-black text-slate-900 tracking-tight leading-tight uppercase drop-shadow-xs">
-              MELAYANI DENGAN INTEGRITAS.
+              {heroHeadline}
               <span className="block text-[#96702c] mt-0.5">
-                MENGABDI UNTUK RAKYAT.
+                {heroTagline}
               </span>
             </h1>
           </div>
@@ -322,35 +312,46 @@ export function PolarisInsightTemplate({
               </div>
             </div>
 
-            {/* Swipeable Horizontal Track: Menampilkan kartu artikel dengan format rapi tanpa memenuhi layar */}
-            <div className="flex items-stretch gap-2.5 overflow-x-auto pb-1.5 pt-0.5 snap-x snap-mandatory scrollbar-none -mx-1 px-1">
-              {displayArticles.slice(0, 3).map((art) => (
-                <Link
-                  key={art.id}
-                  href={`/artikel/${art.slug}`}
-                  className="w-[82vw] xs:w-[76vw] sm:w-[300px] shrink-0 snap-start group flex items-center gap-2.5 p-2 rounded-xl bg-white/95 hover:bg-amber-50/70 border border-slate-200/90 hover:border-[#96702c]/60 shadow-xs hover:shadow-sm transition-all"
-                >
-                  <div className="relative w-12 h-12 xs:w-13 xs:h-13 sm:w-14 sm:h-14 rounded-lg overflow-hidden bg-slate-900 shrink-0">
-                    {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img
-                      src={art.thumbnail}
-                      alt={art.title}
-                      className="w-full h-full object-cover group-hover:scale-105 transition-transform"
-                    />
-                  </div>
-                  <div className="flex-1 min-w-0 pr-0.5">
-                    <div className="flex items-center gap-1 text-[8.5px] xs:text-[9.5px] font-bold text-[#96702c] uppercase tracking-wider">
-                      <span>{art.category}</span>
-                      <span className="text-slate-300">•</span>
-                      <span className="text-slate-400 font-normal">{art.date}</span>
+            {/* Swipeable Horizontal Track: Menampilkan kartu artikel riil jika ada, atau pesan kosong */}
+            {displayArticles.length > 0 ? (
+              <div className="flex items-stretch gap-2.5 overflow-x-auto pb-1.5 pt-0.5 snap-x snap-mandatory scrollbar-none -mx-1 px-1">
+                {displayArticles.slice(0, 3).map((art) => (
+                  <Link
+                    key={art.id}
+                    href={getNavLinkHref(`/artikel/${art.slug}`)}
+                    className="w-[82vw] xs:w-[76vw] sm:w-[300px] shrink-0 snap-start group flex items-center gap-2.5 p-2 rounded-xl bg-white/95 hover:bg-amber-50/70 border border-slate-200/90 hover:border-[#96702c]/60 shadow-xs hover:shadow-sm transition-all"
+                  >
+                    <div className="relative w-12 h-12 xs:w-13 xs:h-13 sm:w-14 sm:h-14 rounded-lg overflow-hidden bg-slate-900 shrink-0">
+                      {art.thumbnail ? (
+                        <img
+                          src={art.thumbnail}
+                          alt={art.title}
+                          className="w-full h-full object-cover group-hover:scale-105 transition-transform"
+                        />
+                      ) : (
+                        <div className="w-full h-full flex items-center justify-center bg-slate-900 text-amber-300/80">
+                          <FileText className="w-5 h-5 opacity-60" />
+                        </div>
+                      )}
                     </div>
-                    <h3 className="text-[10px] xs:text-[11px] font-bold text-slate-900 group-hover:text-[#96702c] transition-colors line-clamp-2 leading-tight mt-0.5">
-                      {art.title}
-                    </h3>
-                  </div>
-                </Link>
-              ))}
-            </div>
+                    <div className="flex-1 min-w-0 pr-0.5">
+                      <div className="flex items-center gap-1 text-[8.5px] xs:text-[9.5px] font-bold text-[#96702c] uppercase tracking-wider">
+                        <span>{art.category}</span>
+                        <span className="text-slate-300">•</span>
+                        <span className="text-slate-400 font-normal">{art.date}</span>
+                      </div>
+                      <h3 className="text-[10px] xs:text-[11px] font-bold text-slate-900 group-hover:text-[#96702c] transition-colors line-clamp-2 leading-tight mt-0.5">
+                        {art.title}
+                      </h3>
+                    </div>
+                  </Link>
+                ))}
+              </div>
+            ) : (
+              <div className="p-3 rounded-xl bg-slate-50/90 border border-dashed border-slate-200 text-center">
+                <p className="text-[10px] text-slate-500 font-semibold">Belum ada artikel yang dipublikasikan.</p>
+              </div>
+            )}
           </div>
         </div>
 
@@ -383,9 +384,9 @@ export function PolarisInsightTemplate({
 
                 {/* Headline Utama */}
                 <h1 className="text-[32px] xl:text-[38px] font-black text-slate-900 tracking-tight leading-[1.15] uppercase drop-shadow-xs">
-                  MELAYANI DENGAN INTEGRITAS.
+                  {heroHeadline}
                   <span className="block text-[#96702c] mt-0.5">
-                    MENGABDI UNTUK RAKYAT.
+                    {heroTagline}
                   </span>
                 </h1>
 
@@ -420,79 +421,96 @@ export function PolarisInsightTemplate({
                   </Link>
                 </div>
 
-                {/* VERSI DESKTOP: Kartu Editorial Lengkap dengan Gambar Besar, Badge Tanggal, dan Cuplikan Paragraf */}
-                <div className="grid lg:grid-cols-2 xl:grid-cols-3 gap-4 lg:gap-5 xl:gap-6">
-                  {displayArticles.map((art) => (
-                    <article
-                      key={art.id}
-                      className="group flex flex-col justify-between rounded-2xl bg-white border border-slate-200/80 shadow-[0_2px_10px_-3px_rgba(0,0,0,0.06),0_1px_3px_rgba(0,0,0,0.02)] hover:shadow-[0_16px_32px_-8px_rgba(150,112,44,0.18)] hover:border-[#96702c]/50 hover:-translate-y-1.5 transition-all duration-300 overflow-hidden"
-                    >
-                      <div>
-                        {/* Thumbnail Image dengan Overlay Halus & Date Badge Pill */}
-                        <div className="relative w-full aspect-[16/10] overflow-hidden bg-slate-900">
-                          {/* eslint-disable-next-line @next/next/no-img-element */}
-                          <img
-                            src={art.thumbnail}
-                            alt={art.title}
-                            className="w-full h-full object-cover object-center group-hover:scale-105 transition-transform duration-500 ease-out"
-                          />
-                          <div className="absolute inset-0 bg-gradient-to-t from-black/75 via-black/20 to-transparent pointer-events-none" />
+                {/* VERSI DESKTOP: Kartu Editorial Riil jika ada, atau Empty State jika Kosong */}
+                {displayArticles.length > 0 ? (
+                  <div className="grid lg:grid-cols-2 xl:grid-cols-3 gap-4 lg:gap-5 xl:gap-6">
+                    {displayArticles.slice(0, 3).map((art) => (
+                      <article
+                        key={art.id}
+                        className="group flex flex-col justify-between rounded-2xl bg-white border border-slate-200/80 shadow-[0_2px_10px_-3px_rgba(0,0,0,0.06),0_1px_3px_rgba(0,0,0,0.02)] hover:shadow-[0_16px_32px_-8px_rgba(150,112,44,0.18)] hover:border-[#96702c]/50 hover:-translate-y-1.5 transition-all duration-300 overflow-hidden"
+                      >
+                        <div>
+                          {/* Thumbnail Image dengan Overlay Halus & Date Badge Pill */}
+                          <div className="relative w-full aspect-[16/10] overflow-hidden bg-slate-900">
+                            {art.thumbnail ? (
+                              <img
+                                src={art.thumbnail}
+                                alt={art.title}
+                                className="w-full h-full object-cover object-center group-hover:scale-105 transition-transform duration-500 ease-out"
+                              />
+                            ) : (
+                              <div className="w-full h-full flex flex-col items-center justify-center bg-gradient-to-br from-slate-800 to-slate-950 text-amber-300/80">
+                                <FileText className="w-8 h-8 opacity-60 mb-1" />
+                                <span className="text-[9px] font-bold tracking-wider uppercase text-slate-400">Rilis Publikasi</span>
+                              </div>
+                            )}
+                            <div className="absolute inset-0 bg-gradient-to-t from-black/75 via-black/20 to-transparent pointer-events-none" />
 
-                          {/* Badge Tanggal (Frosted Glass Pill dengan Icon Calendar) */}
-                          <div className="absolute bottom-2.5 left-2.5 inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-black/60 backdrop-blur-md border border-white/20 text-white/95 text-[10.5px] font-medium shadow-sm">
-                            <Calendar className="w-3 h-3 text-amber-300 shrink-0" />
-                            <span>{art.date}</span>
+                            {/* Badge Tanggal */}
+                            <div className="absolute bottom-2.5 left-2.5 inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-black/60 backdrop-blur-md border border-white/20 text-white/95 text-[10.5px] font-medium shadow-sm">
+                              <Calendar className="w-3 h-3 text-amber-300 shrink-0" />
+                              <span>{art.date}</span>
+                            </div>
+
+                            {/* Estimasi Waktu Baca di Kanan Atas */}
+                            <div className="absolute top-2.5 right-2.5 inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-black/50 backdrop-blur-md border border-white/15 text-white/85 text-[10px] font-medium">
+                              <Clock className="w-2.5 h-2.5 text-amber-200" />
+                              <span>3 mnt baca</span>
+                            </div>
                           </div>
 
-                          {/* Estimasi Waktu Baca di Kanan Atas */}
-                          <div className="absolute top-2.5 right-2.5 inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-black/50 backdrop-blur-md border border-white/15 text-white/85 text-[10px] font-medium">
-                            <Clock className="w-2.5 h-2.5 text-amber-200" />
-                            <span>3 mnt baca</span>
+                          {/* Konten Artikel */}
+                          <div className="p-4 space-y-2.5">
+                            <div className="flex items-center justify-between">
+                              <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-amber-50 text-[#96702c] border border-amber-200/70">
+                                <span className="w-1.5 h-1.5 rounded-full bg-[#96702c]" />
+                                {art.category}
+                              </span>
+                            </div>
+
+                            <h3 className="text-sm font-bold text-slate-900 group-hover:text-[#96702c] transition-colors line-clamp-2 leading-snug min-h-[2.5rem]">
+                              <Link href={getNavLinkHref(`/artikel/${art.slug}`)} className="hover:underline decoration-[#96702c]/40 underline-offset-2">
+                                {art.title}
+                              </Link>
+                            </h3>
+
+                            {art.summary && (
+                              <p className="text-xs text-slate-500 line-clamp-2 leading-relaxed min-h-[2rem]">
+                                {art.summary}
+                              </p>
+                            )}
                           </div>
                         </div>
 
-                        {/* Konten Artikel */}
-                        <div className="p-4 space-y-2.5">
-                          {/* Sektor Kategori dengan Gold Accent Dot Pill */}
-                          <div className="flex items-center justify-between">
-                            <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-amber-50 text-[#96702c] border border-amber-200/70">
-                              <span className="w-1.5 h-1.5 rounded-full bg-[#96702c]" />
-                              {art.category}
-                            </span>
+                        {/* Footer: Kategori Publikasi & Baca Selengkapnya */}
+                        <div className="pt-2.5 pb-3 px-4 border-t border-slate-100 flex items-center justify-between mt-auto bg-slate-50/50">
+                          <div className="flex items-center gap-1.5 text-[10.5px] font-medium text-slate-400">
+                            <BookOpen className="w-3 h-3 text-[#96702c]/70" />
+                            <span>Kajian Resmi</span>
                           </div>
 
-                          {/* Judul Artikel */}
-                          <h3 className="text-sm font-bold text-slate-900 group-hover:text-[#96702c] transition-colors line-clamp-2 leading-snug min-h-[2.5rem]">
-                            <Link href={`/artikel/${art.slug}`} className="hover:underline decoration-[#96702c]/40 underline-offset-2">
-                              {art.title}
-                            </Link>
-                          </h3>
-
-                          {/* Ringkasan Paragraf */}
-                          <p className="text-xs text-slate-500 line-clamp-2 leading-relaxed min-h-[2rem]">
-                            {art.summary}
-                          </p>
+                          <Link
+                            href={getNavLinkHref(`/artikel/${art.slug}`)}
+                            className="inline-flex items-center gap-1 text-xs font-bold text-[#96702c] group-hover:text-[#7d5c21] transition-colors"
+                          >
+                            <span>Baca Selengkapnya</span>
+                            <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-1 transition-transform" />
+                          </Link>
                         </div>
-                      </div>
-
-                      {/* Footer: Kategori Publikasi & Baca Selengkapnya */}
-                      <div className="pt-2.5 pb-3 px-4 border-t border-slate-100 flex items-center justify-between mt-auto bg-slate-50/50">
-                        <div className="flex items-center gap-1.5 text-[10.5px] font-medium text-slate-400">
-                          <BookOpen className="w-3 h-3 text-[#96702c]/70" />
-                          <span>Kajian Resmi</span>
-                        </div>
-
-                        <Link
-                          href={`/artikel/${art.slug}`}
-                          className="inline-flex items-center gap-1 text-xs font-bold text-[#96702c] group-hover:text-[#7d5c21] transition-colors"
-                        >
-                          <span>Baca Selengkapnya</span>
-                          <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-1 transition-transform" />
-                        </Link>
-                      </div>
-                    </article>
-                  ))}
-                </div>
+                      </article>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="rounded-2xl border-2 border-dashed border-slate-200 bg-white/70 p-10 text-center space-y-2.5">
+                    <div className="w-10 h-10 rounded-full bg-amber-50 text-[#96702c] mx-auto flex items-center justify-center font-bold">
+                      <BookOpen className="w-5 h-5" />
+                    </div>
+                    <h3 className="text-sm font-bold text-slate-800">Belum Ada Artikel yang Dipublikasikan</h3>
+                    <p className="text-xs text-slate-500 max-w-sm mx-auto">
+                      Seluruh publikasi risalah kebijakan, tanggapan legislasi, dan rilis resmi anggota dewan akan ditampilkan di sini.
+                    </p>
+                  </div>
+                )}
               </div>
             </div>
           </div>
@@ -530,9 +548,11 @@ export function PolarisInsightTemplate({
                   info.imageUrl ||
                   info.posterUrl ||
                   info.featuredImageUrl ||
-                  '/images/showcase-infografis-apbd.jpg';
+                  '';
                 const dateLabel = info.publishedAt
                   ? formatDateIndonesian(info.publishedAt)
+                  : info.createdAt
+                  ? formatDateIndonesian(info.createdAt)
                   : 'Terbaru';
                 const category =
                   info.issueCategory?.replace(/_/g, ' ') || 'INFOGRAFIS';
@@ -545,17 +565,26 @@ export function PolarisInsightTemplate({
                   >
                     <div>
                       {/* Image Thumbnail with Aspect Ratio */}
-                      <div className="relative aspect-[4/5] overflow-hidden bg-slate-100">
-                        {/* eslint-disable-next-line @next/next/no-img-element */}
-                        <img
-                          src={img}
-                          alt={info.title}
-                          className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
-                        />
+                      <div className="relative aspect-[4/5] overflow-hidden bg-slate-900 flex items-center justify-center">
+                        {img ? (
+                          /* eslint-disable-next-line @next/next/no-img-element */
+                          <img
+                            src={img}
+                            alt={info.title}
+                            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                          />
+                        ) : (
+                          <div className="w-full h-full flex flex-col items-center justify-center text-amber-300/80 p-6 bg-gradient-to-br from-slate-900 to-slate-800">
+                            <PieChart className="w-10 h-10 opacity-70 mb-2" />
+                            <span className="text-[10px] font-bold uppercase tracking-wider text-slate-300">Infografis Parlemen</span>
+                          </div>
+                        )}
                         {/* Date badge */}
-                        <div className="absolute bottom-3 left-3 bg-[#96702c] text-white text-[11px] font-bold px-2.5 py-1 rounded shadow-sm">
-                          {dateLabel}
-                        </div>
+                        {dateLabel && (
+                          <div className="absolute bottom-3 left-3 bg-[#96702c] text-white text-[11px] font-bold px-2.5 py-1 rounded shadow-sm">
+                            {dateLabel}
+                          </div>
+                        )}
                       </div>
 
                       {/* Content */}
@@ -600,62 +629,6 @@ export function PolarisInsightTemplate({
               </p>
             </div>
           )}
-        </div>
-      </section>
-
-      {/* ========================================================= */}
-      {/* SECTION 4: PROFIL SINGKAT & DAPIL (Navigasi Beranda)        */}
-      {/* ========================================================= */}
-      <section id="profil" className="py-12 sm:py-16 bg-white border-t border-slate-100">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-center">
-            <div className="lg:col-span-7 xl:col-span-8 space-y-4">
-              <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-amber-50 text-[#96702c] text-xs font-bold border border-amber-200/60">
-                <ShieldCheck className="w-3.5 h-3.5" />
-                <span>Mandat Keparlemenan &amp; Daerah Pemilihan</span>
-              </div>
-              <h2 className="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight">
-                Mendedikasikan Diri untuk Kemajuan {dapilName}
-              </h2>
-              <p className="text-xs sm:text-sm text-slate-600 leading-relaxed">
-                Sebagai representasi rakyat, komitmen utama kami adalah mengawal aspirasi daerah pemilihan,
-                memastikan setiap rancangan undang-undang berpihak pada kesejahteraan warga, dan menegakkan fungsi
-                pengawasan anggaran yang akuntabel dan transparan.
-              </p>
-              <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 sm:gap-4 pt-2">
-                <div className="p-4 rounded-2xl bg-[#FBF9F5] border border-amber-200/60">
-                  <div className="text-[11px] font-medium text-slate-500">Fraksi Partai</div>
-                  <div className="text-xs sm:text-sm font-bold text-slate-900 mt-0.5">{partyName}</div>
-                </div>
-                <div className="p-4 rounded-2xl bg-[#FBF9F5] border border-amber-200/60">
-                  <div className="text-[11px] font-medium text-slate-500">Daerah Pemilihan</div>
-                  <div className="text-xs sm:text-sm font-bold text-slate-900 mt-0.5">{dapilName}</div>
-                </div>
-                <div className="p-4 rounded-2xl bg-[#FBF9F5] border border-amber-200/60 col-span-2 sm:col-span-1">
-                  <div className="text-[11px] font-medium text-slate-500">Lembaga Perwakilan</div>
-                  <div className="text-xs sm:text-sm font-bold text-[#96702c] mt-0.5">DPR RI</div>
-                </div>
-              </div>
-            </div>
-
-            {/* Quick Action Box */}
-            <div className="lg:col-span-5 xl:col-span-4 p-6 sm:p-7 rounded-3xl bg-gradient-to-br from-slate-900 via-slate-950 to-slate-900 text-white space-y-4 shadow-xl border border-slate-800">
-              <h3 className="text-base font-bold text-white flex items-center gap-2">
-                <Building2 className="w-5 h-5 text-amber-400" />
-                <span>Kantor Aspirasi Warga</span>
-              </h3>
-              <p className="text-xs text-slate-300 leading-relaxed">
-                Punya masukan terkait infrastruktur, UMKM, atau pendidikan di wilayah Anda?
-                Hubungi saluran korespondensi resmi kantor dewan.
-              </p>
-              <Link
-                href={getNavLinkHref('/kontak')}
-                className="w-full inline-flex items-center justify-center py-2.5 rounded-xl bg-[#96702c] hover:bg-[#805f24] text-white text-xs font-bold uppercase tracking-wider transition-colors shadow-md cursor-pointer"
-              >
-                Kanal Kontak &amp; Aspirasi
-              </Link>
-            </div>
-          </div>
         </div>
       </section>
 
@@ -711,11 +684,18 @@ export function PolarisInsightTemplate({
                     Kanal Kontak & Sekretariat
                   </Link>
                 </li>
-                <li>
-                  <a href={`https://instagram.com/${member?.username || 'ahmadfauzi'}`} target="_blank" rel="noopener noreferrer" className="hover:text-amber-400 transition-colors">
-                    Instagram Resmi
-                  </a>
-                </li>
+                {instagramUsername && (
+                  <li>
+                    <a
+                      href={`https://instagram.com/${instagramUsername}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="hover:text-amber-400 transition-colors"
+                    >
+                      Instagram Resmi (@{instagramUsername})
+                    </a>
+                  </li>
+                )}
                 <li><Link href={getNavLinkHref('/infografis')} className="hover:text-amber-400 transition-colors">Laporan Triwulan</Link></li>
               </ul>
             </div>
@@ -764,27 +744,29 @@ export function PolarisInsightTemplate({
               />
             </div>
 
-            <div className="space-y-2 text-xs">
-              <span className="text-slate-400 font-semibold block">Topik Populer:</span>
-              <div className="flex flex-wrap gap-1.5">
-                {['UU Cipta Kerja', 'Infrastruktur Jalan', 'Pendidikan Karakter', 'APBD & Anggaran', 'UMKM'].map((t) => (
-                  <button
-                    key={t}
-                    type="button"
-                    onClick={() => setSearchQuery(t)}
-                    className="px-2.5 py-1 rounded-md bg-slate-100 hover:bg-amber-50 hover:text-[#96702c] text-slate-600 transition-colors"
-                  >
-                    {t}
-                  </button>
-                ))}
+            {popularTopics.length > 0 && (
+              <div className="space-y-2 text-xs">
+                <span className="text-slate-400 font-semibold block">Topik Terbitan:</span>
+                <div className="flex flex-wrap gap-1.5">
+                  {popularTopics.map((t) => (
+                    <button
+                      key={t}
+                      type="button"
+                      onClick={() => setSearchQuery(t)}
+                      className="px-2.5 py-1 rounded-md bg-slate-100 hover:bg-amber-50 hover:text-[#96702c] text-slate-600 transition-colors cursor-pointer"
+                    >
+                      {t}
+                    </button>
+                  ))}
+                </div>
               </div>
-            </div>
+            )}
 
             <div className="pt-2 text-right">
               <Link
-                href={`/artikel?q=${encodeURIComponent(searchQuery)}`}
+                href={getNavLinkHref(`/artikel?q=${encodeURIComponent(searchQuery)}`)}
                 onClick={() => setSearchModalOpen(false)}
-                className="inline-flex items-center gap-1 px-4 py-2 rounded-lg bg-[#96702c] text-white text-xs font-bold hover:bg-[#805f24]"
+                className="inline-flex items-center gap-1 px-4 py-2 rounded-lg bg-[#96702c] text-white text-xs font-bold hover:bg-[#805f24] transition-colors"
               >
                 <span>Lihat Hasil</span>
                 <ArrowRight className="w-3.5 h-3.5" />
@@ -820,13 +802,20 @@ export function PolarisInsightTemplate({
               </button>
             </div>
 
-            <div className="rounded-xl overflow-hidden bg-slate-50 border border-slate-100 flex items-center justify-center">
+            <div className="rounded-xl overflow-hidden bg-slate-900 border border-slate-100 flex items-center justify-center p-2">
               {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img
-                src={selectedInfographic.imageUrl || selectedInfographic.posterUrl}
-                alt={selectedInfographic.title}
-                className="max-h-[65vh] w-auto object-contain mx-auto"
-              />
+              {selectedInfographic.imageUrl || selectedInfographic.posterUrl || selectedInfographic.featuredImageUrl ? (
+                <img
+                  src={selectedInfographic.imageUrl || selectedInfographic.posterUrl || selectedInfographic.featuredImageUrl}
+                  alt={selectedInfographic.title}
+                  className="max-h-[65vh] w-auto object-contain mx-auto"
+                />
+              ) : (
+                <div className="py-16 text-center text-amber-300">
+                  <PieChart className="w-12 h-12 mx-auto mb-2 opacity-60" />
+                  <span className="text-xs text-slate-400">Pratinjau visual belum tersedia</span>
+                </div>
+              )}
             </div>
 
             {selectedInfographic.description && (

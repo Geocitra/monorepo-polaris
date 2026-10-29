@@ -13,37 +13,20 @@ export const PARICHAY = {
   white: '#FFFFFF',
 };
 
-export const PARICHAY_FALLBACK_PHOTO = '/images/dewan-ahmad-fauzi-cutout.png';
+import { resolvePortalMemberData } from '@/lib/template-resolver';
 
 export function getParichayMemberInfo(member: any, theme: any, subdomain?: string) {
-  const officialFullName: string =
-    member?.fullName || theme?.officialFullName || 'Dr. H. Jonanda Pratama, M.Si.';
-  const firstName =
-    officialFullName.replace(/^(Dr\.|Drs\.|H\.|Hj\.|Ir\.|Prof\.)\s*/i, '').split(' ')[0] ||
-    'Jonanda';
-  const clean = (v: string) => (v || '').replace(/_/g, ' ');
-  const primaryColor: string = theme?.primaryHexColor || PARICHAY.amber;
-  const secondaryColor: string = theme?.secondaryHexColor || PARICHAY.charcoal;
+  const resolved = resolvePortalMemberData({
+    member,
+    theme,
+    subdomain,
+    defaultPrimaryColor: PARICHAY.amber,
+  });
 
   return {
-    officialFullName,
-    firstName,
-    photoUrl: theme?.officialPhotoUrl || member?.photoUrl || PARICHAY_FALLBACK_PHOTO,
-    dapil: clean(member?.dapilName || member?.customDapilName || member?.customDapil || 'Dapil I Jawa Barat'),
-    party: clean(member?.partyAffiliation || 'Fraksi Parlemen'),
-    legislativeLevel: clean(member?.legislativeLevel || 'DPRD PROVINSI'),
-    commissionName: clean(member?.commissionName || 'KOMISI I (PEMERINTAHAN & HUKUM)'),
-    bio:
-      member?.bio ||
-      member?.biography ||
-      'Mendedikasikan integritas, keahlian hukum, dan kepemimpinan aspiratif dalam mengawal suara warga daerah pemilihan menuju kebijakan daerah yang adil, transparan, dan berdampak nyata bagi kesejahteraan masyarakat.',
-    officialEmail: `aspirasi@${subdomain || 'polaris'}.id`,
-    officialPhone: '+62 812-3456-7890',
-    instagramUsername:
-      member?.instagramHandle?.replace(/^@/, '') || member?.username || subdomain || 'polaris.advokasi',
+    ...resolved,
+    secondaryColor: theme?.secondaryHexColor || PARICHAY.charcoal,
     portalTitle: theme?.portalTitle || 'Parichay',
-    primaryColor,
-    secondaryColor,
   };
 }
 
@@ -51,15 +34,17 @@ export function useParichayHref(subdomain?: string) {
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const previewTemplate = searchParams?.get('preview_template');
+  const previewColor = searchParams?.get('preview_color');
   return (path: string) => {
     let base = path;
     if (subdomain && pathname?.startsWith(`/${subdomain}`)) {
       base = path === '/' ? `/${subdomain}` : `/${subdomain}${path}`;
     }
-    if (previewTemplate) {
-      base += `${base.includes('?') ? '&' : '?'}preview_template=${previewTemplate}`;
-    }
-    return base;
+    const sp = new URLSearchParams();
+    if (previewTemplate) sp.set('preview_template', previewTemplate);
+    if (previewColor) sp.set('preview_color', previewColor);
+    const qs = sp.toString();
+    return qs ? `${base}${base.includes('?') ? '&' : '?'}${qs}` : base;
   };
 }
 
@@ -82,85 +67,5 @@ export function getArticleExcerpt(a: any) {
   return a?.excerpt || a?.summary || '';
 }
 
-export const PARICHAY_DEFAULT_ARTICLES = [
-  {
-    id: 'par-art-1',
-    slug: 'kajian-alokasi-apbd-pemulihan-ekonomi',
-    title: 'Kajian Strategis Alokasi APBD 2026 untuk Pemulihan Ekonomi Kerakyatan',
-    category: 'Kajian APBD',
-    excerpt:
-      'Analisis komprehensif formulasi dan pengawasan belanja modal daerah guna mempercepat stimulus UMKM serta jaring pengaman sosial konstituen.',
-    featuredImageUrl: '/images/showcase-artikel-pertanian.jpg',
-    createdAt: new Date().toISOString(),
-    readingTime: '4 menit baca',
-  },
-  {
-    id: 'par-art-2',
-    slug: 'transformasi-digital-aspirasi-parlemen',
-    title: 'Optimalisasi Digitalisasi Layanan Aspirasi Publik di Parlemen Daerah',
-    category: 'Transformasi Digital',
-    excerpt:
-      'Mewujudkan transparansi dua arah antara konstituen dan wakil rakyat melalui sistem agregasi aspirasi modern berbasis data riil.',
-    featuredImageUrl: '/images/ref-article-1.jpg',
-    createdAt: new Date(Date.now() - 86400000 * 3).toISOString(),
-    readingTime: '5 menit baca',
-  },
-  {
-    id: 'par-art-3',
-    slug: 'penguatan-kualitas-pendidikan-vokasi',
-    title: 'Penguatan Mutu Pendidikan Vokasi dan Pelatihan Kerja Generasi Muda',
-    category: 'Pendidikan',
-    excerpt:
-      'Mendorong revitalisasi kurikulum SMK dan kemitraan industri untuk menekan angka pengangguran terbuka di wilayah dapil.',
-    featuredImageUrl: '/images/ref-article-2.jpg',
-    createdAt: new Date(Date.now() - 86400000 * 7).toISOString(),
-    readingTime: '3 menit baca',
-  },
-  {
-    id: 'par-art-4',
-    slug: 'pengawasan-infrastruktur-dasar-desa',
-    title: 'Pengawasan Proyek Strategis Air Bersih dan Sanitasi di Pelosok Desa',
-    category: 'Infrastruktur',
-    excerpt:
-      'Memastikan anggaran pembangunan fasilitas dasar terserap tepat waktu dan tepat sasaran tanpa kendala teknis di lapangan.',
-    featuredImageUrl: '/images/ref-article-3.jpg',
-    createdAt: new Date(Date.now() - 86400000 * 10).toISOString(),
-    readingTime: '4 menit baca',
-  },
-];
-
-export const PARICHAY_DEFAULT_INFOGRAPHICS = [
-  {
-    id: 'par-info-1',
-    title: 'Transparansi Realisasi APBD Sektor Pendidikan & Beasiswa Daerah',
-    category: 'APBD & Anggaran',
-    metric: 'Rp 45,2 M',
-    metricLabel: 'Alokasi Kawalan',
-    imageUrl: '/images/showcase-infografis-apbd.jpg',
-    createdAt: new Date().toISOString(),
-    description:
-      'Rincian peruntukan fungsi pendidikan, renovasi gedung sekolah, serta beasiswa siswa berprestasi dan kurang mampu di seluruh kabupaten.',
-  },
-  {
-    id: 'par-info-2',
-    title: 'Peta Penyerapan Aspirasi Warga Reses Masa Sidang II',
-    category: 'Aspirasi Warga',
-    metric: '92,4%',
-    metricLabel: 'Tindak Lanjut Dinas',
-    imageUrl: '/images/showcase-poster-surya.jpg',
-    createdAt: new Date(Date.now() - 86400000 * 4).toISOString(),
-    description:
-      'Distribusi 490+ aspirasi warga yang masuk melalui kanal digital dan posko reses, dikelompokkan berdasarkan prioritas sektor infrastruktur dan kesehatan.',
-  },
-  {
-    id: 'par-info-3',
-    title: 'Capaian Legislasi & Pengesahan Perda Inisiatif Kerakyatan',
-    category: 'Kinerja Legislasi',
-    metric: '14 Perda',
-    metricLabel: 'Telah Diundangkan',
-    imageUrl: '/images/showcase-infografis-apbd.jpg',
-    createdAt: new Date(Date.now() - 86400000 * 8).toISOString(),
-    description:
-      'Daftar rancangan peraturan daerah yang telah rampung dibahas bersama eksekutif, mencakup perlindungan petani, UMKM, dan tata kelola lingkungan hidup.',
-  },
-];
+export const PARICHAY_DEFAULT_ARTICLES: any[] = [];
+export const PARICHAY_DEFAULT_INFOGRAPHICS: any[] = [];

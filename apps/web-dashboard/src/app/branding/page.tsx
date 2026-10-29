@@ -12,11 +12,12 @@ import { Palette, Globe, ExternalLink, Loader2, Monitor, Paintbrush, Instagram, 
 import { cn } from '@/lib/utils';
 
 import { Button } from '@/components/ui/button';
-import { ThemeForm } from '@/components/branding/ThemeForm';
+import { ThemeForm, DEFAULT_WEBSITE_COLORS, DEFAULT_VISION_MISSION } from '@/components/branding/ThemeForm';
 import { DeviceSimulator } from '@/components/branding/DeviceSimulator';
 import { DashboardThemeCustomizer } from '@/components/branding/DashboardThemeCustomizer';
 import { Card } from '@/components/ui/card';
 import { getPortalUrl } from '@/lib/urls';
+import { TEMPLATE_DEFAULT_COLORS } from '@polaris/shared-types';
 
 const PARTY_COLOR_PRESETS = [
   { name: 'Golkar', primary: '#F5B800', secondary: '#001529' },
@@ -57,6 +58,8 @@ function BrandingContent() {
   const [layoutTemplateId, setLayoutTemplateId] = useState('standard-default');
   const [visionMission, setVisionMission] = useState<any[]>([]);
   const [careers, setCareers] = useState<any[]>([]);
+  const [activities, setActivities] = useState<any[]>([]);
+  const [akdAssignment, setAkdAssignment] = useState<any>(null);
   const [layoutSchema, setLayoutSchema] = useState<any>(null);
 
   useEffect(() => {
@@ -72,8 +75,7 @@ function BrandingContent() {
         if (portalData?.theme) {
           setPrimaryColor(portalData.theme.primaryHexColor || '#1890FF');
           setSecondaryColor(portalData.theme.secondaryHexColor || '#001529');
-          // Prioritaskan foto profil resmi dewan jika ada, atau fallback ke tema portal
-          const initialPhoto = p?.photoUrl || portalData.theme.officialPhotoUrl || '';
+          const initialPhoto = portalData.theme.officialPhotoUrl || p?.photoUrl || '';
           setOfficialPhotoUrl(initialPhoto);
           setHeadlineTagline(portalData.theme.headlineTagline || '');
           setBioBiography(portalData.theme.bioBiography || '');
@@ -83,9 +85,17 @@ function BrandingContent() {
           setLayoutSchema(schema);
           if (Array.isArray(schema.visionMission) && schema.visionMission.length > 0) {
             setVisionMission(schema.visionMission);
+          } else {
+            setVisionMission(DEFAULT_VISION_MISSION);
           }
           if (Array.isArray(schema.careers) && schema.careers.length > 0) {
             setCareers(schema.careers);
+          }
+          if (Array.isArray(schema.activities) && schema.activities.length > 0) {
+            setActivities(schema.activities);
+          }
+          if (schema.akdAssignment) {
+            setAkdAssignment(schema.akdAssignment);
           }
         } else if (p?.photoUrl) {
           setOfficialPhotoUrl(p.photoUrl);
@@ -120,11 +130,18 @@ function BrandingContent() {
 
     try {
       const photoToSave = (officialPhotoUrl || profile?.photoUrl || '').trim();
+      const effectiveVisionMission =
+        Array.isArray(visionMission) && visionMission.length > 0
+          ? visionMission
+          : DEFAULT_VISION_MISSION;
+
       const updatedSchema = {
         ...(layoutSchema || {}),
         templatePreset: layoutTemplateId,
-        visionMission,
+        visionMission: effectiveVisionMission,
         careers,
+        activities,
+        akdAssignment,
       };
 
       await ApiClient.request<any>('/cms/theme', {
@@ -173,6 +190,15 @@ function BrandingContent() {
 
   const handleLayoutTemplateChange = (newTemplateId: string) => {
     setLayoutTemplateId(newTemplateId);
+
+    // If user was using previous template's default color, automatically align to new template's default
+    const prevDefault = (TEMPLATE_DEFAULT_COLORS as any)[layoutTemplateId] || DEFAULT_WEBSITE_COLORS;
+    if (primaryColor.toLowerCase() === prevDefault.primary.toLowerCase()) {
+      const newDefault = (TEMPLATE_DEFAULT_COLORS as any)[newTemplateId] || DEFAULT_WEBSITE_COLORS;
+      setPrimaryColor(newDefault.primary);
+      setSecondaryColor(newDefault.secondary);
+    }
+
     // Instantaneous live preview switch via postMessage to iframe
     try {
       iframeRef.current?.contentWindow?.postMessage(
@@ -200,6 +226,20 @@ function BrandingContent() {
       console.error('Error posting color message to simulator:', err);
     }
   }, [primaryColor]);
+
+  useEffect(() => {
+    try {
+      iframeRef.current?.contentWindow?.postMessage(
+        {
+          type: 'POLARIS_PREVIEW_PHOTO_CHANGE',
+          photoUrl: officialPhotoUrl,
+        },
+        '*'
+      );
+    } catch (err) {
+      console.error('Error posting photo message to simulator:', err);
+    }
+  }, [officialPhotoUrl]);
 
   if (loading) {
     return (
@@ -283,9 +323,6 @@ function BrandingContent() {
             >
               <Monitor className="h-3.5 w-3.5 text-blue-500 group-hover:scale-110 transition-transform" />
               <span>Branding Website</span>
-              <span className="text-[9px] font-black uppercase px-1.5 py-0.5 rounded bg-blue-100 dark:bg-blue-950 text-blue-700 dark:text-blue-300">
-                Full Page ↗
-              </span>
             </Link>
             <button
               type="button"
@@ -459,6 +496,7 @@ function BrandingContent() {
                     officialPhotoUrl={officialPhotoUrl}
                     onOfficialPhotoUrlChange={setOfficialPhotoUrl}
                     profilePhotoUrl={profile?.photoUrl}
+                    photoGallery={profile?.photoGallery || []}
                     headlineTagline={headlineTagline}
                     onHeadlineTaglineChange={setHeadlineTagline}
                     bioBiography={bioBiography}
@@ -475,6 +513,12 @@ function BrandingContent() {
                     onVisionMissionChange={setVisionMission}
                     careers={careers}
                     onCareersChange={setCareers}
+                    activities={activities}
+                    onActivitiesChange={setActivities}
+                    akdAssignment={akdAssignment}
+                    onAkdAssignmentChange={setAkdAssignment}
+                    memberCommissionName={profile?.commissionName}
+                    partyAffiliation={profile?.partyAffiliation}
                     profileEducation={profile?.education}
                     profileCourses={profile?.courses}
                   />

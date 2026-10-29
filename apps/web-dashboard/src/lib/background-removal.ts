@@ -20,6 +20,9 @@ export interface UpscaleOptions {
   sharpen?: boolean;        // default: true
   sharpenStrength?: number; // default: 0.22
   defringe?: boolean;       // default: true
+  standardizePortrait?: boolean; // default: true (format kanvas potret resmi 4:5 1280x1600 px)
+  standardPortraitWidth?: number; // default: 1280
+  standardPortraitHeight?: number; // default: 1600
 }
 
 export interface BackgroundRemovalOptions extends UpscaleOptions {
@@ -246,6 +249,24 @@ export async function upscaleImageToHD(
     ctx.putImageData(imgData, 0, 0);
   }
 
+  // Standarisasi Kanvas Portrait 4:5 (1280x1600 px) dengan Pemusatan & Grounding Subjek
+  let processedCanvas: HTMLCanvasElement = finalCanvas;
+  const doStandardize = options?.standardizePortrait ?? true;
+  if (doStandardize && typeof document !== 'undefined') {
+    if (onProgress) {
+      onProgress({
+        key: 'upscale_standardize',
+        current: 95,
+        total: 100,
+        percentage: 95,
+        message: 'Menstandarisasi format kanvas foto profil resmi (4:5 HD)...',
+      });
+    }
+    const stdW = options?.standardPortraitWidth ?? 1280;
+    const stdH = options?.standardPortraitHeight ?? 1600;
+    processedCanvas = formatToStandardPortrait(finalCanvas, stdW, stdH);
+  }
+
   if (onProgress) {
     onProgress({
       key: 'upscale_complete',
@@ -256,12 +277,160 @@ export async function upscaleImageToHD(
     });
   }
 
-  return finalCanvas.toDataURL('image/png');
+  return processedCanvas.toDataURL('image/png');
+}
+
+/**
+ * Standarisasi gambar ke format kanvas resmi 4:5 Portrait (1280 x 1600 px).
+ * Dilengkapi deteksi otomatis bounding-box subjek (non-transparan) dengan histogram thresholding
+ * untuk mengabaikan noise/debu pemotongan AI, penyesuaian tinggi subjek proporsional (~92% tinggi kanvas),
+ * pemusatan horizontal, dan peletakan grounded di bagian bawah kanvas persis standar foto profil dewan.
+ */
+export function formatToStandardPortrait(
+  canvas: HTMLCanvasElement,
+  targetW = 1280,
+  targetH = 1600
+): HTMLCanvasElement {
+  const srcW = canvas.width;
+  const srcH = canvas.height;
+  const srcCtx = canvas.getContext('2d', { willReadFrequently: true });
+  if (!srcCtx) return canvas;
+
+  // 1. Ekstraksi data piksel kanvas sumber
+  const imgData = srcCtx.getImageData(0, 0, srcW, srcH);
+  const pixels = imgData.data;
+
+  // Buat histogram densitas baris dan kolom untuk filter noise
+  const rowCounts = new Uint32Array(srcH);
+  const colCounts = new Uint32Array(srcW);
+  let totalOpaquePixels = 0;
+
+  for (let y = 0; y < srcH; y++) {
+    const rowOffset = y * srcW;
+    for (let x = 0; x < srcW; x++) {
+      const alpha = pixels[(rowOffset + x) * 4 + 3];
+      if (alpha > 30) {
+        rowCounts[y]++;
+        colCounts[x]++;
+        totalOpaquePixels++;
+      }
+    }
+  }
+
+  // Buat kanvas target 4:5 HD (1280 x 1600 px)
+  const outCanvas = document.createElement('canvas');
+  outCanvas.width = targetW;
+  outCanvas.height = targetH;
+  const outCtx = outCanvas.getContext('2d');
+  if (!outCtx) return canvas;
+
+  outCtx.imageSmoothingEnabled = true;
+  outCtx.imageSmoothingQuality = 'high';
+
+  const totalPixels = srcW * srcH;
+  // Jika gambar tidak transparan (> 98% piksel padat) atau terlalu kosong (< 100 piksel)
+  const isTransparent = totalOpaquePixels < totalPixels * 0.98 && totalOpaquePixels > 100;
+
+  if (!isTransparent) {
+    // Foto solid tanpa background transparan: contain di tengah dan grounded di bawah
+    const scale = Math.min(targetW / srcW, targetH / srcH);
+    const drawW = Math.round(srcW * scale);
+    const drawH = Math.round(srcH * scale);
+    const drawX = Math.round((targetW - drawW) / 2);
+    const drawY = targetH - drawH;
+    outCtx.drawImage(canvas, 0, 0, srcW, srcH, drawX, drawY, drawW, drawH);
+    return outCanvas;
+  }
+
+  // 2. Tentukan batas subjek (bounding-box) dengan mengabaikan noise partikel terisolasi
+  const minPixelsPerRow = Math.max(3, Math.round(srcW * 0.003));
+  const minPixelsPerCol = Math.max(3, Math.round(srcH * 0.003));
+
+  let minY = 0;
+  while (minY < srcH && rowCounts[minY] < minPixelsPerRow) minY++;
+
+  let maxY = srcH - 1;
+  while (maxY >= 0 && rowCounts[maxY] < minPixelsPerRow) maxY--;
+
+  let minX = 0;
+  while (minX < srcW && colCounts[minX] < minPixelsPerCol) minX++;
+
+  let maxX = srcW - 1;
+  while (maxX >= 0 && colCounts[maxX] < minPixelsPerCol) maxX--;
+
+  if (maxX <= minX || maxY <= minY) {
+    // Fallback jika deteksi bounding-box gagal
+    const scale = Math.min(targetW / srcW, targetH / srcH);
+    const drawW = Math.round(srcW * scale);
+    const drawH = Math.round(srcH * scale);
+    const drawX = Math.round((targetW - drawW) / 2);
+    const drawY = targetH - drawH;
+    outCtx.drawImage(canvas, 0, 0, srcW, srcH, drawX, drawY, drawW, drawH);
+    return outCanvas;
+  }
+
+  const subW = maxX - minX + 1;
+  const subH = maxY - minY + 1;
+
+  // 3. Hitung skala penyesuaian ukuran subjek agar proporsional dan konsisten:
+  // Maksimum tinggi subjek ~92% dari kanvas (sisakan ~5-8% margin atas agar kepala tidak terpotong)
+  // Maksimum lebar subjek ~92% dari kanvas (sisakan margin kiri/kanan)
+  const maxAllowedH = Math.round(targetH * 0.92);
+  const maxAllowedW = Math.round(targetW * 0.92);
+
+  const fitScale = Math.min(maxAllowedH / subH, maxAllowedW / subW);
+  const drawW = Math.round(subW * fitScale);
+  const drawH = Math.round(subH * fitScale);
+
+  // 4. Posisi:
+  // Dipusatkan secara horizontal
+  const drawX = Math.round((targetW - drawW) / 2);
+
+  // Grounded di bagian bawah kanvas:
+  // Jika subjek asli menyentuh batas bawah (misal potongan badan/kaki), sentuhkan ke dasar (0 margin).
+  // Jika foto floating (misal pasfoto dada), beri sedikit margin dasar (~1.5% dari targetH).
+  const isOriginalGrounded = maxY >= srcH - Math.max(5, Math.round(srcH * 0.01));
+  const bottomMargin = isOriginalGrounded ? 0 : Math.round(targetH * 0.015);
+  const drawY = Math.max(0, targetH - drawH - bottomMargin);
+
+  // 5. Gambar subjek ke kanvas 4:5
+  outCtx.drawImage(
+    canvas,
+    minX,
+    minY,
+    subW,
+    subH,
+    drawX,
+    drawY,
+    drawW,
+    drawH
+  );
+
+  return outCanvas;
+}
+
+/**
+ * Format string/blob/file gambar langsung ke kanvas 4:5 Portrait standar (1280x1600 px)
+ */
+export async function formatImageSourceToStandardPortrait(
+  imageSource: string | Blob | File,
+  targetW = 1280,
+  targetH = 1600
+): Promise<string> {
+  const img = await loadImageElement(imageSource);
+  const canvas = document.createElement('canvas');
+  canvas.width = img.naturalWidth || img.width;
+  canvas.height = img.naturalHeight || img.height;
+  const ctx = canvas.getContext('2d');
+  if (!ctx) return typeof imageSource === 'string' ? imageSource : canvas.toDataURL('image/png');
+  ctx.drawImage(img, 0, 0);
+  const stdCanvas = formatToStandardPortrait(canvas, targetW, targetH);
+  return stdCanvas.toDataURL('image/png');
 }
 
 /**
  * Menghapus background foto menggunakan AI (@imgly/background-removal)
- * dan secara otomatis meningkatkan kualitas foto ke resolusi HD.
+ * dan secara otomatis meningkatkan kualitas foto ke resolusi HD serta menstandarisasi rasio ke 4:5.
  */
 export async function removeImageBackground(
   imageSource: string | Blob | File,
@@ -305,7 +474,21 @@ export async function removeImageBackground(
     return await upscaleImageToHD(blobResult, onProgress, options);
   }
 
-  // Jika tidak di-upscale, kembalikan langsung sebagai Data URL
+  // Jika tidak di-upscale tapi standarisasi aktif, format kanvas ke 4:5 Portrait
+  if ((options?.standardizePortrait ?? true) && typeof window !== 'undefined') {
+    const rawImg = await loadImageElement(blobResult);
+    const tempCanvas = document.createElement('canvas');
+    tempCanvas.width = rawImg.naturalWidth || rawImg.width;
+    tempCanvas.height = rawImg.naturalHeight || rawImg.height;
+    const tempCtx = tempCanvas.getContext('2d');
+    if (tempCtx) {
+      tempCtx.drawImage(rawImg, 0, 0);
+      const stdCanvas = formatToStandardPortrait(tempCanvas, 1280, 1600);
+      return stdCanvas.toDataURL('image/png');
+    }
+  }
+
+  // Fallback: kembalikan langsung sebagai Data URL
   return new Promise<string>((resolve, reject) => {
     const reader = new FileReader();
     reader.onloadend = () => {

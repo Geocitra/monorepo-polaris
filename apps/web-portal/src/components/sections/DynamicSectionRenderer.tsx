@@ -1,9 +1,8 @@
 'use client';
 
 import React from 'react';
-import { PortalSectionType, PortalTemplateId } from '@polaris/shared-types';
+import { PortalSectionType, PortalTemplateId, TEMPLATE_DEFAULT_COLORS } from '@polaris/shared-types';
 import { DEFAULT_PRESET_LAYOUTS, SectionDescriptor } from './SectionPresets';
-import { generateDynamicThemeCss } from '@/lib/dynamicThemeCss';
 import { HeroFeaturedStory } from './HeroFeaturedStory';
 import { HeroParliamentStand } from './HeroParliamentStand';
 import { HeroVideoLoop } from './HeroVideoLoop';
@@ -57,7 +56,7 @@ interface DynamicSectionRendererProps {
 }
 
 export function DynamicSectionRenderer({
-  member,
+  member: initialMember,
   theme,
   recentArticles = [],
   recentInfographics = [],
@@ -96,6 +95,29 @@ export function DynamicSectionRenderer({
     }
   }, [theme?.primaryHexColor]);
 
+  const currentTemplateDefault =
+    (TEMPLATE_DEFAULT_COLORS as any)[activeTemplateId] || {
+      primary: '#1890FF',
+      secondary: '#001529',
+    };
+
+  const isCustomColor = Boolean(
+    activePrimaryColor &&
+    activePrimaryColor.toLowerCase() !== currentTemplateDefault.primary.toLowerCase()
+  );
+
+  // Synchronize CSS variable dynamically on the document element for instant live theme reactivity
+  React.useEffect(() => {
+    if (activePrimaryColor && typeof document !== 'undefined') {
+      document.documentElement.style.setProperty('--portal-primary', activePrimaryColor);
+      // Synchronize data-polaris-theme attribute on outer layout container for instant mode toggle
+      const outerLayout = document.querySelector('[data-polaris-theme]');
+      if (outerLayout) {
+        outerLayout.setAttribute('data-polaris-theme', isCustomColor ? 'custom' : 'default');
+      }
+    }
+  }, [activePrimaryColor, isCustomColor]);
+
   // Listen to instantaneous postMessage from dashboard live simulator for color change
   React.useEffect(() => {
     function handleSimulatorColorMessage(event: MessageEvent) {
@@ -107,23 +129,49 @@ export function DynamicSectionRenderer({
     return () => window.removeEventListener('message', handleSimulatorColorMessage);
   }, []);
 
+  const [activePhotoUrl, setActivePhotoUrl] = React.useState<string>(
+    theme?.officialPhotoUrl || initialMember?.photoUrl || ''
+  );
+
+  React.useEffect(() => {
+    if (theme?.officialPhotoUrl) {
+      setActivePhotoUrl(theme.officialPhotoUrl);
+    } else if (initialMember?.photoUrl) {
+      setActivePhotoUrl(initialMember.photoUrl);
+    }
+  }, [theme?.officialPhotoUrl, initialMember?.photoUrl]);
+
+  // Listen to instantaneous postMessage from dashboard live simulator for official photo change
+  React.useEffect(() => {
+    function handleSimulatorPhotoMessage(event: MessageEvent) {
+      if (event.data?.type === 'POLARIS_PREVIEW_PHOTO_CHANGE' && event.data?.photoUrl !== undefined) {
+        setActivePhotoUrl(event.data.photoUrl);
+      }
+    }
+    window.addEventListener('message', handleSimulatorPhotoMessage);
+    return () => window.removeEventListener('message', handleSimulatorPhotoMessage);
+  }, []);
+
   const templateId = activeTemplateId;
   const currentTheme = React.useMemo(() => ({
     ...theme,
     layoutTemplateId: activeTemplateId,
     primaryHexColor: activePrimaryColor,
-  }), [theme, activeTemplateId, activePrimaryColor]);
+    officialPhotoUrl: activePhotoUrl || theme?.officialPhotoUrl,
+  }), [theme, activeTemplateId, activePrimaryColor, activePhotoUrl]);
 
-  const dynamicCss = React.useMemo(
-    () => generateDynamicThemeCss(activePrimaryColor),
-    [activePrimaryColor]
-  );
+  const member = React.useMemo(() => ({
+    ...initialMember,
+    photoUrl: activePhotoUrl || initialMember?.photoUrl,
+  }), [initialMember, activePhotoUrl]);
 
   const wrapWithTheme = (node: React.ReactNode) => (
-    <div data-polaris-theme="true" className="w-full min-h-screen">
-      {dynamicCss && (
-        <style dangerouslySetInnerHTML={{ __html: dynamicCss }} />
-      )}
+    <div
+      data-polaris-theme={isCustomColor ? 'custom' : 'default'}
+      suppressHydrationWarning
+      style={{ '--portal-primary': activePrimaryColor } as React.CSSProperties}
+      className="w-full min-h-screen"
+    >
       {node}
     </div>
   );

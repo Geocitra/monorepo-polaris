@@ -17,7 +17,14 @@ import {
   CheckCircle2,
   ArrowLeftRight,
   Sparkles,
+  Loader2,
+  Wand2,
 } from 'lucide-react';
+import {
+  removeImageBackground,
+  upscaleImageToHD,
+  formatImageSourceToStandardPortrait,
+} from '@/lib/background-removal';
 
 interface PersonalPhotoCatalogProps {
   photoGallery: string[];
@@ -30,45 +37,20 @@ interface PersonalPhotoCatalogProps {
 const MAX_PHOTOS = 10;
 
 /**
- * Kompres dan standarisasi gambar menjadi Base64 yang efisien
+ * Kompres dan standarisasi gambar menjadi format resmi Portrait 4:5 (1280x1600 px)
  */
 async function processImageFile(file: File): Promise<string> {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onerror = reject;
-    reader.onload = (e) => {
-      const img = new Image();
-      img.onerror = reject;
-      img.onload = () => {
-        const MAX_DIM = 1600;
-        let { width, height } = img;
-        if (width > MAX_DIM || height > MAX_DIM) {
-          if (width > height) {
-            height = Math.round((height * MAX_DIM) / width);
-            width = MAX_DIM;
-          } else {
-            width = Math.round((width * MAX_DIM) / height);
-            height = MAX_DIM;
-          }
-        }
-        const canvas = document.createElement('canvas');
-        canvas.width = width;
-        canvas.height = height;
-        const ctx = canvas.getContext('2d');
-        if (!ctx) {
-          resolve(e.target?.result as string);
-          return;
-        }
-        ctx.drawImage(img, 0, 0, width, height);
-        // Pertahankan format PNG jika file adalah PNG transparan
-        const format = file.type === 'image/png' ? 'image/png' : 'image/jpeg';
-        const dataUrl = canvas.toDataURL(format, 0.88);
-        resolve(dataUrl);
-      };
-      img.src = e.target?.result as string;
-    };
-    reader.readAsDataURL(file);
-  });
+  try {
+    return await formatImageSourceToStandardPortrait(file, 1280, 1600);
+  } catch (err) {
+    console.warn('Fallback processing image file:', err);
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onerror = reject;
+      reader.onload = () => resolve(reader.result as string);
+      reader.readAsDataURL(file);
+    });
+  }
 }
 
 export function PersonalPhotoCatalog({
@@ -82,7 +64,14 @@ export function PersonalPhotoCatalog({
   const [showUrlInput, setShowUrlInput] = useState(false);
   const [urlInput, setUrlInput] = useState('');
   const [urlError, setUrlError] = useState('');
-  const [isProcessing, setIsProcessing] = useState(false);
+
+  // AI Background Removal & Super-Resolution HD States (Sama seperti di Profile)
+  const [autoRemoveBg, setAutoRemoveBg] = useState(true);
+  const [autoUpscaleHD, setAutoUpscaleHD] = useState(true);
+  const [isProcessingBg, setIsProcessingBg] = useState(false);
+  const [bgStatusMessage, setBgStatusMessage] = useState('');
+  const [bgProgress, setBgProgress] = useState(0);
+  const [processingPhotoIndex, setProcessingPhotoIndex] = useState<number | null>(null);
 
   // Lightbox Preview State
   const [lightboxIndex, setLightboxIndex] = useState<number | null>(null);
@@ -119,18 +108,57 @@ export function PersonalPhotoCatalog({
       return;
     }
 
-    setIsProcessing(true);
-    try {
-      const filesToProcess = Array.from(files).slice(0, remainingSlots);
-      if (files.length > remainingSlots) {
-        alert(`Hanya ${remainingSlots} foto yang dapat ditambahkan karena batas maksimal katalog adalah ${MAX_PHOTOS} foto.`);
-      }
+    const filesToProcess = Array.from(files).slice(0, remainingSlots);
+    if (files.length > remainingSlots) {
+      alert(`Hanya ${remainingSlots} foto yang dapat ditambahkan karena batas maksimal katalog adalah ${MAX_PHOTOS} foto.`);
+    }
 
+    setIsProcessingBg(true);
+    setBgStatusMessage('Menyiapkan pemrosesan foto & AI...');
+    setBgProgress(10);
+
+    try {
       const processedUrls: string[] = [];
-      for (const file of filesToProcess) {
+
+      for (let i = 0; i < filesToProcess.length; i++) {
+        const file = filesToProcess[i];
         if (!file.type.startsWith('image/')) continue;
-        const dataUrl = await processImageFile(file);
-        processedUrls.push(dataUrl);
+
+        // Baca file ke format Data URL
+        const originalData = await new Promise<string>((resolve, reject) => {
+          const reader = new FileReader();
+          reader.onload = () => resolve(reader.result as string);
+          reader.onerror = reject;
+          reader.readAsDataURL(file);
+        });
+
+        const prefix = filesToProcess.length > 1 ? `Foto ${i + 1}/${filesToProcess.length}: ` : '';
+
+        let resultUrl = originalData;
+
+        if (autoRemoveBg) {
+          resultUrl = await removeImageBackground(
+            originalData,
+            (progress) => {
+              setBgStatusMessage(`${prefix}${progress.message}`);
+              setBgProgress(progress.percentage);
+            },
+            { autoUpscale: autoUpscaleHD, targetMinHeight: 1600 }
+          );
+        } else if (autoUpscaleHD) {
+          resultUrl = await upscaleImageToHD(
+            originalData,
+            (progress) => {
+              setBgStatusMessage(`${prefix}${progress.message}`);
+              setBgProgress(progress.percentage);
+            },
+            { targetMinHeight: 1600 }
+          );
+        } else {
+          resultUrl = await processImageFile(file);
+        }
+
+        processedUrls.push(resultUrl);
       }
 
       if (processedUrls.length > 0) {
@@ -144,14 +172,16 @@ export function PersonalPhotoCatalog({
       }
     } catch (err) {
       console.error('Gagal memproses file foto:', err);
-      alert('Terjadi kesalahan saat memproses foto. Silakan coba lagi.');
+      alert('Terjadi kesalahan saat memproses foto: ' + (err instanceof Error ? err.message : String(err)));
     } finally {
-      setIsProcessing(false);
+      setIsProcessingBg(false);
+      setBgProgress(0);
+      setBgStatusMessage('');
       if (fileInputRef.current) fileInputRef.current.value = '';
     }
   }
 
-  function handleAddUrl() {
+  async function handleAddUrl() {
     setUrlError('');
     const clean = urlInput.trim();
     if (!clean) return;
@@ -166,15 +196,112 @@ export function PersonalPhotoCatalog({
       return;
     }
 
-    const nextGallery = [...photoGallery, clean];
-    setPhotoGallery(nextGallery);
+    setIsProcessingBg(true);
+    setBgStatusMessage('Membaca tautan URL & memproses AI...');
+    setBgProgress(10);
 
-    if (!photoUrl) {
-      setPhotoUrl(clean);
+    try {
+      let resultUrl = clean;
+
+      if (autoRemoveBg) {
+        resultUrl = await removeImageBackground(
+          clean,
+          (progress) => {
+            setBgStatusMessage(progress.message);
+            setBgProgress(progress.percentage);
+          },
+          { autoUpscale: autoUpscaleHD, targetMinHeight: 1600 }
+        );
+      } else if (autoUpscaleHD) {
+        resultUrl = await upscaleImageToHD(
+          clean,
+          (progress) => {
+            setBgStatusMessage(progress.message);
+            setBgProgress(progress.percentage);
+          },
+          { targetMinHeight: 1600 }
+        );
+      }
+
+      const nextGallery = [...photoGallery, resultUrl];
+      setPhotoGallery(nextGallery);
+
+      if (!photoUrl) {
+        setPhotoUrl(resultUrl);
+      }
+
+      setUrlInput('');
+      setShowUrlInput(false);
+    } catch (err) {
+      console.error('Gagal memproses URL foto:', err);
+      // Fallback: gunakan clean URL asli jika remove-bg URL terkendala CORS
+      const nextGallery = [...photoGallery, clean];
+      setPhotoGallery(nextGallery);
+      if (!photoUrl) setPhotoUrl(clean);
+      setUrlInput('');
+      setShowUrlInput(false);
+    } finally {
+      setIsProcessingBg(false);
+      setBgProgress(0);
+      setBgStatusMessage('');
     }
+  }
 
-    setUrlInput('');
-    setShowUrlInput(false);
+  async function handleProcessExistingPhoto(index: number, mode: 'removeBg' | 'upscale' | 'standardize') {
+    const targetPhoto = photoGallery[index];
+    if (!targetPhoto || isProcessingBg) return;
+
+    setIsProcessingBg(true);
+    setProcessingPhotoIndex(index);
+    setBgStatusMessage(
+      mode === 'removeBg'
+        ? 'AI menghapus background & standarisasi foto ke 4:5 HD...'
+        : mode === 'upscale'
+        ? 'Meningkatkan foto ke Super-Resolution HD 4:5...'
+        : 'Menstandarisasi ukuran & kanvas foto ke rasio 4:5 profil...'
+    );
+    setBgProgress(15);
+
+    try {
+      let resultUrl = targetPhoto;
+      if (mode === 'removeBg') {
+        resultUrl = await removeImageBackground(
+          targetPhoto,
+          (progress) => {
+            setBgStatusMessage(progress.message);
+            setBgProgress(progress.percentage);
+          },
+          { autoUpscale: autoUpscaleHD, targetMinHeight: 1600, standardizePortrait: true }
+        );
+      } else if (mode === 'upscale') {
+        resultUrl = await upscaleImageToHD(
+          targetPhoto,
+          (progress) => {
+            setBgStatusMessage(progress.message);
+            setBgProgress(progress.percentage);
+          },
+          { targetMinHeight: 1600, standardizePortrait: true }
+        );
+      } else {
+        resultUrl = await formatImageSourceToStandardPortrait(targetPhoto, 1280, 1600);
+      }
+
+      const nextGallery = [...photoGallery];
+      nextGallery[index] = resultUrl;
+      setPhotoGallery(nextGallery);
+
+      if (photoUrl === targetPhoto) {
+        setPhotoUrl(resultUrl);
+      }
+    } catch (err) {
+      console.error('Gagal memproses foto katalog:', err);
+      alert('Gagal memproses foto: ' + (err instanceof Error ? err.message : String(err)));
+    } finally {
+      setIsProcessingBg(false);
+      setProcessingPhotoIndex(null);
+      setBgProgress(0);
+      setBgStatusMessage('');
+    }
   }
 
   function handleRemovePhoto(indexToRemove: number) {
@@ -260,45 +387,109 @@ export function PersonalPhotoCatalog({
         </div>
       </div>
 
-      {/* ACTION UPLOAD CONTROLS */}
+      {/* ACTION UPLOAD CONTROLS & AI TOGGLE */}
       {!isReadOnly && (
-        <div className="flex flex-wrap items-center gap-2 pt-0.5">
-          <input
-            type="file"
-            ref={fileInputRef}
-            onChange={handleFilesSelected}
-            accept="image/png,image/jpeg,image/webp"
-            multiple
-            className="hidden"
-            disabled={isMaxReached || isProcessing}
-          />
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 pt-0.5">
+          <div className="flex flex-wrap items-center gap-2">
+            <input
+              type="file"
+              ref={fileInputRef}
+              onChange={handleFilesSelected}
+              accept="image/png,image/jpeg,image/webp"
+              multiple
+              className="hidden"
+              disabled={isMaxReached || isProcessingBg}
+            />
 
-          <Button
-            type="button"
-            size="sm"
-            disabled={isMaxReached || isProcessing}
-            onClick={() => fileInputRef.current?.click()}
-            className="bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs px-3 py-1.5 h-8 rounded-lg gap-1.5 shadow-2xs cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            <UploadCloud className="h-3.5 w-3.5" />
-            <span>{isProcessing ? 'Memproses Foto...' : 'Unggah Foto Baru'}</span>
-          </Button>
+            <Button
+              type="button"
+              size="sm"
+              disabled={isMaxReached || isProcessingBg}
+              onClick={() => fileInputRef.current?.click()}
+              className="bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs px-3 py-1.5 h-8 rounded-lg gap-1.5 shadow-2xs cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {isProcessingBg && processingPhotoIndex === null ? (
+                <>
+                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                  <span>Memproses AI...</span>
+                </>
+              ) : (
+                <>
+                  <UploadCloud className="h-3.5 w-3.5" />
+                  <span>Unggah Foto Baru</span>
+                </>
+              )}
+            </Button>
 
-          <Button
-            type="button"
-            size="sm"
-            variant="outline"
-            disabled={isMaxReached || isProcessing}
-            onClick={() => setShowUrlInput(!showUrlInput)}
-            className="border-slate-300 dark:border-slate-700 text-slate-700 dark:text-slate-300 text-xs px-2.5 py-1.5 h-8 rounded-lg gap-1 cursor-pointer disabled:opacity-50"
-          >
-            <LinkIcon className="h-3 w-3" />
-            <span>Tambah via URL</span>
-          </Button>
+            <Button
+              type="button"
+              size="sm"
+              variant="outline"
+              disabled={isMaxReached || isProcessingBg}
+              onClick={() => setShowUrlInput(!showUrlInput)}
+              className="border-slate-300 dark:border-slate-700 text-slate-700 dark:text-slate-300 text-xs px-2.5 py-1.5 h-8 rounded-lg gap-1 cursor-pointer disabled:opacity-50"
+            >
+              <LinkIcon className="h-3 w-3" />
+              <span>Tambah via URL</span>
+            </Button>
+          </div>
 
-          <div className="text-[10px] text-slate-500 dark:text-slate-400 flex items-center gap-1 ml-auto">
-            <Info className="h-3 w-3 text-slate-400" />
-            <span>Mendukung format PNG, JPG, dan WEBP</span>
+          {/* AI REMOVE BACKGROUND & UPSCALE TOGGLES (Sama seperti di Profile) */}
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[9px] font-extrabold bg-violet-100 dark:bg-violet-950/60 text-violet-700 dark:text-violet-300 border border-violet-200 dark:border-violet-800 shadow-2xs">
+              <Sparkles className="h-2.5 w-2.5 text-violet-600 dark:text-violet-400" />
+              Auto-Transparan AI
+            </span>
+
+            <label className="text-[10px] text-slate-700 dark:text-slate-300 bg-white dark:bg-slate-800 border border-slate-200/90 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-750 px-2 py-1 rounded-md flex items-center gap-1.5 cursor-pointer shadow-2xs select-none">
+              <input
+                type="checkbox"
+                checked={autoRemoveBg}
+                onChange={(e) => setAutoRemoveBg(e.target.checked)}
+                disabled={isProcessingBg}
+                className="rounded text-violet-600 focus:ring-violet-500 h-3 w-3 cursor-pointer"
+              />
+              <span className="font-semibold text-slate-800 dark:text-slate-200">Hapus Background AI</span>
+            </label>
+
+            <label className="text-[10px] text-slate-700 dark:text-slate-300 bg-white dark:bg-slate-800 border border-slate-200/90 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-750 px-2 py-1 rounded-md flex items-center gap-1.5 cursor-pointer shadow-2xs select-none">
+              <input
+                type="checkbox"
+                checked={autoUpscaleHD}
+                onChange={(e) => setAutoUpscaleHD(e.target.checked)}
+                disabled={isProcessingBg}
+                className="rounded text-blue-600 focus:ring-blue-500 h-3 w-3 cursor-pointer"
+              />
+              <span className="font-semibold text-slate-800 dark:text-slate-200 flex items-center gap-1">
+                <Sparkles className="h-2.5 w-2.5 text-blue-600 dark:text-blue-400" />
+                Scale Up HD
+              </span>
+            </label>
+          </div>
+        </div>
+      )}
+
+      {/* AI PROCESSING PROGRESS BAR NOTIFICATION */}
+      {isProcessingBg && (
+        <div className="p-3 rounded-xl bg-violet-50 dark:bg-violet-950/40 border border-violet-200 dark:border-violet-800 flex items-center gap-3 animate-in fade-in duration-200 shadow-2xs">
+          <div className="w-8 h-8 rounded-lg bg-violet-600 text-white flex items-center justify-center shrink-0 shadow-sm">
+            <Loader2 className="w-4 h-4 animate-spin" />
+          </div>
+          <div className="flex-1 min-w-0 space-y-1">
+            <div className="flex items-center justify-between text-xs">
+              <span className="font-bold text-violet-900 dark:text-violet-200 truncate">
+                {bgStatusMessage || 'AI sedang memproses foto katalog...'}
+              </span>
+              <span className="font-mono font-bold text-violet-700 dark:text-violet-300 shrink-0 ml-2">
+                {bgProgress}%
+              </span>
+            </div>
+            <div className="h-1.5 w-full bg-violet-200 dark:bg-violet-900/60 rounded-full overflow-hidden">
+              <div
+                className="h-full bg-gradient-to-r from-violet-600 to-indigo-600 transition-all duration-300 rounded-full"
+                style={{ width: `${Math.max(8, bgProgress)}%` }}
+              />
+            </div>
           </div>
         </div>
       )}
@@ -320,8 +511,9 @@ export function PersonalPhotoCatalog({
             <Button
               type="button"
               size="sm"
+              disabled={isProcessingBg}
               onClick={handleAddUrl}
-              className="bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs px-3 h-7 rounded-lg cursor-pointer"
+              className="bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs px-3 h-7 rounded-lg cursor-pointer disabled:opacity-50"
             >
               Tambahkan
             </Button>
@@ -347,26 +539,33 @@ export function PersonalPhotoCatalog({
         <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3 pt-1">
           {photoGallery.map((photo, index) => {
             const isPrimary = photo === photoUrl;
+            const isBeingProcessed = isProcessingBg && processingPhotoIndex === index;
 
             return (
               <div
                 key={`gallery-${index}`}
-                className={`group relative rounded-xl border overflow-hidden bg-slate-100 dark:bg-slate-800 shadow-2xs transition-all duration-200 hover:shadow-md ${
+                className={`group relative rounded-xl border overflow-hidden bg-slate-100 dark:bg-slate-850 shadow-2xs transition-all duration-200 hover:shadow-md ${
                   isPrimary
                     ? 'border-emerald-500 ring-2 ring-emerald-500/40'
                     : 'border-slate-200 dark:border-slate-700 hover:border-blue-400'
                 }`}
               >
-                {/* PHOTO THUMBNAIL */}
+                {/* PHOTO THUMBNAIL (DENGAN MOTIF TRANSPARAN CHECKERBOARD ELEGAN) */}
                 <div
                   onClick={() => setLightboxIndex(index)}
-                  className="aspect-[4/5] w-full overflow-hidden bg-slate-900/10 dark:bg-black/30 cursor-pointer relative"
+                  className="aspect-[4/5] w-full overflow-hidden cursor-pointer relative bg-slate-100 dark:bg-slate-900"
+                  style={{
+                    backgroundImage:
+                      'linear-gradient(45deg, #cbd5e1 25%, transparent 25%), linear-gradient(-45deg, #cbd5e1 25%, transparent 25%), linear-gradient(45deg, transparent 75%, #cbd5e1 75%), linear-gradient(-45deg, transparent 75%, #cbd5e1 75%)',
+                    backgroundSize: '12px 12px',
+                    backgroundPosition: '0 0, 0 6px, 6px -6px, -6px 0px',
+                  }}
                 >
                   {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img
                     src={photo}
                     alt={`Foto Katalog ${index + 1}`}
-                    className="h-full w-full object-cover object-center group-hover:scale-105 transition-transform duration-300"
+                    className="h-full w-full object-contain object-bottom drop-shadow-xs group-hover:scale-105 transition-transform duration-300"
                   />
 
                   {/* OVERLAY HOVER SHADOW */}
@@ -375,6 +574,19 @@ export function PersonalPhotoCatalog({
                       <Eye className="h-4 w-4" />
                     </div>
                   </div>
+
+                  {/* OVERLAY KETIKA FOTO SEDANG DIPROSES AI SECARA INDIVIDUAL */}
+                  {isBeingProcessed && (
+                    <div className="absolute inset-0 bg-slate-950/80 backdrop-blur-[1px] flex flex-col items-center justify-center p-2 text-center z-20">
+                      <Loader2 className="h-6 w-6 text-violet-400 animate-spin mb-1" />
+                      <span className="text-[10px] font-bold text-white leading-tight">
+                        {bgProgress}%
+                      </span>
+                      <span className="text-[9px] text-slate-300 leading-tight mt-0.5">
+                        {bgStatusMessage}
+                      </span>
+                    </div>
+                  )}
                 </div>
 
                 {/* NUMBER BADGE */}
@@ -406,8 +618,9 @@ export function PersonalPhotoCatalog({
                           e.stopPropagation();
                           handleSetAsPrimary(photo);
                         }}
+                        disabled={isProcessingBg}
                         title="Jadikan Foto Profil Utama"
-                        className="inline-flex items-center gap-1 text-[10px] font-bold text-slate-600 dark:text-slate-400 hover:text-blue-600 dark:hover:text-blue-400 px-1.5 py-0.5 rounded hover:bg-slate-100 dark:hover:bg-slate-800 cursor-pointer transition-colors"
+                        className="inline-flex items-center gap-1 text-[10px] font-bold text-slate-600 dark:text-slate-400 hover:text-blue-600 dark:hover:text-blue-400 px-1.5 py-0.5 rounded hover:bg-slate-100 dark:hover:bg-slate-800 cursor-pointer transition-colors disabled:opacity-50"
                       >
                         <Star className="h-3 w-3 text-slate-400 group-hover:text-amber-500" />
                         <span>Jadikan Utama</span>
@@ -416,6 +629,20 @@ export function PersonalPhotoCatalog({
 
                     {/* ACTION CONTROLS */}
                     <div className="flex items-center gap-0.5">
+                      {/* HAPUS BACKGROUND AI (JIKA USER INGIN REMOVE BG FOTO YANG SUDAH ADA) */}
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleProcessExistingPhoto(index, 'removeBg');
+                        }}
+                        disabled={isProcessingBg}
+                        title="Hapus Background AI, Scale Up HD & Standarisasi Ukuran 4:5 untuk foto ini"
+                        className="p-1 rounded text-violet-600 dark:text-violet-400 hover:text-violet-700 hover:bg-violet-50 dark:hover:bg-violet-950/40 cursor-pointer transition-colors disabled:opacity-40"
+                      >
+                        <Sparkles className="h-3 w-3" />
+                      </button>
+
                       {/* MOVE LEFT */}
                       {index > 0 && (
                         <button
@@ -424,8 +651,9 @@ export function PersonalPhotoCatalog({
                             e.stopPropagation();
                             handleMovePhoto(index, index - 1);
                           }}
+                          disabled={isProcessingBg}
                           title="Pindahkan ke kiri"
-                          className="p-1 rounded text-slate-400 hover:text-slate-700 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800 cursor-pointer"
+                          className="p-1 rounded text-slate-400 hover:text-slate-700 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800 cursor-pointer disabled:opacity-40"
                         >
                           <ChevronLeft className="h-3 w-3" />
                         </button>
@@ -439,8 +667,9 @@ export function PersonalPhotoCatalog({
                             e.stopPropagation();
                             handleMovePhoto(index, index + 1);
                           }}
+                          disabled={isProcessingBg}
                           title="Pindahkan ke kanan"
-                          className="p-1 rounded text-slate-400 hover:text-slate-700 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800 cursor-pointer"
+                          className="p-1 rounded text-slate-400 hover:text-slate-700 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800 cursor-pointer disabled:opacity-40"
                         >
                           <ChevronRight className="h-3 w-3" />
                         </button>
@@ -453,8 +682,9 @@ export function PersonalPhotoCatalog({
                           e.stopPropagation();
                           handleRemovePhoto(index);
                         }}
+                        disabled={isProcessingBg}
                         title="Hapus dari katalog"
-                        className="p-1 rounded text-red-500 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-950/40 cursor-pointer transition-colors"
+                        className="p-1 rounded text-red-500 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-950/40 cursor-pointer transition-colors disabled:opacity-40"
                       >
                         <Trash2 className="h-3 w-3" />
                       </button>
@@ -469,18 +699,33 @@ export function PersonalPhotoCatalog({
           {!isReadOnly && !isMaxReached && (
             <button
               type="button"
+              disabled={isProcessingBg}
               onClick={() => fileInputRef.current?.click()}
-              className="aspect-[4/5] rounded-xl border-2 border-dashed border-slate-300 dark:border-slate-700 hover:border-blue-500 dark:hover:border-blue-500 bg-slate-50/60 dark:bg-slate-800/40 hover:bg-blue-50/40 dark:hover:bg-blue-950/20 transition-all flex flex-col items-center justify-center p-3 text-center cursor-pointer group"
+              className="aspect-[4/5] rounded-xl border-2 border-dashed border-slate-300 dark:border-slate-700 hover:border-blue-500 dark:hover:border-blue-500 bg-slate-50/60 dark:bg-slate-800/40 hover:bg-blue-50/40 dark:hover:bg-blue-950/20 transition-all flex flex-col items-center justify-center p-3 text-center cursor-pointer group disabled:cursor-not-allowed"
             >
-              <div className="w-9 h-9 rounded-full bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 flex items-center justify-center text-slate-400 group-hover:text-blue-600 group-hover:border-blue-300 shadow-2xs group-hover:scale-110 transition-transform">
-                <UploadCloud className="h-4 w-4" />
-              </div>
-              <span className="text-[11px] font-bold text-slate-700 dark:text-slate-300 mt-2 group-hover:text-blue-600 dark:group-hover:text-blue-400">
-                + Tambah Foto
-              </span>
-              <span className="text-[9px] text-slate-400 dark:text-slate-500 mt-0.5">
-                Slot #{currentCount + 1}
-              </span>
+              {isProcessingBg && processingPhotoIndex === null ? (
+                <div className="flex flex-col items-center justify-center gap-1.5 p-2">
+                  <Loader2 className="h-6 w-6 text-violet-600 dark:text-violet-400 animate-spin" />
+                  <span className="text-[10px] font-bold text-violet-700 dark:text-violet-300">
+                    Memproses AI ({bgProgress}%)...
+                  </span>
+                  <span className="text-[9px] text-slate-500 max-w-[120px] line-clamp-2">
+                    {bgStatusMessage}
+                  </span>
+                </div>
+              ) : (
+                <>
+                  <div className="w-9 h-9 rounded-full bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 flex items-center justify-center text-slate-400 group-hover:text-blue-600 group-hover:border-blue-300 shadow-2xs group-hover:scale-110 transition-transform">
+                    <UploadCloud className="h-4 w-4" />
+                  </div>
+                  <span className="text-[11px] font-bold text-slate-700 dark:text-slate-300 mt-2 group-hover:text-blue-600 dark:group-hover:text-blue-400">
+                    + Tambah Foto
+                  </span>
+                  <span className="text-[9px] text-slate-400 dark:text-slate-500 mt-0.5">
+                    Slot #{currentCount + 1}
+                  </span>
+                </>
+              )}
             </button>
           )}
         </div>
@@ -580,17 +825,34 @@ export function PersonalPhotoCatalog({
                 )}
               </div>
 
-              {!isReadOnly && photoGallery[lightboxIndex] !== photoUrl && (
-                <Button
-                  type="button"
-                  size="sm"
-                  onClick={() => handleSetAsPrimary(photoGallery[lightboxIndex])}
-                  className="bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold px-3 py-1 h-7 rounded-lg gap-1.5 cursor-pointer shadow-xs"
-                >
-                  <Star className="h-3.5 w-3.5" />
-                  <span>Jadikan Foto Utama</span>
-                </Button>
-              )}
+              <div className="flex items-center gap-2">
+                {!isReadOnly && (
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="outline"
+                    disabled={isProcessingBg}
+                    onClick={() => handleProcessExistingPhoto(lightboxIndex, 'removeBg')}
+                    className="text-white border-white/20 hover:bg-white/10 text-xs font-semibold px-2.5 py-1 h-7 rounded-lg gap-1.5 cursor-pointer shadow-xs"
+                    title="Standarisasi format dan hapus background foto ini agar sama dengan profil"
+                  >
+                    <Sparkles className="h-3.5 w-3.5 text-violet-300" />
+                    <span>Format 4:5 & Transparan AI</span>
+                  </Button>
+                )}
+
+                {!isReadOnly && photoGallery[lightboxIndex] !== photoUrl && (
+                  <Button
+                    type="button"
+                    size="sm"
+                    onClick={() => handleSetAsPrimary(photoGallery[lightboxIndex])}
+                    className="bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold px-3 py-1 h-7 rounded-lg gap-1.5 cursor-pointer shadow-xs"
+                  >
+                    <Star className="h-3.5 w-3.5" />
+                    <span>Jadikan Foto Utama</span>
+                  </Button>
+                )}
+              </div>
             </div>
           </div>
         </div>

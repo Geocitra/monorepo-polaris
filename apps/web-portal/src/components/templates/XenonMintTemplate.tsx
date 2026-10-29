@@ -112,10 +112,10 @@ export function XenonMintTemplate({
       : [];
 
   const [selectedInfographic, setSelectedInfographic] = useState<any | null>(null);
-  const [selectedCategory, setSelectedCategory] = useState<string>('ALL');
+  const [selectedCategory, setSelectedCategory] = useState<string>('SEMUA');
 
   const articleCategories = [
-    'ALL',
+    'SEMUA',
     ...Array.from(
       new Set(
         displayArticles
@@ -126,7 +126,7 @@ export function XenonMintTemplate({
   ];
 
   const filteredArticles = displayArticles.filter((art: any) => {
-    if (selectedCategory === 'ALL') return true;
+    if (selectedCategory === 'SEMUA') return true;
     return art.category === selectedCategory;
   });
 
@@ -155,21 +155,20 @@ export function XenonMintTemplate({
           {/* Left Column (5 Cols): Typography & CTA */}
           <div className="lg:col-span-5 space-y-6">
             <div className="space-y-3">
-              <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-slate-900 border border-slate-700/80 text-[11px] font-bold text-[#00E599]">
-                <Sparkles className="w-3.5 h-3.5" />
+              <div className="inline-flex items-center px-3.5 py-1.5 rounded-full bg-slate-900 border border-slate-700/80 text-[11px] font-bold text-[#00E599]">
                 <span>Portal Resmi Aspirasi Parlemen</span>
               </div>
 
               <h1 className="text-4xl sm:text-5xl lg:text-[3.4rem] font-black tracking-tight leading-[1.08] text-white">
-                Unlock Public Trust{' '}
+                Membangun Amanah Publik{' '}
                 <span className="text-[#00E599] inline-flex items-center">
                   ↗
                 </span>{' '}
                 <span className="block text-slate-100 font-extrabold">
-                  With Strategic
+                  Tata Kelola Parlemen
                 </span>
                 <span className="block text-[#00E599] underline decoration-[#00E599]/40 underline-offset-8">
-                  Governance
+                  Berintegritas
                 </span>
               </h1>
             </div>
@@ -229,11 +228,8 @@ export function XenonMintTemplate({
               </div>
 
               {/* Floating Name Badge */}
-              <div className="absolute -bottom-4 left-1/2 -translate-x-1/2 z-20 px-4 py-2 rounded-2xl bg-[#081018]/95 backdrop-blur-md border border-slate-700/80 text-center shadow-xl whitespace-nowrap">
-                <div className="text-xs font-black text-white">{info.fullName}</div>
-                <div className="text-[10px] font-bold text-[#00E599] uppercase tracking-wider">
-                  {info.title}
-                </div>
+              <div className="absolute -bottom-4 left-1/2 -translate-x-1/2 z-20 px-5 py-2.5 rounded-2xl bg-[#081018]/95 backdrop-blur-md border border-slate-700/80 text-center shadow-xl whitespace-nowrap">
+                <div className="text-xs sm:text-sm font-black text-white">{info.fullName}</div>
               </div>
             </div>
           </div>
@@ -246,50 +242,46 @@ export function XenonMintTemplate({
               <div className="relative space-y-1">
                 <div className="absolute -left-7 top-1.5 w-3 h-3 rounded-full bg-[#00E599] border-2 border-[#081018] shadow-[0_0_10px_#00E599]" />
                 <h4 className="text-xs font-black text-white uppercase tracking-wider">
-                  Respon Aspirasi Cepat
+                  Fungsi Legislasi
                 </h4>
                 <p className="text-[11px] text-slate-400 leading-snug">
-                  Kanal pengaduan warga 24/7 dengan verifikasi terpadu.
+                  Pengawalan perda dan regulasi perundang-undangan pro-rakyat.
                 </p>
               </div>
 
               <div className="relative space-y-1">
                 <div className="absolute -left-7 top-1.5 w-3 h-3 rounded-full bg-[#00E599] border-2 border-[#081018] shadow-[0_0_10px_#00E599]" />
                 <h4 className="text-xs font-black text-white uppercase tracking-wider">
-                  Transparansi APBD
+                  Fungsi Anggaran
                 </h4>
                 <p className="text-[11px] text-slate-400 leading-snug">
-                  Publikasi berkala alokasi belanja modal & bansos daerah.
+                  Pengawasan perimbangan alokasi anggaran daerah yang transparan.
                 </p>
               </div>
 
               <div className="relative space-y-1">
                 <div className="absolute -left-7 top-1.5 w-3 h-3 rounded-full bg-[#00E599] border-2 border-[#081018] shadow-[0_0_10px_#00E599]" />
                 <h4 className="text-xs font-black text-white uppercase tracking-wider">
-                  Regulasi Pro-Rakyat
+                  Fungsi Representasi
                 </h4>
                 <p className="text-[11px] text-slate-400 leading-snug">
-                  Pengawalan perda perlindungan petani, UMKM & buruh.
+                  Advokasi tuntas aspirasi konstituen secara berkala dan terpadu.
                 </p>
               </div>
             </div>
 
-            {/* Metric Stack: 150K+ Active Constituents */}
-            <div className="p-4 rounded-2xl bg-slate-900/90 border border-slate-800 flex items-center gap-3 shadow-lg">
-              <div className="flex -space-x-2">
-                <div className="w-8 h-8 rounded-full bg-emerald-500 border-2 border-[#081018] flex items-center justify-center text-[10px] font-black text-slate-950">
-                  AF
-                </div>
-                <div className="w-8 h-8 rounded-full bg-[#00E599] border-2 border-[#081018] flex items-center justify-center text-[10px] font-black text-slate-950">
-                  DPR
-                </div>
-                <div className="w-8 h-8 rounded-full bg-teal-400 border-2 border-[#081018] flex items-center justify-center text-[10px] font-black text-slate-950">
-                  ✓
-                </div>
+            {/* Mandat Resmi Dewan (Real Dynamic Mandate) */}
+            <div className="p-4 rounded-2xl bg-slate-900/90 border border-slate-800 flex items-center gap-3.5 shadow-lg">
+              <div className="w-10 h-10 rounded-xl bg-[#00E599]/15 border border-[#00E599]/40 flex items-center justify-center text-[#00E599] shrink-0">
+                <ShieldCheck className="w-5 h-5" />
               </div>
-              <div>
-                <div className="text-sm font-black text-white">150K+ Warga</div>
-                <div className="text-[10px] text-slate-400 font-medium">Terlayani di Dapil</div>
+              <div className="min-w-0">
+                <div className="text-xs font-black text-white truncate">
+                  {info.legislativeLevel ? `Anggota ${info.legislativeLevel.replace(/_/g, ' ')}` : 'Parlemen Republik Indonesia'}
+                </div>
+                <div className="text-[10px] text-slate-400 font-medium truncate">
+                  Fraksi {info.party} • Dapil {info.dapil}
+                </div>
               </div>
             </div>
 
@@ -330,17 +322,17 @@ export function XenonMintTemplate({
                   : 'bg-slate-100 hover:bg-slate-200 text-slate-700'
               }`}
             >
-              {cat === 'ALL' ? 'Semua Kebijakan' : cat}
+              {cat === 'SEMUA' ? 'Semua Kebijakan' : cat}
             </button>
           ))}
         </div>
 
-        {/* Featured Focus Article Card (Matching the Reference Business Line of Credit Card) */}
+        {/* Featured Focus Article Card */}
         {featuredArticle ? (
           <div className="bg-white rounded-[32px] sm:rounded-[40px] border border-slate-200/90 shadow-[0_15px_40px_-15px_rgba(0,0,0,0.06)] overflow-hidden p-6 sm:p-8 lg:p-10">
             <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-10 items-center">
               
-              {/* Left Column inside card: Details & Checklist */}
+              {/* Left Column inside card: Details & Metadata */}
               <div className="lg:col-span-6 space-y-5">
                 <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-50 text-[#00A86B] text-xs font-extrabold uppercase tracking-wider">
                   <BookOpen className="w-3.5 h-3.5" />
@@ -355,29 +347,14 @@ export function XenonMintTemplate({
                   {featuredArticle.excerpt}
                 </p>
 
-                {/* Benefits / Focus Checklist */}
-                <div className="space-y-2.5 pt-2">
-                  <div className="text-xs font-black text-slate-900 uppercase tracking-wider">
-                    Poin Utama Advokasi:
-                  </div>
-                  <div className="space-y-2 text-xs text-slate-600 font-medium">
-                    <div className="flex items-center gap-2">
-                      <CheckCircle2 className="w-4 h-4 text-[#00D084] shrink-0" />
-                      <span>Transparansi alokasi perimbangan belanja daerah</span>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <CheckCircle2 className="w-4 h-4 text-[#00D084] shrink-0" />
-                      <span>Kepastian bantuan stimulan bagi UMKM dan petani</span>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <CheckCircle2 className="w-4 h-4 text-[#00D084] shrink-0" />
-                      <span>Pengawalan notula rapat dengar pendapat komisi</span>
-                    </div>
-                  </div>
+                {/* Tanggal Publikasi */}
+                <div className="flex items-center gap-2 text-xs text-slate-500 font-semibold pt-1">
+                  <Calendar className="w-4 h-4 text-[#00A86B]" />
+                  <span>Dipublikasikan pada {featuredArticle.date}</span>
                 </div>
 
                 {/* Read Full Article Button */}
-                <div className="pt-3">
+                <div className="pt-2">
                   <Link
                     href={href(`/artikel/${featuredArticle.slug}`)}
                     className="inline-flex items-center gap-2.5 pl-6 pr-2.5 py-2.5 rounded-full bg-[#00E599] hover:bg-[#00D084] text-slate-950 font-black text-xs tracking-wider transition-all duration-300 shadow-md group"
@@ -489,7 +466,7 @@ export function XenonMintTemplate({
               </div>
               <h2 className="text-3xl sm:text-4xl lg:text-5xl font-black text-slate-950 tracking-tight">
                 Transparansi &{' '}
-                <span className="text-[#00D084]">✦</span> Visual Data
+                <span className="text-[#00D084]">✦</span> Publikasi Visual
               </h2>
             </div>
             <p className="text-xs sm:text-sm text-slate-500 font-medium max-w-md">
@@ -562,39 +539,6 @@ export function XenonMintTemplate({
               </p>
             </div>
           )}
-
-          {/* Awards & Recognition Strip (Exact matching reference layout) */}
-          <div className="bg-[#081018] rounded-3xl sm:rounded-[36px] p-6 sm:p-10 border border-slate-800 text-white flex flex-col md:flex-row items-center justify-between gap-8 shadow-2xl">
-            <div className="flex items-center gap-4">
-              <div className="w-14 h-14 rounded-2xl bg-[#00E599]/15 border border-[#00E599]/30 flex items-center justify-center text-[#00E599] shrink-0">
-                <Award className="w-8 h-8" />
-              </div>
-              <div>
-                <h3 className="text-xl sm:text-2xl font-black text-white tracking-tight">
-                  Awards & Recognition
-                </h3>
-                <p className="text-xs text-slate-400">
-                  Standar integritas dan akuntabilitas parlemen tingkat nasional.
-                </p>
-              </div>
-            </div>
-
-            {/* Badges Stack */}
-            <div className="flex flex-wrap items-center justify-center gap-3 sm:gap-4">
-              <div className="px-4 py-3 rounded-2xl bg-slate-900 border border-slate-800 text-center min-w-[110px]">
-                <div className="text-xs font-black text-[#00E599]">OPINI WTP</div>
-                <div className="text-[10px] text-slate-400 font-semibold">BPK RI 2026</div>
-              </div>
-              <div className="px-4 py-3 rounded-2xl bg-slate-900 border border-slate-800 text-center min-w-[110px]">
-                <div className="text-xs font-black text-[#00E599]">98.4%</div>
-                <div className="text-[10px] text-slate-400 font-semibold">Transparansi Publik</div>
-              </div>
-              <div className="px-4 py-3 rounded-2xl bg-slate-900 border border-slate-800 text-center min-w-[110px]">
-                <div className="text-xs font-black text-[#00E599]">A+ PREDIKAT</div>
-                <div className="text-[10px] text-slate-400 font-semibold">Akuntabilitas Dewan</div>
-              </div>
-            </div>
-          </div>
 
         </div>
       </section>

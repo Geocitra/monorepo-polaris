@@ -34,7 +34,7 @@ export function XenonMintInfografisGalleryClient({
   const effectiveInfographics = infographics || initialInfographics || [];
 
   const [selectedInfographic, setSelectedInfographic] = useState<any | null>(null);
-  const [selectedCategory, setSelectedCategory] = useState<string>('ALL');
+  const [selectedCategory, setSelectedCategory] = useState<string>('SEMUA');
 
   const allInfographics = useMemo(() => {
     if (effectiveInfographics && effectiveInfographics.length > 0) {
@@ -69,12 +69,12 @@ export function XenonMintInfografisGalleryClient({
     allInfographics.forEach((item) => {
       if (item.category) set.add(item.category);
     });
-    return ['ALL', ...Array.from(set)];
+    return ['SEMUA', ...Array.from(set)];
   }, [allInfographics]);
 
   const filteredInfographics = useMemo(() => {
     return allInfographics.filter((inf: any) => {
-      if (selectedCategory === 'ALL') return true;
+      if (selectedCategory === 'SEMUA') return true;
       return inf.category === selectedCategory;
     });
   }, [allInfographics, selectedCategory]);
@@ -115,7 +115,7 @@ export function XenonMintInfografisGalleryClient({
                   : 'bg-white hover:bg-slate-200 text-slate-700 border border-slate-200'
               }`}
             >
-              {cat === 'ALL' ? 'Semua Infografis' : cat}
+              {cat === 'SEMUA' ? 'Semua Infografis' : cat}
             </button>
           ))}
         </div>
@@ -183,7 +183,7 @@ export function XenonMintInfografisGalleryClient({
               Belum Ada Infografis
             </h3>
             <p className="text-xs text-slate-500 max-w-md mx-auto">
-              Saat ini belum ada publikasi infografis atau visual data untuk kategori yang dipilih.
+              Saat ini belum ada publikasi infografis resmi untuk kategori yang dipilih.
             </p>
           </div>
         )}

@@ -27,7 +27,7 @@ export function PlatinumSlateArtikelDetailClient({
   relatedArticles = [],
 }: PlatinumSlateArtikelDetailClientProps) {
   const officialFullName =
-    member?.fullName || theme?.officialFullName || 'Dr. Jonanda P. A. B';
+    member?.fullName || theme?.officialFullName || 'Anggota Dewan';
   const photoUrl =
     theme?.officialPhotoUrl ||
     member?.photoUrl ||

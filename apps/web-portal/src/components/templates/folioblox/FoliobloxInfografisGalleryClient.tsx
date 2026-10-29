@@ -27,73 +27,7 @@ export function FoliobloxInfografisGalleryClient({
   const [activeModalInfo, setActiveModalInfo] = useState<any | null>(null);
   const [copied, setCopied] = useState(false);
 
-  const fallbackInfographics = [
-    {
-      id: 'fb-info-1',
-      title: 'Transparansi APBD: Alokasi Belanja Modal Sektor Pendidikan & Beasiswa 2026',
-      category: 'APBD & Anggaran',
-      metric: 'Rp 45,2 M',
-      metricLabel: 'Alokasi Kawalan',
-      imageUrl: '/images/showcase-infografis-apbd.jpg',
-      createdAt: new Date().toISOString(),
-      description: 'Perincian alokasi belanja modal fungsi pendidikan, perbaikan fasilitas ruang kelas, dan beasiswa perguruan tinggi putra-putri daerah.',
-    },
-    {
-      id: 'fb-info-2',
-      title: 'Peta Capaian Pembangunan Jalan Poros & Konektivitas Desa',
-      category: 'Infrastruktur',
-      metric: '98,4%',
-      metricLabel: 'Target Tuntas',
-      imageUrl: '/images/showcase-poster-surya.jpg',
-      createdAt: new Date(Date.now() - 86400000 * 3).toISOString(),
-      description: 'Pengawasan berkala pemeliharaan jalan poros antar-kecamatan dan perbaikan jembatan sentra produksi pertanian.',
-    },
-    {
-      id: 'fb-info-3',
-      title: 'Distribusi Alsintan & Kuota Pupuk Subsidi Kelompok Tani',
-      category: 'Pertanian & Pangan',
-      metric: '1.420+',
-      metricLabel: 'Kelompok Tani',
-      imageUrl: '/images/article-crop-2.png',
-      createdAt: new Date(Date.now() - 86400000 * 7).toISOString(),
-      description: 'Penyaluran bantuan traktor roda dua, pompa air irigasi, dan verifikasi alokasi pupuk bersubsidi tepat sasaran di seluruh dapil.',
-    },
-    {
-      id: 'fb-info-4',
-      title: 'Kanal Advokasi Publik & Rekapitulasi Aspirasi Warga 24/7',
-      category: 'Pelayanan Publik',
-      metric: '24/7',
-      metricLabel: 'Respon Cepat',
-      imageUrl: '/images/parliament-panoramic-banner.png',
-      createdAt: new Date(Date.now() - 86400000 * 10).toISOString(),
-      description: 'Rekapitulasi berkala tindak lanjut laporan warga melalui rapat dengar pendapat komisi dewan.',
-    },
-    {
-      id: 'fb-info-5',
-      title: 'Revitalisasi Fasilitas Layanan Puskesmas Rawat Inap',
-      category: 'Kesehatan',
-      metric: '32 Unit',
-      metricLabel: 'Puskesmas',
-      imageUrl: '/images/showcase-artikel-pertanian.jpg',
-      createdAt: new Date(Date.now() - 86400000 * 14).toISOString(),
-      description: 'Pengadaan armada ambulans siaga desa dan jaminan ketersediaan obat-obatan esensial.',
-    },
-    {
-      id: 'fb-info-6',
-      title: 'Pemberdayaan Pelaku Usaha Mikro & Digitalisasi Pasar Tradisional',
-      category: 'Ekonomi Kerakyatan',
-      metric: '850+ Gerai',
-      metricLabel: 'UMKM Binaan',
-      imageUrl: '/images/article-crop-1.png',
-      createdAt: new Date(Date.now() - 86400000 * 18).toISOString(),
-      description: 'Pelatihan transaksi non-tunai, bantuan sertifikasi halal gratis, dan fasilitasi pendaftaran merek dagang UMKM.',
-    },
-  ];
-
-  const infographics =
-    initialInfographics && initialInfographics.length > 0
-      ? initialInfographics
-      : fallbackInfographics;
+  const infographics = initialInfographics || [];
 
   const categories = useMemo(() => {
     const set = new Set<string>();

@@ -17,6 +17,8 @@ import {
   Home,
 } from 'lucide-react';
 
+import { resolvePortalMemberData } from '@/lib/template-resolver';
+
 interface StudioEditorialShellProps {
   member: any;
   theme?: any;
@@ -46,40 +48,44 @@ export function StudioEditorialShell({
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const previewTemplate = searchParams?.get('preview_template');
+  const previewColor = searchParams?.get('preview_color');
 
-  const officialFullName =
-    member?.fullName || theme?.officialFullName || 'Dr. Jonanda P. A. B';
-  const firstName =
-    officialFullName.replace(/^(Dr\.|Drs\.|H\.|Hj\.|Ir\.|Prof\.)\s*/i, '').split(' ')[0] || 'Alex';
-  const monogram = firstName.charAt(0).toUpperCase();
+  const resolved = resolvePortalMemberData({
+    member,
+    theme,
+    subdomain,
+    defaultPrimaryColor: '#252422',
+  });
 
-  const rawDapil =
-    member?.dapilName || member?.customDapilName || member?.customDapil || 'Dapil I';
-  const dapil = rawDapil.replace(/_/g, ' ');
+  const {
+    officialFullName,
+    firstName,
+    dapil,
+    party,
+    legislativeLevel,
+    commissionName,
+    officialEmail,
+  } = resolved;
 
-  const rawParty = member?.partyAffiliation || 'Fraksi Parlemen';
-  const party = rawParty.replace(/_/g, ' ');
+  const monogram = firstName ? firstName.charAt(0).toUpperCase() : 'P';
 
-  const rawLevel = member?.legislativeLevel || 'DPRD PROVINSI';
-  const legislativeLevel = rawLevel.replace(/_/g, ' ');
-
-  const rawCommission = member?.commissionName || 'KOMISI I (PEMERINTAHAN & HUKUM)';
-  const commissionName = rawCommission.replace(/_/g, ' ');
-
-  const officialEmail = `aspirasi@${subdomain || 'jonandabrahman'}.polaris.id`;
   const instagramUsername =
     member?.instagramHandle?.replace(/^@/, '') ||
     member?.username ||
     subdomain ||
-    'jonandabrahman';
+    '';
 
   const getNavLinkHref = (path: string) => {
     let base = path;
     if (subdomain && pathname?.startsWith(`/${subdomain}`)) {
       base = path === '/' ? `/${subdomain}` : `/${subdomain}${path}`;
     }
-    if (previewTemplate) {
-      base += `${base.includes('?') ? '&' : '?'}preview_template=${previewTemplate}`;
+    const params = new URLSearchParams();
+    if (previewTemplate) params.set('preview_template', previewTemplate);
+    if (previewColor) params.set('preview_color', previewColor);
+    const qs = params.toString();
+    if (qs) {
+      base += `${base.includes('?') ? '&' : '?'}${qs}`;
     }
     return base;
   };
@@ -212,8 +218,7 @@ export function StudioEditorialShell({
 
             {/* Micro Badge */}
             {pageBadge && (
-              <span className="inline-flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-[0.25em] text-stone-500">
-                <Sparkles className="w-3.5 h-3.5 text-stone-700" />
+              <span className="inline-flex items-center text-[11px] font-bold uppercase tracking-[0.25em] text-stone-500">
                 <span>{pageBadge}</span>
               </span>
             )}

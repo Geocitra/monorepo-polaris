@@ -47,9 +47,57 @@ export async function generateMetadata({
   const data = await fetchPortalData(subdomain);
   if (!data) return { title: 'Katalog Artikel - POLARIS' };
 
+  const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3001';
+  const { member, theme, portal } = data;
+  const officialFullName = member?.fullName || theme?.officialFullName || 'Anggota Dewan';
+  const dapil = member?.dapilName || member?.customDapilName || member?.customDapil || 'Daerah Pemilihan';
+  const party = member?.partyAffiliation || 'Parlemen';
+
+  const title = `Katalog Artikel & Telaah Kebijakan - ${officialFullName}`;
+  const description = `Arsip lengkap publikasi pemikiran, risalah kebijakan, naskah perundang-undangan, dan telaah regulasi ${officialFullName} untuk konstituen di ${dapil}.`;
+
+  const canonicalUrl = portal?.customDomain
+    ? `https://${portal.customDomain}/artikel`
+    : `${baseUrl}/${subdomain}/artikel`;
+
+  const ogImageUrl = `/api/og?title=${encodeURIComponent(`Arsip Artikel & Telaah Kebijakan`)}&author=${encodeURIComponent(officialFullName)}&dapil=${encodeURIComponent(dapil)}&party=${encodeURIComponent(party)}&color=${encodeURIComponent(theme?.primaryHexColor || '#1890FF')}`;
+
   return {
-    title: `Katalog Artikel & Telaah Kebijakan - ${data.member.fullName}`,
-    description: `Arsip lengkap publikasi pemikiran, risalah kebijakan, dan telaah regulasi ${data.member.fullName}.`,
+    title,
+    description,
+    keywords: [
+      officialFullName,
+      'Artikel Parlemen',
+      'Telaah Kebijakan',
+      'Kajian APBD',
+      'Regulasi Daerah',
+      party,
+      dapil,
+      'Parlemen',
+    ],
+    alternates: {
+      canonical: canonicalUrl,
+    },
+    openGraph: {
+      title,
+      description,
+      type: 'website',
+      url: canonicalUrl,
+      images: [
+        {
+          url: ogImageUrl,
+          width: 1200,
+          height: 630,
+          alt: title,
+        },
+      ],
+    },
+    twitter: {
+      card: 'summary_large_image',
+      title,
+      description,
+      images: [ogImageUrl],
+    },
   };
 }
 
@@ -76,44 +124,10 @@ export default async function ArtikelIndexPage({
   const officialFullName =
     member?.fullName ||
     theme?.officialFullName ||
-    'Dr. Ir. Sangsoro Mowo Berkah, M.Sc.';
+    'Anggota Dewan';
 
-  const defaultArticles = [
-    {
-      id: 'ref-art-1',
-      title: 'Undang-Undang Cipta Kerja: Dampak bagi UMKM',
-      slug: 'undang-undang-cipta-kerja-dampak-bagi-umkm',
-      category: 'Ekonomi',
-      date: '01 Sep 2026',
-      summary:
-        'Mendorong pertumbuhan ekonomi lokal melalui penyederhanaan regulasi dan dukungan pembiayaan bagi usaha mikro di daerah pemilihan.',
-      thumbnail: '/images/ref-article-1.jpg',
-      readingTime: '3 mnt baca',
-      featured: true,
-    },
-    {
-      id: 'ref-art-2',
-      title: 'Program Pembangunan Infrastruktur',
-      slug: 'program-pembangunan-infrastruktur',
-      category: 'Infrastruktur',
-      date: '30 Agu 2026',
-      summary:
-        'Mengawal realisasi proyek perbaikan jalan kabupaten dan jembatan penghubung untuk mempercepat konektivitas logistik warga desa.',
-      thumbnail: '/images/ref-article-2.jpg',
-      readingTime: '4 mnt baca',
-    },
-    {
-      id: 'ref-art-3',
-      title: 'Sosialisasi Pendidikan Karakter di Sekolah',
-      slug: 'sosialisasi-pendidikan-karakter-di-sekolah',
-      category: 'Pendidikan',
-      date: '28 Agu 2026',
-      summary:
-        'Meningkatkan mutu pendidikan dengan fokus pada penguatan nilai-nilai kebangsaan, integritas moral generasi muda, dan literasi digital.',
-      thumbnail: '/images/ref-article-3.jpg',
-      readingTime: '3 mnt baca',
-    },
-  ];
+  const defaultArticles: any[] = [];
+
 
   if (templateId === PortalTemplateId.BOLD_TYPOGRAPHY || templateId === 'bold-typography') {
     return (
@@ -123,7 +137,6 @@ export default async function ArtikelIndexPage({
         subdomain={subdomain}
         activePage="artikel"
         breadcrumbTitle="Katalog Artikel"
-        pageBadge="Publikasi Pemikiran & Risalah Kebijakan"
         pageTitle="Katalog Artikel & Risalah Kebijakan"
         pageSubtitle={`Arsip lengkap pemikiran strategis, analisis peraturan perundang-undangan, dan telaah regulasi kenegaraan resmi dari ${officialFullName}.`}
       >
@@ -147,7 +160,6 @@ export default async function ArtikelIndexPage({
         subdomain={subdomain}
         activePage="artikel"
         breadcrumbTitle="Katalog Artikel"
-        pageBadge="Publikasi Pemikiran & Risalah Kebijakan"
         pageTitle="Katalog Artikel & Risalah Kebijakan"
         pageSubtitle={`Arsip lengkap pemikiran strategis, analisis peraturan perundang-undangan, dan telaah regulasi kenegaraan resmi dari ${officialFullName}.`}
       >
@@ -169,7 +181,6 @@ export default async function ArtikelIndexPage({
         subdomain={subdomain}
         activePage="artikel"
         breadcrumbTitle="Katalog Artikel"
-        pageBadge="Publikasi Pemikiran & Risalah Kebijakan"
         pageTitle="Katalog Artikel & Risalah Kebijakan"
         pageSubtitle={`Arsip lengkap pemikiran strategis, analisis peraturan perundang-undangan, dan telaah regulasi kenegaraan resmi dari ${officialFullName}.`}
       >
@@ -663,14 +674,13 @@ export default async function ArtikelIndexPage({
       subdomain={subdomain}
       activePage="artikel"
       breadcrumbTitle="Katalog Artikel"
-      pageBadge="Publikasi Pemikiran & Risalah Kebijakan"
       pageTitle="Katalog Artikel & Risalah Kebijakan"
       pageSubtitle={`Arsip lengkap pemikiran strategis, analisis peraturan perundang-undangan, dan telaah regulasi kenegaraan resmi dari ${officialFullName}.`}
     >
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10 sm:py-14">
         <ArtikelCatalogClient
           initialArticles={recentArticles}
-          defaultArticles={defaultArticles}
+          defaultArticles={[]}
           officialFullName={officialFullName}
           subdomain={subdomain}
         />

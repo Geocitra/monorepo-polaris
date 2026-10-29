@@ -42,7 +42,9 @@ export function XenonMintArtikelDetailClient({
     ? new Date(currentArticle.publishedAt).toLocaleDateString('id-ID', {
         dateStyle: 'long',
       })
-    : 'Oktober 2026';
+    : new Date().toLocaleDateString('id-ID', {
+        dateStyle: 'long',
+      });
 
   const coverImage =
     currentArticle?.featuredImageUrl ||
@@ -174,7 +176,7 @@ export function XenonMintArtikelDetailClient({
                           rel.posterUrl ||
                           rel.coverImageUrl ||
                           rel.imageUrl ||
-                          `/images/ref-article-${(idx % 3) + 1}.jpg`
+                          '/images/default-article.jpg'
                         }
                         alt={rel.title}
                         className="w-full h-full object-cover group-hover:scale-105 transition duration-300"
@@ -185,7 +187,7 @@ export function XenonMintArtikelDetailClient({
                     </div>
                   </div>
                   <div className="pt-2 text-[10px] text-slate-500 flex items-center justify-between">
-                    <span>{rel.readingTime || '4 mnt baca'}</span>
+                    <span>{rel.readingTime || '5 menit baca'}</span>
                     <span className="font-bold text-[#00A86B] flex items-center gap-1">
                       Baca ↗
                     </span>
