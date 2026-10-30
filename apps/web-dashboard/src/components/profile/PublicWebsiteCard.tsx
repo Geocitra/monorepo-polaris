@@ -5,14 +5,18 @@ import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Globe, ExternalLink } from 'lucide-react';
 
-import { getPortalUrl } from '@/lib/urls';
+import { getPortalUrl, getRootDomain } from '@/lib/urls';
 
 interface PublicWebsiteCardProps {
   subdomain?: string;
+  customDomain?: string | null;
 }
 
-export function PublicWebsiteCard({ subdomain }: PublicWebsiteCardProps) {
-  const publicPortalUrl = subdomain ? getPortalUrl(subdomain) : '#';
+export function PublicWebsiteCard({ subdomain, customDomain }: PublicWebsiteCardProps) {
+  const publicPortalUrl = (subdomain || customDomain) ? getPortalUrl(subdomain, customDomain) : '#';
+  const displayDomain = customDomain
+    ? customDomain.trim().replace(/^https?:\/\//, '').replace(/\/$/, '')
+    : `${subdomain || 'dewan'}.${getRootDomain()}`;
 
   return (
     <Card className="p-3.5 sm:p-4 space-y-2.5 shadow-2xs border-slate-200 bg-white rounded-xl">
@@ -38,7 +42,7 @@ export function PublicWebsiteCard({ subdomain }: PublicWebsiteCardProps) {
         <div>
           <span className="text-[9px] text-slate-400 font-semibold block">Domain Publik:</span>
           <div className="font-mono text-xs font-extrabold text-blue-600 mt-0.5">
-            https://{subdomain || 'dewan'}.polaris.id
+            https://{displayDomain}
           </div>
           <div className="text-[9px] text-emerald-600 font-bold mt-0.5 flex items-center gap-1">
             <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 inline-block animate-pulse" />

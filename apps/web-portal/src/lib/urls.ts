@@ -16,3 +16,8 @@ export function getDashboardUrl(): string {
   }
   return process.env.NODE_ENV === 'production' ? 'https://app.polarismedia.id' : 'http://localhost:3000';
 }
+
+
+export function getRootDomain(): string {
+  return process.env.NEXT_PUBLIC_ROOT_DOMAIN || 'polarismedia.id';
+}

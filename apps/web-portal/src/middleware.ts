@@ -7,7 +7,7 @@ export const config = {
 export default function middleware(req: NextRequest) {
   const url = req.nextUrl;
   const hostname = req.headers.get('host') || '';
-  const rootDomain = process.env.NEXT_PUBLIC_ROOT_DOMAIN || 'polaris.id';
+  const rootDomain = process.env.NEXT_PUBLIC_ROOT_DOMAIN || 'polarismedia.id';
 
   // 1. Abaikan berkas statis
   if (
@@ -31,9 +31,9 @@ export default function middleware(req: NextRequest) {
 
   // 4. Fallback jika diakses langsung di root domain atau localhost tanpa subdomain
   if (
-    currentHost === 'localhost' || 
-    currentHost === '127.0.0.1' || 
-    currentHost === rootDomain || 
+    currentHost === 'localhost' ||
+    currentHost === '127.0.0.1' ||
+    currentHost === rootDomain ||
     currentHost === 'www' ||
     !currentHost
   ) {
@@ -41,7 +41,12 @@ export default function middleware(req: NextRequest) {
     return NextResponse.next();
   }
 
-  // 5. Rewrite URL ke dynamic route [subdomain]
+  // 5. Normalisasi custom domain: hilangkan awalan 'www.' jika ada (misal www.polarismedia.space -> polarismedia.space)
+  if (currentHost.startsWith('www.')) {
+    currentHost = currentHost.slice(4);
+  }
+
+  // 6. Rewrite URL ke dynamic route [subdomain]
   url.pathname = `/${currentHost}${url.pathname}`;
   return NextResponse.rewrite(url);
 }

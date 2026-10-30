@@ -30,15 +30,43 @@ const navItems = [
   { name: 'Paket & Lisensi', href: '/billing', icon: CreditCard },
 ];
 
-export function Sidebar({ subdomain }: { subdomain?: string }) {
+export interface SidebarProps {
+  subdomain?: string;
+  customDomain?: string | null;
+}
+
+export function Sidebar({ subdomain: propSubdomain, customDomain: propCustomDomain }: SidebarProps) {
   const pathname = usePathname();
   const router = useRouter();
   const [collapsed, setCollapsed] = useState(false);
+  const [subdomain, setSubdomain] = useState<string | undefined>(propSubdomain);
+  const [customDomain, setCustomDomain] = useState<string | null | undefined>(propCustomDomain);
 
   useEffect(() => {
     const saved = localStorage.getItem('polaris_sidebar_collapsed');
     if (saved === 'true') setCollapsed(true);
   }, []);
+
+  useEffect(() => {
+    if (propSubdomain !== undefined) setSubdomain(propSubdomain);
+    if (propCustomDomain !== undefined) setCustomDomain(propCustomDomain);
+  }, [propSubdomain, propCustomDomain]);
+
+  useEffect(() => {
+    if (propSubdomain && propCustomDomain !== undefined) return;
+    async function hydrateDomain() {
+      try {
+        const profile = await ApiClient.request<any>('/auth/me');
+        if (profile) {
+          if (profile.subdomain && !propSubdomain) setSubdomain(profile.subdomain);
+          if (profile.customDomain !== undefined && propCustomDomain === undefined) {
+            setCustomDomain(profile.customDomain);
+          }
+        }
+      } catch {}
+    }
+    hydrateDomain();
+  }, [propSubdomain, propCustomDomain]);
 
   function toggleCollapse() {
     const next = !collapsed;
@@ -50,6 +78,11 @@ export function Sidebar({ subdomain }: { subdomain?: string }) {
     ApiClient.removeToken();
     router.push('/login');
   }
+
+  const cleanCustomDomain =
+    customDomain && typeof customDomain === 'string' && customDomain.trim()
+      ? customDomain.trim().replace(/^https?:\/\//, '').replace(/\/$/, '')
+      : null;
 
   return (
     <aside
@@ -160,9 +193,9 @@ export function Sidebar({ subdomain }: { subdomain?: string }) {
           backgroundColor: 'var(--sidebar-bg)',
         }}
       >
-        {subdomain && !collapsed && (
+        {(cleanCustomDomain || subdomain) && !collapsed && (
           <a
-            href={getPortalUrl(subdomain)}
+            href={getPortalUrl(subdomain, cleanCustomDomain)}
             target="_blank"
             rel="noopener noreferrer"
             className="flex items-center justify-between px-3 py-2 rounded-xl text-xs font-bold transition-colors"
@@ -173,7 +206,9 @@ export function Sidebar({ subdomain }: { subdomain?: string }) {
           >
             <span className="flex items-center gap-2 truncate">
               <Globe className="h-3.5 w-3.5 shrink-0" style={{ color: 'var(--sidebar-brand-accent)' }} />
-              <span className="truncate font-mono">{subdomain}.{getRootDomain()}</span>
+              <span className="truncate font-mono">
+                {cleanCustomDomain || (subdomain ? `${subdomain}.${getRootDomain()}` : '')}
+              </span>
             </span>
             <span className="text-[10px] font-extrabold" style={{ color: 'var(--sidebar-brand-accent)' }}>Buka</span>
           </a>

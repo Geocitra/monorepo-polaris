@@ -1,5 +1,7 @@
 'use client';
 
+import { getRootDomain } from '@/lib/urls';
+
 import React, { useEffect, useState, useCallback } from 'react';
 import {
   Globe,
@@ -320,7 +322,7 @@ export function DomainRequestsTab({
                         <div className="font-mono font-bold text-slate-900 dark:text-indigo-300 mt-1 flex items-center gap-1">
                           <span>
                             {req.requestType === 'SUBDOMAIN'
-                              ? `${req.requestedDomain}.polaris.id`
+                              ? `${req.requestedDomain}.${getRootDomain()}`
                               : req.requestedDomain}
                           </span>
                         </div>
@@ -475,7 +477,7 @@ export function DomainRequestsTab({
                 <span className="text-slate-500">Domain Target:</span>
                 <span className="font-mono font-bold text-indigo-600 dark:text-indigo-400">
                   {approveModalReq.requestType === 'SUBDOMAIN'
-                    ? `${approveModalReq.requestedDomain}.polaris.id`
+                    ? `${approveModalReq.requestedDomain}.${getRootDomain()}`
                     : approveModalReq.requestedDomain}
                 </span>
               </div>

@@ -219,13 +219,13 @@ export default function BillingPage() {
         strategy="lazyOnload"
       />
 
-      <Sidebar subdomain={profile?.subdomain} />
+      <Sidebar subdomain={profile?.subdomain} customDomain={profile?.customDomain} />
 
       <div className="flex-1 flex flex-col min-w-0">
         <Topbar
           fullName={profile?.fullName}
           party={profile?.partyAffiliation}
-          subdomain={profile?.subdomain}
+          subdomain={profile?.subdomain} customDomain={profile?.customDomain}
           subscriptionStatus={billing?.subscriptionStatus}
           currentPeriodEnd={billing?.currentPeriodEnd}
         />

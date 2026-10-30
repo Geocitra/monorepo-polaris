@@ -145,13 +145,13 @@ export default function ArticleEditorPage() {
 
   return (
     <div className="flex min-h-screen bg-slate-100/70 dark:bg-[#070A12] text-slate-900 dark:text-slate-100 font-sans theme-transition">
-      <Sidebar subdomain={profile?.subdomain} />
+      <Sidebar subdomain={profile?.subdomain} customDomain={profile?.customDomain} />
 
       <div className="flex-1 flex flex-col min-w-0">
         <Topbar
           fullName={profile?.fullName}
           party={profile?.partyAffiliation}
-          subdomain={profile?.subdomain}
+          subdomain={profile?.subdomain} customDomain={profile?.customDomain}
           subscriptionStatus={billing?.subscriptionStatus}
           currentPeriodEnd={billing?.currentPeriodEnd}
         />

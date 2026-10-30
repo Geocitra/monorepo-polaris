@@ -1,5 +1,7 @@
 'use client';
 
+import { getRootDomain } from '@/lib/urls';
+
 import {
   Globe,
   Monitor,
@@ -80,7 +82,7 @@ export function DeviceSimulator({
   const displayHeight = Math.round(targetHeight * scale);
 
   // Clean URL hostname for address bar mockup
-  let displayHost = 'website-dewan.polaris.id';
+  let displayHost = `website-dewan.${getRootDomain()}`;
   try {
     const parsed = new URL(previewUrl);
     displayHost = parsed.hostname;

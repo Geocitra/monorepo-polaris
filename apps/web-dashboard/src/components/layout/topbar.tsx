@@ -32,6 +32,7 @@ interface TopbarProps {
   fullName?: string;
   party?: string;
   subdomain?: string;
+  customDomain?: string | null;
   articleRemaining?: number;
   articleLimit?: number;
   dalleRemaining?: number;
@@ -53,7 +54,8 @@ const navItems = [
 export function Topbar({
   fullName,
   party,
-  subdomain,
+  subdomain: propSubdomain,
+  customDomain: propCustomDomain,
   articleRemaining = 9999,
   articleLimit = 9999,
   dalleRemaining = 9999,
@@ -68,6 +70,29 @@ export function Topbar({
   } | null>(null);
 
   const pathname = usePathname();
+  const [subdomain, setSubdomain] = useState<string | undefined>(propSubdomain);
+  const [customDomain, setCustomDomain] = useState<string | null | undefined>(propCustomDomain);
+
+  useEffect(() => {
+    if (propSubdomain !== undefined) setSubdomain(propSubdomain);
+    if (propCustomDomain !== undefined) setCustomDomain(propCustomDomain);
+  }, [propSubdomain, propCustomDomain]);
+
+  useEffect(() => {
+    if (propSubdomain && propCustomDomain !== undefined) return;
+    async function hydrateDomain() {
+      try {
+        const profile = await ApiClient.request<any>('/auth/me');
+        if (profile) {
+          if (profile.subdomain && !propSubdomain) setSubdomain(profile.subdomain);
+          if (profile.customDomain !== undefined && propCustomDomain === undefined) {
+            setCustomDomain(profile.customDomain);
+          }
+        }
+      } catch {}
+    }
+    hydrateDomain();
+  }, [propSubdomain, propCustomDomain]);
   const router = useRouter();
 
   useEffect(() => {
@@ -106,6 +131,11 @@ export function Topbar({
     ApiClient.removeToken();
     router.push('/login');
   }
+
+  const cleanCustomDomain =
+    customDomain && typeof customDomain === 'string' && customDomain.trim()
+      ? customDomain.trim().replace(/^https?:\/\//, '').replace(/\/$/, '')
+      : null;
 
   return (
     <>
@@ -271,9 +301,9 @@ export function Topbar({
             </div>
 
             <div className="pt-4 space-y-2" style={{ borderTop: '1px solid var(--sidebar-border)' }}>
-              {subdomain && (
+              {(cleanCustomDomain || subdomain) && (
                 <a
-                  href={getPortalUrl(subdomain)}
+                  href={getPortalUrl(subdomain, cleanCustomDomain)}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="flex items-center justify-between px-3 py-2 rounded-xl text-xs font-bold transition-colors"
@@ -284,7 +314,9 @@ export function Topbar({
                 >
                   <span className="flex items-center gap-1.5 truncate">
                     <Globe className="h-3.5 w-3.5 shrink-0" style={{ color: 'var(--sidebar-brand-accent)' }} />
-                    <span className="truncate">{subdomain}.{getRootDomain()}</span>
+                    <span className="truncate">
+                      {cleanCustomDomain || (subdomain ? `${subdomain}.${getRootDomain()}` : '')}
+                    </span>
                   </span>
                   <span className="text-[10px] font-extrabold" style={{ color: 'var(--sidebar-brand-accent)' }}>Buka</span>
                 </a>

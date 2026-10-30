@@ -1,5 +1,7 @@
 'use client';
 
+import { getRootDomain } from '@/lib/urls';
+
 import Image from 'next/image';
 import { Image as ImageIcon, ShieldCheck } from 'lucide-react';
 
@@ -159,7 +161,7 @@ export function PosterCanvas({
           <span className="font-semibold">
             Diinisiasi oleh: <strong className="text-white">{authorName}</strong> ({partyAffiliation})
           </span>
-          <span className="font-mono text-blue-400 font-bold">polaris.id</span>
+          <span className="font-mono text-blue-400 font-bold">{getRootDomain()}</span>
         </div>
       </div>
     </div>

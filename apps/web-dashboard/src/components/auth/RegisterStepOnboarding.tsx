@@ -1,5 +1,7 @@
 'use client';
 
+import { getRootDomain } from '@/lib/urls';
+
 import { Globe, Sparkles, Loader2 } from 'lucide-react';
 
 interface RegisterStepOnboardingProps {
@@ -64,11 +66,11 @@ export function RegisterStepOnboarding({
             className="block w-full rounded-l-xl border border-r-0 border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800/80 px-3.5 py-2.5 text-sm font-semibold text-slate-900 dark:text-white placeholder:text-slate-400 focus:border-cyan-400 focus:ring-4 focus:ring-cyan-400/20 focus:outline-none transition-all shadow-xs"
           />
           <span className="inline-flex items-center px-3 py-2.5 rounded-r-xl border border-slate-300 dark:border-slate-700 bg-slate-100 dark:bg-slate-700 text-xs font-bold text-slate-600 dark:text-slate-200">
-            .polaris.id
+            .{getRootDomain()}
           </span>
         </div>
         <p className="text-[10px] text-slate-500 dark:text-slate-400">
-          Alamat situs: <span className="font-bold text-blue-600 dark:text-blue-400">https://{claimedSubdomain || 'nama'}.polaris.id</span>
+          Alamat situs: <span className="font-bold text-blue-600 dark:text-blue-400">https://{claimedSubdomain || 'nama'}.{getRootDomain()}</span>
         </p>
       </div>
 

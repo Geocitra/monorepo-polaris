@@ -1,5 +1,7 @@
 'use client';
 
+import { getRootDomain } from '@/lib/urls';
+
 import { useState, useEffect } from 'react';
 import dynamic from 'next/dynamic';
 import Link from 'next/link';
@@ -491,7 +493,7 @@ export function CampaignPreview({
           publicationId: generatedResult?.publication?.id,
           text: threadsCustomText,
           mediaUrl: mediaUrlToAttach,
-          linkAttachment: publishedUrl || (generatedResult?.publication?.id ? `https://polaris.id/p/${generatedResult.publication.id}` : undefined),
+          linkAttachment: publishedUrl || (generatedResult?.publication?.id ? `https://${getRootDomain()}/p/${generatedResult.publication.id}` : undefined),
         }),
       });
 
@@ -945,7 +947,7 @@ export function CampaignPreview({
                 <span className="font-semibold">
                   Diadvokasikan oleh: <strong className="text-white">{authorName}</strong>{partyAffiliation ? ` (${partyAffiliation})` : ''}
                 </span>
-                <span className="font-mono text-blue-400 font-extrabold">polaris.id</span>
+                <span className="font-mono text-blue-400 font-extrabold">{getRootDomain()}</span>
               </div>
             </div>
           )}
@@ -1769,7 +1771,7 @@ export function CampaignPreview({
                             {generatedResult?.publication?.excerpt || 'Kajian dan advokasi sikap untuk konstituen.'}
                           </p>
                           <span className="text-[9px] font-mono text-blue-600 dark:text-blue-400 font-bold block truncate">
-                            polaris.id/p/{generatedResult?.publication?.id || 'kebijakan'}
+                            {getRootDomain()}/p/{generatedResult?.publication?.id || 'kebijakan'}
                           </span>
                         </div>
                       </div>

@@ -52,6 +52,7 @@ interface ProfilePreviewViewProps {
   regencyCoverage: string[];
   commissionName?: string;
   subdomain?: string;
+  customDomain?: string | null;
   isUnpaid?: boolean;
   onEditClick: () => void;
   onOpenSecurity?: (tab: 'PASSWORD' | 'EMAIL') => void;
@@ -76,6 +77,7 @@ export function ProfilePreviewView({
   dapilCode,
   regencyCoverage,
   subdomain,
+  customDomain,
   isUnpaid = false,
   onEditClick,
   onOpenSecurity,
@@ -107,7 +109,7 @@ export function ProfilePreviewView({
   }
 
   const age = calculateAge(birthDate);
-  const portalUrl = subdomain ? getPortalUrl(subdomain) : '#';
+  const portalUrl = (subdomain || customDomain) ? getPortalUrl(subdomain, customDomain) : '#';
 
   const [lightboxIndex, setLightboxIndex] = useState<number | null>(null);
 
@@ -269,7 +271,7 @@ export function ProfilePreviewView({
                 </Button>
               )}
 
-              {subdomain && (
+              {(customDomain || subdomain) && (
                 <a
                   href={portalUrl}
                   target="_blank"
