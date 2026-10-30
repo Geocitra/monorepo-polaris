@@ -314,7 +314,7 @@ export class StudioFullGenerationHandler {
                 .limit(1);
 
               if (priorRef?.categoryTag) {
-                refCategory = priorRef.categoryTag;
+                refCategory = priorRef.categoryTag as DatahubCategory;
               } else if (fileChunks.length > 0) {
                 const sampleText = fileChunks.map((c) => c.chunkContent).join('\n').slice(0, 3000);
                 const cls = await DocumentClassifierService.classifyDocument(cleanName, sampleText);

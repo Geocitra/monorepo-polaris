@@ -7,13 +7,13 @@ describe('CanonicalUrl Value Object', () => {
     const subdomain = new SubdomainSlug('ahmad-fauzi');
     const canonical = new CanonicalUrl(subdomain, 'kajian-pupuk-subsidi-2026');
 
-    expect(canonical.getValue()).toBe('https://ahmad-fauzi.polaris.id/artikel/kajian-pupuk-subsidi-2026');
+    expect(canonical.getValue()).toBe('https://ahmad-fauzi.polarismedia.id/artikel/kajian-pupuk-subsidi-2026');
   });
 
   it('harus membersihkan karakter ilegal pada slug artikel', () => {
     const subdomain = new SubdomainSlug('dewan-jabar');
     const canonical = new CanonicalUrl(subdomain, 'Kebijakan APBD 2026 & Evaluasi!');
 
-    expect(canonical.getValue()).toBe('https://dewan-jabar.polaris.id/artikel/kebijakanapbd2026evaluasi');
+    expect(canonical.getValue()).toBe('https://dewan-jabar.polarismedia.id/artikel/kebijakanapbd2026evaluasi');
   });
 });

@@ -17,6 +17,8 @@ import { PublicChatModule } from './modules/public-chat/public-chat.module.js';
 import { InquiryModule } from './modules/inquiry/inquiry.module.js';
 import { InstagramModule } from './modules/instagram/instagram.module.js';
 import { ThreadsModule } from './modules/threads/threads.module.js';
+import { XModule } from './modules/x/x.module.js';
+import { TikTokModule } from './modules/tiktok/tiktok.module.js';
 
 import { RedisModule } from './modules/redis/redis.module.js';
 import { RealtimeModule } from './modules/realtime/realtime.module.js';
@@ -50,6 +52,8 @@ import { AppController } from './app.controller.js';
     InquiryModule,     // Inbound Lead Consultation & Google Meet Demo Triage
     InstagramModule,   // Sub-Fase F.2: Integrasi Meta Instagram Graph API
     ThreadsModule,     // Integrasi Meta Threads API (Cuitan Opini Dewan)
+    XModule,           // Integrasi X (Twitter) Developer API v2
+    TikTokModule,      // Integrasi TikTok Content Posting API
     DatahubModule,     // Modul DataHub & Blind Ingestion Engine (Deduplikasi & RAG)
   ],
   providers: [

@@ -1,22 +1,22 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { 
-  User, 
-  MapPin, 
-  Award, 
-  BookOpen, 
-  Sparkles, 
-  BrainCircuit, 
-  Globe, 
-  ExternalLink, 
-  Edit3, 
-  Phone, 
-  Mail, 
-  Calendar, 
-  Landmark, 
-  CheckCircle2, 
-  Compass, 
+import {
+  User,
+  MapPin,
+  Award,
+  BookOpen,
+  Sparkles,
+  BrainCircuit,
+  Globe,
+  ExternalLink,
+  Edit3,
+  Phone,
+  Mail,
+  Calendar,
+  Landmark,
+  CheckCircle2,
+  Compass,
   School,
   ShieldCheck,
   Images,
@@ -32,6 +32,8 @@ import { getPortalUrl } from '@/lib/urls';
 import { PUBLIC_OFFICE_ROLE_OPTIONS } from './profile-constants';
 import { InstagramConnectionCard } from '@/components/social/InstagramConnectionCard';
 import { ThreadsConnectionCard } from '@/components/social/ThreadsConnectionCard';
+import { XConnectionCard } from '@/components/social/XConnectionCard';
+import { TikTokConnectionCard } from '@/components/social/TikTokConnectionCard';
 
 interface ProfilePreviewViewProps {
   fullName: string;
@@ -476,11 +478,10 @@ export function ProfilePreviewView({
                     <div
                       key={`preview-gallery-${index}`}
                       onClick={() => setLightboxIndex(index)}
-                      className={`group relative rounded-2xl overflow-hidden border bg-slate-100 dark:bg-slate-800 shadow-xs hover:shadow-lg transition-all duration-300 cursor-pointer aspect-[4/5] ${
-                        isPrimary
+                      className={`group relative rounded-2xl overflow-hidden border bg-slate-100 dark:bg-slate-800 shadow-xs hover:shadow-lg transition-all duration-300 cursor-pointer aspect-[4/5] ${isPrimary
                           ? 'border-emerald-500 ring-2 ring-emerald-500/40'
                           : 'border-slate-200 dark:border-slate-700 hover:border-blue-400'
-                      }`}
+                        }`}
                     >
                       {/* eslint-disable-next-line @next/next/no-img-element */}
                       <img
@@ -548,99 +549,101 @@ export function ProfilePreviewView({
               </span>
             </div>
 
-            <div className="flex flex-col gap-4">
-              <InstagramConnectionCard isUnpaid={!!isUnpaid} />
-              <ThreadsConnectionCard isUnpaid={!!isUnpaid} />
+              <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
+                <InstagramConnectionCard isUnpaid={!!isUnpaid} />
+                <ThreadsConnectionCard isUnpaid={!!isUnpaid} />
+                <XConnectionCard isUnpaid={!!isUnpaid} />
+                <TikTokConnectionCard isUnpaid={!!isUnpaid} />
+              </div>
             </div>
           </div>
         </div>
-      </div>
 
-      {/* LIGHTBOX MODAL UNTUK PREVIEW FOTO FULSCREEN */}
-      {lightboxIndex !== null && photoGallery[lightboxIndex] && (
-        <div
-          className="fixed inset-0 z-50 bg-black/90 backdrop-blur-md flex items-center justify-center p-4 animate-in fade-in duration-200"
-          onClick={() => setLightboxIndex(null)}
-        >
+        {/* LIGHTBOX MODAL UNTUK PREVIEW FOTO FULSCREEN */}
+        {lightboxIndex !== null && photoGallery[lightboxIndex] && (
           <div
-            className="relative max-w-4xl max-h-[90vh] w-full flex flex-col items-center"
-            onClick={(e) => e.stopPropagation()}
+            className="fixed inset-0 z-50 bg-black/90 backdrop-blur-md flex items-center justify-center p-4 animate-in fade-in duration-200"
+            onClick={() => setLightboxIndex(null)}
           >
-            {/* CLOSE BUTTON */}
-            <button
-              type="button"
-              onClick={() => setLightboxIndex(null)}
-              className="absolute -top-12 right-0 text-white/80 hover:text-white p-2 rounded-xl bg-white/10 hover:bg-white/20 backdrop-blur-xs transition cursor-pointer"
+            <div
+              className="relative max-w-4xl max-h-[90vh] w-full flex flex-col items-center"
+              onClick={(e) => e.stopPropagation()}
             >
-              <X className="h-5 w-5" />
-            </button>
+              {/* CLOSE BUTTON */}
+              <button
+                type="button"
+                onClick={() => setLightboxIndex(null)}
+                className="absolute -top-12 right-0 text-white/80 hover:text-white p-2 rounded-xl bg-white/10 hover:bg-white/20 backdrop-blur-xs transition cursor-pointer"
+              >
+                <X className="h-5 w-5" />
+              </button>
 
-            {/* MAIN IMAGE */}
-            <div className="relative rounded-3xl overflow-hidden bg-black shadow-2xl border border-white/10 max-h-[75vh] flex items-center justify-center">
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img
-                src={photoGallery[lightboxIndex]}
-                alt={`Foto Dokumentasi ${lightboxIndex + 1}`}
-                className="max-h-[75vh] w-auto max-w-full object-contain"
-              />
+              {/* MAIN IMAGE */}
+              <div className="relative rounded-3xl overflow-hidden bg-black shadow-2xl border border-white/10 max-h-[75vh] flex items-center justify-center">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src={photoGallery[lightboxIndex]}
+                  alt={`Foto Dokumentasi ${lightboxIndex + 1}`}
+                  className="max-h-[75vh] w-auto max-w-full object-contain"
+                />
 
-              {/* PREV BUTTON */}
-              {photoGallery.length > 1 && (
-                <button
-                  type="button"
-                  onClick={() =>
-                    setLightboxIndex((prev) => (prev !== null && prev > 0 ? prev - 1 : photoGallery.length - 1))
-                  }
-                  className="absolute left-3 top-1/2 -translate-y-1/2 p-2.5 rounded-full bg-black/60 hover:bg-black/90 text-white transition backdrop-blur-xs cursor-pointer shadow-lg"
-                >
-                  <ChevronLeft className="h-6 w-6" />
-                </button>
-              )}
+                {/* PREV BUTTON */}
+                {photoGallery.length > 1 && (
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setLightboxIndex((prev) => (prev !== null && prev > 0 ? prev - 1 : photoGallery.length - 1))
+                    }
+                    className="absolute left-3 top-1/2 -translate-y-1/2 p-2.5 rounded-full bg-black/60 hover:bg-black/90 text-white transition backdrop-blur-xs cursor-pointer shadow-lg"
+                  >
+                    <ChevronLeft className="h-6 w-6" />
+                  </button>
+                )}
 
-              {/* NEXT BUTTON */}
-              {photoGallery.length > 1 && (
-                <button
-                  type="button"
-                  onClick={() =>
-                    setLightboxIndex((prev) => (prev !== null && prev < photoGallery.length - 1 ? prev + 1 : 0))
-                  }
-                  className="absolute right-3 top-1/2 -translate-y-1/2 p-2.5 rounded-full bg-black/60 hover:bg-black/90 text-white transition backdrop-blur-xs cursor-pointer shadow-lg"
-                >
-                  <ChevronRight className="h-6 w-6" />
-                </button>
-              )}
-            </div>
-
-            {/* LIGHTBOX FOOTER */}
-            <div className="mt-4 flex items-center justify-between w-full max-w-2xl px-2 text-white">
-              <div className="flex items-center gap-3">
-                <span className="text-sm font-bold text-white/90">
-                  Foto {lightboxIndex + 1} dari {photoGallery.length}
-                </span>
-                {photoGallery[lightboxIndex] === photoUrl && (
-                  <span className="px-3 py-1 rounded-full bg-emerald-600 text-white text-xs font-black">
-                    ★ Foto Profil Utama
-                  </span>
+                {/* NEXT BUTTON */}
+                {photoGallery.length > 1 && (
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setLightboxIndex((prev) => (prev !== null && prev < photoGallery.length - 1 ? prev + 1 : 0))
+                    }
+                    className="absolute right-3 top-1/2 -translate-y-1/2 p-2.5 rounded-full bg-black/60 hover:bg-black/90 text-white transition backdrop-blur-xs cursor-pointer shadow-lg"
+                  >
+                    <ChevronRight className="h-6 w-6" />
+                  </button>
                 )}
               </div>
 
-              <Button
-                type="button"
-                size="sm"
-                variant="outline"
-                onClick={() => {
-                  setLightboxIndex(null);
-                  onEditClick();
-                }}
-                className="text-xs h-8 px-4 bg-white/10 hover:bg-white/20 text-white border-white/20 cursor-pointer font-bold rounded-xl"
-              >
-                <Edit3 className="h-3.5 w-3.5 mr-1.5" />
-                <span>Kelola di Mode Edit</span>
-              </Button>
+              {/* LIGHTBOX FOOTER */}
+              <div className="mt-4 flex items-center justify-between w-full max-w-2xl px-2 text-white">
+                <div className="flex items-center gap-3">
+                  <span className="text-sm font-bold text-white/90">
+                    Foto {lightboxIndex + 1} dari {photoGallery.length}
+                  </span>
+                  {photoGallery[lightboxIndex] === photoUrl && (
+                    <span className="px-3 py-1 rounded-full bg-emerald-600 text-white text-xs font-black">
+                      ★ Foto Profil Utama
+                    </span>
+                  )}
+                </div>
+
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="outline"
+                  onClick={() => {
+                    setLightboxIndex(null);
+                    onEditClick();
+                  }}
+                  className="text-xs h-8 px-4 bg-white/10 hover:bg-white/20 text-white border-white/20 cursor-pointer font-bold rounded-xl"
+                >
+                  <Edit3 className="h-3.5 w-3.5 mr-1.5" />
+                  <span>Kelola di Mode Edit</span>
+                </Button>
+              </div>
             </div>
           </div>
-        </div>
-      )}
-    </div>
-  );
+        )}
+      </div>
+      );
 }

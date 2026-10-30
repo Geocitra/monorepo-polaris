@@ -8,14 +8,14 @@ import { Sidebar } from '@/components/layout/sidebar';
 import { Topbar } from '@/components/layout/topbar';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/components/ui/toast';
-import { 
-  User, 
-  CreditCard, 
-  Save, 
-  Loader2, 
-  CheckCircle, 
-  Eye, 
-  Edit3, 
+import {
+  User,
+  CreditCard,
+  Save,
+  Loader2,
+  CheckCircle,
+  Eye,
+  Edit3,
   ArrowLeft,
   ArrowRight,
   Camera,
@@ -24,7 +24,7 @@ import {
   Sparkles,
   Check
 } from 'lucide-react';
-import { 
+import {
   LicenseStatusBanner,
   OfficialIdentityForm,
   PolicyInterestsForm,
@@ -57,8 +57,8 @@ function ProfileContent() {
     if (socialStatus === 'connected' && handle) {
       toast({
         type: 'success',
-        title: `${platform === 'threads' ? 'Meta Threads' : 'Instagram'} Resmi Berhasil Ditautkan!`,
-        description: `Akun resmi @${handle} siap digunakan untuk penerbitan dan sindikasi otomatis.`,
+        title: `${platform === 'threads' ? 'Meta Threads' : platform === 'x' ? 'X (Twitter)' : platform === 'tiktok' ? 'TikTok' : 'Instagram'} Resmi Berhasil Ditautkan!`,
+        description: `Akun resmi ${handle.startsWith('@') ? handle : '@' + handle} siap digunakan untuk penerbitan dan sindikasi otomatis.`,
       });
     } else if (socialStatus === 'error') {
       toast({
@@ -291,47 +291,47 @@ function ProfileContent() {
     isComplete: boolean;
     description: string;
   }[] = [
-    {
-      id: 'identitas',
-      label: 'Identitas Resmi',
-      shortLabel: 'Identitas',
-      icon: User,
-      isComplete: Boolean(fullName.trim() && phoneNumber.trim()),
-      description: 'Biodata dewan, kontak & penugasan komisi',
-    },
-    {
-      id: 'katalog',
-      label: 'Katalog Foto Dewan',
-      shortLabel: 'Katalog Foto',
-      icon: Camera,
-      isComplete: Boolean(photoUrl || photoGallery.length > 0),
-      description: 'Koleksi foto resmi dewan & portofolio publik',
-    },
-    {
-      id: 'dapil',
-      label: 'Wilayah Kerja Dapil',
-      shortLabel: 'Dapil',
-      icon: MapPin,
-      isComplete: Boolean(provinceName.trim() && dapilName.trim() && regencyCoverage.length > 0),
-      description: 'Basis konstituen & cakupan kabupaten/kota',
-    },
-    {
-      id: 'pendidikan',
-      label: 'Pendidikan & Diklat',
-      shortLabel: 'Pendidikan',
-      icon: GraduationCap,
-      isComplete: Boolean(education.trim() || courses.length > 0),
-      description: 'Riwayat akademik & kursus parlemen',
-    },
-    {
-      id: 'isu',
-      label: 'Minat Isu & Portal Web',
-      shortLabel: 'Isu & Portal',
-      icon: Sparkles,
-      isComplete: Boolean(issueInterests.length > 0),
-      description: 'AI Grounding minat isu & subdomain web',
-    },
-  ];
+      {
+        id: 'identitas',
+        label: 'Identitas Resmi',
+        shortLabel: 'Identitas',
+        icon: User,
+        isComplete: Boolean(fullName.trim() && phoneNumber.trim()),
+        description: 'Biodata dewan, kontak & penugasan komisi',
+      },
+      {
+        id: 'katalog',
+        label: 'Katalog Foto Dewan',
+        shortLabel: 'Katalog Foto',
+        icon: Camera,
+        isComplete: Boolean(photoUrl || photoGallery.length > 0),
+        description: 'Koleksi foto resmi dewan & portofolio publik',
+      },
+      {
+        id: 'dapil',
+        label: 'Wilayah Kerja Dapil',
+        shortLabel: 'Dapil',
+        icon: MapPin,
+        isComplete: Boolean(provinceName.trim() && dapilName.trim() && regencyCoverage.length > 0),
+        description: 'Basis konstituen & cakupan kabupaten/kota',
+      },
+      {
+        id: 'pendidikan',
+        label: 'Pendidikan & Diklat',
+        shortLabel: 'Pendidikan',
+        icon: GraduationCap,
+        isComplete: Boolean(education.trim() || courses.length > 0),
+        description: 'Riwayat akademik & kursus parlemen',
+      },
+      {
+        id: 'isu',
+        label: 'Minat Isu & Portal Web',
+        shortLabel: 'Isu & Portal',
+        icon: Sparkles,
+        isComplete: Boolean(issueInterests.length > 0),
+        description: 'AI Grounding minat isu & subdomain web',
+      },
+    ];
 
   return (
     <div className="flex min-h-screen bg-slate-100/70 dark:bg-[#070A12] text-slate-900 dark:text-slate-100 font-sans theme-transition">
@@ -365,11 +365,10 @@ function ProfileContent() {
               <button
                 type="button"
                 onClick={() => setActiveTabMode('PREVIEW')}
-                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
-                  activeTabMode === 'PREVIEW'
+                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${activeTabMode === 'PREVIEW'
                     ? 'bg-white dark:bg-slate-900 text-blue-600 dark:text-blue-400 shadow-2xs'
                     : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
-                }`}
+                  }`}
               >
                 <Eye className="h-3.5 w-3.5" />
                 <span>Preview</span>
@@ -378,11 +377,10 @@ function ProfileContent() {
               <button
                 type="button"
                 onClick={() => setActiveTabMode('EDIT')}
-                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
-                  activeTabMode === 'EDIT'
+                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${activeTabMode === 'EDIT'
                     ? 'bg-blue-600 text-white shadow-2xs'
                     : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
-                }`}
+                  }`}
               >
                 <Edit3 className="h-3.5 w-3.5" />
                 <span>Edit Data</span>
@@ -434,20 +432,18 @@ function ProfileContent() {
                         key={sec.id}
                         type="button"
                         onClick={() => setActiveEditSection(sec.id)}
-                        className={`group flex items-center gap-2.5 px-3.5 py-2.5 rounded-xl text-xs font-bold transition-all cursor-pointer whitespace-nowrap shrink-0 ${
-                          isActive
+                        className={`group flex items-center gap-2.5 px-3.5 py-2.5 rounded-xl text-xs font-bold transition-all cursor-pointer whitespace-nowrap shrink-0 ${isActive
                             ? 'bg-blue-600 text-white shadow-xs'
                             : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800/60'
-                        }`}
+                          }`}
                       >
                         <div
-                          className={`w-6 h-6 rounded-lg flex items-center justify-center transition-colors ${
-                            isActive
+                          className={`w-6 h-6 rounded-lg flex items-center justify-center transition-colors ${isActive
                               ? 'bg-white/20 text-white'
                               : sec.isComplete
-                              ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400'
-                              : 'bg-slate-100 dark:bg-slate-800 text-slate-500'
-                          }`}
+                                ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400'
+                                : 'bg-slate-100 dark:bg-slate-800 text-slate-500'
+                            }`}
                         >
                           {sec.isComplete && !isActive ? (
                             <Check className="w-3.5 h-3.5" />

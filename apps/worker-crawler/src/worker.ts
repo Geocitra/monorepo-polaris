@@ -2,10 +2,10 @@ import { Worker } from 'bullmq';
 import { redisConnection } from './config/redis.connection.js';
 import { DALLE_QUEUE_NAME, DalleJobPayload } from './queues/dalle.queue.js';
 import { SCRAPER_QUEUE_NAME, registerScheduledCrawlers } from './queues/scraper.queue.js';
-import { 
-  MAINTENANCE_QUEUE_NAME, 
-  MaintenanceJobPayload, 
-  registerScheduledMaintenanceJobs 
+import {
+  MAINTENANCE_QUEUE_NAME,
+  MaintenanceJobPayload,
+  registerScheduledMaintenanceJobs
 } from './queues/maintenance.queue.js';
 import { processDalleStreamJob } from './processors/dalle-stream.processor.js';
 import { NewsCrawlerProcessor, ScraperJobPayload } from './processors/news-crawler.processor.js';
@@ -24,6 +24,8 @@ import {
 } from './queues/social-publishing.queue.js';
 import { InstagramPublishingProcessor } from './processors/instagram-publishing.processor.js';
 import { ThreadsPublishingProcessor } from './processors/threads-publishing.processor.js';
+import { XPublishingProcessor } from './processors/x-publishing.processor.js';
+import { TikTokPublishingProcessor } from './processors/tiktok-publishing.processor.js';
 
 console.log('====================================================');
 console.log(' POLARIS ASYNCHRONOUS BACKGROUND DAEMON WORKER     ');
@@ -121,12 +123,18 @@ reconWorker.on('failed', (job, err) => {
   console.error(`[Worker Recon] Audit rekonsiliasi #${job?.id} gagal: ${err.message}`);
 });
 
-// 6. Worker Penerbitan Meta (Instagram & Threads) (Concurrency 2)
+// 6. Worker Penerbitan Sosial Multi-Platform (Instagram, Threads, X, TikTok) (Concurrency 2)
 const socialPublishingWorker = new Worker<SocialPublishingJobPayload>(
   SOCIAL_PUBLISHING_QUEUE_NAME,
   async (job) => {
     if (job.name === 'publish-threads-post') {
       return await ThreadsPublishingProcessor.process(job as any);
+    }
+    if (job.name === 'publish-x-post') {
+      return await XPublishingProcessor.process(job as any);
+    }
+    if (job.name === 'publish-tiktok-post') {
+      return await TikTokPublishingProcessor.process(job as any);
     }
     return await InstagramPublishingProcessor.process(job);
   },
