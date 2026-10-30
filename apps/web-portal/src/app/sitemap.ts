@@ -82,8 +82,12 @@ export default function sitemap(): MetadataRoute.Sitemap {
       }
     );
 
-    // Artikel Publik Dewan
+    // Artikel Publik Dewan (Termasuk Data Riil dari Database)
     const articles = [
+      'buatkan-artikel-tentang-kemiskinan-67fffbcd',
+      'buatkan-artikel-tentang-asap-karhutla-4cf9c438',
+      'buatkan-artikel-tentang-korupsi-c59c8f9a',
+      'optimalisasi-infografis-publik-untuk-penanggulanga-78a76a4a',
       'undang-undang-cipta-kerja-dampak-bagi-umkm',
       'sosialisasi-pendidikan-karakter-di-sekolah',
       'kajian-alokasi-apbd-pemulihan-ekonomi',

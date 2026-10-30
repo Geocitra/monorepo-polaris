@@ -22,7 +22,10 @@ export async function generateMetadata({
   }
 
   const { member, theme, portal } = data;
-  const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3001';
+  const rootDomain = process.env.NEXT_PUBLIC_ROOT_DOMAIN || 'polaris.id';
+  const baseUrl = portal?.customDomain
+    ? `https://${portal.customDomain}`
+    : process.env.NEXT_PUBLIC_APP_URL || `https://${subdomain}.${rootDomain}`;
   const title = `${member.fullName} - Portal Publik Resmi`;
   const description =
     theme.headlineTagline ||
@@ -32,7 +35,7 @@ export async function generateMetadata({
     ? `https://${portal.customDomain}`
     : `${baseUrl}/${subdomain}`;
 
-  const ogImageUrl = `/api/og?title=${encodeURIComponent(title)}&author=${encodeURIComponent(member.fullName)}&dapil=${encodeURIComponent(member.dapilName)}&party=${encodeURIComponent(member.partyAffiliation)}&color=${encodeURIComponent(theme.primaryHexColor)}`;
+  const ogImageUrl = `${baseUrl}/api/og?title=${encodeURIComponent(title)}&author=${encodeURIComponent(member.fullName)}&dapil=${encodeURIComponent(member.dapilName)}&party=${encodeURIComponent(member.partyAffiliation)}&color=${encodeURIComponent(theme.primaryHexColor)}`;
 
   return {
     title,

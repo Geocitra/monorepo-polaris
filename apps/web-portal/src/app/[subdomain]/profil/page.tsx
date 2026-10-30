@@ -47,8 +47,11 @@ export async function generateMetadata({
   const data = await fetchPortalData(subdomain);
   if (!data) return { title: 'Profil Anggota Dewan - POLARIS' };
 
-  const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3001';
   const { member, theme, portal } = data;
+  const rootDomain = process.env.NEXT_PUBLIC_ROOT_DOMAIN || 'polaris.id';
+  const baseUrl = portal?.customDomain
+    ? `https://${portal.customDomain}`
+    : process.env.NEXT_PUBLIC_APP_URL || `https://${subdomain}.${rootDomain}`;
   const officialFullName = member?.fullName || theme?.officialFullName || 'Anggota Dewan';
   const dapil = member?.dapilName || member?.customDapilName || member?.customDapil || 'Daerah Pemilihan';
   const party = member?.partyAffiliation || 'Parlemen';
@@ -62,7 +65,7 @@ export async function generateMetadata({
     ? `https://${portal.customDomain}/profil`
     : `${baseUrl}/${subdomain}/profil`;
 
-  const ogImageUrl = `/api/og?title=${encodeURIComponent(`Profil Resmi ${officialFullName}`)}&author=${encodeURIComponent(officialFullName)}&dapil=${encodeURIComponent(dapil)}&party=${encodeURIComponent(party)}&color=${encodeURIComponent(theme?.primaryHexColor || '#1890FF')}`;
+  const ogImageUrl = `${baseUrl}/api/og?title=${encodeURIComponent(`Profil Resmi ${officialFullName}`)}&author=${encodeURIComponent(officialFullName)}&dapil=${encodeURIComponent(dapil)}&party=${encodeURIComponent(party)}&color=${encodeURIComponent(theme?.primaryHexColor || '#1890FF')}`;
 
   return {
     title,
