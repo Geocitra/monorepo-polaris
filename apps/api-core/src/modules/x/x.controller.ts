@@ -29,7 +29,7 @@ export class XController {
   private readonly logger = new Logger(XController.name);
   private readonly dashboardBaseUrl = process.env.DASHBOARD_URL || 'https://app.polarismedia.id';
 
-  constructor(private readonly xService: XService) {}
+  constructor(private readonly xService: XService) { }
 
   @Get('auth-url')
   @UseGuards(SubscriptionGuard)
