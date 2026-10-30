@@ -37,12 +37,13 @@ test-results/
 *.tsbuildinfo
 
 # User uploaded assets & local symlinks
-uploads/
-**/uploads/
+uploads/*
+!uploads/references/
+**/uploads/*
+!**/uploads/references/
 **/public/uploads
 apps/web-dashboard/public/uploads
 apps/web-portal/public/uploads
-apps/api-core/uploads/
 
 # Scratch & Dev tools
 scratch/
