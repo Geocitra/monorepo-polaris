@@ -73,7 +73,10 @@ export class StudioGeneratorService implements OnModuleDestroy {
       }
 
       let [portal] = await tx
-        .select({ subdomainSlug: portalConfigs.subdomainSlug })
+        .select({
+          subdomainSlug: portalConfigs.subdomainSlug,
+          customDomain: portalConfigs.customDomain,
+        })
         .from(portalConfigs)
         .where(eq(portalConfigs.tenantId, tenantId))
         .limit(1);
@@ -120,7 +123,12 @@ export class StudioGeneratorService implements OnModuleDestroy {
 
       const baseSlug = ContentPublication.generateSlug(dto.topic.slice(0, 50));
       const finalSlug = `${baseSlug}-${randomUUID().slice(0, 8)}`;
-      const canonicalUrlObj = new CanonicalUrl(new SubdomainSlug(subdomainSlug), finalSlug);
+      const rootDomain = process.env.APP_ROOT_DOMAIN || process.env.NEXT_PUBLIC_ROOT_DOMAIN || 'polarismedia.id';
+      let canonicalUrlStr = `https://${subdomainSlug}.${rootDomain}/artikel/${finalSlug}`;
+      if (portal?.customDomain && portal.customDomain.trim()) {
+        const cleanDomain = portal.customDomain.trim().toLowerCase().replace(/^https?:\/\//, '').replace(/\/$/, '');
+        canonicalUrlStr = `https://${cleanDomain}/artikel/${finalSlug}`;
+      }
       const topicCharacters = Array.from(dto.topic.trim());
       const placeholderTitle =
         topicCharacters.length <= 255
@@ -137,7 +145,7 @@ export class StudioGeneratorService implements OnModuleDestroy {
             '# Sedang Disintesis...\n\nNaskah kebijakan Anda sedang diproses oleh AI Agent di antrean server.',
           wordCount: 0,
           status: ContentStatus.GENERATING,
-          canonicalUrl: canonicalUrlObj.getValue(),
+          canonicalUrl: canonicalUrlStr,
           createdByOperatorId: caller?.isOperator && caller.operatorId ? caller.operatorId : null,
           createdContext: caller?.isOperator ? ContentCreationContext.OPERATOR : ContentCreationContext.MEMBER,
         })

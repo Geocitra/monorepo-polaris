@@ -13,6 +13,7 @@ import {
   mediaAssets,
   socialSyndicationPacks,
   subscriptions,
+  portalConfigs,
 } from '@polaris/database';
 import { ContentStatus, AssetType, SubscriptionStatus } from '@polaris/shared-types';
 import { UpdateDraftArticleDto, UploadArticleImageDto } from '../dto/studio.dto.js';
@@ -227,10 +228,30 @@ export class StudioArticleService {
       throw new NotFoundException('Artikel tidak ditemukan.');
     }
 
+    // Resolusi canonicalUrl berdasarkan custom domain bila ada, atau subdomain resmi
+    const [portal] = await db
+      .select({
+        subdomainSlug: portalConfigs.subdomainSlug,
+        customDomain: portalConfigs.customDomain,
+      })
+      .from(portalConfigs)
+      .where(eq(portalConfigs.tenantId, tenantId))
+      .limit(1);
+
+    const rootDomain = process.env.APP_ROOT_DOMAIN || process.env.NEXT_PUBLIC_ROOT_DOMAIN || 'polarismedia.id';
+    let resolvedCanonicalUrl = article.canonicalUrl;
+    if (portal?.customDomain && portal.customDomain.trim()) {
+      const cleanDomain = portal.customDomain.trim().toLowerCase().replace(/^https?:\/\//, '').replace(/\/$/, '');
+      resolvedCanonicalUrl = `https://${cleanDomain}/artikel/${article.slug}`;
+    } else if (portal?.subdomainSlug) {
+      resolvedCanonicalUrl = `https://${portal.subdomainSlug}.${rootDomain}/artikel/${article.slug}`;
+    }
+
     await db
       .update(contentPublications)
       .set({
         status: ContentStatus.PUBLISHED,
+        canonicalUrl: resolvedCanonicalUrl,
         publishedAt: new Date(),
         updatedAt: new Date(),
       })
@@ -238,7 +259,7 @@ export class StudioArticleService {
 
     return {
       message: 'Artikel resmi dipublikasikan ke Website Pribadi Dewan.',
-      canonicalUrl: article.canonicalUrl,
+      canonicalUrl: resolvedCanonicalUrl,
     };
   }
 

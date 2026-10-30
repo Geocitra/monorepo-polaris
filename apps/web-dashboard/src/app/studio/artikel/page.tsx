@@ -674,7 +674,7 @@ function AIArticleStudioContent() {
         }),
       });
 
-      const portalDomain = getPortalUrl(profile?.subdomain);
+      const portalDomain = getPortalUrl(profile?.subdomain, profile?.customDomain);
       const cleanSlug = 'kajian-kebijakan-publik';
       setPublishedUrl(`${portalDomain}/artikel/${cleanSlug}`);
 

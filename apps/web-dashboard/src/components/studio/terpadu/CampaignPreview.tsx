@@ -1,6 +1,6 @@
 'use client';
 
-import { getRootDomain } from '@/lib/urls';
+import { getRootDomain, getPortalUrl } from '@/lib/urls';
 
 import { useState, useEffect } from 'react';
 import dynamic from 'next/dynamic';
@@ -76,6 +76,8 @@ interface CampaignPreviewProps {
   authorName?: string;
   partyAffiliation?: string;
   isBackgroundRenderingPoster?: boolean;
+  userSubdomain?: string;
+  userCustomDomain?: string;
 }
 
 export function CampaignPreview({
@@ -90,6 +92,8 @@ export function CampaignPreview({
   authorName = 'Tokoh Publik',
   partyAffiliation = '',
   isBackgroundRenderingPoster = false,
+  userSubdomain,
+  userCustomDomain,
 }: CampaignPreviewProps) {
   const { toast } = useToast();
   const [copiedAll, setCopiedAll] = useState(false);
@@ -462,6 +466,14 @@ export function CampaignPreview({
     }
   }
 
+  // Resolusi tautan artikel resmi yang mengarah ke portal pribadi klien (bukan domain induk)
+  const articleSlug = generatedResult?.publication?.slug || '';
+  const basePortalUrl = getPortalUrl(userSubdomain, userCustomDomain);
+  const articleUrl = publishedUrl || (articleSlug ? `${basePortalUrl}/artikel/${articleSlug}` : '');
+  const articleDisplayUrl = articleUrl
+    ? articleUrl.replace(/^https?:\/\//, '')
+    : `${basePortalUrl.replace(/^https?:\/\//, '')}${articleSlug ? `/artikel/${articleSlug}` : '/artikel/...'}`;
+
   async function handlePublishToThreads() {
     if (!connectedThreadsAccount) {
       toast({
@@ -486,6 +498,26 @@ export function CampaignPreview({
 
     setPublishingThreads(true);
     try {
+      // Jika mode Rich Link Card dan artikel belum dipublikasikan ke website,
+      // otomatis terbitkan ke portal web agar Meta crawler & konstituen tidak mendapat 404
+      let targetLinkAttachment: string | undefined = undefined;
+      if (threadsAttachmentMode === 'link_card') {
+        let finalLink = articleUrl;
+        if (!publishedUrl && generatedResult?.publication?.id) {
+          try {
+            const pubRes = await ApiClient.request<any>(`/studio/articles/${generatedResult.publication.id}/publish`, {
+              method: 'POST',
+            });
+            if (pubRes?.canonicalUrl) {
+              finalLink = pubRes.canonicalUrl;
+            }
+          } catch (pubErr) {
+            console.warn('Auto-publish portal saat publish threads:', pubErr);
+          }
+        }
+        targetLinkAttachment = finalLink || undefined;
+      }
+
       const res = await ApiClient.request<{ success: boolean; jobId: string }>('/social/threads/publish', {
         method: 'POST',
         body: JSON.stringify({
@@ -493,7 +525,7 @@ export function CampaignPreview({
           publicationId: generatedResult?.publication?.id,
           text: threadsCustomText,
           mediaUrl: mediaUrlToAttach,
-          linkAttachment: publishedUrl || (generatedResult?.publication?.id ? `https://${getRootDomain()}/p/${generatedResult.publication.id}` : undefined),
+          linkAttachment: targetLinkAttachment,
         }),
       });
 
@@ -1771,7 +1803,7 @@ export function CampaignPreview({
                             {generatedResult?.publication?.excerpt || 'Kajian dan advokasi sikap untuk konstituen.'}
                           </p>
                           <span className="text-[9px] font-mono text-blue-600 dark:text-blue-400 font-bold block truncate">
-                            {getRootDomain()}/p/{generatedResult?.publication?.id || 'kebijakan'}
+                            {articleDisplayUrl}
                           </span>
                         </div>
                       </div>

@@ -904,6 +904,8 @@ function KampanyeTerpaduContent() {
               isBackgroundRenderingPoster={isBackgroundRenderingPoster}
               authorName={profile?.fullName || 'Tokoh Publik'}
               partyAffiliation={profile?.commissionName || profile?.politicalParty || ''}
+              userSubdomain={profile?.subdomain}
+              userCustomDomain={profile?.customDomain}
             />
           </div>
 
