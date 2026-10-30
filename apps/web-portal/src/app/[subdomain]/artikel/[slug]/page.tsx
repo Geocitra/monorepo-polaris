@@ -292,14 +292,14 @@ export async function generateMetadata({
   const { member, theme, portal } = portalData;
   const baseUrl = portal?.customDomain
     ? `https://${portal.customDomain}`
-    : process.env.NEXT_PUBLIC_APP_URL || `https://${subdomain}.polaris.id`;
+    : process.env.NEXT_PUBLIC_APP_URL || `https://${subdomain}.${process.env.NEXT_PUBLIC_ROOT_DOMAIN || 'polarismedia.id'}`;
 
   const title = `${article.title} - ${member.fullName}`;
   const description = article.excerpt || `Telaah kebijakan dan risalah publik oleh ${member.fullName}.`;
 
   const canonicalUrl = portal?.customDomain
     ? `https://${portal.customDomain}/artikel/${slug}`
-    : (article.canonicalUrl || `${baseUrl}/${subdomain}/artikel/${slug}`);
+    : (article.canonicalUrl || `${baseUrl}/artikel/${slug}`);
 
   // WhatsApp dan Telegram HANYA mendukung JPG dan PNG untuk preview kartu media.
   // File .webp tidak didukung oleh scraper WhatsApp.
@@ -1110,11 +1110,11 @@ export default async function TenantArticlePage({
 
   const baseUrl = portal?.customDomain
     ? `https://${portal.customDomain}`
-    : process.env.NEXT_PUBLIC_APP_URL || `https://${subdomain}.polaris.id`;
+    : process.env.NEXT_PUBLIC_APP_URL || `https://${subdomain}.${process.env.NEXT_PUBLIC_ROOT_DOMAIN || 'polarismedia.id'}`;
 
   const canonicalUrl = portal?.customDomain
     ? `https://${portal.customDomain}/artikel/${slug}`
-    : (article.canonicalUrl || `${baseUrl}/${subdomain}/artikel/${slug}`);
+    : (article.canonicalUrl || `${baseUrl}/artikel/${slug}`);
 
   const isWebp = article.posterUrl && article.posterUrl.toLowerCase().includes('.webp');
   const hasJpgPngPoster =
