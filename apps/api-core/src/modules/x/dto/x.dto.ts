@@ -11,6 +11,10 @@ export class XCallbackQueryDto {
 
   @IsOptional()
   @IsString()
+  scope?: string;
+
+  @IsOptional()
+  @IsString()
   error?: string;
 
   @IsOptional()

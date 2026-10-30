@@ -8,6 +8,8 @@ import {
   Param,
   Res,
   UseGuards,
+  UsePipes,
+  ValidationPipe,
   HttpCode,
   HttpStatus,
   Logger,
@@ -40,6 +42,7 @@ export class XController {
 
   @Public()
   @Get('callback')
+  @UsePipes(new ValidationPipe({ whitelist: false, forbidNonWhitelisted: false }))
   async handleOAuthCallback(
     @Query() query: XCallbackQueryDto,
     @Res() res: Response

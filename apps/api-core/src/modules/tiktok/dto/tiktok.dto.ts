@@ -11,11 +11,23 @@ export class TikTokCallbackQueryDto {
 
   @IsOptional()
   @IsString()
+  scopes?: string;
+
+  @IsOptional()
+  @IsString()
+  scope?: string;
+
+  @IsOptional()
+  @IsString()
   error?: string;
 
   @IsOptional()
   @IsString()
   error_description?: string;
+
+  @IsOptional()
+  @IsString()
+  error_code?: string;
 }
 
 export interface TikTokAuthUrlResponseDto {

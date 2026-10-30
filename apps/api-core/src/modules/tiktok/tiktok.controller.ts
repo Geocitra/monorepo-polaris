@@ -8,6 +8,8 @@ import {
   Param,
   Res,
   UseGuards,
+  UsePipes,
+  ValidationPipe,
   HttpCode,
   HttpStatus,
   Logger,
@@ -42,6 +44,7 @@ export class TikTokController {
 
   @Public()
   @Get('callback')
+  @UsePipes(new ValidationPipe({ whitelist: false, forbidNonWhitelisted: false }))
   async handleOAuthCallback(
     @Query() query: TikTokCallbackQueryDto,
     @Res() res: Response
