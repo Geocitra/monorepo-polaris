@@ -2,6 +2,7 @@ import sharp from 'sharp';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { CloudflareR2StorageAdapter } from './storage.adapter.js';
+import { CloudinaryStorageAdapter } from './cloudinary.adapter.js';
 
 export interface FormattedThreadsMediaResult {
   formattedUrl: string;
@@ -70,7 +71,10 @@ export class ThreadsMediaFormatter {
 
     // 3. Simpan ke Cloudflare R2 atau Local Tunnel Storage
     const filename = `threads-${Date.now()}-${params.jobId}.jpg`;
-    let formattedUrl: string;
+
+    let formattedUrl: string | null = null;
+    const cloudinary = new CloudinaryStorageAdapter();
+    const isCloudinaryConfigured = cloudinary.isConfigured();
 
     const isR2Configured =
       process.env.R2_ACCOUNT_ID &&
@@ -79,7 +83,24 @@ export class ThreadsMediaFormatter {
       process.env.R2_ACCESS_KEY_ID &&
       process.env.R2_ACCESS_KEY_ID !== 'your-r2-access-key';
 
-    if (isR2Configured) {
+    // 3a. Prioritaskan Cloudinary untuk CDN publik berkecepatan tinggi
+    if (isCloudinaryConfigured) {
+      try {
+        const safePublicId = `threads_${Date.now()}_${params.jobId}`.replace(/[^a-zA-Z0-9_-]/g, '_');
+        const uploadResult = await cloudinary.uploadBuffer(outputBuffer, {
+          folder: `polaris/social/${params.tenantId}`,
+          publicId: safePublicId,
+          contentType: 'image/jpeg',
+          contentLength: outputBuffer.length,
+        });
+        formattedUrl = uploadResult.publicUrl;
+      } catch (cldErr: any) {
+        console.warn(`[ThreadsMediaFormatter] Gagal upload Cloudinary: ${cldErr.message}. Beralih ke fallback R2/Local.`);
+      }
+    }
+
+    // 3b. Fallback ke Cloudflare R2
+    if (!formattedUrl && isR2Configured) {
       try {
         const destinationPath = `social/${params.tenantId}/${filename}`;
         const uploadResult = await this.storage.uploadBuffer(outputBuffer, {
@@ -90,9 +111,11 @@ export class ThreadsMediaFormatter {
         formattedUrl = uploadResult.publicUrl;
       } catch (err: any) {
         console.warn(`[ThreadsMediaFormatter] Gagal upload R2: ${err.message}. Beralih ke local storage tunnel.`);
-        formattedUrl = this.saveToLocalTunnelStorage(outputBuffer, filename);
       }
-    } else {
+    }
+
+    // 3c. Fallback terakhir ke Local Storage terlayani via tunnel
+    if (!formattedUrl) {
       formattedUrl = this.saveToLocalTunnelStorage(outputBuffer, filename);
     }
 

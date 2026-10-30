@@ -2,6 +2,7 @@ import sharp from 'sharp';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { CloudflareR2StorageAdapter } from './storage.adapter.js';
+import { CloudinaryStorageAdapter } from './cloudinary.adapter.js';
 
 export interface FormattedMediaResult {
   formattedUrl: string;
@@ -34,12 +35,30 @@ export class InstagramMediaFormatter {
     if (params.sourceUrl.startsWith('data:')) {
       const base64Data = params.sourceUrl.split(',')[1] || '';
       inputBuffer = Buffer.from(base64Data, 'base64');
-    } else {
+    } else if (params.sourceUrl.startsWith('http://') || params.sourceUrl.startsWith('https://')) {
       const res = await fetch(params.sourceUrl);
       if (!res.ok) {
-        throw new Error(`[MediaFormatter] Gagal mengunduh gambar sumber: ${res.statusText}`);
+        throw new Error(`[InstagramMediaFormatter] Gagal mengunduh gambar sumber: ${res.statusText}`);
       }
       inputBuffer = Buffer.from(await res.arrayBuffer());
+    } else {
+      // Relative path local
+      const searchDirs = [
+        path.resolve(process.cwd(), params.sourceUrl.replace(/^\//, '')),
+        path.resolve(process.cwd(), 'uploads', params.sourceUrl.replace(/^\/uploads\//, '')),
+        path.resolve('/home/pc/projects/polaris-platform', params.sourceUrl.replace(/^\//, '')),
+      ];
+      let foundPath: string | null = null;
+      for (const p of searchDirs) {
+        if (fs.existsSync(p)) {
+          foundPath = p;
+          break;
+        }
+      }
+      if (!foundPath) {
+        throw new Error(`[InstagramMediaFormatter] Berkas gambar lokal tidak ditemukan: ${params.sourceUrl}`);
+      }
+      inputBuffer = fs.readFileSync(foundPath);
     }
 
     let outputBuffer: Buffer;
@@ -77,7 +96,10 @@ export class InstagramMediaFormatter {
 
     // 3. Simpan ke Cloudflare R2 atau Local Storage terlayani via Tunnel
     const filename = `${Date.now()}-${params.jobId}.jpg`;
-    let formattedUrl: string;
+
+    let formattedUrl: string | null = null;
+    const cloudinary = new CloudinaryStorageAdapter();
+    const isCloudinaryConfigured = cloudinary.isConfigured();
 
     const isR2Configured =
       process.env.R2_ACCOUNT_ID &&
@@ -86,7 +108,24 @@ export class InstagramMediaFormatter {
       process.env.R2_ACCESS_KEY_ID &&
       process.env.R2_ACCESS_KEY_ID !== 'your-r2-access-key';
 
-    if (isR2Configured) {
+    // 3a. Prioritaskan Cloudinary untuk CDN publik berkecepatan tinggi
+    if (isCloudinaryConfigured) {
+      try {
+        const safePublicId = `ig_${Date.now()}_${params.jobId}`.replace(/[^a-zA-Z0-9_-]/g, '_');
+        const uploadResult = await cloudinary.uploadBuffer(outputBuffer, {
+          folder: `polaris/social/${params.tenantId}`,
+          publicId: safePublicId,
+          contentType: 'image/jpeg',
+          contentLength: outputBuffer.length,
+        });
+        formattedUrl = uploadResult.publicUrl;
+      } catch (cldErr: any) {
+        console.warn(`[InstagramMediaFormatter] Gagal upload Cloudinary: ${cldErr.message}. Beralih ke fallback R2/Local.`);
+      }
+    }
+
+    // 3b. Fallback ke Cloudflare R2
+    if (!formattedUrl && isR2Configured) {
       try {
         const destinationPath = `social/${params.tenantId}/${filename}`;
         const uploadResult = await this.storage.uploadBuffer(outputBuffer, {
@@ -97,9 +136,11 @@ export class InstagramMediaFormatter {
         formattedUrl = uploadResult.publicUrl;
       } catch (err: any) {
         console.warn(`[InstagramMediaFormatter] Gagal upload R2: ${err.message}. Beralih ke local storage tunnel.`);
-        formattedUrl = this.saveToLocalTunnelStorage(outputBuffer, filename);
       }
-    } else {
+    }
+
+    // 3c. Fallback terakhir ke Local Storage terlayani via tunnel
+    if (!formattedUrl) {
       formattedUrl = this.saveToLocalTunnelStorage(outputBuffer, filename);
     }
 

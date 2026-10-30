@@ -4,6 +4,7 @@ import * as fs from 'fs';
 import * as path from 'path';
 import { r2Client, R2_CONFIG } from './r2.client.js';
 import { ImageOptimizer } from './image-optimizer.js';
+import { CloudinaryStorageAdapter } from './cloudinary.adapter.js';
 
 function saveBufferLocally(buffer: Buffer, relativePath: string): string {
   try {
@@ -127,6 +128,23 @@ export class CloudflareR2StorageAdapter implements IStoragePort {
         };
       } catch (r2Err) {
         console.warn(`[StorageAdapter] R2 uploadBuffer gagal, beralih ke penyimpanan lokal:`, r2Err);
+      }
+    }
+
+    // 2. Cloudinary Storage jika R2 tidak aktif
+    const cloudinary = new CloudinaryStorageAdapter();
+    if (cloudinary.isConfigured()) {
+      try {
+        const cleanName = cleanFinalPath.replace(/[^a-zA-Z0-9_-]/g, '_').replace(/\.[^/.]+$/, '');
+        const res = await cloudinary.uploadBuffer(buffer, {
+          destinationPath: cleanFinalPath,
+          publicId: cleanName,
+          contentType: options.contentType,
+          contentLength: options.contentLength || buffer.length,
+        });
+        return { publicUrl: res.publicUrl };
+      } catch (cldErr) {
+        console.warn('[StorageAdapter] Cloudinary uploadBuffer gagal, beralih ke disk lokal:', cldErr);
       }
     }
 
