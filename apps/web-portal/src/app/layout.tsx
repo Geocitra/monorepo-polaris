@@ -2,8 +2,14 @@ import './globals.css';
 import './polaris-theme.css';
 import type { Metadata } from 'next';
 
+const defaultAppUrl =
+  process.env.NEXT_PUBLIC_APP_URL ||
+  (process.env.NEXT_PUBLIC_ROOT_DOMAIN
+    ? `https://${process.env.NEXT_PUBLIC_ROOT_DOMAIN}`
+    : 'https://polaris.id');
+
 export const metadata: Metadata = {
-  metadataBase: new URL(process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3001'),
+  metadataBase: new URL(defaultAppUrl),
   title: 'Portal Akuntabilitas Publik Anggota Dewan',
   description: 'Portal resmi transparansi kinerja, gagasan kebijakan, dan layanan aspirasi warga.',
 };

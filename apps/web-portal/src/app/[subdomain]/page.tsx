@@ -22,26 +22,38 @@ export async function generateMetadata({
   }
 
   const { member, theme, portal } = data;
-  const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3001';
+  const rootDomain = process.env.NEXT_PUBLIC_ROOT_DOMAIN || 'polarismedia.id';
+
+  // 1. Sanitasi Custom Domain milik user dari Database (misal: opinitaru.com / polarismedia.space)
+  const cleanCustomDomain = portal?.customDomain
+    ? portal.customDomain.trim().toLowerCase().replace(/^https?:\/\//, '').replace(/\/$/, '')
+    : null;
+
+  // 2. Base URL & Canonical URL (Hierarki: Custom Domain -> Subdomain polarismedia.id -> Dev localhost)
+  const baseUrl = cleanCustomDomain
+    ? `https://${cleanCustomDomain}`
+    : (process.env.NODE_ENV === 'production'
+        ? `https://${subdomain}.${rootDomain}`
+        : (process.env.NEXT_PUBLIC_APP_URL || `http://${subdomain}.localhost:3001`));
+
+  const canonicalUrl = baseUrl;
+
+  // 3. Title Kustom Tokoh dari DB dengan perlindungan anti-crash
   const title = portal?.metaTitle || `${member?.fullName || 'Portal'} - Portal Publik Resmi`;
   const description =
     theme.headlineTagline ||
-    `Portal resmi publikasi pemikiran kebijakan, naskah risalah, dan dokumentasi kerja ${member.fullName}.`;
+    `Portal resmi publikasi pemikiran kebijakan, naskah risalah, dan dokumentasi kerja ${member?.fullName || 'Anggota Dewan'}.`;
 
-  const canonicalUrl = portal?.customDomain
-    ? `https://${portal.customDomain}`
-    : `${baseUrl}/${subdomain}`;
-
-  const ogImageUrl = `/api/og?title=${encodeURIComponent(title)}&author=${encodeURIComponent(member.fullName)}&dapil=${encodeURIComponent(member.dapilName)}&party=${encodeURIComponent(member.partyAffiliation)}&color=${encodeURIComponent(theme.primaryHexColor)}`;
+  const ogImageUrl = `${baseUrl}/api/og?title=${encodeURIComponent(title)}&author=${encodeURIComponent(member?.fullName || 'Tokoh Publik')}&dapil=${encodeURIComponent(member?.dapilName || '')}&party=${encodeURIComponent(member?.partyAffiliation || '')}&color=${encodeURIComponent(theme.primaryHexColor)}`;
 
   return {
     title,
     description,
     keywords: [
-      member.fullName,
+      member?.fullName || 'Portal Resmi',
       'Portal Resmi',
-      member.partyAffiliation,
-      member.dapilName,
+      member?.partyAffiliation || 'Parlemen',
+      member?.dapilName || 'Daerah Pemilihan',
       'Aspirasi Warga',
       'Kebijakan Publik',
       'Parlemen',
@@ -99,10 +111,15 @@ export default async function TenantHomePage({
     ...(sp.preview_photo ? { photoUrl: sp.preview_photo } : {}),
   };
 
-  const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3001';
-  const canonicalUrl = portal?.customDomain
-    ? `https://${portal.customDomain}`
-    : `${baseUrl}/${subdomain}`;
+  const rootDomain = process.env.NEXT_PUBLIC_ROOT_DOMAIN || 'polarismedia.id';
+  const cleanCustomDomain = portal?.customDomain
+    ? portal.customDomain.trim().toLowerCase().replace(/^https?:\/\//, '').replace(/\/$/, '')
+    : null;
+  const canonicalUrl = cleanCustomDomain
+    ? `https://${cleanCustomDomain}`
+    : (process.env.NODE_ENV === 'production'
+        ? `https://${subdomain}.${rootDomain}`
+        : (process.env.NEXT_PUBLIC_APP_URL || `http://${subdomain}.localhost:3001`));
 
   const jsonLd = {
     '@context': 'https://schema.org',
@@ -111,27 +128,27 @@ export default async function TenantHomePage({
         '@type': 'WebSite',
         '@id': `${canonicalUrl}#website`,
         url: canonicalUrl,
-        name: `${member.fullName} - Portal Publik Resmi`,
-        description: theme.headlineTagline || `Portal resmi publikasi kerja legislatif ${member.fullName}.`,
+        name: `${member?.fullName || 'Portal'} - Portal Publik Resmi`,
+        description: theme.headlineTagline || `Portal resmi publikasi kerja legislatif ${member?.fullName || 'Anggota Dewan'}.`,
         publisher: {
           '@type': 'Person',
-          name: member.fullName,
+          name: member?.fullName || 'Tokoh Publik',
         },
       },
       {
         '@type': 'Person',
         '@id': `${canonicalUrl}#person`,
-        name: member.fullName,
-        jobTitle: `Anggota Parlemen (${member.legislativeLevel || 'DPR RI'})`,
+        name: member?.fullName || 'Tokoh Publik',
+        jobTitle: `Anggota Parlemen (${member?.legislativeLevel || 'DPR RI'})`,
         worksFor: {
           '@type': 'GovernmentOrganization',
-          name: member.legislativeLevel || 'Dewan Perwakilan Rakyat',
+          name: member?.legislativeLevel || 'Dewan Perwakilan Rakyat',
         },
         affiliation: {
           '@type': 'Organization',
-          name: member.partyAffiliation || 'Fraksi Parlemen',
+          name: member?.partyAffiliation || 'Fraksi Parlemen',
         },
-        image: member.photoUrl || undefined,
+        image: member?.photoUrl || undefined,
         url: canonicalUrl,
       },
     ],
