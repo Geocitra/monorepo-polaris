@@ -1,52 +1,22 @@
 'use client';
 
-import { getRootDomain, getPortalUrl } from '@/lib/urls';
-
+import { getPortalUrl } from '@/lib/urls';
 import { useState, useEffect } from 'react';
-import dynamic from 'next/dynamic';
 import Link from 'next/link';
-import Image from 'next/image';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Card } from '@/components/ui/card';
 import { useToast } from '@/components/ui/toast';
 import {
   Sparkles,
-  Image as ImageIcon,
+  ImageIcon,
   Globe,
   Copy,
-  MessageCircle,
   FileText,
   Share2,
   ExternalLink,
   Lock,
-  Download,
-  Edit3,
-  Eye,
-  CheckCheck,
   Check,
-  ShieldCheck,
-  BarChart3,
-  Cpu,
-  Send,
-  Loader2,
-  Instagram,
-  Plus,
-  Trash2,
-  ChevronLeft,
-  ChevronRight,
-  ArrowUpRight,
-  Heart,
-  Bookmark,
-  MoreHorizontal,
-  Maximize2,
-  Minimize2,
-  MoveVertical,
-  RotateCw,
-  X,
-  Video,
-  AlertTriangle,
-  Info,
 } from 'lucide-react';
 import { ApiClient } from '@/lib/api-client';
 import { downloadImageFile } from '@/lib/utils';
@@ -55,19 +25,10 @@ import { ThreadsPublishProgressModal } from '@/components/studio/ThreadsPublishP
 import { XPublishProgressModal } from '@/components/studio/XPublishProgressModal';
 import { TikTokPublishProgressModal } from '@/components/studio/TikTokPublishProgressModal';
 import { PosterLightbox } from './preview/PosterLightbox';
-
-const TiptapExecutiveEditor = dynamic(
-  () => import('@/components/studio/artikel/TiptapExecutiveEditor').then((m) => m.TiptapExecutiveEditor),
-  {
-    ssr: false,
-    loading: () => (
-      <div className="p-12 text-center text-xs text-slate-400 flex items-center justify-center gap-2">
-        <Loader2 className="h-4 w-4 animate-spin text-blue-500" />
-        <span>Memuat Kanvas Artikel...</span>
-      </div>
-    ),
-  }
-);
+import { ArticlePreviewTab } from './preview/tabs/ArticlePreviewTab';
+import { PosterPreviewTab } from './preview/tabs/PosterPreviewTab';
+import { SocialDistributionTab } from './preview/social/SocialDistributionTab';
+import { SocialChannelType, SocialFeatureFlags } from './preview/types';
 
 interface CampaignPreviewProps {
   generatedResult: any;
@@ -102,54 +63,47 @@ export function CampaignPreview({
 }: CampaignPreviewProps) {
   const { toast } = useToast();
   const [copiedAll, setCopiedAll] = useState(false);
-  const [copiedWa, setCopiedWa] = useState(false);
-  const [copiedIg, setCopiedIg] = useState(false);
   const [isEditingArticle, setIsEditingArticle] = useState(false);
   const [editedTitle, setEditedTitle] = useState(generatedResult?.publication?.title || '');
   const [editedBody, setEditedBody] = useState(generatedResult?.publication?.bodyContentMarkdown || '');
   const [selectedPosterUrl, setSelectedPosterUrl] = useState(generatedResult?.posterUrl || '');
   const [regeneratingPoster, setRegeneratingPoster] = useState(false);
-  const [visualMode, setVisualMode] = useState<'infographic' | 'raw_poster'>('infographic');
   const [connectedAccount, setConnectedAccount] = useState<any>(null);
   const [connectedThreadsAccount, setConnectedThreadsAccount] = useState<any>(null);
+  const [connectedXAccount, setConnectedXAccount] = useState<any>(null);
+  const [connectedTikTokAccount, setConnectedTikTokAccount] = useState<any>(null);
+
   const [publishingIg, setPublishingIg] = useState(false);
   const [publishingThreads, setPublishingThreads] = useState(false);
+  const [publishingX, setPublishingX] = useState(false);
+  const [publishingTikTok, setPublishingTikTok] = useState(false);
+
   const [activeJobId, setActiveJobId] = useState<string | null>(null);
   const [activeThreadsJobId, setActiveThreadsJobId] = useState<string | null>(null);
+  const [activeXJobId, setActiveXJobId] = useState<string | null>(null);
+  const [activeTikTokJobId, setActiveTikTokJobId] = useState<string | null>(null);
+
   const [isPublishModalOpen, setIsPublishModalOpen] = useState(false);
   const [isThreadsPublishModalOpen, setIsThreadsPublishModalOpen] = useState(false);
+  const [isXPublishModalOpen, setIsXPublishModalOpen] = useState(false);
+  const [isTikTokPublishModalOpen, setIsTikTokPublishModalOpen] = useState(false);
+
   const [threadsAttachmentMode, setThreadsAttachmentMode] = useState<'link_card' | 'poster'>('link_card');
   const [threadsCustomText, setThreadsCustomText] = useState('');
   const [igFramingMode, setIgFramingMode] = useState<'crop' | 'blur'>('crop');
-  const [selectedSocialChannel, setSelectedSocialChannel] = useState<'instagram' | 'whatsapp' | 'threads' | 'x' | 'tiktok'>('instagram');
-  const [connectedXAccount, setConnectedXAccount] = useState<any>(null);
-  const [isXPublishModalOpen, setIsXPublishModalOpen] = useState(false);
-  const [activeXJobId, setActiveXJobId] = useState<string | null>(null);
-  const [publishingX, setPublishingX] = useState(false);
+  const [selectedSocialChannel, setSelectedSocialChannel] = useState<SocialChannelType>('instagram');
   const [xCustomText, setXCustomText] = useState('');
   const [xAttachPoster, setXAttachPoster] = useState(true);
-
-  const [connectedTikTokAccount, setConnectedTikTokAccount] = useState<any>(null);
-  const [isTikTokPublishModalOpen, setIsTikTokPublishModalOpen] = useState(false);
-  const [activeTikTokJobId, setActiveTikTokJobId] = useState<string | null>(null);
-  const [publishingTikTok, setPublishingTikTok] = useState(false);
   const [tiktokCustomCaption, setTiktokCustomCaption] = useState('');
+
   const [carouselSlides, setCarouselSlides] = useState<string[]>([]);
   const [activeSlideIndex, setActiveSlideIndex] = useState(0);
   const [slideFocalY, setSlideFocalY] = useState<Record<number, number>>({});
-  const [isDraggingFocal, setIsDraggingFocal] = useState(false);
-  const [dragStartY, setDragStartY] = useState(0);
-  const [dragStartFocal, setDragStartFocal] = useState(50);
   const [downloadingPoster, setDownloadingPoster] = useState(false);
   const [customIgCaption, setCustomIgCaption] = useState('');
   const [customWaText, setCustomWaText] = useState('');
   const [isPosterLightboxOpen, setIsPosterLightboxOpen] = useState(false);
-  const [socialFeatureFlags, setSocialFeatureFlags] = useState<{
-    AUTO_PUBLISH_INSTAGRAM: boolean;
-    AUTO_PUBLISH_THREADS: boolean;
-    AUTO_PUBLISH_TIKTOK: boolean;
-    AUTO_PUBLISH_X_TWITTER: boolean;
-  }>({
+  const [socialFeatureFlags, setSocialFeatureFlags] = useState<SocialFeatureFlags>({
     AUTO_PUBLISH_INSTAGRAM: false,
     AUTO_PUBLISH_THREADS: false,
     AUTO_PUBLISH_TIKTOK: false,
@@ -287,7 +241,7 @@ export function CampaignPreview({
     }
   }, [generatedResult?.socialPack]);
 
-  // Auto-sync posterUrl saat background polling selesai (tanpa butuh refresh)
+  // Auto-sync posterUrl saat background polling selesai
   useEffect(() => {
     if (generatedResult?.posterUrl && generatedResult.posterUrl !== selectedPosterUrl) {
       setSelectedPosterUrl(generatedResult.posterUrl);
@@ -313,104 +267,6 @@ export function CampaignPreview({
       });
     }
   }, [selectedPosterUrl, generatedResult?.posterUrl]);
-
-  async function handleAddPhotos(e: React.ChangeEvent<HTMLInputElement>) {
-    const files = e.target.files;
-    if (!files || files.length === 0) return;
-
-    const remainingSlots = 10 - carouselSlides.length;
-    if (remainingSlots <= 0) {
-      toast({
-        type: 'warning',
-        title: 'Batas Maksimal Tercapai',
-        description: 'Karusel Instagram mendukung maksimal 10 foto dalam 1 postingan.',
-      });
-      return;
-    }
-
-    const filesToRead = Array.from(files).slice(0, remainingSlots);
-
-    const readAndOptimize = (file: File): Promise<string> => {
-      return new Promise((resolve) => {
-        const reader = new FileReader();
-        reader.onload = (event) => {
-          const rawUrl = event.target?.result as string;
-          if (!rawUrl) return resolve('');
-
-          const img = new window.Image();
-          img.onload = () => {
-            const maxDim = 1600;
-            let { width, height } = img;
-            if (width > maxDim || height > maxDim) {
-              if (width > height) {
-                height = Math.round((height * maxDim) / width);
-                width = maxDim;
-              } else {
-                width = Math.round((width * maxDim) / height);
-                height = maxDim;
-              }
-            }
-            const canvas = document.createElement('canvas');
-            canvas.width = width;
-            canvas.height = height;
-            const ctx = canvas.getContext('2d');
-            if (ctx) {
-              ctx.drawImage(img, 0, 0, width, height);
-              resolve(canvas.toDataURL('image/jpeg', 0.88));
-            } else {
-              resolve(rawUrl);
-            }
-          };
-          img.onerror = () => resolve(rawUrl);
-          img.src = rawUrl;
-        };
-        reader.onerror = () => resolve('');
-        reader.readAsDataURL(file);
-      });
-    };
-
-    const optimizedDataUrls = await Promise.all(filesToRead.map(readAndOptimize));
-    const validUrls = optimizedDataUrls.filter(Boolean);
-
-    if (validUrls.length > 0) {
-      setCarouselSlides((prev) => [...prev, ...validUrls]);
-      toast({
-        type: 'success',
-        title: 'Foto Dokumentasi Ditambahkan',
-        description: `${validUrls.length} foto siap dipublikasikan ke dalam album Karusel.`,
-      });
-    }
-    e.target.value = '';
-  }
-
-  function handleRemoveSlide(indexToRemove: number) {
-    if (carouselSlides.length <= 1) {
-      toast({
-        type: 'warning',
-        title: 'Tidak Bisa Dihapus',
-        description: 'Minimal harus ada 1 poster utama untuk diterbitkan.',
-      });
-      return;
-    }
-    setCarouselSlides((prev) => prev.filter((_, idx) => idx !== indexToRemove));
-    if (activeSlideIndex >= carouselSlides.length - 1) {
-      setActiveSlideIndex(Math.max(0, carouselSlides.length - 2));
-    }
-  }
-
-  function handleMoveSlide(index: number, direction: 'left' | 'right') {
-    const targetIndex = direction === 'left' ? index - 1 : index + 1;
-    if (targetIndex < 0 || targetIndex >= carouselSlides.length) return;
-
-    setCarouselSlides((prev) => {
-      const copy = [...prev];
-      const temp = copy[index];
-      copy[index] = copy[targetIndex];
-      copy[targetIndex] = temp;
-      return copy;
-    });
-    setActiveSlideIndex(targetIndex);
-  }
 
   function renderFocalCrop(imageUrl: string, focalPercentY: number): Promise<string> {
     return new Promise((resolve) => {
@@ -473,7 +329,6 @@ export function CampaignPreview({
       return;
     }
 
-    // Jika ada slide dengan posisi fokus khusus di mode crop, render crop presisi sebelum kirim
     if (igFramingMode === 'crop') {
       targetSlides = await Promise.all(
         targetSlides.map((url, idx) => {
@@ -519,7 +374,6 @@ export function CampaignPreview({
     }
   }
 
-  // Resolusi tautan artikel resmi yang mengarah ke portal pribadi klien (bukan domain induk)
   const articleSlug = generatedResult?.publication?.slug || '';
   const basePortalUrl = getPortalUrl(userSubdomain, userCustomDomain);
   const articleUrl = publishedUrl || (articleSlug ? `${basePortalUrl}/artikel/${articleSlug}` : '');
@@ -566,8 +420,6 @@ export function CampaignPreview({
 
     setPublishingThreads(true);
     try {
-      // Jika mode Rich Link Card dan artikel belum dipublikasikan ke website,
-      // otomatis terbitkan ke portal web agar Meta crawler & konstituen tidak mendapat 404
       let targetLinkAttachment: string | undefined = undefined;
       if (threadsAttachmentMode === 'link_card') {
         let finalLink = articleUrl;
@@ -732,7 +584,7 @@ export function CampaignPreview({
 
   if (!generatedResult) {
     return (
-      <Card className="min-h-[500px] border-2 border-dashed border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900/60 flex flex-col items-center justify-center p-8 sm:p-12 text-center space-y-4 rounded-3xl shadow-sm">
+      <Card className="min-h-[500px] border-2 border-dashed border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900/60 flex flex-col items-center justify-center p-8 sm:p-12 text-center space-y-4 rounded-3xl shadow-xs">
         <div className="h-16 w-16 rounded-2xl bg-blue-50 dark:bg-blue-950/60 text-blue-600 dark:text-blue-400 flex items-center justify-center shadow-xs">
           <Sparkles className="h-8 w-8" />
         </div>
@@ -752,19 +604,6 @@ export function CampaignPreview({
   const currentBody = editedBody || generatedResult.publication?.bodyContentMarkdown;
   const wordCount = (currentBody || '').split(/\s+/).filter(Boolean).length;
   const readTimeMinutes = Math.max(1, Math.round(wordCount / 200));
-
-  const infoData = generatedResult?.infographicData;
-  const infoHeadline = infoData?.headline || currentTitle || 'Infografik Isu & Kebijakan';
-  const infoTakeaway = infoData?.policyTakeaway || generatedResult?.publication?.excerpt || 'Kajian ringkas pokok pikiran kebijakan daerah.';
-  const keyStats: Array<{ label: string; value: string; context?: string }> =
-    Array.isArray(infoData?.keyStatistics) && infoData.keyStatistics.length > 0
-      ? infoData.keyStatistics
-      : [
-        { label: 'Indikator Utama', value: 'Prioritas', context: 'Fokus isu utama' },
-        { label: 'Cakupan Riset', value: `${wordCount} Kata`, context: 'Sintesis teknokratis' },
-        { label: 'Estimasi Baca', value: `${readTimeMinutes} Menit`, context: 'Ringkasan eksekutif' },
-        { label: 'Kanal Rilis', value: 'Multi-Format', context: 'Portal web & media sosial' },
-      ];
 
   function handleCopyAllCampaign() {
     const waText =
@@ -804,7 +643,7 @@ export function CampaignPreview({
   }
 
   return (
-    <Card className="space-y-5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-sm p-6 rounded-3xl">
+    <Card className="space-y-5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-xs p-6 rounded-3xl">
       {/* HEADER HASIL */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-100 dark:border-slate-800 pb-4">
         <div>
@@ -871,30 +710,33 @@ export function CampaignPreview({
       <div className="flex border-b border-slate-200 dark:border-slate-800 gap-1 sm:gap-4 overflow-x-auto pb-1">
         <button
           onClick={() => onTabChange('article')}
-          className={`pb-2.5 px-3 text-xs font-extrabold transition-all border-b-2 whitespace-nowrap ${activeTab === 'article'
+          className={`pb-2.5 px-3 text-xs font-extrabold transition-all border-b-2 whitespace-nowrap cursor-pointer ${
+            activeTab === 'article'
               ? 'border-blue-600 text-blue-600 dark:text-blue-400'
               : 'border-transparent text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200'
-            }`}
+          }`}
         >
           <FileText className="h-3.5 w-3.5 inline mr-1.5" />
           Kajian Artikel
         </button>
         <button
           onClick={() => onTabChange('poster')}
-          className={`pb-2.5 px-3 text-xs font-extrabold transition-all border-b-2 whitespace-nowrap ${activeTab === 'poster'
+          className={`pb-2.5 px-3 text-xs font-extrabold transition-all border-b-2 whitespace-nowrap cursor-pointer ${
+            activeTab === 'poster'
               ? 'border-blue-600 text-blue-600 dark:text-blue-400'
               : 'border-transparent text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200'
-            }`}
+          }`}
         >
           <ImageIcon className="h-3.5 w-3.5 inline mr-1.5" />
           Poster & Infografis
         </button>
         <button
           onClick={() => onTabChange('social')}
-          className={`pb-2.5 px-3 text-xs font-extrabold transition-all border-b-2 whitespace-nowrap ${activeTab === 'social'
+          className={`pb-2.5 px-3 text-xs font-extrabold transition-all border-b-2 whitespace-nowrap cursor-pointer ${
+            activeTab === 'social'
               ? 'border-blue-600 text-blue-600 dark:text-blue-400'
               : 'border-transparent text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200'
-            }`}
+          }`}
         >
           <Share2 className="h-3.5 w-3.5 inline mr-1.5" />
           Distribusi Media Sosial
@@ -903,1916 +745,87 @@ export function CampaignPreview({
 
       {/* TAB 1: KAJIAN ARTIKEL */}
       {activeTab === 'article' && (
-        <div className="space-y-4">
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-bold text-slate-500 dark:text-slate-400">
-              Kajian lengkap dengan rujukan peraturan
-            </span>
-            <div className="flex items-center gap-2">
-              <button
-                type="button"
-                onClick={() => setIsEditingArticle(!isEditingArticle)}
-                className="inline-flex items-center gap-1 text-xs font-bold text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 hover:underline"
-              >
-                {isEditingArticle ? <Eye className="h-3.5 w-3.5" /> : <Edit3 className="h-3.5 w-3.5" />}
-                <span>{isEditingArticle ? 'Tutup Suntingan' : 'Sunting'}</span>
-              </button>
-              {generatedResult.publication?.id && (
-                <Link
-                  href={`/studio/${generatedResult.publication.id}`}
-                  className="text-xs font-bold text-slate-500 dark:text-slate-400 hover:text-blue-600 dark:hover:text-blue-400 transition-colors ml-2"
-                >
-                  Buka di Editor Lengkap &rarr;
-                </Link>
-              )}
-            </div>
-          </div>
-
-          {/* RINGKASAN */}
-          <div className="p-4 rounded-2xl bg-blue-50/70 dark:bg-blue-950/40 border border-blue-200 dark:border-blue-900/60 text-xs sm:text-sm font-semibold text-slate-800 dark:text-slate-200 leading-relaxed border-l-4 border-l-blue-600 dark:border-l-blue-500 shadow-2xs">
-            <span className="text-[10px] font-black uppercase tracking-wider text-blue-700 dark:text-blue-300 block mb-1">
-              Ringkasan
-            </span>
-            {generatedResult.publication?.excerpt}
-          </div>
-
-          {/* JUDUL ARTIKEL (BISA DISUNTING LANGSUNG) */}
-          <div className="space-y-1.5">
-            <label className="text-[11px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
-              Judul Artikel Kebijakan:
-            </label>
-            {isEditingArticle ? (
-              <input
-                type="text"
-                value={editedTitle}
-                onChange={(e) => setEditedTitle(e.target.value)}
-                placeholder="Judul artikel kebijakan..."
-                className="w-full rounded-xl border border-blue-500 dark:border-blue-500 bg-white dark:bg-slate-800 p-3 text-base sm:text-lg font-black text-slate-900 dark:text-white shadow-xs focus:outline-none"
-              />
-            ) : (
-              <h2 className="text-lg sm:text-xl font-black text-slate-900 dark:text-white tracking-tight">
-                {currentTitle}
-              </h2>
-            )}
-          </div>
-
-          {/* ISI ARTIKEL DENGAN TIPTAP TRUE WYSIWYG EDITOR */}
-          <div className="border border-slate-200 dark:border-slate-800 rounded-2xl shadow-inner bg-slate-50/50 dark:bg-slate-950/40 p-2 sm:p-4">
-            <TiptapExecutiveEditor
-              content={currentBody}
-              onContentChange={(newHtml) => {
-                setEditedBody(newHtml);
-              }}
-              authorName={authorName}
-              partyName={partyAffiliation}
-              editable={isEditingArticle}
-              compactMode={true}
-              aiPosterUrl={selectedPosterUrl || generatedResult?.posterUrl}
-            />
-          </div>
-
-          {isEditingArticle && (
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pt-2">
-              <span className="text-xs text-slate-500">
-                Gunakan bilah di atas artikel untuk menyisipkan foto lapangan, tabel data, atau grafik kebijakan.
-              </span>
-              <Button
-                size="sm"
-                onClick={handleSaveArticleEdit}
-                className="bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs shadow-xs self-end sm:self-auto"
-              >
-                Simpan Perubahan Artikel
-              </Button>
-            </div>
-          )}
-        </div>
+        <ArticlePreviewTab
+          generatedResult={generatedResult}
+          currentTitle={currentTitle}
+          editedTitle={editedTitle}
+          setEditedTitle={setEditedTitle}
+          currentBody={currentBody}
+          setEditedBody={setEditedBody}
+          isEditingArticle={isEditingArticle}
+          setIsEditingArticle={setIsEditingArticle}
+          onSaveArticleEdit={handleSaveArticleEdit}
+          authorName={authorName}
+          partyAffiliation={partyAffiliation}
+          selectedPosterUrl={selectedPosterUrl}
+        />
       )}
 
-      {/* TAB 2: POSTER & INFOGRAFIS (100% HASIL AI) */}
+      {/* TAB 2: POSTER & INFOGRAFIS */}
       {activeTab === 'poster' && (
-        <div className="space-y-4">
-          {/* HEADER & SWITCHER VARIAN */}
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-100 dark:border-slate-800 pb-3">
-            <div>
-              <div className="flex items-center gap-2">
-                <span className="text-xs font-black text-slate-800 dark:text-slate-100 uppercase tracking-wider flex items-center gap-1.5">
-                  <Sparkles className="h-4 w-4 text-blue-500" />
-                  <span>Infografik & Poster Kebijakan AI</span>
-                </span>
-                <span className="text-[10px] font-black font-mono px-2 py-0.5 rounded-full bg-emerald-100 dark:bg-emerald-950/80 text-emerald-700 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-800">
-                  AI SYNTHESIZED
-                </span>
-              </div>
-              <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">
-                Visualisasi terpadu data statistik dan grafis yang dirumuskan dari analisis Anda
-              </p>
-            </div>
-
-            {/* SWITCHER TAMPILAN AI: KARTU INFOGRAFIK VS POSTER RESOLUSI TINGGI */}
-            <div className="flex items-center gap-1 bg-slate-100 dark:bg-slate-800/80 p-1 rounded-xl self-start sm:self-auto border border-slate-200 dark:border-slate-700/60">
-              <button
-                type="button"
-                onClick={() => setVisualMode('infographic')}
-                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-extrabold transition-all cursor-pointer ${visualMode === 'infographic'
-                    ? 'bg-white dark:bg-slate-900 text-blue-600 dark:text-blue-400 shadow-xs'
-                    : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200'
-                  }`}
-              >
-                <BarChart3 className="h-3.5 w-3.5" />
-                <span>Kartu Infografis Data</span>
-              </button>
-              <button
-                type="button"
-                onClick={() => setVisualMode('raw_poster')}
-                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-extrabold transition-all cursor-pointer ${visualMode === 'raw_poster'
-                    ? 'bg-white dark:bg-slate-900 text-blue-600 dark:text-blue-400 shadow-xs'
-                    : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200'
-                  }`}
-              >
-                <ImageIcon className="h-3.5 w-3.5" />
-                <span>Poster Visual Utuh</span>
-              </button>
-            </div>
-          </div>
-
-          {/* MODE 1: KARTU INFOGRAFIS DATA LENGKAP */}
-          {visualMode === 'infographic' && (
-            <div className="rounded-3xl border border-slate-200 dark:border-slate-800 bg-gradient-to-br from-slate-900 via-slate-800 to-slate-950 text-white p-5 sm:p-7 shadow-xl space-y-4">
-              {/* WATERMARK RESMI */}
-              <div className="flex items-center justify-between text-[10px] font-black uppercase tracking-widest text-blue-400 border-b border-slate-700/60 pb-3">
-                <span className="flex items-center gap-1.5">
-                  <ShieldCheck className="h-4 w-4 text-blue-400" />
-                  <span>POLARIS • INFOGRAFIK KEBIJAKAN &amp; ISU STRATEGIS</span>
-                </span>
-                <span className="text-slate-400 font-mono">EDISI 2026</span>
-              </div>
-
-              {/* HEADLINE BUATAN AI */}
-              <div className="space-y-1">
-                <h3 className="text-lg sm:text-2xl font-black text-white tracking-tight leading-snug">
-                  {infoHeadline}
-                </h3>
-                <p className="text-xs sm:text-sm text-slate-300 leading-relaxed max-w-3xl">
-                  {infoTakeaway}
-                </p>
-              </div>
-
-              {/* GRID DATA METRIK & VISUAL UTAMA */}
-              <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 items-stretch pt-2">
-                {/* 4 BADGES STATISTIK BUATAN AI */}
-                <div className="lg:col-span-5 grid grid-cols-2 lg:grid-cols-1 gap-2.5">
-                  {keyStats.slice(0, 4).map((st, idx) => (
-                    <div
-                      key={idx}
-                      className="p-3.5 rounded-2xl bg-slate-800/80 border border-slate-700/70 backdrop-blur-sm space-y-1 hover:border-blue-500/50 transition-colors"
-                    >
-                      <div className="text-[10px] font-black uppercase tracking-wider text-blue-400">
-                        {st.label}
-                      </div>
-                      <div className="text-xl sm:text-2xl font-black text-white font-mono leading-none">
-                        {st.value}
-                      </div>
-                      {st.context && (
-                        <div className="text-[11px] text-slate-300 leading-tight">
-                          {st.context}
-                        </div>
-                      )}
-                    </div>
-                  ))}
-                </div>
-
-                {/* VISUAL CENTERPIECE BUATAN AI */}
-                <div className="lg:col-span-7 relative rounded-2xl overflow-hidden border border-slate-700 bg-slate-950 min-h-[280px] sm:min-h-[320px] flex items-center justify-center shadow-lg">
-                  {(selectedPosterUrl || generatedResult?.posterUrl) ? (
-                    <>
-                      <Image
-                        src={selectedPosterUrl || generatedResult?.posterUrl}
-                        alt="Poster Infografis AI"
-                        fill
-                        unoptimized
-                        priority
-                        className="object-cover"
-                      />
-                      <div className="absolute inset-0 bg-gradient-to-t from-slate-950/80 via-transparent to-transparent pointer-events-none" />
-                      <div className="absolute bottom-3 left-3 right-3 flex items-center justify-between text-white text-xs">
-                        <span className="font-extrabold text-[11px] bg-slate-900/90 px-3 py-1.5 rounded-xl backdrop-blur-md border border-slate-700">
-                          Visual Sintesis AI
-                        </span>
-                        <button
-                          type="button"
-                          onClick={() => handleDownloadPosterImage()}
-                          disabled={downloadingPoster}
-                          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-extrabold text-xs shadow-md transition-colors cursor-pointer disabled:opacity-60"
-                        >
-                          {downloadingPoster ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Download className="h-3.5 w-3.5" />}
-                          <span>{downloadingPoster ? 'Mengunduh...' : 'Unduh HD'}</span>
-                        </button>
-                      </div>
-                    </>
-                  ) : (regeneratingPoster || isBackgroundRenderingPoster) ? (
-                    <div className="p-8 text-center space-y-3">
-                      <Loader2 className="h-9 w-9 text-blue-400 animate-spin mx-auto opacity-90" />
-                      <p className="text-xs text-white font-bold">
-                        🎨 AI Sedang Merender Poster Visual Resolusi Tinggi...
-                      </p>
-                      <p className="text-[11px] text-slate-400 max-w-xs mx-auto">
-                        Naskah artikel Anda telah siap! Visual sedang diproses dan diharmonisasikan di antrean latar belakang...
-                      </p>
-                    </div>
-                  ) : (
-                    <div className="p-8 text-center space-y-3">
-                      <div className="w-12 h-12 rounded-2xl bg-blue-500/10 border border-blue-500/20 text-blue-400 flex items-center justify-center mx-auto mb-1">
-                        <ImageIcon className="h-6 w-6" />
-                      </div>
-                      <p className="text-xs text-white font-bold">
-                        Visual Poster Belum Tersedia
-                      </p>
-                      <p className="text-[11px] text-slate-400 max-w-xs mx-auto">
-                        Artikel Anda telah tersimpan dengan aman. Anda dapat merender materi visual kapan saja.
-                      </p>
-                      <button
-                        type="button"
-                        onClick={handleRegeneratePoster}
-                        className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-black text-xs shadow-md transition-all cursor-pointer mt-1"
-                      >
-                        <RotateCw className="h-3.5 w-3.5" />
-                        <span>Render Visual Poster AI</span>
-                      </button>
-                    </div>
-                  )}
-                </div>
-              </div>
-
-              {/* FOOTER IDENTITAS ADVOKASI */}
-              <div className="pt-3 border-t border-slate-700/80 flex items-center justify-between text-[11px] text-slate-400">
-                <span className="font-semibold">
-                  Diadvokasikan oleh: <strong className="text-white">{authorName}</strong>{partyAffiliation ? ` (${partyAffiliation})` : ''}
-                </span>
-                <span className="font-mono text-blue-400 font-extrabold">{getRootDomain()}</span>
-              </div>
-            </div>
-          )}
-
-          {/* MODE 2: POSTER VISUAL UTUH (RESOLUSI TINGGI TANPA CROP) */}
-          {visualMode === 'raw_poster' && (
-            <div className="rounded-3xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-4 sm:p-6 space-y-4 shadow-sm">
-              {(selectedPosterUrl || generatedResult?.posterUrl) ? (
-                <div className="space-y-3">
-                  {/* Action Bar Atas: Tombol Unduh & Fullscreen Terlihat Jelas */}
-                  <div className="flex flex-wrap items-center justify-between gap-2.5 p-3 rounded-2xl bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700">
-                    <div className="flex items-center gap-2">
-                      <span className="font-extrabold text-xs text-slate-800 dark:text-slate-200 bg-white dark:bg-slate-900 px-3 py-1.5 rounded-xl border border-slate-200 dark:border-slate-700 shadow-2xs">
-                        Format Resolusi Asli
-                      </span>
-                      <span className="text-[11px] text-slate-500 dark:text-slate-400 hidden sm:inline">
-                        Klik poster atau tombol layar penuh untuk melihat ukuran detail tanpa terpotong.
-                      </span>
-                    </div>
-
-                    <div className="flex items-center gap-2">
-                      <button
-                        type="button"
-                        onClick={() => setIsPosterLightboxOpen(true)}
-                        className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-white dark:bg-slate-900 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-200 font-bold text-xs border border-slate-200 dark:border-slate-700 shadow-2xs transition-colors cursor-pointer"
-                      >
-                        <Maximize2 className="h-3.5 w-3.5 text-blue-500" />
-                        <span>Lihat Ukuran Penuh</span>
-                      </button>
-
-                      <button
-                        type="button"
-                        onClick={() => handleDownloadPosterImage()}
-                        disabled={downloadingPoster}
-                        className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-extrabold text-xs shadow-md transition-colors cursor-pointer disabled:opacity-60"
-                      >
-                        {downloadingPoster ? <Loader2 className="h-4 w-4 animate-spin" /> : <Download className="h-4 w-4" />}
-                        <span>{downloadingPoster ? 'Mengunduh...' : 'Unduh Poster HD'}</span>
-                      </button>
-                    </div>
-                  </div>
-
-                  {/* Frame Poster Tanpa Crop (Object Contain Presisi) */}
-                  <div
-                    onClick={() => setIsPosterLightboxOpen(true)}
-                    className="relative rounded-2xl overflow-hidden border border-slate-800 bg-slate-950 flex items-center justify-center p-3 sm:p-6 shadow-xl cursor-zoom-in group select-none min-h-[380px]"
-                  >
-                    <img
-                      src={selectedPosterUrl || generatedResult?.posterUrl}
-                      alt="Poster Visual Resolusi Tinggi"
-                      className="max-h-[580px] w-auto max-w-full object-contain rounded-xl shadow-2xl transition-transform duration-300 group-hover:scale-[1.01]"
-                    />
-                    <div className="absolute inset-0 bg-slate-950/20 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center pointer-events-none rounded-2xl">
-                      <span className="px-4 py-2 rounded-xl bg-slate-900/90 text-white text-xs font-bold backdrop-blur-md border border-slate-700 shadow-xl flex items-center gap-2">
-                        <Maximize2 className="h-4 w-4 text-blue-400" />
-                        <span>Klik untuk Melihat Layar Penuh</span>
-                      </span>
-                    </div>
-                  </div>
-                </div>
-              ) : (regeneratingPoster || isBackgroundRenderingPoster) ? (
-                <div className="rounded-2xl border border-slate-700 bg-slate-950 p-12 text-center space-y-3">
-                  <Loader2 className="h-9 w-9 text-blue-400 animate-spin mx-auto opacity-90" />
-                  <p className="text-xs text-white font-bold">
-                    🎨 Sedang Merender Poster Resolusi Penuh...
-                  </p>
-                  <p className="text-[11px] text-slate-400 max-w-xs mx-auto">
-                    Visual sedang diproses di latar belakang dan akan muncul otomatis begitu selesai.
-                  </p>
-                </div>
-              ) : (
-                <div className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 p-12 text-center space-y-3">
-                  <div className="w-12 h-12 rounded-2xl bg-blue-500/10 border border-blue-500/20 text-blue-500 flex items-center justify-center mx-auto mb-1">
-                    <ImageIcon className="h-6 w-6" />
-                  </div>
-                  <p className="text-xs text-slate-900 dark:text-white font-bold">
-                    Poster Resolusi Tinggi Belum Tersedia
-                  </p>
-                  <p className="text-[11px] text-slate-500 dark:text-slate-400 max-w-xs mx-auto">
-                    Klik tombol di bawah untuk membuat poster visual dengan tipografi Satori.
-                  </p>
-                  <button
-                    type="button"
-                    onClick={handleRegeneratePoster}
-                    className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-black text-xs shadow-md transition-all cursor-pointer mt-1"
-                  >
-                    <RotateCw className="h-3.5 w-3.5" />
-                    <span>Buat Poster Visual Sekarang</span>
-                  </button>
-                </div>
-              )}
-            </div>
-          )}
-        </div>
+        <PosterPreviewTab
+          selectedPosterUrl={selectedPosterUrl}
+          generatedResult={generatedResult}
+          regeneratingPoster={regeneratingPoster}
+          isBackgroundRenderingPoster={isBackgroundRenderingPoster}
+          downloadingPoster={downloadingPoster}
+          onRegeneratePoster={handleRegeneratePoster}
+          onDownloadPoster={handleDownloadPosterImage}
+          onOpenLightbox={() => setIsPosterLightboxOpen(true)}
+        />
       )}
 
-      {/* TAB 3: SEBARAN SOSIAL MULTI-KANAL (INSTAGRAM, WHATSAPP, THREADS) */}
+      {/* TAB 3: SEBARAN SOSIAL MULTI-KANAL */}
       {activeTab === 'social' && generatedResult.socialPack && (
-        <div className="space-y-4">
-          {/* CHANNEL SWITCHER SUB-TABS */}
-          <div className="flex items-center gap-1.5 p-1 rounded-2xl bg-slate-100 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700/60 overflow-x-auto">
-            <button
-              type="button"
-              onClick={() => setSelectedSocialChannel('instagram')}
-              className={`flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-black transition-all cursor-pointer shrink-0 ${selectedSocialChannel === 'instagram'
-                  ? 'bg-gradient-to-r from-purple-600 via-pink-600 to-rose-600 text-white shadow-xs'
-                  : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200'
-                }`}
-            >
-              <Instagram className="h-4 w-4" />
-              <span>Instagram Feed & Karusel</span>
-              {connectedAccount && (
-                <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
-              )}
-            </button>
-
-            <button
-              type="button"
-              onClick={() => setSelectedSocialChannel('whatsapp')}
-              className={`flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-black transition-all cursor-pointer shrink-0 ${selectedSocialChannel === 'whatsapp'
-                  ? 'bg-emerald-600 text-white shadow-xs'
-                  : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200'
-                }`}
-            >
-              <MessageCircle className="h-4 w-4" />
-              <span>Memo WhatsApp Warga</span>
-            </button>
-
-            <button
-              type="button"
-              onClick={() => setSelectedSocialChannel('threads')}
-              className={`flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-black transition-all cursor-pointer shrink-0 ${selectedSocialChannel === 'threads'
-                  ? 'bg-slate-900 dark:bg-white text-white dark:text-slate-900 shadow-xs'
-                  : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200'
-                }`}
-            >
-              <Sparkles className="h-4 w-4" />
-              <span>Meta Threads (Cuitan Opini)</span>
-              {connectedThreadsAccount && (
-                <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
-              )}
-            </button>
-
-            {/* TAB X (TWITTER) */}
-            <button
-              type="button"
-              onClick={() => setSelectedSocialChannel('x')}
-              className={`flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-black transition-all cursor-pointer shrink-0 ${selectedSocialChannel === 'x'
-                  ? 'bg-black text-white shadow-xs'
-                  : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200'
-                }`}
-            >
-              <svg viewBox="0 0 24 24" aria-hidden="true" className="w-3.5 h-3.5 fill-current">
-                <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"></path>
-              </svg>
-              <span>X (Twitter Cuitan)</span>
-              {connectedXAccount && (
-                <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
-              )}
-            </button>
-
-            {/* TAB TIKTOK */}
-            <button
-              type="button"
-              onClick={() => setSelectedSocialChannel('tiktok')}
-              className={`flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-black transition-all cursor-pointer shrink-0 ${selectedSocialChannel === 'tiktok'
-                  ? 'bg-slate-900 text-white shadow-xs'
-                  : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200'
-                }`}
-            >
-              <Video className="h-3.5 w-3.5 text-[#fe2c55]" />
-              <span>TikTok Feed</span>
-              {connectedTikTokAccount && (
-                <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
-              )}
-            </button>
-          </div>
-
-          {/* ======================================================== */}
-          {/* KANAL 1: INSTAGRAM FEED & CAROUSEL MULTI-FOTO */}
-          {/* ======================================================== */}
-          {selectedSocialChannel === 'instagram' && (
-            <div className="p-4 sm:p-5 rounded-2xl bg-purple-50/70 dark:bg-purple-950/30 border border-purple-200 dark:border-purple-900/50 space-y-4 shadow-2xs">
-              {/* Header Instagram */}
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-purple-200/60 dark:border-purple-900/40 pb-3">
-                <div className="flex items-center gap-2.5">
-                  <div className="p-2 rounded-xl bg-gradient-to-tr from-purple-600 to-rose-600 text-white shadow-xs">
-                    <Instagram className="h-4.5 w-4.5" />
-                  </div>
-                  <div>
-                    <h4 className="font-extrabold text-xs text-slate-900 dark:text-white flex items-center gap-2">
-                      <span>Feed & Karusel Instagram</span>
-                      {socialFeatureFlags.AUTO_PUBLISH_INSTAGRAM && (
-                        connectedAccount ? (
-                          <span className="text-[10px] font-bold text-emerald-700 bg-emerald-100 dark:bg-emerald-950 px-2 py-0.5 rounded-full border border-emerald-300">
-                            @{connectedAccount.accountHandle}
-                          </span>
-                        ) : (
-                          <span className="text-[10px] font-bold text-amber-700 bg-amber-100 dark:bg-amber-950 px-2 py-0.5 rounded-full border border-amber-300">
-                            Belum Terhubung
-                          </span>
-                        )
-                      )}
-                    </h4>
-                    <p className="text-[11px] text-slate-500 dark:text-slate-400">
-                      {socialFeatureFlags.AUTO_PUBLISH_INSTAGRAM
-                        ? 'Rasio murni 4:5 dengan Canva-style multi-slide filmstrip untuk direct API publish.'
-                        : 'Unduh visual poster resolusi tinggi dan salin caption untuk diunggah ke Instagram.'}
-                    </p>
-                  </div>
-                </div>
-
-                {socialFeatureFlags.AUTO_PUBLISH_INSTAGRAM ? (
-                  connectedAccount && (
-                    <button
-                      type="button"
-                      disabled={publishingIg}
-                      onClick={handlePublishInstagramFromCampaign}
-                      className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-gradient-to-r from-purple-600 to-rose-600 hover:opacity-95 text-white font-black text-xs shadow-md shadow-pink-500/20 cursor-pointer disabled:opacity-50 transition-all hover:scale-[1.01]"
-                    >
-                      {publishingIg ? (
-                        <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                      ) : (
-                        <Send className="h-3.5 w-3.5" />
-                      )}
-                      <span>
-                        {carouselSlides.length > 1
-                          ? `Terbitkan Karusel (${carouselSlides.length} Slide)`
-                          : 'Terbitkan ke Instagram'}
-                      </span>
-                    </button>
-                  )
-                ) : (
-                  <div className="flex items-center flex-wrap gap-2">
-                    <button
-                      type="button"
-                      onClick={() => handleDownloadPosterImage()}
-                      disabled={downloadingPoster}
-                      className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-purple-200 dark:border-purple-800 bg-white dark:bg-purple-950/60 text-purple-700 dark:text-purple-300 font-bold text-xs hover:bg-purple-50 transition-all shadow-xs cursor-pointer"
-                    >
-                      <Download className="h-3.5 w-3.5" />
-                      <span>Unduh Poster</span>
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => handleCopyCaptionWithPortalLink(customIgCaption || generatedResult?.socialPack?.instagramCaption || '', 'Instagram')}
-                      className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-purple-200 dark:border-purple-800 bg-white dark:bg-purple-950/60 text-purple-700 dark:text-purple-300 font-bold text-xs hover:bg-purple-50 transition-all shadow-xs cursor-pointer"
-                    >
-                      <Copy className="h-3.5 w-3.5" />
-                      <span>Salin Caption & Tautan</span>
-                    </button>
-                    <a
-                      href="https://www.instagram.com"
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-gradient-to-r from-purple-600 to-rose-600 hover:opacity-95 text-white font-black text-xs shadow-xs cursor-pointer transition-all hover:scale-[1.01]"
-                    >
-                      <ExternalLink className="h-3.5 w-3.5" />
-                      <span>Buka Instagram</span>
-                    </a>
-                  </div>
-                )}
-              </div>
-
-              {!socialFeatureFlags.AUTO_PUBLISH_INSTAGRAM ? (
-                /* ======================================================== */
-                /* MODE UNGGAH MANUAL: BEBAS DISTRAKSI, LEGA, FOKUS UNDUH & SALIN */
-                /* ======================================================== */
-                <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
-                  {/* Kolom Kiri: Pratinjau Poster Bersih 4:5 */}
-                  <div className="lg:col-span-4 flex flex-col items-center">
-                    <div className="w-[260px] sm:w-[270px] rounded-2xl bg-white dark:bg-slate-900 border border-purple-200/80 dark:border-purple-900/60 shadow-md overflow-hidden">
-                      <div className="px-3 py-2 flex items-center justify-between border-b border-slate-100 dark:border-slate-800 text-xs">
-                        <div className="flex items-center gap-2">
-                          <div className="w-5 h-5 rounded-full bg-gradient-to-tr from-yellow-400 via-pink-500 to-purple-600 p-[1.5px]">
-                            <div className="w-full h-full rounded-full bg-white dark:bg-slate-900 flex items-center justify-center">
-                              <Instagram className="h-2.5 w-2.5 text-purple-600" />
-                            </div>
-                          </div>
-                          <span className="font-bold text-[11px] text-slate-800 dark:text-slate-200 truncate">
-                            Pratinjau Feed 4:5
-                          </span>
-                        </div>
-                        <span className="text-[10px] text-purple-600 dark:text-purple-400 font-bold">1080 × 1350</span>
-                      </div>
-
-                      <div
-                        className="relative w-full aspect-[4/5] bg-slate-950 overflow-hidden flex items-center justify-center cursor-pointer group"
-                        onClick={() => setIsPosterLightboxOpen(true)}
-                        title="Klik untuk melihat resolusi penuh"
-                      >
-                        {selectedPosterUrl || generatedResult?.posterUrl ? (
-                          <>
-                            <img
-                              src={selectedPosterUrl || generatedResult?.posterUrl}
-                              alt="Poster Visual Feed"
-                              className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-102"
-                            />
-                            <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2 text-white text-xs font-bold">
-                              <Eye className="h-4 w-4" />
-                              <span>Lihat Penuh</span>
-                            </div>
-                          </>
-                        ) : (
-                          <div className="flex flex-col items-center gap-2 text-slate-500">
-                            <ImageIcon className="h-8 w-8" />
-                            <span className="text-xs">Poster Belum Tersedia</span>
-                          </div>
-                        )}
-                      </div>
-                    </div>
-
-                    <button
-                      type="button"
-                      onClick={() => handleDownloadPosterImage()}
-                      disabled={downloadingPoster}
-                      className="w-[260px] sm:w-[270px] mt-2.5 inline-flex items-center justify-center gap-2 py-2.5 px-4 rounded-xl bg-purple-600 hover:bg-purple-700 active:scale-[0.99] text-white font-extrabold text-xs shadow-xs transition-all cursor-pointer disabled:opacity-50"
-                    >
-                      {downloadingPoster ? <Loader2 className="h-4 w-4 animate-spin" /> : <Download className="h-4 w-4" />}
-                      <span>Unduh Poster HD (4:5)</span>
-                    </button>
-                  </div>
-
-                  {/* Kolom Kanan: Area Teks Caption Luas & Lega */}
-                  <div className="lg:col-span-8 space-y-3">
-                    <div className="p-4 rounded-2xl bg-white dark:bg-slate-900 border border-purple-200/80 dark:border-purple-900/60 shadow-xs space-y-3">
-                      <div className="flex items-center justify-between text-xs font-bold text-slate-800 dark:text-slate-200">
-                        <div className="flex items-center gap-2">
-                          <Edit3 className="h-4 w-4 text-purple-600" />
-                          <span>Naskah Caption Instagram</span>
-                          <span className="text-[10px] text-purple-600 dark:text-purple-400 font-normal">
-                            (Siap diposting langsung)
-                          </span>
-                        </div>
-                        <button
-                          type="button"
-                          onClick={() => {
-                            handleCopyCaptionWithPortalLink(customIgCaption || generatedResult?.socialPack?.instagramCaption || '', 'Instagram');
-                            setCopiedIg(true);
-                            setTimeout(() => setCopiedIg(false), 2000);
-                          }}
-                          className="inline-flex items-center gap-1.5 px-3 py-1 rounded-lg bg-purple-50 dark:bg-purple-950 text-purple-700 dark:text-purple-300 hover:bg-purple-100 transition-colors cursor-pointer text-xs font-bold border border-purple-200 dark:border-purple-800"
-                        >
-                          {copiedIg ? <CheckCheck className="h-3.5 w-3.5 text-emerald-600" /> : <Copy className="h-3.5 w-3.5" />}
-                          <span>{copiedIg ? 'Tersalin!' : 'Salin Caption'}</span>
-                        </button>
-                      </div>
-
-                      <textarea
-                        value={customIgCaption}
-                        onChange={(e) => setCustomIgCaption(e.target.value)}
-                        rows={11}
-                        placeholder="Tulis atau sesuaikan caption Instagram di sini..."
-                        className="w-full p-4 rounded-xl bg-purple-50/30 dark:bg-slate-950 border border-purple-200/80 dark:border-purple-800/80 focus:border-purple-500 focus:ring-1 focus:ring-purple-500 text-slate-800 dark:text-slate-200 text-xs leading-relaxed font-sans shadow-inner resize-y transition-colors outline-none"
-                      />
-
-                      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pt-1 border-t border-slate-100 dark:border-slate-800 text-[11px] text-slate-500 dark:text-slate-400">
-                        <span>💡 Tautan resmi portal berita & tagar telah otomatis tersemat rapi saat disalin.</span>
-                        <a
-                          href="https://www.instagram.com"
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="inline-flex items-center gap-1.5 font-bold text-purple-700 dark:text-purple-300 hover:underline"
-                        >
-                          <span>Buka Web Instagram</span>
-                          <ExternalLink className="h-3 w-3" />
-                        </a>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              ) : (
-                /* ======================================================== */
-                /* MODE OTOMATIS: MULTI-SLIDE CANVA CAROUSEL UNTUK DIRECT API */
-                /* ======================================================== */
-                <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 items-start">
-                {/* KOLOM KIRI (LG: 5): Mockup Postingan Instagram Feed Nyata dengan Interactive Pan */}
-                <div className="lg:col-span-5 flex flex-col items-center">
-                  <div className="w-[260px] sm:w-[270px] rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-md overflow-hidden">
-                    {/* Mockup Header */}
-                    <div className="px-3 py-2 flex items-center justify-between border-b border-slate-100 dark:border-slate-800 text-xs">
-                      <div className="flex items-center gap-2">
-                        <div className="w-6 h-6 rounded-full bg-gradient-to-tr from-yellow-400 via-pink-500 to-purple-600 p-[1.5px]">
-                          <div className="w-full h-full rounded-full bg-white dark:bg-slate-900 flex items-center justify-center">
-                            <Instagram className="h-3 w-3 text-purple-600" />
-                          </div>
-                        </div>
-                        <span className="font-bold text-[11px] text-slate-900 dark:text-slate-100 truncate max-w-[140px]">
-                          {connectedAccount?.accountHandle || 'dewan.resmi'}
-                        </span>
-                      </div>
-                      <MoreHorizontal className="h-3.5 w-3.5 text-slate-400" />
-                    </div>
-
-                    {/* Mockup Media Frame (Aspect Ratio Murni 4:5 Portrait + Drag to Reposition) */}
-                    <div
-                      className={`relative w-full aspect-[4/5] bg-slate-950 overflow-hidden flex items-center justify-center select-none ${igFramingMode === 'crop' ? 'cursor-ns-resize' : ''
-                        }`}
-                      onMouseDown={(e) => {
-                        if (igFramingMode !== 'crop') return;
-                        setIsDraggingFocal(true);
-                        setDragStartY(e.clientY);
-                        setDragStartFocal(slideFocalY[activeSlideIndex] ?? 50);
-                      }}
-                      onMouseMove={(e) => {
-                        if (!isDraggingFocal || igFramingMode !== 'crop') return;
-                        const deltaY = e.clientY - dragStartY;
-                        const newFocal = Math.max(0, Math.min(100, dragStartFocal - Math.round(deltaY / 2)));
-                        setSlideFocalY((prev) => ({ ...prev, [activeSlideIndex]: newFocal }));
-                      }}
-                      onMouseUp={() => setIsDraggingFocal(false)}
-                      onMouseLeave={() => setIsDraggingFocal(false)}
-                    >
-                      {carouselSlides[activeSlideIndex] && (
-                        <>
-                          {igFramingMode === 'blur' && (
-                            <div
-                              className="absolute inset-0 bg-cover bg-center filter blur-xl scale-125 opacity-60"
-                              style={{ backgroundImage: `url(${carouselSlides[activeSlideIndex]})` }}
-                            />
-                          )}
-                          <img
-                            src={carouselSlides[activeSlideIndex]}
-                            alt={`Slide aktif ${activeSlideIndex + 1}`}
-                            draggable={false}
-                            style={{
-                              objectPosition:
-                                igFramingMode === 'crop'
-                                  ? `center ${slideFocalY[activeSlideIndex] ?? 50}%`
-                                  : 'center center',
-                            }}
-                            className={`relative z-10 w-full h-full pointer-events-none transition-[object-position] duration-75 ${igFramingMode === 'crop' ? 'object-cover' : 'object-contain'
-                              }`}
-                          />
-                        </>
-                      )}
-
-                      {/* Tombol Alih Aspek Rasio (Persis Tombol Expand/Fit di Instagram Asli) */}
-                      <button
-                        type="button"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          setIgFramingMode((prev) => (prev === 'crop' ? 'blur' : 'crop'));
-                        }}
-                        className="absolute bottom-2.5 left-2.5 z-20 p-1.5 rounded-full bg-slate-950/70 hover:bg-slate-950/95 text-white transition-all shadow-md cursor-pointer backdrop-blur-md"
-                        title={igFramingMode === 'crop' ? 'Ganti ke Latar Blur (Utuh)' : 'Ganti ke Penuhi Layar (Crop 4:5)'}
-                      >
-                        {igFramingMode === 'crop' ? (
-                          <Minimize2 className="h-3.5 w-3.5" />
-                        ) : (
-                          <Maximize2 className="h-3.5 w-3.5" />
-                        )}
-                      </button>
-
-                      {/* Counter Badge Instagram (Contoh: 1/3) */}
-                      {carouselSlides.length > 1 && (
-                        <div className="absolute top-2.5 right-2.5 z-20 px-2 py-0.5 rounded-full bg-slate-950/70 backdrop-blur-md text-white text-[10px] font-bold shadow-xs">
-                          {activeSlideIndex + 1}/{carouselSlides.length}
-                        </div>
-                      )}
-
-                      {/* Panah Navigasi Mockup */}
-                      {carouselSlides.length > 1 && (
-                        <>
-                          {activeSlideIndex > 0 && (
-                            <button
-                              type="button"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                setActiveSlideIndex((prev) => Math.max(0, prev - 1));
-                              }}
-                              className="absolute left-1.5 top-1/2 -translate-y-1/2 z-20 p-1.5 rounded-full bg-slate-950/60 hover:bg-slate-950/90 text-white transition-all shadow-xs cursor-pointer"
-                            >
-                              <ChevronLeft className="h-3.5 w-3.5" />
-                            </button>
-                          )}
-                          {activeSlideIndex < carouselSlides.length - 1 && (
-                            <button
-                              type="button"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                setActiveSlideIndex((prev) => Math.min(carouselSlides.length - 1, prev + 1));
-                              }}
-                              className="absolute right-1.5 top-1/2 -translate-y-1/2 z-20 p-1.5 rounded-full bg-slate-950/60 hover:bg-slate-950/90 text-white transition-all shadow-xs cursor-pointer"
-                            >
-                              <ChevronRight className="h-3.5 w-3.5" />
-                            </button>
-                          )}
-                        </>
-                      )}
-                    </div>
-
-                    {/* Mockup Action Bar & Dots */}
-                    <div className="px-3 py-2 flex items-center justify-between text-slate-700 dark:text-slate-300">
-                      <div className="flex items-center gap-3">
-                        <Heart className="h-4 w-4 text-slate-700 dark:text-slate-300 hover:text-rose-600 cursor-pointer" />
-                        <MessageCircle className="h-4 w-4 text-slate-700 dark:text-slate-300" />
-                        <Share2 className="h-4 w-4 text-slate-700 dark:text-slate-300" />
-                      </div>
-
-                      {/* Slide Indicator Dots */}
-                      {carouselSlides.length > 1 && (
-                        <div className="flex items-center gap-1">
-                          {carouselSlides.map((_, i) => (
-                            <span
-                              key={i}
-                              className={`rounded-full transition-all ${i === activeSlideIndex
-                                  ? 'w-1.5 h-1.5 bg-blue-600'
-                                  : 'w-1 h-1 bg-slate-300 dark:bg-slate-700'
-                                }`}
-                            />
-                          ))}
-                        </div>
-                      )}
-
-                      <Bookmark className="h-4 w-4 text-slate-700 dark:text-slate-300" />
-                    </div>
-                  </div>
-
-                  {/* Preset & Hint Penyelarasan Fokus / Posisi Foto (Pinch/Pan) */}
-                  {igFramingMode === 'crop' && (
-                    <div className="mt-2 flex items-center justify-between gap-1 w-[260px] sm:w-[270px] px-2 py-1.5 rounded-xl bg-purple-50/60 dark:bg-purple-950/40 border border-purple-200/70 dark:border-purple-900/40 text-[10px]">
-                      <span className="font-bold text-purple-900 dark:text-purple-300 flex items-center gap-1">
-                        <MoveVertical className="h-3 w-3 text-purple-600" />
-                        <span>Fokus Posisi:</span>
-                      </span>
-                      <div className="flex items-center gap-1 font-bold">
-                        <button
-                          type="button"
-                          onClick={() => setSlideFocalY((prev) => ({ ...prev, [activeSlideIndex]: 10 }))}
-                          className={`px-2 py-0.5 rounded-md transition-colors cursor-pointer ${(slideFocalY[activeSlideIndex] ?? 50) <= 25
-                              ? 'bg-purple-600 text-white shadow-2xs'
-                              : 'bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-purple-100 dark:hover:bg-slate-700'
-                            }`}
-                        >
-                          Atas
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => setSlideFocalY((prev) => ({ ...prev, [activeSlideIndex]: 50 }))}
-                          className={`px-2 py-0.5 rounded-md transition-colors cursor-pointer ${(slideFocalY[activeSlideIndex] ?? 50) > 25 && (slideFocalY[activeSlideIndex] ?? 50) < 75
-                              ? 'bg-purple-600 text-white shadow-2xs'
-                              : 'bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-purple-100 dark:hover:bg-slate-700'
-                            }`}
-                        >
-                          Tengah
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => setSlideFocalY((prev) => ({ ...prev, [activeSlideIndex]: 90 }))}
-                          className={`px-2 py-0.5 rounded-md transition-colors cursor-pointer ${(slideFocalY[activeSlideIndex] ?? 50) >= 75
-                              ? 'bg-purple-600 text-white shadow-2xs'
-                              : 'bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-purple-100 dark:hover:bg-slate-700'
-                            }`}
-                        >
-                          Bawah
-                        </button>
-                      </div>
-                    </div>
-                  )}
-
-                  <span className="text-[10px] text-slate-400 dark:text-slate-500 mt-1 font-medium text-center">
-                    {igFramingMode === 'crop'
-                      ? '💡 Geser foto di layar atau klik preset untuk ubah framing'
-                      : 'Pratinjau Asli Smartphone (Rasio 4:5 Feed)'}
-                  </span>
-                </div>
-
-                {/* KOLOM KANAN (LG: 7): FORMAT DI ATAS -> CANVA TRAY -> CAPTION BOX */}
-                <div className="lg:col-span-7 space-y-3">
-                  {/* 1. Format Kanvas Selector (DI ATAS) */}
-                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 p-3 rounded-2xl bg-white dark:bg-slate-900 border border-purple-200/80 dark:border-purple-900/60 shadow-2xs text-xs">
-                    <div className="flex items-center gap-2">
-                      <span className="font-extrabold text-slate-800 dark:text-slate-200">
-                        Format Kanvas:
-                      </span>
-                      <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-purple-100 dark:bg-purple-900/60 text-purple-700 dark:text-purple-300">
-                        Rasio 4:5 Feed
-                      </span>
-                    </div>
-                    <div className="flex items-center gap-1.5">
-                      <button
-                        type="button"
-                        onClick={() => setIgFramingMode('crop')}
-                        className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${igFramingMode === 'crop'
-                            ? 'bg-gradient-to-r from-purple-600 to-rose-600 text-white shadow-xs'
-                            : 'bg-slate-50 dark:bg-slate-800 text-slate-600 dark:text-slate-400 hover:text-slate-900 border border-slate-200 dark:border-slate-700'
-                          }`}
-                        title="Penuhi layar 4:5 tanpa garis tepi"
-                      >
-                        Penuhi Layar (Crop 4:5)
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => setIgFramingMode('blur')}
-                        className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${igFramingMode === 'blur'
-                            ? 'bg-gradient-to-r from-purple-600 to-rose-600 text-white shadow-xs'
-                            : 'bg-slate-50 dark:bg-slate-800 text-slate-600 dark:text-slate-400 hover:text-slate-900 border border-slate-200 dark:border-slate-700'
-                          }`}
-                        title="Gambar utuh di tengah dengan latar belakang blur artistik"
-                      >
-                        Latar Blur (Utuh)
-                      </button>
-                    </div>
-                  </div>
-
-                  {/* 2. CANVA-STYLE SLIDE TRAY */}
-                  <div className="p-3.5 rounded-2xl bg-white dark:bg-slate-900 border border-purple-200/80 dark:border-purple-900/60 shadow-2xs space-y-2">
-                    <div className="flex items-center justify-between text-xs">
-                      <div className="flex items-center gap-2">
-                        <span className="font-extrabold text-slate-900 dark:text-white">
-                          Halaman Karusel
-                        </span>
-                        <span className="text-[10px] px-2 py-0.5 rounded-full bg-purple-100 dark:bg-purple-900/60 text-purple-700 dark:text-purple-300 font-extrabold">
-                          {carouselSlides.length} / 10 Slide
-                        </span>
-                      </div>
-                      <span className="text-[10px] text-slate-400">
-                        Klik untuk melihat • Geser untuk urutan
-                      </span>
-                    </div>
-
-                    {/* Horizontal Canva Tray Filmstrip */}
-                    <div className="flex items-center gap-2.5 overflow-x-auto py-2 px-1 scrollbar-thin">
-                      {carouselSlides.map((slideUrl, idx) => {
-                        const isActive = activeSlideIndex === idx;
-                        const isCover = idx === 0;
-
-                        return (
-                          <div
-                            key={idx}
-                            className="flex flex-col items-center gap-1 shrink-0"
-                            onClick={() => setActiveSlideIndex(idx)}
-                          >
-                            {/* Canva Thumbnail Card */}
-                            <div
-                              className={`relative group w-[60px] h-[75px] rounded-xl overflow-hidden border-2 transition-all cursor-pointer bg-slate-100 dark:bg-slate-800 ${isActive
-                                  ? 'border-purple-600 ring-2 ring-purple-600/30 shadow-md scale-102'
-                                  : 'border-slate-200 dark:border-slate-700 hover:border-purple-300'
-                                }`}
-                            >
-                              <img
-                                src={slideUrl}
-                                alt={`Slide ${idx + 1}`}
-                                className="w-full h-full object-cover"
-                              />
-
-                              {/* Controls (Move & Remove) on hover */}
-                              <div className="absolute inset-0 bg-slate-950/70 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-1 p-0.5">
-                                {idx > 0 && (
-                                  <button
-                                    type="button"
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      handleMoveSlide(idx, 'left');
-                                    }}
-                                    className="p-1 rounded bg-white/20 hover:bg-white/40 text-white"
-                                    title="Geser ke kiri"
-                                  >
-                                    <ChevronLeft className="h-3 w-3" />
-                                  </button>
-                                )}
-                                {idx < carouselSlides.length - 1 && (
-                                  <button
-                                    type="button"
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      handleMoveSlide(idx, 'right');
-                                    }}
-                                    className="p-1 rounded bg-white/20 hover:bg-white/40 text-white"
-                                    title="Geser ke kanan"
-                                  >
-                                    <ChevronRight className="h-3 w-3" />
-                                  </button>
-                                )}
-                                {!isCover && (
-                                  <button
-                                    type="button"
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      handleRemoveSlide(idx);
-                                    }}
-                                    className="p-1 rounded bg-rose-600/90 hover:bg-rose-600 text-white"
-                                    title="Hapus foto ini"
-                                  >
-                                    <Trash2 className="h-3 w-3" />
-                                  </button>
-                                )}
-                              </div>
-                            </div>
-
-                            {/* Label Nomor Halaman persis Canva */}
-                            <span
-                              className={`text-[10px] font-bold ${isActive
-                                  ? 'text-purple-700 dark:text-purple-300'
-                                  : 'text-slate-500 dark:text-slate-400'
-                                }`}
-                            >
-                              {isCover ? 'Cover' : `${idx + 1}`}
-                            </span>
-                          </div>
-                        );
-                      })}
-
-                      {/* Tombol Tambah Slide (Gaya Canva) */}
-                      {carouselSlides.length < 10 && (
-                        <div className="flex flex-col items-center gap-1 shrink-0">
-                          <label className="w-[60px] h-[75px] rounded-xl border-2 border-dashed border-purple-300 dark:border-purple-800 hover:border-purple-600 dark:hover:border-purple-500 bg-purple-50/40 dark:bg-purple-950/20 hover:bg-purple-100/50 transition-all flex flex-col items-center justify-center gap-1 text-purple-700 dark:text-purple-400 cursor-pointer shadow-2xs">
-                            <Plus className="h-5 w-5" />
-                            <input
-                              type="file"
-                              accept="image/*"
-                              multiple
-                              onChange={handleAddPhotos}
-                              className="hidden"
-                            />
-                          </label>
-                          <span className="text-[10px] font-semibold text-slate-400">
-                            + Tambah
-                          </span>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-
-                  {/* 3. CAPTION BOX (BISA DIEDIT LANGSUNG) */}
-                  <div className="space-y-1.5">
-                    <div className="flex items-center justify-between text-xs font-bold text-slate-700 dark:text-slate-300">
-                      <span className="flex items-center gap-1.5">
-                        <span>Caption Instagram</span>
-                        <span className="text-[10px] text-purple-600 dark:text-purple-400 font-normal">(Dapat diedit bebas)</span>
-                      </span>
-                      <button
-                        type="button"
-                        onClick={() => {
-                          navigator.clipboard.writeText(customIgCaption);
-                          setCopiedIg(true);
-                          setTimeout(() => setCopiedIg(false), 2000);
-                          toast({
-                            type: 'success',
-                            title: 'Caption Disalin!',
-                            description: 'Teks siap diposting.',
-                          });
-                        }}
-                        className="inline-flex items-center gap-1 text-purple-700 dark:text-purple-300 hover:underline cursor-pointer text-[11px]"
-                      >
-                        {copiedIg ? <CheckCheck className="h-3 w-3 text-purple-600" /> : <Copy className="h-3 w-3" />}
-                        <span>{copiedIg ? 'Tersalin' : 'Salin Caption'}</span>
-                      </button>
-                    </div>
-                    <textarea
-                      value={customIgCaption}
-                      onChange={(e) => setCustomIgCaption(e.target.value)}
-                      rows={5}
-                      placeholder="Tulis atau sesuaikan caption Instagram di sini..."
-                      className="w-full p-3.5 rounded-xl bg-white dark:bg-slate-900 border border-purple-200 dark:border-purple-800/80 focus:border-purple-500 focus:ring-1 focus:ring-purple-500 text-slate-800 dark:text-slate-200 text-xs leading-relaxed font-sans shadow-inner resize-y transition-colors outline-none"
-                    />
-                  </div>
-                </div>
-              </div>
-              )}
-            </div>
-          )}
-
-          {/* ======================================================== */}
-          {/* KANAL 2: WHATSAPP MEMO WARGA & RELAWAN */}
-          {/* ======================================================== */}
-          {selectedSocialChannel === 'whatsapp' && (
-            <div className="p-4 sm:p-5 rounded-2xl bg-emerald-50/70 dark:bg-emerald-950/30 border border-emerald-200 dark:border-emerald-900/50 space-y-4 shadow-2xs">
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-emerald-200/60 dark:border-emerald-900/40 pb-3">
-                <div className="flex items-center gap-2.5">
-                  <div className="p-2 rounded-xl bg-emerald-600 text-white shadow-xs">
-                    <MessageCircle className="h-4.5 w-4.5" />
-                  </div>
-                  <div>
-                    <h4 className="font-extrabold text-xs text-slate-900 dark:text-white">
-                      Pesan Memo WhatsApp
-                    </h4>
-                    <p className="text-[11px] text-slate-500 dark:text-slate-400">
-                      Disusun khusus dengan format Markdown WhatsApp untuk disebarkan ke grup warga & relawan.
-                    </p>
-                  </div>
-                </div>
-
-                <div className="flex items-center gap-2">
-                  <a
-                    href={`https://api.whatsapp.com/send?text=${encodeURIComponent(customWaText)}`}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold text-xs shadow-xs transition-colors cursor-pointer"
-                  >
-                    <span>Buka WhatsApp</span>
-                    <ArrowUpRight className="h-3.5 w-3.5" />
-                  </a>
-
-                  <button
-                    type="button"
-                    onClick={() => {
-                      navigator.clipboard.writeText(customWaText);
-                      setCopiedWa(true);
-                      setTimeout(() => setCopiedWa(false), 2000);
-                      toast({
-                        type: 'success',
-                        title: 'Pesan WhatsApp Disalin!',
-                        description: 'Tinggal tempel di obrolan WhatsApp.',
-                      });
-                    }}
-                    className="inline-flex items-center gap-1 px-3 py-1.5 rounded-xl bg-white dark:bg-slate-800 border border-emerald-300 dark:border-emerald-700 text-emerald-800 dark:text-emerald-300 font-extrabold text-xs hover:bg-emerald-50 dark:hover:bg-slate-700 transition-colors shadow-2xs cursor-pointer"
-                  >
-                    {copiedWa ? <CheckCheck className="h-3.5 w-3.5 text-emerald-600" /> : <Copy className="h-3.5 w-3.5" />}
-                    <span>{copiedWa ? 'Tersalin' : 'Salin Teks'}</span>
-                  </button>
-                </div>
-              </div>
-
-              <div className="space-y-1.5">
-                <div className="flex items-center justify-between text-xs font-bold text-slate-700 dark:text-slate-300">
-                  <span className="flex items-center gap-1.5">
-                    <span>Isi Memo Siaran</span>
-                    <span className="text-[10px] text-emerald-600 dark:text-emerald-400 font-normal">(Dapat diedit bebas)</span>
-                  </span>
-                  <span className="text-[10px] text-slate-400 font-mono">Format Markdown WhatsApp</span>
-                </div>
-                <textarea
-                  value={customWaText}
-                  onChange={(e) => setCustomWaText(e.target.value)}
-                  rows={8}
-                  placeholder="Tulis atau sesuaikan isi memo WhatsApp di sini..."
-                  className="w-full p-4 rounded-xl bg-white dark:bg-slate-900 border border-emerald-200 dark:border-emerald-800 focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 text-slate-800 dark:text-slate-200 text-xs leading-relaxed font-sans shadow-inner border-l-4 border-l-emerald-500 resize-y transition-colors outline-none"
-                />
-              </div>
-
-              {/* Unduh Poster Cetak A4 */}
-              {(selectedPosterUrl || generatedResult?.posterUrl) && (
-                <div className="flex items-center justify-between p-3.5 rounded-xl bg-white dark:bg-slate-900 border border-emerald-200 dark:border-emerald-900/40 text-xs shadow-2xs">
-                  <span className="text-slate-700 dark:text-slate-300 font-semibold flex items-center gap-1.5">
-                    <Download className="h-4 w-4 text-emerald-600" />
-                    <span>Lampirkan poster dokumen resolusi penuh ke grup chat:</span>
-                  </span>
-                  <button
-                    type="button"
-                    onClick={() => handleDownloadPosterImage('poster-resolusi-penuh.png')}
-                    disabled={downloadingPoster}
-                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold text-xs shadow-xs transition-colors cursor-pointer disabled:opacity-60"
-                  >
-                    {downloadingPoster ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Download className="h-3.5 w-3.5" />}
-                    <span>{downloadingPoster ? 'Mengunduh...' : 'Unduh Poster A4'}</span>
-                  </button>
-                </div>
-              )}
-            </div>
-          )}
-
-          {/* ======================================================== */}
-          {/* KANAL 3: META THREADS (CUITAN OPINI & ADVOKASI DEWAN) */}
-          {/* ======================================================== */}
-          {selectedSocialChannel === 'threads' && (
-            <div className="p-4 sm:p-5 rounded-2xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 space-y-4 shadow-2xs">
-              {/* Header Bar */}
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-200 dark:border-slate-800 pb-3">
-                <div className="flex items-center gap-2.5">
-                  <div className="p-2 rounded-xl bg-slate-900 dark:bg-white text-white dark:text-slate-900 shadow-xs">
-                    <Sparkles className="h-4.5 w-4.5" />
-                  </div>
-                  <div>
-                    <div className="flex items-center gap-2">
-                      <h4 className="font-extrabold text-xs text-slate-900 dark:text-white">
-                        Meta Threads • Cuitan Opini
-                      </h4>
-                      {socialFeatureFlags.AUTO_PUBLISH_THREADS && (
-                        connectedThreadsAccount ? (
-                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-emerald-100 dark:bg-emerald-950/80 text-emerald-700 dark:text-emerald-300 text-[10px] font-black border border-emerald-200 dark:border-emerald-800">
-                            <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
-                            <span>@{connectedThreadsAccount.accountHandle}</span>
-                          </span>
-                        ) : (
-                          <Link
-                            href="/profile"
-                            className="inline-flex items-center gap-1 text-[10px] text-amber-600 dark:text-amber-400 font-bold hover:underline"
-                          >
-                            <span>⚠️ Belum Terhubung (Klik untuk Sambungkan Akun)</span>
-                          </Link>
-                        )
-                      )}
-                    </div>
-                    <p className="text-[11px] text-slate-500 dark:text-slate-400">
-                      Format ringkas padat intisari kebijakan & perang gagasan publik (maksimal 500 karakter).
-                    </p>
-                  </div>
-                </div>
-
-                <div className="flex items-center flex-wrap gap-2">
-                  {(selectedPosterUrl || generatedResult?.posterUrl) && (
-                    <button
-                      type="button"
-                      onClick={() => handleDownloadPosterImage()}
-                      disabled={downloadingPoster}
-                      className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 font-bold text-xs hover:bg-slate-50 transition-colors shadow-2xs cursor-pointer"
-                    >
-                      <Download className="h-3.5 w-3.5" />
-                      <span>Unduh Poster</span>
-                    </button>
-                  )}
-
-                  <button
-                    type="button"
-                    onClick={() => handleCopyCaptionWithPortalLink(threadsCustomText, 'Threads')}
-                    className="inline-flex items-center gap-1 px-3 py-1.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 font-bold text-xs hover:bg-slate-50 transition-colors shadow-2xs cursor-pointer"
-                  >
-                    <Copy className="h-3.5 w-3.5" />
-                    <span>Salin Cuitan & Tautan</span>
-                  </button>
-
-                  {socialFeatureFlags.AUTO_PUBLISH_THREADS ? (
-                    <button
-                      type="button"
-                      onClick={handlePublishToThreads}
-                      disabled={publishingThreads || isUnpaid || !connectedThreadsAccount || threadsCustomText.length > 500}
-                      className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-slate-900 hover:bg-slate-800 dark:bg-white dark:hover:bg-slate-100 text-white dark:text-slate-900 font-extrabold text-xs shadow-md shadow-slate-900/10 transition-all hover:scale-[1.01] active:scale-[0.99] disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
-                    >
-                      {publishingThreads ? (
-                        <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                      ) : (
-                        <Send className="h-3.5 w-3.5" />
-                      )}
-                      <span>Publikasikan ke Threads Resmi</span>
-                    </button>
-                  ) : (
-                    <a
-                      href="https://www.threads.net"
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-slate-900 hover:bg-slate-800 dark:bg-white dark:hover:bg-slate-100 text-white dark:text-slate-900 font-extrabold text-xs shadow-md shadow-slate-900/10 transition-all hover:scale-[1.01] active:scale-[0.99] cursor-pointer"
-                    >
-                      <ExternalLink className="h-3.5 w-3.5" />
-                      <span>Buka Threads</span>
-                    </a>
-                  )}
-                </div>
-              </div>
-
-              {/* 2-Column Responsive Layout: Mockup vs Editor */}
-              <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 items-start">
-                {/* Kolom Kiri: Mockup Threads WYSIWYG */}
-                <div className="lg:col-span-6 space-y-3">
-                  <div className="flex items-center justify-between text-xs font-bold text-slate-600 dark:text-slate-400">
-                    <span>Pratinjau Live Postingan Threads</span>
-                    <span className="text-[10px] text-slate-400 font-normal">Tampilan Feed Publik</span>
-                  </div>
-
-                  <div className="p-4 rounded-3xl bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-800 shadow-md space-y-3">
-                    {/* Header Akun */}
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-2.5">
-                        {connectedThreadsAccount?.profilePictureUrl ? (
-                          <img
-                            src={connectedThreadsAccount.profilePictureUrl}
-                            alt="Avatar"
-                            className="w-9 h-9 rounded-full object-cover border border-slate-200 dark:border-slate-700"
-                          />
-                        ) : (
-                          <div className="w-9 h-9 rounded-full bg-slate-900 text-white dark:bg-white dark:text-slate-900 flex items-center justify-center font-black text-xs">
-                            {(connectedThreadsAccount?.accountHandle || authorName || 'U').slice(0, 2).toUpperCase()}
-                          </div>
-                        )}
-                        <div>
-                          <div className="flex items-center gap-1.5">
-                            <span className="font-bold text-xs text-slate-900 dark:text-white">
-                              {connectedThreadsAccount?.accountHandle || authorName?.toLowerCase().replace(/\s+/g, '') || 'opinitaru'}
-                            </span>
-                            <span className="text-[10px] text-slate-400 font-normal">• Baru saja</span>
-                          </div>
-                          <span className="text-[10px] text-slate-400 block -mt-0.5">
-                            {connectedThreadsAccount?.accountName || authorName}
-                            {partyAffiliation && partyAffiliation !== 'Fraksi Parlemen' ? ` (${partyAffiliation})` : ''}
-                          </span>
-                        </div>
-                      </div>
-
-                      <MoreHorizontal className="h-4 w-4 text-slate-400" />
-                    </div>
-
-                    {/* Konten Teks Cuitan */}
-                    <div className="text-xs text-slate-800 dark:text-slate-200 leading-relaxed whitespace-pre-line pl-1 font-sans">
-                      {threadsCustomText || 'Belum ada cuitan opini.'}
-                    </div>
-
-                    {/* Lampiran Visual / Link Card */}
-                    {threadsAttachmentMode === 'link_card' ? (
-                      <div className="p-3 rounded-2xl bg-slate-50 dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 flex items-center gap-3 transition-colors hover:border-slate-300">
-                        <div className="w-14 h-14 rounded-xl bg-slate-200 dark:bg-slate-800 overflow-hidden shrink-0 border border-slate-200 dark:border-slate-700">
-                          {selectedPosterUrl || generatedResult?.posterUrl ? (
-                            <img
-                              src={selectedPosterUrl || generatedResult?.posterUrl}
-                              alt="Thumbnail Portal"
-                              className="w-full h-full object-cover"
-                            />
-                          ) : (
-                            <Sparkles className="h-5 w-5 text-slate-400 m-auto mt-4.5" />
-                          )}
-                        </div>
-                        <div className="flex-1 min-w-0 space-y-0.5">
-                          <h5 className="text-xs font-bold text-slate-900 dark:text-slate-100 truncate">
-                            {generatedResult?.publication?.title || 'Kebijakan Publik Resmi'}
-                          </h5>
-                          <p className="text-[10px] text-slate-500 dark:text-slate-400 line-clamp-1">
-                            {generatedResult?.publication?.excerpt || 'Kajian dan advokasi sikap untuk konstituen.'}
-                          </p>
-                          <span className="text-[9px] font-mono text-blue-600 dark:text-blue-400 font-bold block truncate">
-                            {articleDisplayUrl}
-                          </span>
-                        </div>
-                      </div>
-                    ) : (
-                      (selectedPosterUrl || generatedResult?.posterUrl) && (
-                        <div className="rounded-2xl overflow-hidden border border-slate-200 dark:border-slate-800 max-h-80 bg-slate-100 dark:bg-slate-900">
-                          <img
-                            src={selectedPosterUrl || generatedResult?.posterUrl}
-                            alt="Poster Dokumen"
-                            className="w-full h-auto object-cover"
-                          />
-                        </div>
-                      )
-                    )}
-
-                    {/* Engagement Bar Mockup Threads */}
-                    <div className="flex items-center gap-4 pt-2 text-slate-500 dark:text-slate-400 text-xs border-t border-slate-100 dark:border-slate-850">
-                      <div className="flex items-center gap-1 hover:text-rose-500 transition-colors cursor-pointer">
-                        <Heart className="h-4 w-4" />
-                        <span className="text-[10px] font-bold">128</span>
-                      </div>
-                      <div className="flex items-center gap-1 hover:text-blue-500 transition-colors cursor-pointer">
-                        <MessageCircle className="h-4 w-4" />
-                        <span className="text-[10px] font-bold">42</span>
-                      </div>
-                      <div className="flex items-center gap-1 hover:text-emerald-500 transition-colors cursor-pointer">
-                        <RotateCw className="h-4 w-4" />
-                        <span className="text-[10px] font-bold">19</span>
-                      </div>
-                      <div className="flex items-center gap-1 hover:text-slate-900 dark:hover:text-white transition-colors cursor-pointer ml-auto">
-                        <Share2 className="h-4 w-4" />
-                      </div>
-                    </div>
-                  </div>
-
-                  {(selectedPosterUrl || generatedResult?.posterUrl) && (
-                    <button
-                      type="button"
-                      onClick={() => handleDownloadPosterImage()}
-                      disabled={downloadingPoster}
-                      className="w-full inline-flex items-center justify-center gap-2 py-2.5 px-4 rounded-xl bg-slate-900 hover:bg-slate-800 dark:bg-white dark:hover:bg-slate-100 text-white dark:text-slate-900 font-extrabold text-xs shadow-xs transition-all cursor-pointer disabled:opacity-50"
-                    >
-                      {downloadingPoster ? <Loader2 className="h-4 w-4 animate-spin" /> : <Download className="h-4 w-4" />}
-                      <span>Unduh Poster Dokumen (HD)</span>
-                    </button>
-                  )}
-                </div>
-
-                {/* Kolom Kanan: Pengaturan & Editor Cuitan */}
-                <div className="lg:col-span-6 space-y-4">
-                  {/* Selector Mode Lampiran hanya relevan di mode Direct API publish */}
-                  {socialFeatureFlags.AUTO_PUBLISH_THREADS && (
-                    <div className="p-3.5 rounded-2xl bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-800 space-y-2">
-                      <span className="text-xs font-bold text-slate-900 dark:text-white block">
-                        Pilihan Lampiran Konten Threads:
-                      </span>
-                      <div className="grid grid-cols-2 gap-2">
-                        <button
-                          type="button"
-                          onClick={() => setThreadsAttachmentMode('link_card')}
-                          className={`p-2.5 rounded-xl text-left border transition-all cursor-pointer ${threadsAttachmentMode === 'link_card'
-                              ? 'bg-slate-900 text-white dark:bg-white dark:text-slate-900 border-transparent shadow-xs'
-                              : 'bg-slate-50 dark:bg-slate-900 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-800 hover:bg-slate-100'
-                            }`}
-                        >
-                          <div className="font-extrabold text-xs flex items-center gap-1.5">
-                            <Globe className="h-3.5 w-3.5" />
-                            <span>Rich Link Card</span>
-                          </div>
-                          <p className={`text-[10px] mt-0.5 leading-tight ${threadsAttachmentMode === 'link_card' ? 'opacity-80' : 'text-slate-400'}`}>
-                            Tautan hidup portal berita (warga membaca kajian penuh).
-                          </p>
-                        </button>
-
-                        <button
-                          type="button"
-                          onClick={() => setThreadsAttachmentMode('poster')}
-                          className={`p-2.5 rounded-xl text-left border transition-all cursor-pointer ${threadsAttachmentMode === 'poster'
-                              ? 'bg-slate-900 text-white dark:bg-white dark:text-slate-900 border-transparent shadow-xs'
-                              : 'bg-slate-50 dark:bg-slate-900 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-800 hover:bg-slate-100'
-                            }`}
-                        >
-                          <div className="font-extrabold text-xs flex items-center gap-1.5">
-                            <ImageIcon className="h-3.5 w-3.5" />
-                            <span>Gambar Poster</span>
-                          </div>
-                          <p className={`text-[10px] mt-0.5 leading-tight ${threadsAttachmentMode === 'poster' ? 'opacity-80' : 'text-slate-400'}`}>
-                            Lampirkan gambar poster infografis tanpa terpotong.
-                          </p>
-                        </button>
-                      </div>
-                    </div>
-                  )}
-
-                  {/* Textarea Editor & Live Character Counter */}
-                  <div className="p-4 rounded-2xl bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-800 space-y-3 shadow-xs">
-                    <div className="flex items-center justify-between text-xs">
-                      <div className="flex items-center gap-1.5 font-bold text-slate-800 dark:text-slate-200">
-                        <Edit3 className="h-4 w-4 text-slate-700 dark:text-slate-300" />
-                        <span>Naskah Cuitan Opini Threads</span>
-                      </div>
-                      <span
-                        className={`text-[10px] font-mono px-2 py-0.5 rounded-full font-bold ${threadsCustomText.length <= 500
-                            ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300'
-                            : 'bg-rose-100 text-rose-700 dark:bg-rose-950 dark:text-rose-300'
-                          }`}
-                      >
-                        {threadsCustomText.length} / 500 Karakter {threadsCustomText.length <= 500 ? '✓ Aman' : '⚠️ Melebihi Batas'}
-                      </span>
-                    </div>
-
-                    <textarea
-                      value={threadsCustomText}
-                      onChange={(e) => setThreadsCustomText(e.target.value)}
-                      rows={socialFeatureFlags.AUTO_PUBLISH_THREADS ? 6 : 10}
-                      placeholder="Tuliskan argumen opini atau kutipan pandangan Anda untuk Threads..."
-                      className="w-full p-3.5 text-xs rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900 text-slate-900 dark:text-slate-100 focus:outline-hidden focus:ring-1 focus:ring-slate-400 font-sans leading-relaxed resize-y"
-                    />
-
-                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pt-1 border-t border-slate-100 dark:border-slate-800 text-[11px] text-slate-400">
-                      <span>💡 Tips: Sertakan data kunci & ajakan dialog bagi warga.</span>
-                      <a
-                        href="https://www.threads.net"
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="inline-flex items-center gap-1 font-bold text-slate-900 dark:text-white hover:underline"
-                      >
-                        <span>Buka Web Threads</span>
-                        <ExternalLink className="h-3 w-3" />
-                      </a>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-          )}
-
-          {/* ======================================================== */}
-          {/* KANAL 4: X (TWITTER) STATUS & THREAD LINIMASA */}
-          {/* ======================================================== */}
-          {selectedSocialChannel === 'x' && (
-            <div className="p-4 sm:p-5 rounded-2xl bg-slate-50/70 dark:bg-slate-900/40 border border-slate-200 dark:border-slate-800 space-y-4 shadow-2xs">
-              {/* Header X */}
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-200/60 dark:border-slate-800/60 pb-3">
-                <div className="flex items-center gap-2.5">
-                  <div className="p-2 rounded-xl bg-black text-white shadow-xs border border-slate-800">
-                    <svg viewBox="0 0 24 24" aria-hidden="true" className="w-4.5 h-4.5 fill-current">
-                      <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"></path>
-                    </svg>
-                  </div>
-                  <div>
-                    <div className="flex items-center gap-2">
-                      <h4 className="font-black text-slate-900 dark:text-white text-sm">
-                        X (Twitter)
-                      </h4>
-                      {socialFeatureFlags.AUTO_PUBLISH_X_TWITTER ? (
-                        <Badge variant="slate" className="text-[10px] bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 font-bold border-slate-200 dark:border-slate-700">
-                          v2 API Official
-                        </Badge>
-                      ) : (
-                        <span className="text-[10px] text-slate-400 font-medium">
-                          (Utas &amp; Linimasa)
-                        </span>
-                      )}
-                    </div>
-                    <p className="text-[11px] text-slate-500 dark:text-slate-400">
-                      Utas cuitan publikasi berita, rilis pers dewan, &amp; lampiran poster grafis.
-                    </p>
-                  </div>
-                </div>
-
-                <div className="flex items-center flex-wrap gap-2">
-                  {(selectedPosterUrl || generatedResult?.posterUrl) && (
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="sm"
-                      onClick={() => handleDownloadPosterImage()}
-                      disabled={downloadingPoster}
-                      className="h-8 text-xs font-bold gap-1 rounded-xl cursor-pointer"
-                    >
-                      {downloadingPoster ? (
-                        <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                      ) : (
-                        <Download className="h-3.5 w-3.5" />
-                      )}
-                      <span>Unduh Poster</span>
-                    </Button>
-                  )}
-
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    onClick={() => handleCopyCaptionWithPortalLink(xCustomText, 'X')}
-                    className="h-8 text-xs font-bold gap-1 rounded-xl cursor-pointer"
-                  >
-                    <Copy className="h-3.5 w-3.5" />
-                    <span>Salin Cuitan & Tautan</span>
-                  </Button>
-
-                  {socialFeatureFlags.AUTO_PUBLISH_X_TWITTER ? (
-                    <Button
-                      type="button"
-                      size="sm"
-                      onClick={handlePublishX}
-                      disabled={publishingX || isUnpaid || !connectedXAccount || !xCustomText.trim()}
-                      className="h-8 bg-black hover:bg-slate-800 text-white font-extrabold text-xs gap-1.5 rounded-xl shadow-xs transition-all cursor-pointer"
-                    >
-                      {publishingX ? (
-                        <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                      ) : (
-                        <svg viewBox="0 0 24 24" aria-hidden="true" className="w-3.5 h-3.5 fill-current">
-                          <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"></path>
-                        </svg>
-                      )}
-                      <span>Publikasikan ke X</span>
-                    </Button>
-                  ) : (
-                    <a
-                      href="https://x.com/compose/post"
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="h-8 inline-flex items-center gap-1.5 px-3 rounded-xl bg-black hover:bg-slate-800 text-white font-extrabold text-xs shadow-xs transition-all cursor-pointer"
-                    >
-                      <ExternalLink className="h-3.5 w-3.5" />
-                      <span>Buka X</span>
-                    </a>
-                  )}
-                </div>
-              </div>
-
-              {/* Status Akun X (Khusus mode API) */}
-              {socialFeatureFlags.AUTO_PUBLISH_X_TWITTER && (
-                !connectedXAccount ? (
-                  <div className="p-3 rounded-xl bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-900/60 flex items-center justify-between gap-3 text-xs">
-                    <div className="flex items-center gap-2 text-amber-800 dark:text-amber-200">
-                      <AlertTriangle className="h-4 w-4 shrink-0 text-amber-600" />
-                      <span>Akun X belum terhubung. Tautkan akun di halaman Profil Parlemen untuk mengaktifkan direct publish.</span>
-                    </div>
-                    <Link
-                      href="/profile"
-                      className="px-3 py-1 bg-amber-600 hover:bg-amber-700 text-white font-bold text-[11px] rounded-lg shrink-0 transition-colors"
-                    >
-                      Tautkan Akun
-                    </Link>
-                  </div>
-                ) : (
-                  <div className="px-3 py-2 rounded-xl bg-emerald-50/80 dark:bg-emerald-950/30 border border-emerald-200/80 dark:border-emerald-800/50 flex items-center justify-between text-xs">
-                    <div className="flex items-center gap-2">
-                      <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-                      <span className="text-emerald-800 dark:text-emerald-300 font-medium">
-                        Terhubung sebagai <strong className="font-bold">@{connectedXAccount.accountHandle?.replace(/^@/, '')}</strong> ({connectedXAccount.accountName || 'Resmi'})
-                      </span>
-                    </div>
-                    <span className="text-[11px] text-emerald-700 dark:text-emerald-400 font-mono">
-                      Token aktif {connectedXAccount.daysRemaining} hari
-                    </span>
-                  </div>
-                )
-              )}
-
-              {/* Grid Pratinjau & Kontrol */}
-              <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 items-start">
-                {/* Kolom Kiri: Live Tweet Card Mockup */}
-                <div className="lg:col-span-5 space-y-2">
-                  <div className="flex items-center justify-between text-[11px] font-bold text-slate-500 uppercase tracking-wider">
-                    <span>Pratinjau Linimasa X</span>
-                    <span className="text-[10px] font-normal text-slate-400">Live Mockup</span>
-                  </div>
-
-                  <div className="p-4 rounded-2xl bg-white dark:bg-black border border-slate-200 dark:border-slate-800 shadow-sm space-y-3 font-sans">
-                    <div className="flex items-start gap-3">
-                      {connectedXAccount?.profilePictureUrl ? (
-                        <img
-                          src={connectedXAccount.profilePictureUrl}
-                          alt="Avatar"
-                          className="w-10 h-10 rounded-full border border-slate-200 dark:border-slate-800 object-cover shrink-0"
-                        />
-                      ) : (
-                        <div className="w-10 h-10 rounded-full bg-black text-white flex items-center justify-center font-bold text-xs shrink-0 border border-slate-800">
-                          X
-                        </div>
-                      )}
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-1.5 flex-wrap leading-none">
-                          <span className="font-extrabold text-sm text-slate-900 dark:text-white truncate">
-                            {connectedXAccount?.accountName || 'Wakil Rakyat Resmi'}
-                          </span>
-                          <span className="text-xs text-slate-500 dark:text-slate-400">
-                            @{connectedXAccount?.accountHandle?.replace(/^@/, '') || 'dewan_resmi'}
-                          </span>
-                          <span className="text-xs text-slate-400">• baru saja</span>
-                        </div>
-
-                        {/* Cuitan text with max-height to avoid endless stretch */}
-                        <div className="mt-2 text-xs text-slate-800 dark:text-slate-200 whitespace-pre-line leading-relaxed max-h-48 overflow-y-auto pr-1">
-                          {xCustomText || 'Belum ada naskah cuitan X.'}
-                        </div>
-
-                        {/* Lampiran Gambar Poster jika aktif / tersedia */}
-                        {(xAttachPoster || !socialFeatureFlags.AUTO_PUBLISH_X_TWITTER) && (selectedPosterUrl || generatedResult?.posterUrl) && (
-                          <div
-                            onClick={() => setIsPosterLightboxOpen(true)}
-                            className="mt-3 rounded-2xl overflow-hidden border border-slate-200 dark:border-slate-800 max-h-56 bg-slate-100 dark:bg-slate-900 cursor-pointer group relative"
-                            title="Klik untuk memperbesar gambar"
-                          >
-                            <img
-                              src={selectedPosterUrl || generatedResult?.posterUrl}
-                              alt="Poster Attachment"
-                              className="w-full h-48 object-cover group-hover:scale-102 transition-transform duration-200"
-                            />
-                            <div className="absolute inset-0 bg-black/20 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center text-white text-xs font-bold gap-1">
-                              <Maximize2 className="h-4 w-4" />
-                              <span>Perbesar</span>
-                            </div>
-                          </div>
-                        )}
-
-                        {/* Action Bar Mockup ala X */}
-                        <div className="flex items-center justify-between text-slate-400 text-xs pt-3 mt-1 border-t border-slate-100 dark:border-slate-900 max-w-xs">
-                          <span className="hover:text-blue-500 flex items-center gap-1">💬 0</span>
-                          <span className="hover:text-emerald-500 flex items-center gap-1">🔁 0</span>
-                          <span className="hover:text-pink-500 flex items-center gap-1">❤️ 0</span>
-                          <span className="hover:text-blue-500 flex items-center gap-1">📊 0</span>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Unduh Poster Button directly under the mockup */}
-                  {(selectedPosterUrl || generatedResult?.posterUrl) && (
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="sm"
-                      onClick={() => handleDownloadPosterImage()}
-                      disabled={downloadingPoster}
-                      className="w-full h-8.5 text-xs font-bold gap-1.5 rounded-xl cursor-pointer bg-white dark:bg-slate-900 hover:bg-slate-100 dark:hover:bg-slate-800 border-slate-200 dark:border-slate-800"
-                    >
-                      {downloadingPoster ? (
-                        <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                      ) : (
-                        <Download className="h-3.5 w-3.5 text-slate-700 dark:text-slate-300" />
-                      )}
-                      <span>Unduh Poster HD untuk X</span>
-                    </Button>
-                  )}
-                </div>
-
-                {/* Kolom Kanan: Editor Naskah Cuitan */}
-                <div className="lg:col-span-7 space-y-4">
-                  {/* Opsi Lampirkan Poster hanya muncul di Mode Otomatis (Direct API) */}
-                  {socialFeatureFlags.AUTO_PUBLISH_X_TWITTER && (
-                    <div className="p-3.5 rounded-2xl bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-800 space-y-2">
-                      <span className="text-xs font-bold text-slate-800 dark:text-slate-200">
-                        Lampiran Media Cuitan:
-                      </span>
-                      <button
-                        type="button"
-                        onClick={() => setXAttachPoster(!xAttachPoster)}
-                        className={`w-full p-3 rounded-xl border text-left transition-all cursor-pointer flex items-center justify-between gap-3 ${xAttachPoster
-                            ? 'bg-slate-900 text-white dark:bg-white dark:text-slate-900 border-transparent shadow-xs'
-                            : 'bg-slate-50 dark:bg-slate-900 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-800 hover:bg-slate-100'
-                          }`}
-                      >
-                        <div className="flex items-center gap-2">
-                          <ImageIcon className="h-4 w-4" />
-                          <div>
-                            <p className="font-extrabold text-xs">Lampirkan Poster Visual Resmi</p>
-                            <p className={`text-[10px] mt-0.5 leading-tight ${xAttachPoster ? 'opacity-80' : 'text-slate-400'}`}>
-                              Otomatis menyertakan poster grafis yang digenerate AI ke cuitan pertama.
-                            </p>
-                          </div>
-                        </div>
-                        <span className="text-xs font-bold font-mono">
-                          {xAttachPoster ? '✓ AKTIF' : 'NONAKTIF'}
-                        </span>
-                      </button>
-                    </div>
-                  )}
-
-                  {/* Textarea Editor Cuitan */}
-                  <div className="p-4 rounded-2xl bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-800 space-y-3 shadow-xs">
-                    <div className="flex items-center justify-between text-xs">
-                      <div className="flex items-center gap-1.5 font-bold text-slate-800 dark:text-slate-200">
-                        <Edit3 className="h-4 w-4 text-slate-700 dark:text-slate-300" />
-                        <span>Naskah Cuitan / Utas (Thread)</span>
-                      </div>
-                      <span
-                        className={`text-[10px] font-mono px-2 py-0.5 rounded-full font-bold ${xCustomText.length <= 280
-                            ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300'
-                            : 'bg-blue-100 text-blue-700 dark:bg-blue-950 dark:text-blue-300'
-                          }`}
-                      >
-                        {xCustomText.length} Karakter {xCustomText.length <= 280 ? '(1 Tweet)' : `(Utas: ${Math.ceil(xCustomText.length / 260)} Tweet)`}
-                      </span>
-                    </div>
-
-                    <textarea
-                      value={xCustomText}
-                      onChange={(e) => setXCustomText(e.target.value)}
-                      rows={socialFeatureFlags.AUTO_PUBLISH_X_TWITTER ? 7 : 11}
-                      placeholder="Tuliskan naskah cuitan untuk linimasa X..."
-                      className="w-full p-3.5 text-xs rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900 text-slate-900 dark:text-slate-100 focus:outline-hidden focus:ring-1 focus:ring-slate-400 font-sans leading-relaxed resize-y"
-                    />
-
-                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pt-1 border-t border-slate-100 dark:border-slate-800 text-[11px] text-slate-400">
-                      <span>💡 Cuitan &gt; 280 karakter otomatis dirangkai menjadi Utas bersambung (Thread).</span>
-                      <a
-                        href="https://x.com/compose/post"
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="inline-flex items-center gap-1 font-bold text-slate-900 dark:text-white hover:underline"
-                      >
-                        <span>Buka Web X</span>
-                        <ExternalLink className="h-3 w-3" />
-                      </a>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-          )}
-
-          {/* ======================================================== */}
-          {/* KANAL 5: TIKTOK CONTENT POSTING (VIDEO & FOTO) */}
-          {/* ======================================================== */}
-          {selectedSocialChannel === 'tiktok' && (
-            <div className="p-4 sm:p-5 rounded-2xl bg-slate-50/70 dark:bg-slate-900/40 border border-slate-200 dark:border-slate-800 space-y-4 shadow-2xs">
-              {/* Header TikTok */}
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-200/60 dark:border-slate-800/60 pb-3">
-                <div className="flex items-center gap-2.5">
-                  <div className="p-2 rounded-xl bg-black text-white shadow-xs border border-slate-800 relative overflow-hidden">
-                    <Video className="w-4.5 h-4.5 text-[#fe2c55]" />
-                  </div>
-                  <div>
-                    <div className="flex items-center gap-2">
-                      <h4 className="font-black text-slate-900 dark:text-white text-sm">
-                        TikTok Content Posting
-                      </h4>
-                      <Badge variant="slate" className="text-[10px] bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 font-bold border-slate-200 dark:border-slate-700">
-                        Direct Post API
-                      </Badge>
-                    </div>
-                    <p className="text-[11px] text-slate-500 dark:text-slate-400">
-                      Publikasi materi visual dokumentasi &amp; poster kampanye ke profil TikTok.
-                    </p>
-                  </div>
-                </div>
-
-                <div className="flex items-center flex-wrap gap-2">
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    onClick={() => handleDownloadPosterImage()}
-                    disabled={downloadingPoster}
-                    className="h-8 text-xs font-bold gap-1 rounded-xl cursor-pointer"
-                  >
-                    <Download className="h-3.5 w-3.5" />
-                    <span>Unduh Poster</span>
-                  </Button>
-
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    onClick={() => handleCopyCaptionWithPortalLink(tiktokCustomCaption, 'TikTok')}
-                    className="h-8 text-xs font-bold gap-1 rounded-xl cursor-pointer"
-                  >
-                    <Copy className="h-3.5 w-3.5" />
-                    <span>Salin Caption & Tautan</span>
-                  </Button>
-
-                  {socialFeatureFlags.AUTO_PUBLISH_TIKTOK ? (
-                    <Button
-                      type="button"
-                      size="sm"
-                      onClick={handlePublishTikTok}
-                      disabled={publishingTikTok || isUnpaid || !connectedTikTokAccount || !tiktokCustomCaption.trim()}
-                      className="h-8 bg-gradient-to-r from-black via-slate-900 to-black hover:from-slate-900 hover:to-slate-800 text-white font-extrabold text-xs gap-1.5 rounded-xl shadow-xs transition-all border border-slate-800 cursor-pointer"
-                    >
-                      {publishingTikTok ? (
-                        <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                      ) : (
-                        <Video className="h-3.5 w-3.5 text-[#fe2c55]" />
-                      )}
-                      <span>Terbitkan ke TikTok</span>
-                    </Button>
-                  ) : (
-                    <a
-                      href="https://www.tiktok.com/upload"
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="h-8 inline-flex items-center gap-1.5 px-3 rounded-xl bg-gradient-to-r from-black via-slate-900 to-black hover:from-slate-900 hover:to-slate-800 text-white font-extrabold text-xs shadow-xs transition-all border border-slate-800 cursor-pointer"
-                    >
-                      <ExternalLink className="h-3.5 w-3.5 text-[#fe2c55]" />
-                      <span>Buka TikTok Studio</span>
-                    </a>
-                  )}
-                </div>
-              </div>
-
-              {/* Status Akun TikTok */}
-              {socialFeatureFlags.AUTO_PUBLISH_TIKTOK ? (
-                !connectedTikTokAccount ? (
-                  <div className="p-3 rounded-xl bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-900/60 flex items-center justify-between gap-3 text-xs">
-                    <div className="flex items-center gap-2 text-amber-800 dark:text-amber-200">
-                      <AlertTriangle className="h-4 w-4 shrink-0 text-amber-600" />
-                      <span>Akun TikTok belum terhubung. Tautkan akun di halaman Profil Parlemen untuk mengaktifkan direct posting.</span>
-                    </div>
-                    <Link
-                      href="/profile"
-                      className="px-3 py-1 bg-amber-600 hover:bg-amber-700 text-white font-bold text-[11px] rounded-lg shrink-0 transition-colors"
-                    >
-                      Tautkan Akun
-                    </Link>
-                  </div>
-                ) : (
-                  <div className="px-3 py-2 rounded-xl bg-emerald-50/80 dark:bg-emerald-950/30 border border-emerald-200/80 dark:border-emerald-800/50 flex items-center justify-between text-xs">
-                    <div className="flex items-center gap-2">
-                      <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-                      <span className="text-emerald-800 dark:text-emerald-300 font-medium">
-                        Terhubung sebagai <strong className="font-bold">@{connectedTikTokAccount.accountHandle?.replace(/^@/, '')}</strong> ({connectedTikTokAccount.accountName || 'Kreator'})
-                      </span>
-                    </div>
-                    <span className="text-[11px] text-emerald-700 dark:text-emerald-400 font-mono">
-                      Token aktif {connectedTikTokAccount.daysRemaining} hari
-                    </span>
-                  </div>
-                )
-              ) : (
-                <div className="p-3 rounded-xl bg-slate-100 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700/80 flex items-center justify-between gap-3 text-xs">
-                  <div className="flex items-center gap-2 text-slate-700 dark:text-slate-300">
-                    <Info className="h-4 w-4 shrink-0 text-[#fe2c55]" />
-                    <span>
-                      Unduh materi gambar poster dan salin naskah caption, lalu unggah melalui TikTok Studio Web.
-                    </span>
-                  </div>
-                  <a
-                    href="https://www.tiktok.com/upload"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="inline-flex items-center gap-1 px-3 py-1 bg-black hover:bg-slate-800 text-white font-bold text-[11px] rounded-lg shrink-0 transition-colors"
-                  >
-                    <span>Buka Upload</span>
-                    <ExternalLink className="h-3 w-3" />
-                  </a>
-                </div>
-              )}
-
-              {/* Grid Pratinjau & Kontrol TikTok */}
-              <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 items-start">
-                {/* Kolom Kiri: Mobile TikTok Feed Mockup */}
-                <div className="lg:col-span-5 flex flex-col items-center">
-                  <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-2 self-start">
-                    Pratinjau Feed TikTok:
-                  </span>
-
-                  <div className="relative w-64 h-[440px] rounded-3xl overflow-hidden bg-black shadow-xl border-4 border-slate-800 flex flex-col justify-between p-3.5">
-                    {/* Background Media */}
-                    {(selectedPosterUrl || generatedResult?.posterUrl) ? (
-                      <img
-                        src={selectedPosterUrl || generatedResult?.posterUrl}
-                        alt="TikTok Background"
-                        className="absolute inset-0 w-full h-full object-cover opacity-85"
-                      />
-                    ) : (
-                      <div className="absolute inset-0 bg-gradient-to-b from-slate-900 to-black flex items-center justify-center text-slate-600">
-                        <Video className="w-12 h-12" />
-                      </div>
-                    )}
-
-                    {/* Gradient Overlay */}
-                    <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/20 to-transparent pointer-events-none" />
-
-                    {/* Top Bar */}
-                    <div className="relative z-10 flex items-center justify-between text-white text-xs font-bold pt-1">
-                      <span className="opacity-80">Following</span>
-                      <span className="border-b-2 border-white pb-0.5">For You</span>
-                      <span className="opacity-80">🔍</span>
-                    </div>
-
-                    {/* Bottom Info Overlay */}
-                    <div className="relative z-10 space-y-1.5 text-white">
-                      <div className="flex items-center gap-2">
-                        <div className="w-8 h-8 rounded-full bg-white text-black font-extrabold flex items-center justify-center text-[10px] border border-white">
-                          TT
-                        </div>
-                        <span className="font-extrabold text-xs">
-                          @{connectedTikTokAccount?.accountHandle?.replace(/^@/, '') || 'dewan_resmi'}
-                        </span>
-                      </div>
-                      <p className="text-[11px] line-clamp-3 leading-snug opacity-95">
-                        {tiktokCustomCaption || 'Belum ada caption TikTok.'}
-                      </p>
-                      <div className="flex items-center gap-1.5 text-[10px] opacity-75 font-mono">
-                        <span>🎵 Suara Asli - Suara Parlemen Resmi</span>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Kolom Kanan: Pengaturan Naskah TikTok */}
-                <div className="lg:col-span-7 space-y-4">
-                  <div className="p-3.5 rounded-2xl bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-800 space-y-2">
-                    <span className="text-xs font-bold text-slate-800 dark:text-slate-200">
-                      Metode Publikasi:
-                    </span>
-                    <div className="p-3 rounded-xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-xs space-y-1">
-                      <p className="font-extrabold text-slate-900 dark:text-white flex items-center gap-1.5">
-                        <Video className="w-4 h-4 text-[#fe2c55]" />
-                        <span>Direct Post Mode (Push by File)</span>
-                      </p>
-                      <p className="text-[11px] text-slate-500 dark:text-slate-400">
-                        Media dikirim langsung melalui binary streaming aman ke TikTok API tanpa memerlukan domain DNS verification tambahan.
-                      </p>
-                    </div>
-                  </div>
-
-                  {/* Caption Editor */}
-                  <div className="p-3.5 rounded-2xl bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-800 space-y-2">
-                    <div className="flex items-center justify-between text-xs">
-                      <span className="font-bold text-slate-800 dark:text-slate-200">
-                        Caption &amp; Hashtag TikTok:
-                      </span>
-                      <span
-                        className={`text-[10px] font-mono px-2 py-0.5 rounded-full font-bold ${tiktokCustomCaption.length <= 2200
-                            ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300'
-                            : 'bg-rose-100 text-rose-700 dark:bg-rose-950 dark:text-rose-300'
-                          }`}
-                      >
-                        {tiktokCustomCaption.length} / 2200 Karakter
-                      </span>
-                    </div>
-
-                    <textarea
-                      value={tiktokCustomCaption}
-                      onChange={(e) => setTiktokCustomCaption(e.target.value)}
-                      rows={6}
-                      placeholder="Tuliskan caption video atau foto untuk feed TikTok..."
-                      className="w-full p-3 text-xs rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 text-slate-900 dark:text-slate-100 focus:outline-hidden focus:ring-1 focus:ring-slate-400 font-sans leading-relaxed resize-none"
-                    />
-
-                    <div className="flex items-center justify-between pt-1 text-[11px] text-slate-400">
-                      <span>💡 Rekomendasi: Sertakan tagar wilayah, isu dapil, dan call-to-action bagi warganet.</span>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-          )}
-        </div>
+        <SocialDistributionTab
+          selectedSocialChannel={selectedSocialChannel}
+          setSelectedSocialChannel={setSelectedSocialChannel}
+          socialFeatureFlags={socialFeatureFlags}
+          connectedAccount={connectedAccount}
+          connectedThreadsAccount={connectedThreadsAccount}
+          connectedXAccount={connectedXAccount}
+          connectedTikTokAccount={connectedTikTokAccount}
+          selectedPosterUrl={selectedPosterUrl}
+          generatedResult={generatedResult}
+          carouselSlides={carouselSlides}
+          setCarouselSlides={setCarouselSlides}
+          activeSlideIndex={activeSlideIndex}
+          setActiveSlideIndex={setActiveSlideIndex}
+          slideFocalY={slideFocalY}
+          setSlideFocalY={setSlideFocalY}
+          igFramingMode={igFramingMode}
+          setIgFramingMode={setIgFramingMode}
+          customIgCaption={customIgCaption}
+          setCustomIgCaption={setCustomIgCaption}
+          publishingIg={publishingIg}
+          onPublishInstagram={handlePublishInstagramFromCampaign}
+          customWaText={customWaText}
+          setCustomWaText={setCustomWaText}
+          threadsCustomText={threadsCustomText}
+          setThreadsCustomText={setThreadsCustomText}
+          threadsAttachmentMode={threadsAttachmentMode}
+          setThreadsAttachmentMode={setThreadsAttachmentMode}
+          publishingThreads={publishingThreads}
+          onPublishThreads={handlePublishToThreads}
+          xCustomText={xCustomText}
+          setXCustomText={setXCustomText}
+          xAttachPoster={xAttachPoster}
+          setXAttachPoster={setXAttachPoster}
+          publishingX={publishingX}
+          onPublishX={handlePublishX}
+          tiktokCustomCaption={tiktokCustomCaption}
+          setTiktokCustomCaption={setTiktokCustomCaption}
+          publishingTikTok={publishingTikTok}
+          onPublishTikTok={handlePublishTikTok}
+          onDownloadPoster={handleDownloadPosterImage}
+          onCopyCaption={handleCopyCaptionWithPortalLink}
+          onOpenLightbox={() => setIsPosterLightboxOpen(true)}
+          downloadingPoster={downloadingPoster}
+          isUnpaid={isUnpaid}
+          authorName={authorName}
+          partyAffiliation={partyAffiliation}
+          articleDisplayUrl={articleDisplayUrl}
+        />
       )}
 
       {/* Pop-up Live Progress Modal Penerbitan Instagram */}
@@ -2864,9 +877,7 @@ export function CampaignPreview({
         />
       )}
 
-      {/* ========================================================================= */}
-      {/* LIGHTBOX FULLSCREEN MODAL: LIHAT POSTER RESOLUSI TINGGI PENUH (GEDE FULL)  */}
-      {/* Lightbox Preview Poster Penuh HD */}
+      {/* LIGHTBOX FULLSCREEN MODAL: LIHAT POSTER RESOLUSI TINGGI PENUH */}
       <PosterLightbox
         isOpen={isPosterLightboxOpen && Boolean(selectedPosterUrl || generatedResult?.posterUrl)}
         onClose={() => setIsPosterLightboxOpen(false)}
