@@ -252,12 +252,8 @@ export default function SuperadminPlatformSettingsPage() {
                   </div>
 
                   <Badge
-                    variant="outline"
-                    className={`text-[10px] font-black uppercase tracking-wider px-2 py-0.5 rounded-full shrink-0 ${
-                      isEnabled
-                        ? 'border-emerald-300 dark:border-emerald-800 bg-emerald-50 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-400'
-                        : 'border-slate-300 dark:border-slate-700 bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400'
-                    }`}
+                    variant={isEnabled ? 'green' : 'slate'}
+                    className="text-[10px] font-black uppercase tracking-wider px-2 py-0.5 rounded-full shrink-0"
                   >
                     {isEnabled ? 'Otomatis Aktif' : 'Manual (Aman)'}
                   </Badge>
