@@ -33,17 +33,17 @@ if [ $RETRIES -le 0 ]; then
 fi
 echo "PostgreSQL & Redis siap dan berstatus healthy."
 
-echo "=== [4/5] Melakukan Rolling Restart Sub-Sistem Aplikasi ==="
-# Restart backend API Core terlebih dahulu
-docker compose -f ${COMPOSE_FILE} up -d --no-deps --build api-core
+echo "=== [4/5] Melakukan Rolling Restart Sub-Sistem Aplikasi (Pre-built GHCR Images) ==="
+# Restart backend API Core terlebih dahulu (tanpa --build di VPS karena image sudah di-pull dari GHCR)
+docker compose -f ${COMPOSE_FILE} up -d --no-deps api-core
 sleep 4
 
 # Restart Worker Daemon BullMQ
-docker compose -f ${COMPOSE_FILE} up -d --no-deps --build worker-crawler
+docker compose -f ${COMPOSE_FILE} up -d --no-deps worker-crawler
 
 # Restart Web Dashboard Dewan & Web Portal Publik
-docker compose -f ${COMPOSE_FILE} up -d --no-deps --build web-dashboard
-docker compose -f ${COMPOSE_FILE} up -d --no-deps --build web-portal
+docker compose -f ${COMPOSE_FILE} up -d --no-deps web-dashboard
+docker compose -f ${COMPOSE_FILE} up -d --no-deps web-portal
 
 echo "=== [5/5] Pembersihan Image Usang (Dangling Images Cleanup) ==="
 docker image prune -f --filter "until=72h"

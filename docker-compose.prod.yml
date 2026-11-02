@@ -1,4 +1,3 @@
-
 networks:
   polaris_prod_net:
     driver: bridge
@@ -69,6 +68,7 @@ services:
   # 3. BACKEND API CORE: NESTJS MODULAR APPLICATION
   # =========================================================================
   api-core:
+    image: ghcr.io/geocitra/polaris-api-core:latest
     build:
       context: .
       dockerfile: Dockerfile.api-core
@@ -104,6 +104,7 @@ services:
   # 4. HEADLESS BACKGROUND WORKER: BULLMQ PROCESSORS & CRON
   # =========================================================================
   worker-crawler:
+    image: ghcr.io/geocitra/polaris-worker-crawler:latest
     build:
       context: .
       dockerfile: Dockerfile.worker-crawler
@@ -142,6 +143,7 @@ services:
   # Port host di-mapping ke 3002 (karena port 3000 sudah dipakai edaily-renderer)
   # =========================================================================
   web-dashboard:
+    image: ghcr.io/geocitra/polaris-web-dashboard:latest
     build:
       context: .
       dockerfile: Dockerfile.web-dashboard
@@ -177,6 +179,7 @@ services:
   # Port host di-mapping ke 3001
   # =========================================================================
   web-portal:
+    image: ghcr.io/geocitra/polaris-web-portal:latest
     build:
       context: .
       dockerfile: Dockerfile.web-portal
