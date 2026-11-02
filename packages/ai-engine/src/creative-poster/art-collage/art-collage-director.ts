@@ -284,23 +284,26 @@ export function compileArtCollageImagePrompt(params: {
   const isInfographic = isInfographicArchetype(params.archetype);
 
   if (isInfographic) {
-    let spatialInstruction = '';
-    if (params.mutation.anchor === 'TEXT_BOTTOM') {
-      spatialInstruction = `Spatial composition: Clear vertical split. All thematic illustrations, people, and scenery must be concentrated strictly within the UPPER 45% of the canvas. The entire LOWER 55% of the canvas must be a completely quiet, clean, empty, flat solid ${p.paperName} paper expanse reserved exclusively for typography and data cards.`;
-    } else if (params.mutation.anchor === 'TEXT_TOP') {
-      spatialInstruction = `Spatial composition: Clear vertical split. The entire UPPER 55% of the canvas must be a completely quiet, clean, empty, flat solid ${p.paperName} paper expanse reserved exclusively for typography and data cards. All thematic illustrations, people, and scenery must be concentrated strictly within the LOWER 45% of the canvas.`;
-    } else if (params.mutation.anchor === 'TEXT_RIGHT') {
-      spatialInstruction = `Spatial composition: Clear horizontal split. All thematic illustrations must be concentrated strictly within the LEFT 45% of the canvas. The entire RIGHT 55% of the canvas must be a completely quiet, clean, empty, flat solid ${p.paperName} paper expanse reserved exclusively for typography and data cards.`;
+    let archetypeSpatialGuide = '';
+    if (params.archetype === 'INFOGRAPHIC_NARRATIVE_WAVE') {
+      archetypeSpatialGuide = `Composition layout: An organic sweeping ${p.accentName} S-curve flow ribbon winds gracefully across the canvas from top-left toward bottom-right. Along the ribbon are tasteful documentary illustrations of ${params.visualSubject}. Leave clean, quiet open paper alcoves alternating on the top-right, middle-left, middle-right, and bottom-left reserved for typography cards.`;
+    } else if (params.archetype === 'INFOGRAPHIC_CHRONICLE_GRID') {
+      archetypeSpatialGuide = `Composition layout: Editorial newspaper chronicle format. The left 32% of the canvas has a clean vertical masthead column reserved for the title. The right 68% features fine technical grid lines and authentic documentary illustrations depicting ${params.visualSubject}, leaving generous clean rectangular paper areas for data grid cards.`;
+    } else if (params.archetype === 'INFOGRAPHIC_RADIAL_CLOCK') {
+      archetypeSpatialGuide = `Composition layout: Vintage chronicle print on aged ivory parchment. An ornate antique pocket-watch clock dial or compass motif sits elegantly on the center-left. The entire right 60% of the canvas is a calm, quiet, open parchment expanse strictly reserved for epoch milestone data.`;
+    } else if (params.archetype === 'INFOGRAPHIC_ADVOCACY_PILLARS') {
+      archetypeSpatialGuide = `Composition layout: Civic advocacy cartoon layout with subtle batik motif backdrop. The middle area features expressive citizens and community illustrations depicting ${params.visualSubject}. The top 22% is clean open paper for the main title, and the lower 46% of the canvas is a clean, flat, empty ivory paper expanse strictly reserved for the 5 vertical solution pillars.`;
     } else {
-      spatialInstruction = `Spatial composition: Clear horizontal split. The entire LEFT 55% of the canvas must be a completely quiet, clean, empty, flat solid ${p.paperName} paper expanse reserved exclusively for typography and data cards. All thematic illustrations must be concentrated strictly within the RIGHT 45% of the canvas.`;
+      // INFOGRAPHIC_VISIONARY_TIMELINE
+      archetypeSpatialGuide = `Composition layout: Sleek modern editorial milestone layout. Upper center features an artistic architectural or thematic illustration of ${params.visualSubject}. The bottom 38% of the canvas is a clean, quiet horizontal band reserved for the milestone timeline bar.`;
     }
 
     return [
-      `Create a finished, print-quality editorial data infographic illustration (vertical 4:5 ratio) specifically depicting: ${params.visualSubject}.`,
+      `Create a finished, print-quality editorial data infographic background illustration (vertical 4:5 ratio) specifically depicting: ${params.visualSubject}.`,
       `Aesthetic style: ${dna.style}.`,
       `Color scheme: ${p.accentName} accent with ${p.secondaryName} details, on clean ${p.paperName} background.`,
       `The illustrations and visual elements must represent ONLY ${params.visualSubject}. Authentic Indonesian everyday citizens, farmers, workers, infrastructure, or community setting relevant to this specific topic. No unrelated historical figures or unrelated objects.`,
-      spatialInstruction,
+      archetypeSpatialGuide,
       `STRICT NEGATIVE INSTRUCTIONS FOR INFOGRAPHIC ARTWORK:`,
       `- DO NOT draw any dummy text boxes, DO NOT draw any empty pill shapes, DO NOT draw any blank capsule pillars, DO NOT draw any UI cards or frames, DO NOT draw any empty flowchart boxes, DO NOT draw any blank chalkboards or whiteboards, DO NOT draw any fake QR codes or barcodes, DO NOT draw any dummy data dials, gauges, or pie charts.`,
       `- Only draw authentic scenery, people, and thematic background illustrations. The reserved typography space must remain 100% flat, clean, unadorned, and empty ${p.paperName} paper texture.`,
