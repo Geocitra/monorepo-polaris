@@ -334,20 +334,74 @@ function clampSentence(text: string, max: number): string {
 }
 
 function finalizeCopy(
-  raw: Partial<ArtCollageCopy>,
+  raw: Partial<ArtCollageCopy> & Record<string, any>,
   topic: string,
   archetype?: CreativePosterArchetype
 ): ArtCollageCopy {
   const s = (t?: string) => MasterEditorialSanitizer.sanitize(t || '');
-  const points = (Array.isArray(raw.points) ? raw.points : [])
-    .filter((pt) => pt && (pt.label || pt.text))
-    .slice(0, archetype === 'INFOGRAPHIC_ADVOCACY_PILLARS' ? 5 : isInfographicArchetype(archetype) ? 4 : 3)
-    .map((pt) => ({
-      label: clampWords(MasterEditorialSanitizer.cleanHeadline(pt.label || ''), COPY_LIMITS.pointLabel).toUpperCase(),
-      text: clampSentence(s(pt.text), COPY_LIMITS.pointText),
-    }));
 
-  let sanitizedKicker = s(raw.kicker);
+  // 1. Ambil array points dari berbagai kemungkinan key (points, items, pillars, steps, keyPoints, butir)
+  const rawPointsCandidate =
+    raw.points || raw.items || raw.pillars || raw.steps || raw.keyPoints || raw.butir || [];
+
+  const pointsArray = Array.isArray(rawPointsCandidate)
+    ? rawPointsCandidate
+    : typeof rawPointsCandidate === 'object' && rawPointsCandidate !== null
+    ? Object.values(rawPointsCandidate)
+    : [];
+
+  const maxPoints =
+    archetype === 'INFOGRAPHIC_ADVOCACY_PILLARS' ? 5 : isInfographicArchetype(archetype) ? 4 : 3;
+
+  const points = pointsArray
+    .map((pt: any, idx: number) => {
+      if (typeof pt === 'string') {
+        if (pt.includes(':')) {
+          const colonIdx = pt.indexOf(':');
+          const lbl = pt.slice(0, colonIdx).trim();
+          const txt = pt.slice(colonIdx + 1).trim();
+          return {
+            label: clampWords(MasterEditorialSanitizer.cleanHeadline(lbl), COPY_LIMITS.pointLabel).toUpperCase(),
+            text: clampSentence(s(txt), COPY_LIMITS.pointText),
+          };
+        }
+        return {
+          label: `POIN ${idx + 1}`,
+          text: clampSentence(s(pt), COPY_LIMITS.pointText),
+        };
+      }
+      if (typeof pt === 'object' && pt !== null) {
+        const rawLabel = pt.label || pt.title || pt.name || pt.step || pt.pilar || pt.heading || `POIN ${idx + 1}`;
+        const rawText = pt.text || pt.description || pt.desc || pt.content || pt.detail || pt.uraian || '';
+        return {
+          label: clampWords(MasterEditorialSanitizer.cleanHeadline(rawLabel), COPY_LIMITS.pointLabel).toUpperCase(),
+          text: clampSentence(s(rawText), COPY_LIMITS.pointText),
+        };
+      }
+      return null;
+    })
+    .filter((pt): pt is { label: string; text: string } => Boolean(pt && (pt.label || pt.text)))
+    .slice(0, maxPoints);
+
+  // Jika setelah diparse points masih kurang dari 2, lengkapi dari topik agar tidak gagal
+  if (points.length < 2) {
+    if (points.length === 1) {
+      points.push({
+        label: 'ARAH SOLUSI',
+        text: `Implementasi kebijakan terukur dan pengawasan komprehensif atas ${topic}.`,
+      });
+    } else {
+      points.push(
+        { label: 'URGENSI ISU', text: `Persoalan ${topic} memerlukan perhatian dan penanganan berbasis data riil.` },
+        { label: 'ARAH SOLUSI', text: 'Penyusunan regulasi komprehensif dan alokasi sumber daya tepat sasaran.' }
+      );
+    }
+  }
+
+  // 2. Normalisasi headline
+  const rawHeadline = raw.headline || raw.title || raw.judul || raw.mainTitle || topic;
+
+  let sanitizedKicker = s(raw.kicker || raw.rubrik || raw.category || 'TELAAH ISU');
   sanitizedKicker = sanitizedKicker
     .replace(/\b(?:catatan|langkah|agenda|fokus|kabar)\s+parlemen\b/gi, 'TELAAH KEBIJAKAN')
     .replace(/\bparlemen(?:\s+ri)?\b/gi, 'KEBIJAKAN PUBLIK');
@@ -355,12 +409,12 @@ function finalizeCopy(
   return {
     kicker: clampWords(sanitizedKicker, COPY_LIMITS.kicker).toUpperCase(),
     headline: clampWords(
-      MasterEditorialSanitizer.cleanHeadline(raw.headline || '', topic),
+      MasterEditorialSanitizer.cleanHeadline(rawHeadline, topic),
       COPY_LIMITS.headline
     ).toUpperCase(),
-    deck: clampSentence(s(raw.deck), COPY_LIMITS.deck),
+    deck: clampSentence(s(raw.deck || raw.summary || raw.ringkasan || `Telaah substansial mengenai ${topic}.`), COPY_LIMITS.deck),
     points,
-    closingLine: clampSentence(s(raw.closingLine), COPY_LIMITS.closing),
+    closingLine: clampSentence(s(raw.closingLine || raw.closing || 'Komitmen terukur bagi transparansi dan kemaslahatan publik.'), COPY_LIMITS.closing),
     visualSubject:
       (raw.visualSubject || '').trim() ||
       `everyday Indonesian civic life directly related to: ${topic}`,
@@ -416,11 +470,7 @@ Keluarkan JSON murni:
       messages: [{ role: 'system', content: systemPrompt }],
     });
     const parsed = JSON.parse(response.choices[0]?.message?.content || '{}') as Partial<ArtCollageCopy>;
-    const copy = finalizeCopy(parsed, topic, archetype);
-    if (!copy.headline || copy.points.length < 2) {
-      throw new Error('Copy AI tidak lengkap (headline/points).');
-    }
-    return copy;
+    return finalizeCopy(parsed, topic, archetype);
   } catch (err: any) {
     console.warn(`[ArtCollageDirector] Copy AI gagal, memakai fallback deterministik: ${err?.message}`);
     return finalizeCopy(
