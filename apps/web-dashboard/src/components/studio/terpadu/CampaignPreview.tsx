@@ -2462,7 +2462,7 @@ export function CampaignPreview({
                         {/* Lampiran Gambar Poster jika aktif / tersedia */}
                         {(xAttachPoster || !socialFeatureFlags.AUTO_PUBLISH_X_TWITTER) && (selectedPosterUrl || generatedResult?.posterUrl) && (
                           <div
-                            onClick={() => (selectedPosterUrl || generatedResult?.posterUrl) && setLightboxImage(selectedPosterUrl || generatedResult?.posterUrl || null)}
+                            onClick={() => setIsPosterLightboxOpen(true)}
                             className="mt-3 rounded-2xl overflow-hidden border border-slate-200 dark:border-slate-800 max-h-56 bg-slate-100 dark:bg-slate-900 cursor-pointer group relative"
                             title="Klik untuk memperbesar gambar"
                           >
