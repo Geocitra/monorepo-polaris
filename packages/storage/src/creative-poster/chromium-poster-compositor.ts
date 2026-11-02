@@ -23,10 +23,16 @@ export interface ChromiumPosterPoint {
   text: string;
 }
 
+export interface ChromiumPosterStat {
+  value: string;
+  label: string;
+}
+
 export interface ChromiumPosterCopy {
   kicker?: string;
   headline: string;
   deck?: string;
+  stats?: ChromiumPosterStat[];
   points?: ChromiumPosterPoint[];
   closingLine?: string;
 }
@@ -96,6 +102,24 @@ function renderInfographicArchetypeLayout(params: {
   const points = copy.points || [];
   const cardBg = isLightPaper ? 'rgba(255, 255, 255, 0.96)' : 'rgba(17, 24, 39, 0.94)';
 
+  // Helper KPI Stats Primer (3 Metrik Angka Kunci Kredibel)
+  const defaultStatValues = ['8.3%', 'RP 150 M', '3 KECAMATAN'];
+  const defaultStatLabels = ['Rasio Indikator Kunci', 'Alokasi APBD Daerah', 'Wilayah Prioritas'];
+  const statsList = (copy.stats && copy.stats.length >= 3) ? copy.stats : [
+    {
+      value: points[0]?.label.match(/(?:RP\s*[\d.,]+[BMK]?|[\d.,]+%|\d+\s*(?:KECAMATAN|TITIK|HARI|RUAS|DESA|RIBU|JT|M))/i)?.[0] || points[0]?.label.split(' ').slice(0, 3).join(' ') || defaultStatValues[0],
+      label: points[0]?.label.replace(/(?:RP\s*[\d.,]+[BMK]?|[\d.,]+%|\d+\s*(?:KECAMATAN|TITIK|HARI|RUAS|DESA|RIBU|JT|M))/i, '').trim() || defaultStatLabels[0],
+    },
+    {
+      value: points[1]?.label.match(/(?:RP\s*[\d.,]+[BMK]?|[\d.,]+%|\d+\s*(?:KECAMATAN|TITIK|HARI|RUAS|DESA|RIBU|JT|M))/i)?.[0] || points[1]?.label.split(' ').slice(0, 3).join(' ') || defaultStatValues[1],
+      label: points[1]?.label.replace(/(?:RP\s*[\d.,]+[BMK]?|[\d.,]+%|\d+\s*(?:KECAMATAN|TITIK|HARI|RUAS|DESA|RIBU|JT|M))/i, '').trim() || defaultStatLabels[1],
+    },
+    {
+      value: points[2]?.label.match(/(?:RP\s*[\d.,]+[BMK]?|[\d.,]+%|\d+\s*(?:KECAMATAN|TITIK|HARI|RUAS|DESA|RIBU|JT|M))/i)?.[0] || points[2]?.label.split(' ').slice(0, 3).join(' ') || defaultStatValues[2],
+      label: points[2]?.label.replace(/(?:RP\s*[\d.,]+[BMK]?|[\d.,]+%|\d+\s*(?:KECAMATAN|TITIK|HARI|RUAS|DESA|RIBU|JT|M))/i, '').trim() || defaultStatLabels[2],
+    },
+  ];
+
   if (archetype === 'INFOGRAPHIC_NARRATIVE_WAVE') {
     // S-Curve Winding Flow: 4 cards alternating left and right along the sweeping wave
     const cardsHtml = points.slice(0, 4).map((p, idx) => `
@@ -111,6 +135,14 @@ function renderInfographicArchetypeLayout(params: {
         <div class="wave-kicker">${esc(copy.kicker || 'DIMENSI KEBIJAKAN PUBLIK')}</div>
         <div class="wave-headline">${esc(headlineText)}</div>
         ${copy.deck ? `<div class="wave-deck">${esc(copy.deck)}</div>` : ''}
+        <div class="wave-kpi-row">
+          ${statsList.map((st) => `
+            <div class="wave-kpi-pill">
+              <div class="wave-kpi-val">${esc(st.value)}</div>
+              <div class="wave-kpi-lbl">${esc(st.label)}</div>
+            </div>
+          `).join('')}
+        </div>
       </div>
       ${cardsHtml}
       ${copy.closingLine ? `
@@ -153,6 +185,33 @@ function renderInfographicArchetypeLayout(params: {
         color: ${secondaryColor};
         font-weight: 600;
         max-width: 92%;
+      }
+      .wave-kpi-row {
+        display: flex;
+        gap: 12px;
+        margin-top: 12px;
+      }
+      .wave-kpi-pill {
+        background: ${cardBg};
+        border: 2px solid ${accentColor}77;
+        border-radius: 10px;
+        padding: 6px 14px;
+        box-shadow: 0 4px 14px rgba(0, 0, 0, 0.08);
+        backdrop-filter: blur(10px);
+        min-width: 130px;
+      }
+      .wave-kpi-val {
+        font-family: 'Bebas Neue', sans-serif;
+        font-size: 24px;
+        color: ${accentColor};
+        line-height: 1.05;
+        margin-bottom: 2px;
+      }
+      .wave-kpi-lbl {
+        font-size: 11px;
+        font-weight: 800;
+        color: ${secondaryColor};
+        text-transform: uppercase;
       }
       .wave-stagger-card {
         position: absolute;
@@ -256,6 +315,14 @@ function renderInfographicArchetypeLayout(params: {
         </div>
 
         <div class="cgrid-right-timeline">
+          <div class="cgrid-kpi-row">
+            ${statsList.map((st) => `
+              <div class="cgrid-kpi-pill">
+                <div class="cgrid-kpi-val">${esc(st.value)}</div>
+                <div class="cgrid-kpi-lbl">${esc(st.label)}</div>
+              </div>
+            `).join('')}
+          </div>
           <div class="cgrid-cards-stack">
             ${cardsHtml}
           </div>
@@ -345,6 +412,34 @@ function renderInfographicArchetypeLayout(params: {
         flex-direction: column;
         justify-content: space-between;
       }
+      .cgrid-kpi-row {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 12px;
+        margin-bottom: 12px;
+      }
+      .cgrid-kpi-pill {
+        background: ${cardBg};
+        border: 2px solid ${accentColor}77;
+        border-radius: 10px;
+        padding: 8px 12px;
+        text-align: center;
+        box-shadow: 0 4px 14px rgba(0, 0, 0, 0.08);
+        backdrop-filter: blur(12px);
+      }
+      .cgrid-kpi-val {
+        font-family: 'Bebas Neue', sans-serif;
+        font-size: 24px;
+        color: ${accentColor};
+        line-height: 1.05;
+        margin-bottom: 2px;
+      }
+      .cgrid-kpi-lbl {
+        font-size: 10.5px;
+        font-weight: 800;
+        color: ${secondaryColor};
+        text-transform: uppercase;
+      }
       .cgrid-cards-stack {
         display: grid;
         grid-template-columns: 1fr 1fr;
@@ -409,8 +504,15 @@ function renderInfographicArchetypeLayout(params: {
   if (archetype === 'INFOGRAPHIC_RADIAL_CLOCK') {
     // Radial Clock Dynamic Multi-Zone Layout:
     // Top-Left: Hero Title Card
-    // Top-Right: 2 High-Impact Metrics Cards (Filling the right parchment)
+    // Top-Right: 3 Primary KPI Stat Badges + 2 High-Impact Metrics Cards
     // Bottom: 3 Comprehensive Action & Phase Cards (Filling the lower third across canvas)
+    const kpiHtml = statsList.slice(0, 3).map((st) => `
+      <div class="rclock-kpi-pill">
+        <div class="rclock-kpi-val">${esc(st.value)}</div>
+        <div class="rclock-kpi-lbl">${esc(st.label)}</div>
+      </div>
+    `).join('');
+
     const topMetrics = points.slice(0, 2);
     const bottomCards = points.slice(2, 5);
 
@@ -442,14 +544,19 @@ function renderInfographicArchetypeLayout(params: {
           ${copy.deck ? `<div class="rclock-deck">${esc(copy.deck)}</div>` : ''}
         </div>
 
-        <!-- Top-Right Metrics Panel (Filling open right-hand area) -->
-        <div class="rclock-top-metrics-grid">
-          ${topMetricsHtml}
+        <!-- Top-Right Metrics Panel (KPI Row + 2 Data Cards) -->
+        <div class="rclock-top-right-panel">
+          <div class="rclock-kpi-row">
+            ${kpiHtml}
+          </div>
+          <div class="rclock-top-metrics-grid">
+            ${topMetricsHtml}
+          </div>
         </div>
 
         <!-- Bottom Actions Panel (Filling lower third across canvas) -->
         <div class="rclock-bottom-section">
-          <div class="rclock-section-tag">FASE MITIGASI &amp; TINDAK LANJUT BERKELANJUTAN</div>
+          <div class="rclock-section-tag">FASE MITIGASI, TINDAKAN &amp; PROGRAM BERKELANJUTAN</div>
           <div class="rclock-bottom-grid">
             ${bottomCardsHtml}
           </div>
@@ -506,25 +613,60 @@ function renderInfographicArchetypeLayout(params: {
         color: ${secondaryColor};
         font-weight: 600;
       }
-      .rclock-top-metrics-grid {
+      .rclock-top-right-panel {
         position: absolute;
         top: 0;
         left: 460px;
         right: 0;
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+      }
+      .rclock-kpi-row {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 10px;
+      }
+      .rclock-kpi-pill {
+        background: ${cardBg};
+        border: 2px solid ${accentColor}66;
+        border-radius: 10px;
+        padding: 8px 10px;
+        text-align: center;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+        backdrop-filter: blur(12px);
+      }
+      .rclock-kpi-val {
+        font-family: 'Bebas Neue', sans-serif;
+        font-size: 26px;
+        font-weight: normal;
+        color: ${accentColor};
+        letter-spacing: 0.8px;
+        line-height: 1.05;
+        margin-bottom: 2px;
+      }
+      .rclock-kpi-lbl {
+        font-size: 11px;
+        font-weight: 800;
+        color: ${secondaryColor};
+        line-height: 1.25;
+        text-transform: uppercase;
+      }
+      .rclock-top-metrics-grid {
         display: grid;
         grid-template-columns: 1fr 1fr;
-        gap: 14px;
+        gap: 12px;
       }
       .rclock-top-card {
         background: ${cardBg};
         border: 2px solid ${accentColor}66;
         border-radius: 14px;
-        padding: 16px 18px;
+        padding: 14px 16px;
         box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
         backdrop-filter: blur(14px);
         display: flex;
         flex-direction: column;
-        min-height: 180px;
+        min-height: 175px;
       }
       .rclock-top-badge {
         display: inline-block;
@@ -536,11 +678,11 @@ function renderInfographicArchetypeLayout(params: {
         padding: 3px 10px;
         border-radius: 4px;
         letter-spacing: 1.2px;
-        margin-bottom: 8px;
+        margin-bottom: 6px;
         text-transform: uppercase;
       }
       .rclock-top-title {
-        font-size: 16.5px;
+        font-size: 16px;
         font-weight: 800;
         color: ${primaryColor};
         text-transform: uppercase;
@@ -656,10 +798,6 @@ function renderInfographicArchetypeLayout(params: {
       </div>
     `).join('');
 
-    const stat1 = points[0] || { label: 'PRIORITAS APBD', text: 'Alokasi anggaran terarah.' };
-    const stat2 = points[1] || { label: 'URGENSI LAPANGAN', text: 'Fokus pemenuhan kebutuhan warga.' };
-    const stat3 = points[2] || { label: 'TARGET CAPAIAN', text: 'Penyelesaian program tepat waktu.' };
-
     const html = `
       <div class="apillars-layout">
         <div class="apillars-header">
@@ -669,18 +807,12 @@ function renderInfographicArchetypeLayout(params: {
         </div>
 
         <div class="apillars-stats-row">
-          <div class="apillars-stat-box">
-            <div class="apillars-stat-val">${esc(stat1.label)}</div>
-            <div class="apillars-stat-lbl">${esc(stat1.text.slice(0, 80))}...</div>
-          </div>
-          <div class="apillars-stat-box">
-            <div class="apillars-stat-val">${esc(stat2.label)}</div>
-            <div class="apillars-stat-lbl">${esc(stat2.text.slice(0, 80))}...</div>
-          </div>
-          <div class="apillars-stat-box">
-            <div class="apillars-stat-val">${esc(stat3.label)}</div>
-            <div class="apillars-stat-lbl">${esc(stat3.text.slice(0, 80))}...</div>
-          </div>
+          ${statsList.map((st) => `
+            <div class="apillars-stat-box">
+              <div class="apillars-stat-val">${esc(st.value)}</div>
+              <div class="apillars-stat-lbl">${esc(st.label)}</div>
+            </div>
+          `).join('')}
         </div>
 
         <div class="apillars-bottom-section">
@@ -760,17 +892,18 @@ function renderInfographicArchetypeLayout(params: {
         backdrop-filter: blur(12px);
       }
       .apillars-stat-val {
-        font-size: 16px;
-        font-weight: 900;
+        font-family: 'Bebas Neue', sans-serif;
+        font-size: 28px;
         color: ${accentColor};
-        text-transform: uppercase;
+        letter-spacing: 1px;
+        line-height: 1.05;
         margin-bottom: 4px;
       }
       .apillars-stat-lbl {
-        font-size: 13.5px;
-        line-height: 1.4;
+        font-size: 11.5px;
+        font-weight: 800;
         color: ${secondaryColor};
-        font-weight: 600;
+        text-transform: uppercase;
       }
       .apillars-bottom-section {
         position: absolute;
@@ -872,8 +1005,8 @@ function renderInfographicArchetypeLayout(params: {
   }
 
   // INFOGRAPHIC_VISIONARY_TIMELINE
-  // Top Visionary Header + 2 Middle Feature Cards + 4 Tall Connected Timeline Cards Lower Half
-  const nodeCount = Math.min(4, Math.max(3, points.length));
+  // Top Visionary Header + 3 KPI Stat Pills + 4-5 Connected Milestone Cards Lower Half
+  const nodeCount = Math.min(5, Math.max(3, points.length));
   const stepsHtml = points.slice(0, nodeCount).map((p, idx) => `
     <div class="vstep-col">
       <div class="vstep-bullet">
@@ -886,9 +1019,6 @@ function renderInfographicArchetypeLayout(params: {
     </div>
   `).join('');
 
-  const stat1 = points[0] || { label: 'URGENSI PUBLIK', text: 'Analisis mendalam kondisi riil di lapangan.' };
-  const stat2 = points[1] || { label: 'TARGET STRATEGIS', text: 'Capaian indikator kinerja utama tuntas.' };
-
   const html = `
     <div class="vtimeline-layout">
       <div class="vtimeline-header">
@@ -898,16 +1028,12 @@ function renderInfographicArchetypeLayout(params: {
       </div>
 
       <div class="vtimeline-middle-spread">
-        <div class="vtimeline-feature-card">
-          <div class="vtimeline-feature-badge">✦ PRIORITAS UTAMA</div>
-          <div class="vtimeline-feature-title">${esc(stat1.label)}</div>
-          <div class="vtimeline-feature-text">${esc(stat1.text)}</div>
-        </div>
-        <div class="vtimeline-feature-card">
-          <div class="vtimeline-feature-badge">✦ INDIKATOR CAPAIAN</div>
-          <div class="vtimeline-feature-title">${esc(stat2.label)}</div>
-          <div class="vtimeline-feature-text">${esc(stat2.text)}</div>
-        </div>
+        ${statsList.map((st) => `
+          <div class="vtimeline-stat-pill">
+            <div class="vtimeline-stat-val">${esc(st.value)}</div>
+            <div class="vtimeline-stat-lbl">${esc(st.label)}</div>
+          </div>
+        `).join('')}
       </div>
 
       <div class="vtimeline-bottom-bar">
@@ -975,39 +1101,31 @@ function renderInfographicArchetypeLayout(params: {
       left: 0;
       right: 0;
       display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 16px;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 14px;
     }
-    .vtimeline-feature-card {
+    .vtimeline-stat-pill {
       background: ${cardBg};
-      border: 2px solid ${accentColor}66;
-      border-radius: 14px;
-      padding: 14px 18px;
+      border: 2px solid ${accentColor}77;
+      border-radius: 12px;
+      padding: 12px 14px;
+      text-align: center;
       box-shadow: 0 6px 18px rgba(0, 0, 0, 0.08);
       backdrop-filter: blur(12px);
     }
-    .vtimeline-feature-badge {
-      font-size: 11px;
-      font-weight: 900;
+    .vtimeline-stat-val {
+      font-family: 'Bebas Neue', sans-serif;
+      font-size: 28px;
       color: ${accentColor};
-      letter-spacing: 1.5px;
-      text-transform: uppercase;
+      letter-spacing: 1px;
+      line-height: 1.05;
       margin-bottom: 4px;
     }
-    .vtimeline-feature-title {
-      font-size: 16.5px;
+    .vtimeline-stat-lbl {
+      font-size: 11.5px;
       font-weight: 800;
-      color: ${primaryColor};
-      text-transform: uppercase;
-      margin-bottom: 6px;
-      border-bottom: 1.5px solid ${accentColor}33;
-      padding-bottom: 4px;
-    }
-    .vtimeline-feature-text {
-      font-size: 14px;
-      line-height: 1.48;
       color: ${secondaryColor};
-      font-weight: 600;
+      text-transform: uppercase;
     }
     .vtimeline-bottom-bar {
       position: absolute;

@@ -40,7 +40,8 @@ export interface ArtCollageCopy {
   kicker: string;
   headline: string;
   deck: string;
-  points: Array<{ label: string; text: string }>;
+  stats?: Array<{ value: string; label: string }>;
+  points: Array<{ label: string; text: string; metric?: string }>;
   closingLine: string;
   /** Deskripsi visual bahasa Inggris dari topik yang sama (dipakai Otak Visual). */
   visualSubject: string;

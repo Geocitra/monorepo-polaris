@@ -337,11 +337,11 @@ export function compileArtCollageImagePrompt(params: {
 // =============================================================================
 const COPY_LIMITS = {
   kicker: 56,
-  headline: 48,
-  deck: 240,
+  headline: 50,
+  deck: 280,
   pointLabel: 48,
   pointText: 260,
-  closing: 140,
+  closing: 160,
 };
 
 function clampWords(text: string, max: number): string {
@@ -384,12 +384,7 @@ function finalizeCopy(
     : [];
 
   const isInfographic = isInfographicArchetype(archetype);
-  const maxPoints =
-    archetype === 'INFOGRAPHIC_ADVOCACY_PILLARS' || archetype === 'INFOGRAPHIC_VISIONARY_TIMELINE'
-      ? 5
-      : isInfographic
-      ? 4
-      : 3;
+  const maxPoints = isInfographic ? 5 : 3;
 
   const points = pointsArray
     .map((pt: any, idx: number) => {
@@ -404,12 +399,12 @@ function finalizeCopy(
           };
         }
         return {
-          label: `POIN ${idx + 1}`,
+          label: `POIN 0${idx + 1}`,
           text: clampSentence(s(pt), COPY_LIMITS.pointText),
         };
       }
       if (typeof pt === 'object' && pt !== null) {
-        const rawLabel = pt.label || pt.title || pt.name || pt.step || pt.pilar || pt.heading || `POIN ${idx + 1}`;
+        const rawLabel = pt.label || pt.title || pt.name || pt.step || pt.pilar || pt.heading || `POIN 0${idx + 1}`;
         const rawText = pt.text || pt.description || pt.desc || pt.content || pt.detail || pt.uraian || '';
         return {
           label: clampWords(MasterEditorialSanitizer.cleanHeadline(rawLabel), COPY_LIMITS.pointLabel).toUpperCase(),
@@ -420,6 +415,37 @@ function finalizeCopy(
     })
     .filter((pt): pt is { label: string; text: string } => Boolean(pt && (pt.label || pt.text)))
     .slice(0, maxPoints);
+
+  // Parse stats (3 KPI highlight cards) untuk infografis
+  const rawStatsCandidate = raw.stats || raw.kpis || raw.metrics || [];
+  let stats: Array<{ value: string; label: string }> = [];
+  if (Array.isArray(rawStatsCandidate) && rawStatsCandidate.length > 0) {
+    stats = rawStatsCandidate
+      .map((st: any) => ({
+        value: clampWords(String(st.value || st.angka || st.metric || '').toUpperCase(), 16),
+        label: clampWords(String(st.label || st.title || st.keterangan || ''), 32),
+      }))
+      .filter((st) => Boolean(st.value && st.label))
+      .slice(0, 3);
+  }
+
+  // Jika stats belum lengkap dari AI, bentuk 3 KPI data berbasis points agar visual padat data
+  if (isInfographic && stats.length < 3) {
+    stats = [
+      {
+        value: points[0]?.label.split(' ').slice(0, 3).join(' ') || '8.3%',
+        label: points[0]?.text.slice(0, 30) || 'Indeks Kondisi Lapangan',
+      },
+      {
+        value: points[1]?.label.split(' ').slice(0, 3).join(' ') || 'RP 150 M',
+        label: points[1]?.text.slice(0, 30) || 'Alokasi Anggaran APBD',
+      },
+      {
+        value: points[2]?.label.split(' ').slice(0, 3).join(' ') || 'TARGET 2 THN',
+        label: points[2]?.text.slice(0, 30) || 'Sasaran Program Terpadu',
+      },
+    ];
+  }
 
   // Jika setelah diparse points masih kurang dari 2, lengkapi dari topik agar tidak gagal
   if (points.length < 2) {
@@ -451,6 +477,7 @@ function finalizeCopy(
       COPY_LIMITS.headline
     ).toUpperCase(),
     deck: clampSentence(s(raw.deck || raw.summary || raw.ringkasan || `Telaah substansial mengenai ${topic}.`), COPY_LIMITS.deck),
+    stats,
     points,
     closingLine: clampSentence(s(raw.closingLine || raw.closing || 'Komitmen terukur bagi transparansi dan kemaslahatan publik.'), COPY_LIMITS.closing),
     visualSubject:
@@ -481,25 +508,27 @@ export async function synthesizeArtCollageCopy(params: {
       specificGuide = 'Tulis TEPAT 4 sampai 5 tonggak capaian atau tahapan kronologis terukur dengan besaran angka, target hari/bulan, atau volume output riil.';
     }
 
-    systemPrompt = `Anda adalah visual data journalist dan analis kebijakan publik senior.
-Tulis naskah INFOGRAFIS DATA EDUKATIF yang KAYA ANGKA, KREDIBEL, dan PADAT DATA TERUKUR bertopik: "${topic}".
-${groundedContext ? `\nFAKTA RISET & KONTEKS DAERAH:\n${groundedContext.slice(0, 1800)}\n` : ''}
+    systemPrompt = `Anda adalah Lead Visual Data Journalist & Analis Kebijakan Publik Senior berstandar riset nasional (seperti Katadata, Kompas Data, Lokadata).
+Tulis naskah INFOGRAFIS DATA RESMI yang SANGAT KAYA DATA, AKURAT, DAN PADAT INFORMASI bertopik: "${topic}".
+${groundedContext ? `\nFAKTA RISET & DATA DAERAH:\n${groundedContext.slice(0, 2000)}\n` : ''}
 
-PANDUAN STRUKTUR INFOGRAFIS (${specificGuide}):
-1. Tulis 4 sampai 5 butir data konkret (points) yang sangat kaya data, angka, persentase, dan fakta lapangan.
-2. SETIAP BUTIR WAJIB MEMUAT ANGKA, METRIK, ATAU INDIKATOR TERUKUR yang realistis dan sangat relevan dengan isu (misalnya: besaran alokasi anggaran dalam Rp/Miliar, jumlah kilometer atau titik ruas, target durasi hari/bulan pengerjaan, persentase peningkatan, indeks capaian, atau nama kecamatan/wilayah spesifik).
-3. headline: Judul infografis yang lugas, padat, dan berbobot (maks ${COPY_LIMITS.headline} karakter).
-4. kicker: Rubrik kebijakan spesifik (misal: "INFRASTRUKTUR DAERAH", "DATA ANGGARAN APBD", "INDIKATOR KESEHATAN").
-5. deck: 2 kalimat ringkasan data inti dan urgensi masalah (maks ${COPY_LIMITS.deck} karakter).
-6. points: Daftar 4 sampai 5 butir data terstruktur:
-   - label: Frasa metrik ringkas bertuliskan angka/indikator (maks ${COPY_LIMITS.pointLabel} karakter, misal: "42 TITIK KRITIS", "ALOKASI RP 48,5 M", "TARGET 90 HARI", "STANDAR HOTMIX 6 CM", "3 KECAMATAN PRIORITAS").
-   - text: Penjelasan data konkret dan terukur (2 kalimat padat informasi substantif dan edukatif, maks ${COPY_LIMITS.pointText} karakter).
-7. closingLine: 1 kalimat sintesis arah tindak lanjut terukur (maks ${COPY_LIMITS.closing} karakter).
-8. PANTANGAN: DILARANG kata "nyata", DILARANG slogan motivasional klise, DILARANG kalimat kosong tanpa data.
-9. visualSubject: Deskripsi pemandangan latar belakang ilustrasi tanpa teks dalam Bahasa Inggris (maks 35 kata), gambarkan suasana lingkungan, fasilitas, warga, atau aktivitas riil. DILARANG menyebut kotak, card, kartu, bagan, atau pilar (hanya pemandangan latar belakang).
+STRUKTUR WAJIB INFOGRAFIS DATA KOMPREHENSIF (${specificGuide}):
+1. headline: Judul infografis yang berbobot, lugas, dan relevan (maks ${COPY_LIMITS.headline} karakter, huruf kapital).
+2. kicker: Rubrik analisis kebijakan publik (misal: "DATA ANGGARAN APBD // TELAAH SOSIAL", "INFRASTRUKTUR DAERAH", maks ${COPY_LIMITS.kicker} karakter).
+3. deck: Ringkasan eksekutif 2 kalimat padat yang memuat angka agregat makro dan urgensi penanganan (maks ${COPY_LIMITS.deck} karakter).
+4. stats: TEPAT 3 Indikator Kinerja Utama (Key Performance Indicators / KPI Primer) berupa angka/metrik kuantitatif mencolok:
+   - Stat 1: Angka persentase, rasio, atau volume utama (contoh value: "8,3% / 215 RB", label: "Tingkat Kemiskinan Terkini").
+   - Stat 2: Besaran komitmen fiskal atau alokasi APBD (contoh value: "RP 150 MILIAR", label: "Alokasi Penanganan APBD").
+   - Stat 3: Target kuantitatif capaian atau zona wilayah prioritas (contoh value: "3 KECAMATAN", label: "Zona Intervensi Fokus").
+5. points: TEPAT 5 Butir Data Temuan & Program Aksi Terperinci:
+   - label: Frasa ringkas berbobot diawali angka/fase/metrik (maks ${COPY_LIMITS.pointLabel} karakter, misal: "3 KECAMATAN EPISENTRUM", "ALOKASI RP 150 MILIAR", "TARGET PENURUNAN 2%", "24 KELURAHAN DAMPINGAN", "AUDIT TERPADU DATA DTKS").
+   - text: Uraian substantif 2 kalimat padat informasi, memuat angka dan rincian langkah kebijakan (maks ${COPY_LIMITS.pointText} karakter).
+6. closingLine: Rekomendasi aksi / penegasan transparansi tata kelola kebijakan (maks ${COPY_LIMITS.closing} karakter).
+7. PANTANGAN: DILARANG kata "nyata", DILARANG slogan motivasional kosong tanpa data, DILARANG butir yang tidak memuat angka atau rincian kebijakan.
+8. visualSubject: Deskripsi pemandangan latar belakang ilustrasi tanpa teks dalam Bahasa Inggris (maks 35 kata), gambarkan aktivitas nyata warga dan fasilitas kota/desa di Indonesia. DILARANG menyebut kotak, card, kartu, bagan, atau pilar.
 
-Keluarkan JSON murni:
-{"kicker":"","headline":"","deck":"","points":[{"label":"","text":""}],"closingLine":"","visualSubject":""}`;
+Format JSON Wajib:
+{"kicker":"","headline":"","deck":"","stats":[{"value":"","label":""}],"points":[{"label":"","text":""}],"closingLine":"","visualSubject":""}`;
   } else {
     const posterGuide = archetype === 'RETRO_CAMPAIGN' ? '\nTeks poster kampanye persuasif lugas.\n' : '';
 
@@ -516,7 +545,7 @@ PEDOMAN MASTER EDITORIAL RULES (WAJIB DIPATUHI):
 - visualSubject: deskripsi adegan visual dalam BAHASA INGGRIS (maks 40 kata) yang menggambarkan topik yang sama secara konkret di Indonesia.
 
 Keluarkan JSON murni:
-{"kicker":"","headline":"","deck":"","points":[{"label":"","text":""}],"closingLine":"","visualSubject":""}`;
+{"kicker":"","headline":"","deck":"","stats":[{"value":"","label":""}],"points":[{"label":"","text":""}],"closingLine":"","visualSubject":""}`;
   }
 
   try {
@@ -530,12 +559,18 @@ Keluarkan JSON murni:
     return finalizeCopy(parsed, topic, archetype);
   } catch (err: any) {
     console.warn(`[ArtCollageDirector] Copy AI gagal, memakai fallback deterministik: ${err?.message}`);
+    const fallbackStats = [
+      { value: '8.3%', label: 'Rasio Indikator Kunci' },
+      { value: 'RP 150 M', label: 'Alokasi Anggaran APBD' },
+      { value: '3 KECAMATAN', label: 'Zona Intervensi Fokus' },
+    ];
     const fallbackPoints = isInfographic
       ? [
-          { label: '38 TITIK PRIORITAS', text: `Pemetaan ruas jalan rusak kritis di wilayah ${topic} untuk penanganan segera.` },
-          { label: 'ALOKASI RP 45 M', text: 'Dukungan anggaran pemeliharaan berkala infrastruktur melalui APBD terpadu.' },
-          { label: 'TARGET 90 HARI', text: 'Penyelesaian perbaikan aspal hotmix terstandar dengan pengawasan berkala.' },
-          { label: 'KANAL ADUAN 24/7', text: 'Aktivasi sistem monitoring dan penerimaan aspirasi warga berbasis digital.' },
+          { label: '38 TITIK PRIORITAS', text: `Pemetaan lokasi kritis di wilayah ${topic} untuk percepatan penanganan terpadu.` },
+          { label: 'ALOKASI RP 45 MILIAR', text: 'Dukungan pagu anggaran APBD dialokasikan guna menjamin realisasi program berdampak langsung.' },
+          { label: 'TARGET 90 HARI KERJA', text: 'Penyelesaian tahapan awal dengan pengawasan berkala dan evaluasi terukur lintas instansi.' },
+          { label: '3 KECAMATAN FOKUS', text: 'Konsentrasi pendampingan intensif bagi kawasan dengan tingkat urgensi penanganan tertinggi.' },
+          { label: 'AUDIT DATA & KANAL 24 JAM', text: 'Aktivasi sistem monitoring digital dan partisipasi warga guna memastikan transparansi mutlak.' },
         ]
       : [
           { label: 'Urgensi Isu', text: `Persoalan ${topic} memerlukan perbaikan tata kelola dan pengawasan terintegrasi.` },
@@ -544,9 +579,10 @@ Keluarkan JSON murni:
 
     return finalizeCopy(
       {
-        kicker: isInfographic ? 'Data Kebijakan Daerah' : 'Telaah Isu Kebijakan',
+        kicker: isInfographic ? 'DATA ANGGARAN APBD // TELAAH' : 'Telaah Isu Kebijakan',
         headline: clampWords(topic, COPY_LIMITS.headline),
         deck: `Evaluasi terukur atas tata kelola ${topic} demi kepentingan masyarakat luas.`,
+        stats: isInfographic ? fallbackStats : undefined,
         points: fallbackPoints,
         closingLine: 'Dibutuhkan komitmen konkret untuk perbaikan berkelanjutan.',
         visualSubject: `everyday Indonesian civic life directly related to: ${topic}`,
