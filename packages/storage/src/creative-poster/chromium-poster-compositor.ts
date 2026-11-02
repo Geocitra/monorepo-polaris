@@ -314,38 +314,43 @@ function renderInfographicArchetypeLayout(params: {
   }
 
   if (archetype === 'INFOGRAPHIC_CHRONICLE_GRID') {
-    // Authentic Editorial Broadsheet Data Graphic (NO FLOATING CARDS / NO WEBSITE LOOK)
-    // 1. Full-Width Editorial Header with Hairline Rules
-    // 2. Horizon Unified 4-Column Metric Strip (Single continuous band)
-    // 3. Technical Ledger Sheet (6 Deep Field Analytical Points in 2-Column Ledger)
-    // 4. Policy Takeaway & Accountability Bar
+    // Dynamic Asymmetric Golden Split Editorial Infographic (NO GIANT WHITE WALL / NO WORD DOC LOOK)
+    // Sisi Kiri: Masthead + 2 Hero KPIs + 700px 100% Unobstructed Photo Window + Floating Field Pill
+    // Sisi Kanan: 2 Supporting KPIs + 6 Modular Analytical Points + Stacked Breakdown Bar + Policy Takeaway
     const stats4 = statsList.slice(0, 4);
-    const kpiStripHtml = stats4.map((st, sidx) => `
-      <div class="cgrid-kpi-col ${sidx === stats4.length - 1 ? 'last' : ''}">
-        <div class="cgrid-kpi-val">${esc(st.value)}</div>
-        <div class="cgrid-kpi-lbl">${esc(st.label)}</div>
+    const heroStats = stats4.slice(0, 2);
+    const supportStats = stats4.slice(2, 4);
+
+    const leftKpiHtml = heroStats.map((st) => `
+      <div class="cgrid-left-kpi-card">
+        <div class="cgrid-left-kpi-val">${esc(st.value)}</div>
+        <div class="cgrid-left-kpi-lbl">${esc(st.label)}</div>
+      </div>
+    `).join('');
+
+    const rightKpiHtml = (supportStats.length > 0 ? supportStats : stats4.slice(0, 2)).map((st) => `
+      <div class="cgrid-right-kpi-card">
+        <div class="cgrid-right-kpi-val">${esc(st.value)}</div>
+        <div class="cgrid-right-kpi-lbl">${esc(st.label)}</div>
       </div>
     `).join('');
 
     const gridPoints = points.slice(0, 6);
-    const half = Math.ceil(gridPoints.length / 2);
-    const leftPoints = gridPoints.slice(0, half);
-    const rightPoints = gridPoints.slice(half);
-
-    const renderColumnPoints = (pts: typeof gridPoints, offset: number) => pts.map((p, idx) => `
-      <div class="cgrid-ledger-row">
-        <div class="cgrid-row-header">
-          <span class="cgrid-row-num">0${offset + idx + 1}</span>
-          <span class="cgrid-row-title">${esc(p.label)}</span>
+    const dataModulesHtml = gridPoints.map((p, idx) => `
+      <div class="cgrid-mod-item">
+        <div class="cgrid-mod-header">
+          <span class="cgrid-mod-chip">0${idx + 1}</span>
+          <span class="cgrid-mod-title">${esc(p.label)}</span>
         </div>
-        <div class="cgrid-row-desc">${esc(p.text)}</div>
+        <div class="cgrid-mod-desc">${esc(p.text)}</div>
       </div>
     `).join('');
 
     const html = `
-      <div class="cgrid-sheet">
-        <!-- Editorial Masthead Header -->
-        <div class="cgrid-header-zone">
+      <!-- SISI KIRI: MASTHEAD + HERO KPI + OPEN PHOTOGRAPHIC WINDOW -->
+      <div class="cgrid-left-wing">
+        <!-- Masthead Editorial Box -->
+        <div class="cgrid-masthead-box">
           <div class="cgrid-meta-bar">
             <span class="cgrid-kicker-tag">${esc(copy.kicker || 'DATA INVESTIGASI PUBLIK // REKAM DATA')}</span>
             <span class="cgrid-meta-edition">EDISI ADVOKASI PUBLIK • TAHUN ${currentYear}</span>
@@ -354,69 +359,83 @@ function renderInfographicArchetypeLayout(params: {
           ${copy.deck ? `<div class="cgrid-main-deck">${esc(copy.deck)}</div>` : ''}
         </div>
 
-        <!-- Unified Horizon 4-Metric Strip -->
-        <div class="cgrid-metric-strip">
-          ${kpiStripHtml}
+        <!-- 2 Hero Key Metrics -->
+        <div class="cgrid-left-kpi-grid">
+          ${leftKpiHtml}
         </div>
 
-        <!-- 6-Point Technical Broadsheet Ledger (Two Editorial Columns, Zero Cards) -->
-        <div class="cgrid-ledger-container">
-          <div class="cgrid-ledger-col col-left">
-            <div class="cgrid-col-headline">◈ TELAAH STRUKTURAL &amp; SEBARAN DATA</div>
-            ${renderColumnPoints(leftPoints, 0)}
+        <!-- Floating Field Documentary Tag at bottom of Left Photo Window -->
+        <div class="cgrid-field-badge">
+          <span class="cgrid-field-dot">✦</span>
+          <span class="cgrid-field-text">DOKUMENTASI LAPANGAN // JALUR STRATEGIS JABAR</span>
+        </div>
+      </div>
+
+      <!-- SISI KANAN: DATA ENGINE & ANALYTICAL LEDGER -->
+      <div class="cgrid-right-wing">
+        <!-- Supporting KPI Badges -->
+        <div class="cgrid-right-kpi-grid">
+          ${rightKpiHtml}
+        </div>
+
+        <!-- Structured Analytical Data Modules -->
+        <div class="cgrid-ledger-sheet">
+          <div class="cgrid-sheet-header">
+            <span class="cgrid-sheet-tag">◈ TELAAH DATA STRUKTURAL &amp; AUDIT KEBIJAKAN</span>
+            <span class="cgrid-sheet-badge">${gridPoints.length} INDIKATOR</span>
           </div>
-          <div class="cgrid-ledger-col col-right">
-            <div class="cgrid-col-headline">◈ INDIKATOR KEPATUHAN &amp; AUDIT KEBIJAKAN</div>
-            ${renderColumnPoints(rightPoints, half)}
+          <div class="cgrid-modules-container">
+            ${dataModulesHtml}
           </div>
         </div>
 
-        <!-- Data Breakdown & Regional Distribution Bar (Authentic Data Graphics, Zero Floating Cards) -->
+        <!-- Stacked Distribution Breakdown Bar -->
         <div class="cgrid-breakdown-panel">
           <div class="cgrid-breakdown-header">
-            <span class="cgrid-breakdown-tag">✦ KOMPOSISI SEBARAN ALOKASI &amp; ANGGARAN DAERAH</span>
-            <span class="cgrid-breakdown-sub">TOTAL VALUASI AUDIT: ${esc(stats4[1]?.value || 'RP 1,2 T')}</span>
+            <span class="cgrid-breakdown-tag">✦ KOMPOSISI SEBARAN ALOKASI &amp; ANGGARAN</span>
+            <span class="cgrid-breakdown-sub">TOTAL AUDIT: ${esc(stats4[1]?.value || 'RP 500 MILIAR')}</span>
           </div>
           <div class="cgrid-stacked-bar">
-            <div class="cgrid-bar-segment seg-1" style="width: 40%;">40% PROPERTI &amp; INFRASTRUKTUR</div>
-            <div class="cgrid-bar-segment seg-2" style="width: 30%;">30% KAS &amp; SETARA KAS</div>
-            <div class="cgrid-bar-segment seg-3" style="width: 18%;">18% SURAT BERHARGA &amp; USAHA</div>
-            <div class="cgrid-bar-segment seg-4" style="width: 12%;">12% LOGISTIK LAIN</div>
+            <div class="cgrid-bar-segment seg-1" style="width: 40%;">40% FISIK</div>
+            <div class="cgrid-bar-segment seg-2" style="width: 30%;">30% MITIGASI</div>
+            <div class="cgrid-bar-segment seg-3" style="width: 18%;">18% ALAT</div>
+            <div class="cgrid-bar-segment seg-4" style="width: 12%;">12% POSKO</div>
           </div>
           <div class="cgrid-breakdown-legend">
-            <div class="cgrid-legend-item"><span class="cgrid-dot dot-1"></span>BANDUNG RAYA: 38%</div>
+            <div class="cgrid-legend-item"><span class="cgrid-dot dot-1"></span>PRIANGAN: 38%</div>
             <div class="cgrid-legend-item"><span class="cgrid-dot dot-2"></span>BODEBEK: 32%</div>
-            <div class="cgrid-legend-item"><span class="cgrid-dot dot-3"></span>PRIANGAN: 18%</div>
+            <div class="cgrid-legend-item"><span class="cgrid-dot dot-3"></span>BANDUNG: 18%</div>
             <div class="cgrid-legend-item"><span class="cgrid-dot dot-4"></span>PANTURA: 12%</div>
           </div>
         </div>
 
-        <!-- Policy Takeaway & Closing Recommendation -->
+        <!-- Policy Takeaway Recommendation Banner -->
         <div class="cgrid-takeaway-bar">
-          <div class="cgrid-takeaway-tag">SINTESIS KEBIJAKAN &amp; TRANSPARANSI</div>
+          <div class="cgrid-takeaway-tag">SINTESIS KEBIJAKAN</div>
           <div class="cgrid-takeaway-text">${esc(copy.closingLine || 'Transparansi mutlak dan kepatuhan audit publik adalah fondasi integritas tata kelola pemerintahan.')}</div>
         </div>
       </div>
     `;
 
     const css = `
-      .cgrid-sheet {
+      /* SISI KIRI: Asymmetric Left Wing (430px) */
+      .cgrid-left-wing {
         position: absolute;
         top: 76px;
         left: 54px;
-        right: 54px;
-        height: 1150px;
-        display: flex;
-        flex-direction: column;
-        gap: 14px;
+        width: 430px;
+        height: 1144px;
         box-sizing: border-box;
       }
-      .cgrid-header-zone {
+      .cgrid-masthead-box {
         background: ${cardBgSolid};
-        border-top: 3.5px solid ${accentColor};
+        border-top: 4px solid ${accentColor};
         border-bottom: 1.5px solid ${borderRuleColor};
-        padding: 16px 22px;
-        box-shadow: 0 4px 18px rgba(0, 0, 0, 0.06);
+        border-left: 1.5px solid ${borderRuleColor};
+        border-right: 1.5px solid ${borderRuleColor};
+        border-radius: 4px;
+        padding: 16px 20px;
+        box-shadow: 0 4px 18px rgba(0, 0, 0, 0.08);
       }
       .cgrid-meta-bar {
         display: flex;
@@ -427,24 +446,24 @@ function renderInfographicArchetypeLayout(params: {
         margin-bottom: 8px;
       }
       .cgrid-kicker-tag {
-        font-size: 13.5px;
+        font-size: 13px;
         font-weight: 900;
-        letter-spacing: 2.2px;
+        letter-spacing: 2px;
         color: ${accentColor};
         text-transform: uppercase;
       }
       .cgrid-meta-edition {
-        font-size: 11px;
+        font-size: 10.5px;
         font-weight: 800;
-        letter-spacing: 1.2px;
+        letter-spacing: 1px;
         color: ${deckTextColor};
-        opacity: 0.85;
+        opacity: 0.9;
       }
       .cgrid-main-headline {
         font-family: 'Bebas Neue', sans-serif;
-        font-size: 54px;
-        line-height: 0.95;
-        letter-spacing: 1.5px;
+        font-size: 46px;
+        line-height: 0.96;
+        letter-spacing: 1.2px;
         color: ${titleColor};
         text-transform: uppercase;
         margin-bottom: 8px;
@@ -453,41 +472,102 @@ function renderInfographicArchetypeLayout(params: {
       .cgrid-main-deck {
         font-family: 'Playfair Display', serif;
         font-style: italic;
-        font-size: 16px;
+        font-size: 15px;
         line-height: 1.45;
         color: ${deckTextColor};
         font-weight: 600;
-        max-width: 96%;
       }
-
-      /* Unified Horizon Metric Strip */
-      .cgrid-metric-strip {
+      .cgrid-left-kpi-grid {
         display: grid;
-        grid-template-columns: repeat(${stats4.length}, 1fr);
+        grid-template-columns: 1fr 1fr;
+        gap: 10px;
+        margin-top: 10px;
+      }
+      .cgrid-left-kpi-card {
         background: ${cardBgSolid};
-        border-top: 2px solid ${accentColor};
-        border-bottom: 2px solid ${accentColor};
-        padding: 10px 0;
-        box-shadow: 0 4px 16px rgba(0, 0, 0, 0.05);
-      }
-      .cgrid-kpi-col {
-        padding: 0 16px;
+        border: 1.5px solid ${borderRuleColor};
+        border-top: 3px solid ${accentColor};
+        border-radius: 4px;
+        padding: 10px 12px;
         text-align: center;
-        border-right: 1px solid ${borderRuleColor};
+        box-shadow: 0 3px 12px rgba(0, 0, 0, 0.06);
       }
-      .cgrid-kpi-col.last {
-        border-right: none;
-      }
-      .cgrid-kpi-val {
+      .cgrid-left-kpi-val {
         font-family: 'Bebas Neue', sans-serif;
-        font-size: 32px;
+        font-size: 30px;
         line-height: 1.05;
-        letter-spacing: 1px;
         color: ${accentColor};
         margin-bottom: 2px;
       }
-      .cgrid-kpi-lbl {
-        font-size: 11px;
+      .cgrid-left-kpi-lbl {
+        font-size: 10px;
+        font-weight: 800;
+        color: ${deckTextColor};
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        line-height: 1.2;
+      }
+      /* Floating field documentary badge (leaves central/lower left area 100% open for photo) */
+      .cgrid-field-badge {
+        position: absolute;
+        bottom: 24px;
+        left: 0;
+        background: rgba(15, 23, 42, 0.92);
+        backdrop-filter: blur(4px);
+        border: 1px solid ${accentColor}88;
+        border-radius: 20px;
+        padding: 6px 14px;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        box-shadow: 0 4px 14px rgba(0, 0, 0, 0.25);
+      }
+      .cgrid-field-dot {
+        color: ${accentColor};
+        font-size: 12px;
+      }
+      .cgrid-field-text {
+        font-size: 10.5px;
+        font-weight: 800;
+        color: #F8FAFC;
+        letter-spacing: 1px;
+        text-transform: uppercase;
+      }
+
+      /* SISI KANAN: Right Wing Data Engine (522px) */
+      .cgrid-right-wing {
+        position: absolute;
+        top: 76px;
+        left: 504px;
+        right: 54px;
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+        box-sizing: border-box;
+      }
+      .cgrid-right-kpi-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 10px;
+      }
+      .cgrid-right-kpi-card {
+        background: ${cardBgSolid};
+        border: 1.5px solid ${borderRuleColor};
+        border-top: 3px solid ${accentColor};
+        border-radius: 4px;
+        padding: 8px 12px;
+        text-align: center;
+        box-shadow: 0 3px 12px rgba(0, 0, 0, 0.05);
+      }
+      .cgrid-right-kpi-val {
+        font-family: 'Bebas Neue', sans-serif;
+        font-size: 30px;
+        line-height: 1.05;
+        color: ${accentColor};
+        margin-bottom: 2px;
+      }
+      .cgrid-right-kpi-lbl {
+        font-size: 10px;
         font-weight: 800;
         color: ${deckTextColor};
         text-transform: uppercase;
@@ -495,64 +575,81 @@ function renderInfographicArchetypeLayout(params: {
         line-height: 1.2;
       }
 
-      /* Two-Column Broadsheet Ledger (Continuous Sheet, No Web Cards) */
-      .cgrid-ledger-container {
-        display: grid;
-        grid-template-columns: 1fr 1fr;
-        gap: 16px;
+      /* Structured Analytical Ledger */
+      .cgrid-ledger-sheet {
         background: ${cardBgSolid};
         border: 1.5px solid ${borderRuleColor};
         border-radius: 4px;
-        padding: 16px 20px;
-        box-shadow: 0 6px 24px rgba(0, 0, 0, 0.06);
-        flex-grow: 1;
+        padding: 12px 16px;
+        box-shadow: 0 4px 16px rgba(0, 0, 0, 0.06);
       }
-      .cgrid-ledger-col.col-left {
-        border-right: 1px solid ${borderRuleColor};
-        padding-right: 14px;
+      .cgrid-sheet-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        border-bottom: 1.5px solid ${accentColor}44;
+        padding-bottom: 6px;
+        margin-bottom: 8px;
       }
-      .cgrid-col-headline {
-        font-size: 12px;
+      .cgrid-sheet-tag {
+        font-size: 11.5px;
         font-weight: 900;
         color: ${accentColor};
         letter-spacing: 1.5px;
         text-transform: uppercase;
-        padding-bottom: 6px;
-        margin-bottom: 6px;
-        border-bottom: 1.5px solid ${accentColor}44;
       }
-      .cgrid-ledger-row {
-        padding: 8px 0;
+      .cgrid-sheet-badge {
+        font-size: 10.5px;
+        font-weight: 800;
+        background: ${accentColor}18;
+        color: ${accentColor};
+        padding: 2px 8px;
+        border-radius: 3px;
+        letter-spacing: 0.8px;
+      }
+      .cgrid-modules-container {
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
+      }
+      .cgrid-mod-item {
+        padding: 7px 0;
         border-bottom: 1px dashed ${borderRuleColor};
       }
-      .cgrid-ledger-row:last-child {
+      .cgrid-mod-item:last-child {
         border-bottom: none;
+        padding-bottom: 2px;
       }
-      .cgrid-row-header {
+      .cgrid-mod-header {
         display: flex;
-        align-items: baseline;
+        align-items: center;
         gap: 8px;
-        margin-bottom: 4px;
+        margin-bottom: 3px;
       }
-      .cgrid-row-num {
+      .cgrid-mod-chip {
         font-family: 'Bebas Neue', sans-serif;
-        font-size: 22px;
-        color: ${accentColor};
+        font-size: 18px;
         line-height: 1;
+        background: ${accentColor};
+        color: #FFFFFF;
+        padding: 2px 7px;
+        border-radius: 3px;
+        letter-spacing: 1px;
       }
-      .cgrid-row-title {
-        font-size: 15.5px;
+      .cgrid-mod-title {
+        font-size: 14.5px;
         font-weight: 800;
         color: ${titleColor};
         text-transform: uppercase;
         line-height: 1.25;
-        letter-spacing: 0.5px;
+        letter-spacing: 0.3px;
       }
-      .cgrid-row-desc {
-        font-size: 13.5px;
-        line-height: 1.45;
+      .cgrid-mod-desc {
+        font-size: 13px;
+        line-height: 1.42;
         color: ${bodyTextColor};
         font-weight: 600;
+        padding-left: 2px;
       }
 
       /* Data Breakdown Panel */
@@ -560,44 +657,44 @@ function renderInfographicArchetypeLayout(params: {
         background: ${cardBgSolid};
         border: 1.5px solid ${borderRuleColor};
         border-radius: 4px;
-        padding: 12px 18px;
-        box-shadow: 0 4px 16px rgba(0, 0, 0, 0.05);
+        padding: 10px 16px;
+        box-shadow: 0 3px 12px rgba(0, 0, 0, 0.05);
       }
       .cgrid-breakdown-header {
         display: flex;
         justify-content: space-between;
         align-items: center;
-        margin-bottom: 8px;
+        margin-bottom: 6px;
       }
       .cgrid-breakdown-tag {
-        font-size: 11.5px;
+        font-size: 11px;
         font-weight: 900;
         color: ${accentColor};
-        letter-spacing: 1.5px;
+        letter-spacing: 1.2px;
         text-transform: uppercase;
       }
       .cgrid-breakdown-sub {
-        font-size: 11px;
+        font-size: 10.5px;
         font-weight: 800;
         color: ${deckTextColor};
         text-transform: uppercase;
       }
       .cgrid-stacked-bar {
         display: flex;
-        height: 22px;
+        height: 20px;
         border-radius: 3px;
         overflow: hidden;
         border: 1px solid ${accentColor}44;
-        margin-bottom: 8px;
+        margin-bottom: 6px;
       }
       .cgrid-bar-segment {
-        font-size: 10px;
+        font-size: 9.5px;
         font-weight: 800;
         color: #FFFFFF;
         display: flex;
         align-items: center;
         justify-content: center;
-        letter-spacing: 0.5px;
+        letter-spacing: 0.4px;
         white-space: nowrap;
         overflow: hidden;
       }
@@ -608,21 +705,21 @@ function renderInfographicArchetypeLayout(params: {
       .cgrid-breakdown-legend {
         display: flex;
         justify-content: space-between;
-        font-size: 11px;
+        font-size: 10.5px;
         font-weight: 800;
         color: ${deckTextColor};
         text-transform: uppercase;
-        letter-spacing: 0.5px;
+        letter-spacing: 0.4px;
       }
       .cgrid-legend-item {
         display: flex;
         align-items: center;
-        gap: 6px;
+        gap: 5px;
       }
       .cgrid-dot {
-        width: 8px;
-        height: 8px;
-        border-radius: 4px;
+        width: 7px;
+        height: 7px;
+        border-radius: 3.5px;
       }
       .cgrid-dot.dot-1 { background: ${accentColor}; }
       .cgrid-dot.dot-2 { background: ${accentColor}cc; }
@@ -633,29 +730,32 @@ function renderInfographicArchetypeLayout(params: {
       .cgrid-takeaway-bar {
         background: ${cardBgSolid};
         border-left: 5px solid ${accentColor};
+        border-top: 1.5px solid ${borderRuleColor};
+        border-bottom: 1.5px solid ${borderRuleColor};
+        border-right: 1.5px solid ${borderRuleColor};
         border-radius: 4px;
-        padding: 10px 18px;
+        padding: 10px 14px;
         display: flex;
         align-items: center;
-        gap: 14px;
-        box-shadow: 0 4px 14px rgba(0, 0, 0, 0.05);
+        gap: 12px;
+        box-shadow: 0 3px 12px rgba(0, 0, 0, 0.05);
       }
       .cgrid-takeaway-tag {
-        font-size: 11px;
+        font-size: 10.5px;
         font-weight: 900;
         background: ${accentColor};
         color: #FFFFFF;
-        padding: 4px 10px;
+        padding: 4px 8px;
         border-radius: 3px;
-        letter-spacing: 1.2px;
+        letter-spacing: 1px;
         white-space: nowrap;
         text-transform: uppercase;
       }
       .cgrid-takeaway-text {
-        font-size: 13.5px;
+        font-size: 12.5px;
         font-weight: 700;
         color: ${titleColor};
-        line-height: 1.4;
+        line-height: 1.38;
       }
     `;
 
