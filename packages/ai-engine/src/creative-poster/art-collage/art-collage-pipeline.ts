@@ -41,6 +41,9 @@ const REFERENCE_DIR_CANDIDATES = [
   path.resolve(process.cwd(), '../uploads/references/infografis'),
   path.resolve(process.cwd(), '../../uploads/references/infografis'),
   path.resolve(process.cwd(), '../../../uploads/references/infografis'),
+  path.resolve(process.cwd(), 'apps/web-dashboard/public/templates/infografis'),
+  path.resolve(process.cwd(), '../apps/web-dashboard/public/templates/infografis'),
+  path.resolve(process.cwd(), '../../apps/web-dashboard/public/templates/infografis'),
 ].filter((d): d is string => !!d);
 
 async function loadStyleReference(
@@ -94,7 +97,7 @@ export class ArtCollagePosterPipeline {
 
     const [copy, styleReference] = await Promise.all([
       synthesizeArtCollageCopy({ topic: params.topic, groundedContext: params.groundedContextSummary, archetype }),
-      isInfographic ? Promise.resolve(undefined) : loadStyleReference(blueprint.referenceFile),
+      loadStyleReference(blueprint.referenceFile),
     ]);
 
     const imagePrompt = compileArtCollageImagePrompt({

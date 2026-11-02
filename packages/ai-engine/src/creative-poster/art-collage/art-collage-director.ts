@@ -174,7 +174,7 @@ export const ART_COLLAGE_DNA: Record<CreativePosterArchetype, ArtCollageDna> = {
   },
   INFOGRAPHIC_RADIAL_CLOCK: {
     style:
-      'high-impact documentary photojournalism montage featuring 2 to 3 related real-world photographs showing progressive phases of the community issue, authentic Indonesian people and genuine field locations under natural daylight',
+      'vintage educational chronicle infographic poster in the exact style of an archival museum chronicle: an ornate antique brass mechanical clock dial on the center-left radiating colorful era fan wedges outward across a warm parchment paper background, with richly detailed realistic documentary photo cutouts and vignettes of Indonesian citizens, workers, and field activities related to the topic, antique book stacks at the lower margin, warm museum lighting, textured parchment paper grain',
     anchors: ['TEXT_RIGHT', 'TEXT_TOP'],
     paperTone: 'LIGHT',
   },
@@ -284,13 +284,33 @@ export function compileArtCollageImagePrompt(params: {
   const isInfographic = isInfographicArchetype(params.archetype);
 
   if (isInfographic) {
+    const referenceClause = params.withStyleReference
+      ? 'The attached image is the OFFICIAL TEMPLATE & LAYOUT REFERENCE. Borrow its exact artistic structure, spatial layout, paper texture, and visual energy. Seamlessly populate the visual sectors with authentic realistic Indonesian people, public infrastructure, and activities related to the topic. Do NOT copy any of its text.'
+      : '';
+
+    if (params.archetype === 'INFOGRAPHIC_RADIAL_CLOCK') {
+      return [
+        `Create a high-resolution, print-quality archival infographic poster ARTWORK (vertical 4:5 ratio) in the exact visual style of the attached template about: ${params.visualSubject}.`,
+        `Master Visual Motif: An ornate antique mechanical clock / pocket watch dial on the center-left radiating colorful era fan wedges and curved ribbons outward across warm aged parchment paper.`,
+        `Documentary Vignettes: Seamlessly integrate 2 to 3 realistic photographic cutouts and documentary vignettes of Indonesian citizens, workers, and field activities related to ${params.visualSubject} within and around the radiating sectors (organic cutout edges blending smoothly with the parchment paper, NEVER square boxes or polaroids). Include vintage book stacks and archival elements at the lower margin.`,
+        `Negative Space for Typography: The right side and upper-right half must remain a calm, clean, open field of aged parchment paper with natural warm paper grain, providing a clear clearing where typography will be printed.`,
+        referenceClause,
+        `STRICT COMPOSITION MANDATES:`,
+        `- Must faithfully match the radial composition, antique clock dial, and parchment texture of the reference image.`,
+        `- ABSOLUTELY NO ANIMATION, NO ANIME, NO CARTOON, NO 3D RENDER, NO ISOMETRIC VECTOR ART, NO SKETCHES, NO CLIPART. The people and equipment cutouts must be realistic photographic quality.`,
+        `- ABSOLUTELY NO SQUARES, RECTANGLES, OR BOX FRAMES. Cutouts must blend organically with the parchment and fan wedges.`,
+        `- DO NOT DRAW ANY UI CARDS, FROSTED GLASS RECTANGLES, WHITE BOXES, OR WEB CONTAINERS.`,
+        `- DO NOT DRAW ANY CHARTS, ICONS, OR QR CODES.`,
+        `- All typography and data will be rendered cleanly by the compositor.`,
+        `ABSOLUTELY ZERO TEXT: No words, no letters, no numbers, no fake writing, no labels, no headings, no logos, no watermarks anywhere on the artwork.`,
+      ].filter(Boolean).join('\n');
+    }
+
     let archetypeSpatialGuide = '';
     if (params.archetype === 'INFOGRAPHIC_NARRATIVE_WAVE') {
       archetypeSpatialGuide = `Multi-Photo Composition: Multi-image editorial photojournalism documentary montage comprising 2 to 3 distinct realistic photographs about ${params.visualSubject}. Include a wide environmental context shot of the facility/location, paired with close-up shots of hands-on technical action, equipment, or Indonesian workers. Seamlessly integrated with clean editorial photo borders, natural daylight, zero drawings, zero text.`;
     } else if (params.archetype === 'INFOGRAPHIC_CHRONICLE_GRID') {
       archetypeSpatialGuide = `Multi-Photo Composition: Multi-image editorial press photography and authentic photojournalism montage featuring 2 to 3 distinct realistic photographs about ${params.visualSubject}. The primary wide-angle documentary shot and close-up action vignettes are prominently framed on the left-hand side and lower-left area, creating a rich multi-angle visual anchor. Genuine real-life documentary photography with zero empty rectangles or boxes.`;
-    } else if (params.archetype === 'INFOGRAPHIC_RADIAL_CLOCK') {
-      archetypeSpatialGuide = `Multi-Photo Composition: Multi-image realistic documentary photography montage featuring 2 to 3 related real-world photographs showing progressive phases of ${params.visualSubject}. Prominently framed on the left half of the canvas under natural daylight, leaving the right side open for analytical graphics. Pure realistic photography with zero clock illustrations, zero drawings, and zero diagram cards.`;
     } else if (params.archetype === 'INFOGRAPHIC_ADVOCACY_PILLARS') {
       archetypeSpatialGuide = `Multi-Photo Composition: Multi-image authentic documentary photojournalism montage capturing real Indonesian citizens, students, workers, or public facilities related to ${params.visualSubject} across 2 to 3 photographic panels, with the central horizontal band open and clearly visible.`;
     } else {
@@ -299,23 +319,24 @@ export function compileArtCollageImagePrompt(params: {
     }
 
     return [
-      `Create a high-resolution, print-quality realistic editorial documentary photojournalism MULTI-IMAGE MONTAGE (vertical 4:5 ratio) specifically capturing: ${params.visualSubject}.`,
-      `Photographic Style: ${dna.style}. Shot on professional 35mm / 50mm camera lens with natural daylight and authentic colors.`,
-      `Multi-Image Requirement: The background canvas MUST feature MORE THAN 1 PHOTOGRAPH — compose 2 to 3 distinct, realistic documentary photographs seamlessly arranged as a journalistic press photo montage or triptych (like in National Geographic, Reuters, or Kompas):`,
-      `- Panel 1 (Wide Context): Wide-angle view showing the broader facility, environment, public infrastructure, or setting.`,
-      `- Panel 2 (Action / Technical Detail): Close-up documentary shot focusing on active hands, tools, machinery, or physical action.`,
-      `- Panel 3 (Human Context): Candid documentary shot of everyday Indonesian citizens, students, or workers engaged in the activity.`,
-      `All photographic panels must have consistent natural lighting, authentic Indonesian people and real-world locations, genuine documentary photojournalism quality.`,
+      `Create a high-resolution, print-quality editorial infographic poster ARTWORK (vertical 4:5 ratio) specifically about: ${params.visualSubject}.`,
+      `Artistic Style: ${dna.style}. Natural lighting, authentic colors, archival parchment texture.`,
+      `Multi-Image & Subject Mandate: The artwork MUST feature 2 to 3 distinct photographic/documentary scenes seamlessly composed into the visual template:`,
+      `- Scene 1 (Context / Wide): The overall facility, environment, public infrastructure, or setting.`,
+      `- Scene 2 (Action / Technical Detail): Active hands, tools, machinery, or physical action in progress.`,
+      `- Scene 3 (Human Context): Candid everyday Indonesian citizens, students, or workers engaged in the activity.`,
+      `All photographic elements must depict authentic Indonesian people and real-world settings related to ${params.visualSubject}.`,
       archetypeSpatialGuide,
-      `STRICT REALISM & ANTI-CARTOON MANDATES:`,
-      `- 100% REALISTIC PHOTOGRAPHY ONLY. Must look like authentic documentary press photographs from Reuters, Kompas, or National Geographic.`,
-      `- ABSOLUTELY NO ANIMATION, NO ANIME, NO CARTOON, NO 3D RENDER, NO ISOMETRIC VECTOR ART, NO SKETCHES, NO COMICS, NO LINE ART, NO CLIPART, NO VINTAGE ENGRAVINGS, NO PAINTING.`,
-      `- ABSOLUTELY NO FAKE HISTORICAL DRAWINGS, NO CLOCKS, NO COMPASSES, NO RETRO ETCHINGS.`,
+      referenceClause,
+      `STRICT COMPOSITION MANDATES:`,
+      `- Must look like a masterpiece archival documentary infographic poster (such as in National Geographic, Reuters, or Kompas).`,
+      `- ABSOLUTELY NO ANIMATION, NO ANIME, NO CARTOON, NO 3D RENDER, NO ISOMETRIC VECTOR ART, NO SKETCHES, NO COMICS, NO LINE ART, NO CLIPART.`,
+      `- ABSOLUTELY NO FAKE HISTORICAL DRAWINGS, NO CLOCKS, NO COMPASSES.`,
       `- DO NOT DRAW ANY UI CARDS, FROSTED GLASS RECTANGLES, WHITE BOXES, OR BLUR PANELS.`,
       `- DO NOT DRAW ANY PILLARS, CAPSULES, TIMELINE RAILS, BULLET NODES, CHARTS, OR QR CODES.`,
-      `- Generate 100% PURE REALISTIC PHOTOGRAPHY ONLY. All typography and data will be rendered cleanly by the compositor.`,
-      `ABSOLUTELY ZERO TEXT: No words, no letters, no numbers, no fake writing, no labels, no headings, no logos, no watermarks anywhere on the photograph.`,
-    ].join('\n');
+      `- All typography and data will be rendered cleanly by the compositor.`,
+      `ABSOLUTELY ZERO TEXT: No words, no letters, no numbers, no fake writing, no labels, no headings, no logos, no watermarks anywhere on the artwork.`,
+    ].filter(Boolean).join('\n');
   }
 
   const referenceClause = params.withStyleReference

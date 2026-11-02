@@ -764,12 +764,12 @@ function renderInfographicArchetypeLayout(params: {
   }
 
   if (archetype === 'INFOGRAPHIC_RADIAL_CLOCK') {
-    // Authentic Radial Clock Template Layout (Matching template-03-radial-clock-chronicle):
-    // 1. Top Broadsheet Masthead: Across top width, leaving center & left for the clock artwork
-    // 2. Left Expanse (left: 0, width: 440px): 100% UNOBSTRUCTED for the clock, historical figures, & workers
-    // 3. Right-Wing Radial Cascade (left: 470px, right: 0):
+    // Authentic Radial Clock Chronicle Layout (Matching template-03-radial-clock-chronicle):
+    // 1. Top Editorial Masthead (Compact, leaving left side open for clock artwork & cutouts)
+    // 2. Left Expanse (left: 0, width: 440px): 100% UNOBSTRUCTED for the clock, historical figures, & topic cutouts
+    // 3. Right-Wing Unified Radial Chronicle Ledger (Continuous editorial column, NO floating web cards):
     //    - 3-Column KPI Metric Strip
-    //    - 4 to 5 Cascading Tier Cards (Radial stepping margins, crisp solid white backing, 100% dark readable text)
+    //    - Unified Radial Epochs Ledger (5 chronological points with dashed dividers and era badges)
     //    - Bottom Takeaway Policy Banner
     const kpiHtml = statsList.slice(0, 3).map((st) => `
       <div class="rclock-kpi-pill">
@@ -780,12 +780,12 @@ function renderInfographicArchetypeLayout(params: {
 
     const tiers = points.slice(0, 5);
     const tiersHtml = tiers.map((p, idx) => `
-      <div class="rclock-tier-card tier-${idx}">
+      <div class="rclock-tier-item tier-${idx}">
         <div class="rclock-tier-ribbon">
           <span class="rclock-tier-badge">TONGGAK 0${idx + 1}</span>
           <span class="rclock-tier-title">${esc(p.label)}</span>
         </div>
-        <div class="rclock-tier-desc">${esc(p.text)}</div>
+        <div class="rclock-tier-desc"><span class="rclock-bullet">•</span> ${esc(p.text)}</div>
       </div>
     `).join('');
 
@@ -798,15 +798,19 @@ function renderInfographicArchetypeLayout(params: {
           ${copy.deck ? `<div class="rclock-deck">${esc(copy.deck)}</div>` : ''}
         </div>
 
-        <!-- Right-Wing Radial Data Cascade (Leaves Left Side Unobstructed for Clock Visual) -->
+        <!-- Right-Wing Unified Radial Chronicle Ledger -->
         <div class="rclock-right-wing">
           <!-- KPI Indicator Strip -->
           <div class="rclock-kpi-row">
             ${kpiHtml}
           </div>
 
-          <!-- Cascading Radial Stepped Tiers -->
-          <div class="rclock-tiers-list">
+          <!-- Unified Radial Epochs Ledger (Continuous Editorial Column, Zero Floating Cards) -->
+          <div class="rclock-chronicle-ledger">
+            <div class="rclock-ledger-header">
+              <span class="rclock-ledger-tag">◈ TONGGAK STRATEGIS &amp; KRONIK ADVOKASI</span>
+              <span class="rclock-ledger-count">5 FASE</span>
+            </div>
             ${tiersHtml}
           </div>
 
@@ -878,11 +882,12 @@ function renderInfographicArchetypeLayout(params: {
         display: grid;
         grid-template-columns: repeat(3, 1fr);
         gap: 8px;
-        margin-bottom: 4px;
+        margin-bottom: 2px;
       }
       .rclock-kpi-pill {
         background: ${cardBgSolid};
         border: 1.5px solid ${borderRuleColor};
+        border-top: 3px solid ${accentColor};
         border-radius: 4px;
         padding: 8px 10px;
         text-align: center;
@@ -896,85 +901,119 @@ function renderInfographicArchetypeLayout(params: {
         margin-bottom: 2px;
       }
       .rclock-kpi-lbl {
-        font-size: 10.5px;
+        font-size: 10px;
         font-weight: 800;
         color: ${deckTextColor};
         text-transform: uppercase;
         line-height: 1.2;
       }
-      .rclock-tiers-list {
+
+      /* Unified Radial Chronicle Ledger */
+      .rclock-chronicle-ledger {
+        background: ${cardBgSolid};
+        border: 1.5px solid ${borderRuleColor};
+        border-radius: 6px;
+        padding: 14px 18px;
+        box-shadow: 0 4px 18px rgba(0, 0, 0, 0.06);
         display: flex;
         flex-direction: column;
         gap: 8px;
       }
-      .rclock-tier-card {
-        background: ${cardBgSolid};
-        border: 1.5px solid ${borderRuleColor};
-        border-left: 5px solid ${accentColor};
-        border-radius: 4px;
-        padding: 10px 14px;
-        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+      .rclock-ledger-header {
         display: flex;
-        flex-direction: column;
-        gap: 4px;
+        justify-content: space-between;
+        align-items: center;
+        border-bottom: 1.5px solid ${accentColor}44;
+        padding-bottom: 6px;
+        margin-bottom: 4px;
       }
-      .rclock-tier-card.tier-0 { margin-left: 0px; }
-      .rclock-tier-card.tier-1 { margin-left: 10px; }
-      .rclock-tier-card.tier-2 { margin-left: 20px; }
-      .rclock-tier-card.tier-3 { margin-left: 10px; }
-      .rclock-tier-card.tier-4 { margin-left: 0px; }
+      .rclock-ledger-tag {
+        font-size: 11.5px;
+        font-weight: 900;
+        color: ${accentColor};
+        letter-spacing: 1.5px;
+        text-transform: uppercase;
+      }
+      .rclock-ledger-count {
+        font-size: 10.5px;
+        font-weight: 800;
+        background: ${accentColor}18;
+        color: ${accentColor};
+        padding: 2px 8px;
+        border-radius: 3px;
+        letter-spacing: 0.8px;
+      }
+      .rclock-tier-item {
+        padding: 6px 0;
+        border-bottom: 1px dashed ${borderRuleColor};
+      }
+      .rclock-tier-item:last-child {
+        border-bottom: none;
+        padding-bottom: 2px;
+      }
       .rclock-tier-ribbon {
         display: flex;
         align-items: center;
         gap: 8px;
+        margin-bottom: 3px;
       }
       .rclock-tier-badge {
-        font-size: 10.5px;
-        font-weight: 900;
+        font-family: 'Bebas Neue', sans-serif;
+        font-size: 13.5px;
         background: ${accentColor};
         color: #FFFFFF;
-        padding: 2px 8px;
+        padding: 2px 7px;
         border-radius: 3px;
-        letter-spacing: 1px;
+        letter-spacing: 0.8px;
         white-space: nowrap;
-        text-transform: uppercase;
       }
       .rclock-tier-title {
         font-size: 14.5px;
         font-weight: 800;
         color: ${titleColor};
         text-transform: uppercase;
-        line-height: 1.25;
+        letter-spacing: 0.3px;
       }
       .rclock-tier-desc {
         font-size: 12.5px;
-        line-height: 1.45;
+        line-height: 1.42;
         color: ${bodyTextColor};
         font-weight: 600;
+        padding-left: 2px;
       }
+      .rclock-bullet {
+        color: ${accentColor};
+        font-weight: 900;
+        margin-right: 2px;
+      }
+
+      /* Policy Takeaway Bar */
       .rclock-takeaway-bar {
         background: ${cardBgSolid};
-        border: 1.5px solid ${borderRuleColor};
         border-left: 5px solid ${accentColor};
         border-radius: 4px;
         padding: 10px 14px;
         display: flex;
-        flex-direction: column;
-        gap: 4px;
-        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+        align-items: center;
+        gap: 12px;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
       }
       .rclock-takeaway-tag {
         font-size: 10.5px;
         font-weight: 900;
-        color: ${accentColor};
+        background: ${accentColor};
+        color: #FFFFFF;
+        padding: 4px 8px;
+        border-radius: 3px;
         letter-spacing: 1px;
+        white-space: nowrap;
         text-transform: uppercase;
       }
       .rclock-takeaway-text {
         font-size: 12.5px;
         font-weight: 700;
-        color: ${bodyTextColor};
-        line-height: 1.4;
+        color: ${titleColor};
+        line-height: 1.35;
       }
     `;
 
