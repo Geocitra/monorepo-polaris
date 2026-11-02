@@ -286,16 +286,16 @@ export function compileArtCollageImagePrompt(params: {
   if (isInfographic) {
     let archetypeSpatialGuide = '';
     if (params.archetype === 'INFOGRAPHIC_NARRATIVE_WAVE') {
-      archetypeSpatialGuide = `Composition layout: An organic sweeping ${p.accentName} S-curve flow ribbon winds gracefully across the canvas from top-left toward bottom-right. Along the ribbon are tasteful documentary illustrations of ${params.visualSubject}. Leave clean, quiet open paper alcoves alternating on the top-right, middle-left, middle-right, and bottom-left reserved for typography cards.`;
+      archetypeSpatialGuide = `Composition: Full-canvas dynamic editorial civic illustration of ${params.visualSubject}. A graceful flowing organic color ribbon in ${p.accentName} weaves through the background landscape. People and community activities are illustrated naturally across the scene. Continuous full-frame scenic artwork with zero diagram boxes.`;
     } else if (params.archetype === 'INFOGRAPHIC_CHRONICLE_GRID') {
-      archetypeSpatialGuide = `Composition layout: Editorial newspaper chronicle format. The left 32% of the canvas has a clean vertical masthead column reserved for the title. The right 68% features fine technical grid lines and authentic documentary illustrations depicting ${params.visualSubject}, leaving generous clean rectangular paper areas for data grid cards.`;
+      archetypeSpatialGuide = `Composition: Full-canvas editorial documentary illustration and authentic photojournalism capturing ${params.visualSubject}. Warm textured newsprint aesthetic with subtle fine architectural grid lines in the background. Authentic Indonesian communities, public works, and civic engagement. Pure scenic documentary scene with zero empty rectangles.`;
     } else if (params.archetype === 'INFOGRAPHIC_RADIAL_CLOCK') {
-      archetypeSpatialGuide = `Composition layout: Vintage chronicle print on aged ivory parchment. An ornate antique pocket-watch clock dial or compass motif sits elegantly on the center-left. The entire right 60% of the canvas is a calm, quiet, open parchment expanse strictly reserved for epoch milestone data.`;
+      archetypeSpatialGuide = `Composition: Full-canvas vintage editorial civic print on aged warm ivory parchment. On the center-left side, an artistic antique mechanical timepiece or compass motif is subtly integrated into historical Indonesian community architecture and progress regarding ${params.visualSubject}. The right side has a calm, open textured parchment backdrop. Pure scenic illustration with zero diagram cards.`;
     } else if (params.archetype === 'INFOGRAPHIC_ADVOCACY_PILLARS') {
-      archetypeSpatialGuide = `Composition layout: Civic advocacy cartoon layout with subtle batik motif backdrop. The middle area features expressive citizens and community illustrations depicting ${params.visualSubject}. The top 22% is clean open paper for the main title, and the lower 46% of the canvas is a clean, flat, empty ivory paper expanse strictly reserved for the 5 vertical solution pillars.`;
+      archetypeSpatialGuide = `Composition: Full-canvas editorial civic community illustration with subtle Indonesian batik motif textures in the sky. Warm, expressive everyday Indonesian citizens, workers, and public facilities related to ${params.visualSubject}. Pure scenic illustration with people and environment, zero pillar containers or card outlines.`;
     } else {
       // INFOGRAPHIC_VISIONARY_TIMELINE
-      archetypeSpatialGuide = `Composition layout: Sleek modern editorial milestone layout. Upper center features an artistic architectural or thematic illustration of ${params.visualSubject}. The bottom 38% of the canvas is a clean, quiet horizontal band reserved for the milestone timeline bar.`;
+      archetypeSpatialGuide = `Composition: Full-canvas contemporary editorial civic illustration depicting ${params.visualSubject}, featuring modern Indonesian civic architecture, public infrastructure, and progressive community life. Sleek modern lighting with refined textures on a crisp clean background. Pure scenic and architectural artwork only, zero timeline bars or frosted panels.`;
     }
 
     return [
@@ -305,8 +305,12 @@ export function compileArtCollageImagePrompt(params: {
       `The illustrations and visual elements must represent ONLY ${params.visualSubject}. Authentic Indonesian everyday citizens, farmers, workers, infrastructure, or community setting relevant to this specific topic. No unrelated historical figures or unrelated objects.`,
       archetypeSpatialGuide,
       `STRICT NEGATIVE INSTRUCTIONS FOR INFOGRAPHIC ARTWORK:`,
-      `- DO NOT draw any dummy text boxes, DO NOT draw any empty pill shapes, DO NOT draw any blank capsule pillars, DO NOT draw any UI cards or frames, DO NOT draw any empty flowchart boxes, DO NOT draw any blank chalkboards or whiteboards, DO NOT draw any fake QR codes or barcodes, DO NOT draw any dummy data dials, gauges, or pie charts.`,
-      `- Only draw authentic scenery, people, and thematic background illustrations. The reserved typography space must remain 100% flat, clean, unadorned, and empty ${p.paperName} paper texture.`,
+      `- ABSOLUTELY DO NOT DRAW ANY UI CARDS, FROSTED GLASS RECTANGLES, WHITE BOXES, OR BLUR PANELS.`,
+      `- DO NOT DRAW ANY PILLARS, CAPSULES, OR VERTICAL STRIPS.`,
+      `- DO NOT DRAW ANY TIMELINE BARS, PROGRESS LINES, OR BULLET NODES.`,
+      `- DO NOT DRAW ANY CHARTS, PIE GRAPHS, GAUGES, OR QR CODES.`,
+      `- DO NOT DRAW ANY CHALKBOARDS, EMPTY SIGNS, OR FRAMES.`,
+      `- Generate 100% PURE SCENIC ARTWORK / ILLUSTRATION ONLY. All typography, cards, and data will be overlaid programmatically.`,
       `ABSOLUTELY ZERO TEXT: No words, no letters, no numbers, no fake writing, no labels, no headings, no logos, no watermarks anywhere on the image.`,
     ].join('\n');
   }

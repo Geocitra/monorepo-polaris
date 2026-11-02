@@ -346,19 +346,22 @@ function renderInfographicArchetypeLayout(params: {
         justify-content: space-between;
       }
       .cgrid-cards-stack {
-        display: flex;
-        flex-direction: column;
-        gap: 16px;
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 14px;
+        margin-bottom: 14px;
       }
       .cgrid-card {
         background: ${cardBg};
         border: 2px solid ${accentColor}55;
         border-left: 6px solid ${accentColor};
         border-radius: 12px;
-        padding: 16px 20px;
+        padding: 16px 18px;
         box-shadow: 0 6px 20px rgba(0, 0, 0, 0.1);
         display: flex;
         flex-direction: column;
+        min-height: 250px;
+        backdrop-filter: blur(12px);
       }
       .cgrid-badge {
         display: inline-block;
@@ -502,22 +505,23 @@ function renderInfographicArchetypeLayout(params: {
       }
       .rclock-cards-stack {
         position: absolute;
-        top: 170px;
-        left: 390px;
+        top: 165px;
+        left: 380px;
         right: 0;
         display: flex;
         flex-direction: column;
-        gap: 16px;
+        gap: 12px;
       }
       .rclock-card {
         background: ${cardBg};
         border: 2px solid ${accentColor}66;
         border-left: 6px solid ${accentColor};
         border-radius: 12px;
-        padding: 16px 20px;
+        padding: 13px 18px;
         box-shadow: 0 6px 20px rgba(0, 0, 0, 0.1);
         display: flex;
         flex-direction: column;
+        backdrop-filter: blur(12px);
       }
       .rclock-epoch-tag {
         display: inline-block;
@@ -567,13 +571,14 @@ function renderInfographicArchetypeLayout(params: {
   }
 
   if (archetype === 'INFOGRAPHIC_ADVOCACY_PILLARS') {
-    // Advocacy Hero: Top Headline + 3 Stats Middle + 5 Action Pillars Bottom
+    // Advocacy Hero: Top Headline + 3 Stats Middle + 5 Action Pillars Lower Half
     const letterBadges = ['P', 'U', 'T', 'U', 'S'];
     const pillarsHtml = points.slice(0, 5).map((p, idx) => `
       <div class="apillar-col">
         <div class="apillar-badge">${letterBadges[idx] || (idx + 1)}</div>
         <div class="apillar-name">${esc(p.label)}</div>
         <div class="apillar-desc">${esc(p.text)}</div>
+        <div class="apillar-metric-tag">✦ INDIKATOR 0${idx + 1}</div>
       </div>
     `).join('');
 
@@ -605,7 +610,7 @@ function renderInfographicArchetypeLayout(params: {
         </div>
 
         <div class="apillars-bottom-section">
-          <div class="apillars-section-tag">PROGRAM AKSI ADVOKASI BERKELANJUTAN</div>
+          <div class="apillars-section-tag">5 PILAR AKSI ADVOKASI BERKELANJUTAN</div>
           <div class="apillars-cols-container">
             ${pillarsHtml}
           </div>
@@ -621,19 +626,25 @@ function renderInfographicArchetypeLayout(params: {
     const css = `
       .apillars-layout {
         position: absolute;
-        top: 75px;
+        top: 76px;
         left: 54px;
         right: 54px;
-        height: 1160px;
+        height: 1150px;
       }
       .apillars-header {
         position: absolute;
         top: 0;
         left: 0;
         right: 0;
+        background: ${cardBg};
+        border: 1.5px solid ${accentColor}44;
+        border-radius: 14px;
+        padding: 16px 20px;
+        box-shadow: 0 6px 20px rgba(0, 0, 0, 0.08);
+        backdrop-filter: blur(12px);
       }
       .apillars-kicker {
-        font-size: 15px;
+        font-size: 14px;
         font-weight: 900;
         color: ${accentColor};
         letter-spacing: 2px;
@@ -651,11 +662,11 @@ function renderInfographicArchetypeLayout(params: {
       .apillars-deck {
         font-family: 'Playfair Display', serif;
         font-style: italic;
-        font-size: 16.5px;
+        font-size: 16px;
         line-height: 1.4;
         color: ${secondaryColor};
         font-weight: 600;
-        max-width: 95%;
+        max-width: 96%;
       }
       .apillars-stats-row {
         position: absolute;
@@ -671,7 +682,8 @@ function renderInfographicArchetypeLayout(params: {
         border: 2px solid ${accentColor}66;
         border-radius: 12px;
         padding: 12px 14px;
-        box-shadow: 0 4px 14px rgba(0, 0, 0, 0.08);
+        box-shadow: 0 6px 18px rgba(0, 0, 0, 0.08);
+        backdrop-filter: blur(12px);
       }
       .apillars-stat-val {
         font-size: 14.5px;
@@ -688,7 +700,7 @@ function renderInfographicArchetypeLayout(params: {
       }
       .apillars-bottom-section {
         position: absolute;
-        top: 735px;
+        top: 550px;
         left: 0;
         right: 0;
       }
@@ -696,31 +708,33 @@ function renderInfographicArchetypeLayout(params: {
         display: inline-block;
         background: ${accentColor};
         color: #FFFFFF;
-        padding: 5px 16px;
+        padding: 6px 18px;
         border-radius: 6px;
-        font-size: 12px;
+        font-size: 12.5px;
         font-weight: 800;
-        letter-spacing: 1.2px;
+        letter-spacing: 1.5px;
         margin-bottom: 12px;
         text-transform: uppercase;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.15);
       }
       .apillars-cols-container {
         display: grid;
         grid-template-columns: repeat(${Math.min(5, points.length)}, 1fr);
         gap: 12px;
-        margin-bottom: 12px;
+        margin-bottom: 14px;
       }
       .apillar-col {
         background: ${cardBg};
         border: 2px solid ${accentColor}77;
         border-radius: 14px;
-        padding: 16px 12px 18px 12px;
+        padding: 18px 12px 18px 12px;
         display: flex;
         flex-direction: column;
         align-items: center;
         text-align: center;
-        min-height: 250px;
-        box-shadow: 0 6px 20px rgba(0, 0, 0, 0.12);
+        min-height: 480px;
+        box-shadow: 0 8px 24px rgba(0, 0, 0, 0.14);
+        backdrop-filter: blur(12px);
       }
       .apillar-badge {
         width: 44px;
@@ -750,20 +764,33 @@ function renderInfographicArchetypeLayout(params: {
       }
       .apillar-desc {
         font-size: 12.5px;
-        line-height: 1.42;
+        line-height: 1.45;
         color: ${secondaryColor};
         font-weight: 600;
         flex-grow: 1;
+      }
+      .apillar-metric-tag {
+        margin-top: 10px;
+        font-size: 10.5px;
+        font-weight: 800;
+        letter-spacing: 1px;
+        color: ${accentColor};
+        background: ${accentColor}18;
+        padding: 4px 8px;
+        border-radius: 4px;
+        border: 1px solid ${accentColor}33;
+        width: 90%;
       }
       .apillars-closing-banner {
         background: ${cardBg};
         border-left: 5px solid ${accentColor};
         border-radius: 8px;
-        padding: 10px 16px;
+        padding: 12px 18px;
         font-size: 14px;
         font-weight: 700;
         color: ${primaryColor};
-        box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+        box-shadow: 0 4px 14px rgba(0,0,0,0.08);
+        backdrop-filter: blur(10px);
       }
     `;
 
@@ -771,8 +798,8 @@ function renderInfographicArchetypeLayout(params: {
   }
 
   // INFOGRAPHIC_VISIONARY_TIMELINE
-  // Top Visionary Quote + Frosted Card + Connected Bottom Timeline Bar
-  const nodeCount = Math.min(5, points.length);
+  // Top Visionary Header + 2 Middle Feature Cards + 4 Tall Connected Timeline Cards Lower Half
+  const nodeCount = Math.min(4, Math.max(3, points.length));
   const stepsHtml = points.slice(0, nodeCount).map((p, idx) => `
     <div class="vstep-col">
       <div class="vstep-bullet">
@@ -781,19 +808,32 @@ function renderInfographicArchetypeLayout(params: {
       <div class="vstep-tag">FASE 0${idx + 1}</div>
       <div class="vstep-label">${esc(p.label)}</div>
       <div class="vstep-desc">${esc(p.text)}</div>
+      <div class="vstep-metric-tag">✦ TAHAP 0${idx + 1}</div>
     </div>
   `).join('');
+
+  const stat1 = points[0] || { label: 'URGENSI PUBLIK', text: 'Analisis mendalam kondisi riil di lapangan.' };
+  const stat2 = points[1] || { label: 'TARGET STRATEGIS', text: 'Capaian indikator kinerja utama tuntas.' };
 
   const html = `
     <div class="vtimeline-layout">
       <div class="vtimeline-header">
-        <div class="vtimeline-quote">"Inovasi dan Integritas untuk Kesejahteraan Publik"</div>
+        <div class="vtimeline-kicker">${esc(copy.kicker || 'TELAAH KEBIJAKAN & TARGET STRATEGIS')}</div>
         <div class="vtimeline-headline">${esc(headlineText)}</div>
+        ${copy.deck ? `<div class="vtimeline-deck">${esc(copy.deck)}</div>` : ''}
       </div>
 
-      <div class="vtimeline-summary-card">
-        <div class="vtimeline-card-kicker">${esc(copy.kicker || 'AGENDA AKSI STRATEGIS')}</div>
-        ${copy.deck ? `<div class="vtimeline-card-deck">${esc(copy.deck)}</div>` : ''}
+      <div class="vtimeline-middle-spread">
+        <div class="vtimeline-feature-card">
+          <div class="vtimeline-feature-badge">✦ PRIORITAS UTAMA</div>
+          <div class="vtimeline-feature-title">${esc(stat1.label)}</div>
+          <div class="vtimeline-feature-text">${esc(stat1.text)}</div>
+        </div>
+        <div class="vtimeline-feature-card">
+          <div class="vtimeline-feature-badge">✦ INDIKATOR CAPAIAN</div>
+          <div class="vtimeline-feature-title">${esc(stat2.label)}</div>
+          <div class="vtimeline-feature-text">${esc(stat2.text)}</div>
+        </div>
       </div>
 
       <div class="vtimeline-bottom-bar">
@@ -813,61 +853,91 @@ function renderInfographicArchetypeLayout(params: {
   const css = `
     .vtimeline-layout {
       position: absolute;
-      top: 75px;
+      top: 76px;
       left: 54px;
       right: 54px;
-      height: 1160px;
+      height: 1150px;
     }
     .vtimeline-header {
       position: absolute;
       top: 0;
       left: 0;
       right: 0;
+      background: ${cardBg};
+      border: 1.5px solid ${accentColor}44;
+      border-radius: 14px;
+      padding: 16px 20px;
+      box-shadow: 0 6px 20px rgba(0, 0, 0, 0.08);
+      backdrop-filter: blur(12px);
     }
-    .vtimeline-quote {
-      font-family: 'Playfair Display', serif;
-      font-style: italic;
-      font-size: 18px;
+    .vtimeline-kicker {
+      font-size: 14px;
+      font-weight: 900;
       color: ${accentColor};
-      font-weight: 700;
+      letter-spacing: 2px;
+      text-transform: uppercase;
       margin-bottom: 4px;
     }
     .vtimeline-headline {
       font-family: 'Bebas Neue', sans-serif;
-      font-size: 56px;
+      font-size: 54px;
       line-height: 0.95;
       letter-spacing: 1.5px;
       color: ${primaryColor};
+      margin-bottom: 6px;
     }
-    .vtimeline-summary-card {
+    .vtimeline-deck {
+      font-family: 'Playfair Display', serif;
+      font-style: italic;
+      font-size: 16px;
+      line-height: 1.4;
+      color: ${secondaryColor};
+      font-weight: 600;
+      max-width: 96%;
+    }
+    .vtimeline-middle-spread {
       position: absolute;
-      top: 135px;
+      top: 155px;
       left: 0;
-      width: 480px;
+      right: 0;
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 16px;
+    }
+    .vtimeline-feature-card {
       background: ${cardBg};
       border: 2px solid ${accentColor}66;
       border-radius: 14px;
-      padding: 16px 20px;
-      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
-      backdrop-filter: blur(10px);
+      padding: 14px 18px;
+      box-shadow: 0 6px 18px rgba(0, 0, 0, 0.08);
+      backdrop-filter: blur(12px);
     }
-    .vtimeline-card-kicker {
-      font-size: 12.5px;
-      font-weight: 800;
+    .vtimeline-feature-badge {
+      font-size: 11px;
+      font-weight: 900;
       color: ${accentColor};
       letter-spacing: 1.5px;
-      margin-bottom: 6px;
       text-transform: uppercase;
+      margin-bottom: 4px;
     }
-    .vtimeline-card-deck {
-      font-size: 15px;
-      line-height: 1.45;
+    .vtimeline-feature-title {
+      font-size: 14.5px;
+      font-weight: 800;
+      color: ${primaryColor};
+      text-transform: uppercase;
+      margin-bottom: 4px;
+      border-bottom: 1.5px solid ${accentColor}33;
+      padding-bottom: 3px;
+    }
+    .vtimeline-feature-text {
+      font-size: 12.5px;
+      line-height: 1.4;
       color: ${secondaryColor};
       font-weight: 600;
     }
     .vtimeline-bottom-bar {
       position: absolute;
-      top: 740px;
+      top: 550px;
       left: 0;
       right: 0;
     }
@@ -875,30 +945,32 @@ function renderInfographicArchetypeLayout(params: {
       display: inline-block;
       background: ${accentColor};
       color: #FFFFFF;
-      padding: 5px 16px;
+      padding: 6px 18px;
       border-radius: 6px;
-      font-size: 12px;
+      font-size: 12.5px;
       font-weight: 800;
-      letter-spacing: 1.2px;
+      letter-spacing: 1.5px;
       margin-bottom: 12px;
       text-transform: uppercase;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.15);
     }
     .vtimeline-steps-grid {
       display: grid;
       grid-template-columns: repeat(${nodeCount}, 1fr);
       gap: 12px;
-      margin-bottom: 12px;
+      margin-bottom: 14px;
       position: relative;
     }
     .vstep-col {
       background: ${cardBg};
       border: 2px solid ${accentColor}77;
       border-radius: 14px;
-      padding: 16px 12px 18px 12px;
+      padding: 18px 14px;
       display: flex;
       flex-direction: column;
-      min-height: 240px;
-      box-shadow: 0 6px 20px rgba(0, 0, 0, 0.12);
+      min-height: 480px;
+      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.14);
+      backdrop-filter: blur(12px);
       position: relative;
     }
     .vstep-bullet {
@@ -925,43 +997,57 @@ function renderInfographicArchetypeLayout(params: {
       height: 14px;
       border-radius: 7px;
       background: ${accentColor};
-      border: 2.5px solid #FFFFFF;
+      border: 2px solid #FFFFFF;
+      box-shadow: 0 0 6px ${accentColor};
       z-index: 2;
-      box-shadow: 0 0 0 2px ${accentColor};
     }
     .vstep-tag {
-      font-size: 11.5px;
+      font-size: 11px;
       font-weight: 900;
       color: ${accentColor};
-      letter-spacing: 1.2px;
+      letter-spacing: 1.5px;
+      text-transform: uppercase;
       margin-bottom: 4px;
     }
     .vstep-label {
-      font-size: 14px;
+      font-size: 14.5px;
       font-weight: 800;
       color: ${primaryColor};
       text-transform: uppercase;
       line-height: 1.25;
-      margin-bottom: 6px;
+      margin-bottom: 8px;
       padding-bottom: 4px;
-      border-bottom: 2px solid ${accentColor}33;
+      border-bottom: 1.5px solid ${accentColor}33;
     }
     .vstep-desc {
       font-size: 12.5px;
-      line-height: 1.42;
+      line-height: 1.45;
       color: ${secondaryColor};
       font-weight: 600;
       flex-grow: 1;
+    }
+    .vstep-metric-tag {
+      margin-top: 10px;
+      font-size: 10.5px;
+      font-weight: 800;
+      letter-spacing: 1px;
+      color: ${accentColor};
+      background: ${accentColor}18;
+      padding: 4px 8px;
+      border-radius: 4px;
+      border: 1px solid ${accentColor}33;
+      text-align: center;
     }
     .vtimeline-closing-banner {
       background: ${cardBg};
       border-left: 5px solid ${accentColor};
       border-radius: 8px;
-      padding: 10px 16px;
+      padding: 12px 18px;
       font-size: 14px;
       font-weight: 700;
       color: ${primaryColor};
-      box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+      box-shadow: 0 4px 14px rgba(0,0,0,0.08);
+      backdrop-filter: blur(10px);
     }
   `;
 
@@ -1023,9 +1109,9 @@ export class ChromiumPosterCompositor {
     const bdLeft = Math.round(bd.x * 1080);
     const bdWidth = Math.round(bd.w * 1080);
 
-    const ftTop = Math.round(ft.y * 1350);
-    const ftLeft = Math.round(ft.x * 1080);
-    const ftWidth = Math.round(ft.w * 1080);
+    const ftTop = isInfographic ? 1250 : Math.round(ft.y * 1350);
+    const ftLeft = isInfographic ? 54 : Math.round(ft.x * 1080);
+    const ftWidth = isInfographic ? 972 : Math.round(ft.w * 1080);
 
     // Unified Editorial Column bounds (mencegah collision antar elemen 100%):
     let flowLeft = Math.max(40, Math.min(hlLeft, bdLeft));
@@ -1229,9 +1315,9 @@ export class ChromiumPosterCompositor {
     /* Top Running Header / Edition Tag */
     .edition-tag {
       position: absolute;
-      top: 36px;
-      left: 86px;
-      right: 86px;
+      top: ${isInfographic ? '26px' : '36px'};
+      left: ${isInfographic ? '54px' : '86px'};
+      right: ${isInfographic ? '54px' : '86px'};
       display: flex;
       justify-content: space-between;
       align-items: center;
