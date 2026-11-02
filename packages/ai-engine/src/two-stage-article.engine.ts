@@ -13,12 +13,12 @@ export interface ChapterBlueprint {
   paragraphSubPoints?: string[];
   assignedEvidenceTokens?: string[];
   formatStyle:
-    | 'NARRATIVE_ONLY'
-    | 'NARRATIVE_WITH_TABLE'
-    | 'NARRATIVE_WITH_CHART'
-    | 'NARRATIVE_WITH_ROOT_CAUSE'
-    | 'NARRATIVE_WITH_ROADMAP'
-    | 'FULL_ANALYTICAL';
+  | 'NARRATIVE_ONLY'
+  | 'NARRATIVE_WITH_TABLE'
+  | 'NARRATIVE_WITH_CHART'
+  | 'NARRATIVE_WITH_ROOT_CAUSE'
+  | 'NARRATIVE_WITH_ROADMAP'
+  | 'FULL_ANALYTICAL';
   tablePrompt?: string;
   chartSpec?: {
     title: string;
@@ -235,11 +235,10 @@ ANATOMI ALUR BAB YANG DIHARUSKAN UNTUK GAYA ${profile.style}:
 ${profile.chapterAnatomyDirectives.map((d) => `- ${d}`).join('\n')}
 
 PEDOMAN FORMAT HEADING BAB (BR-01):
-${
-  profile.headingFormat === 'JOURNALISTIC_FLOW'
-    ? '- GAYA POPULER: DILARANG menggunakan kata "Bab I", "Bab II", dst pada "chapterNumber" maupun "title"! Gunakan judul subbab jurnalistik mengalir yang memikat (misal: "Menanti Janji di Ujung Aspal", "Antara Kuota Pupuk dan Keringat Petani"). Set "chapterNumber" menjadi "Bagian 1", "Bagian 2", dst.'
-    : '- GAYA FORMAL/TEKNOKRATIS: Gunakan penomoran "chapterNumber": "Bab I", "Bab II", dst, dengan "title" yang substantif tanpa tanda titik dua.'
-}
+${profile.headingFormat === 'JOURNALISTIC_FLOW'
+        ? '- GAYA POPULER: DILARANG menggunakan kata "Bab I", "Bab II", dst pada "chapterNumber" maupun "title"! Gunakan judul subbab jurnalistik mengalir yang memikat (misal: "Menanti Janji di Ujung Aspal", "Antara Kuota Pupuk dan Keringat Petani"). Set "chapterNumber" menjadi "Bagian 1", "Bagian 2", dst.'
+        : '- GAYA FORMAL/TEKNOKRATIS: Gunakan penomoran "chapterNumber": "Bab I", "Bab II", dst, dengan "title" yang substantif tanpa tanda titik dua.'
+      }
 
 DEKOMPOSISI DETAIL BERTINGKAT (AUTO-DETAIL EXPANSION - BR-02):
 Untuk setiap bab pada "chapters", Anda WAJIB membedah rencana penulisan ke dalam sub-elemen berikut:
@@ -393,13 +392,7 @@ Keluarkan hasil HANYA dalam format JSON valid berikut:
     articleTitle: string,
     params: GenerateArticleParams,
     previousChapterSummary?: string
-  ): Promise<{
-    chapterMarkdown: string;
-    chapterSummary: string;
-    tokensUsed: number;
-    inputTokens?: number;
-    outputTokens?: number;
-  }> {
+  ): Promise<{ chapterMarkdown: string; chapterSummary: string; tokensUsed: number }> {
     const profile = EditorialStyleProfileResolver.resolve(params.writingStyle, params.framingStance);
 
     let structuralMandate = '';
