@@ -1,5 +1,6 @@
 import * as fs from 'fs';
 import * as path from 'path';
+import { MediaProxyToken } from '@polaris/core-domain';
 
 export interface TikTokPublishResult {
   postId: string;
@@ -168,6 +169,42 @@ export class TikTokPublisherAdapter {
 
     const fullDescription = cleanCaption.slice(0, 4000);
 
+    // Pastikan URL gambar menggunakan domain terverifikasi (polarismedia.id).
+    // Jika aset media berada di Cloudinary, R2, atau storage eksternal, alihkan via
+    // HMAC-Signed Streaming Proxy yang di-host di https://api.polarismedia.id.
+    const apiBaseUrl = (process.env.NEXT_PUBLIC_API_URL || 'https://api.polarismedia.id/api/v1').replace(/\/api\/v1\/?$/, '');
+    const proxyBase = `${apiBaseUrl}/api/v1/social/tiktok/media-proxy`;
+
+    const compliantUrls = sanitizedUrls.map((url) => {
+      try {
+        const parsed = new URL(url);
+        // Jika sudah HTTPS dan host adalah polarismedia.id atau subdomainnya, pakai langsung
+        if (
+          parsed.protocol === 'https:' &&
+          (parsed.hostname === 'polarismedia.id' || parsed.hostname.endsWith('.polarismedia.id'))
+        ) {
+          return url;
+        }
+      } catch {
+        // Abaikan parse error, lanjut ke proxy
+      }
+
+      // Pertahankan ekstensi media (.webp, .jpg) untuk format detection TikTok
+      let ext = 'poster.webp';
+      try {
+        const pathname = new URL(url).pathname.toLowerCase();
+        if (pathname.endsWith('.jpg') || pathname.endsWith('.jpeg')) ext = 'poster.jpg';
+        else if (pathname.endsWith('.webp')) ext = 'poster.webp';
+      } catch {
+        // default
+      }
+
+      const token = MediaProxyToken.signUrl(url, 7200);
+      const proxiedUrl = `${proxyBase}/${ext}?token=${encodeURIComponent(token)}`;
+      console.log(`[TikTokPublisher] Mengonversi media eksternal (${url}) menjadi proxy compliant: ${proxiedUrl}`);
+      return proxiedUrl;
+    });
+
     const initUrl = `${this.baseUrl}/post/publish/content/init/`;
     const payload = {
       post_mode: 'DIRECT_POST',
@@ -182,7 +219,7 @@ export class TikTokPublisherAdapter {
       source_info: {
         source: 'PULL_FROM_URL',
         photo_cover_index: 0,
-        photo_images: sanitizedUrls,
+        photo_images: compliantUrls,
       },
     };
 

@@ -32,3 +32,4 @@ export * from './policies/EntitlementPolicy.js';
 
 // Security
 export * from './security/social-token-crypto.js';
+export * from './security/media-proxy-token.js';

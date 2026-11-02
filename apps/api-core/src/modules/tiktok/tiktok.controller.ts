@@ -22,6 +22,7 @@ import {
   TikTokAccountDetailDto,
   PublishTikTokDto,
 } from './dto/tiktok.dto.js';
+import { MediaProxyToken } from '@polaris/core-domain';
 import { Public } from '../../common/decorators/public.decorator.js';
 import { CurrentTenant, AuthenticatedTenantPayload } from '../../common/decorators/current-tenant.decorator.js';
 import { SubscriptionGuard } from '../../common/guards/subscription.guard.js';
@@ -130,6 +131,50 @@ export class TikTokController {
     @Param('jobId') jobId: string
   ): Promise<{ success: boolean; data: any }> {
     return await this.tiktokService.getPublishingJobStatus(user.tenantId, jobId);
+  }
+
+  /**
+   * Streaming Reverse Proxy untuk media poster TikTok (PULL_FROM_URL).
+   * Menjamin domain yang dilihat TikTok adalah domain terverifikasi (polarismedia.id)
+   * tanpa membebani hard disk (0 bytes written) dan tanpa query database (HMAC self-contained).
+   */
+  @Public()
+  @Get(['media-proxy', 'media-proxy/:filename'])
+  async streamMediaProxy(
+    @Query('token') token: string,
+    @Res() res: Response
+  ): Promise<void> {
+    if (!token) {
+      res.status(HttpStatus.BAD_REQUEST).json({ error: 'Parameter token wajib disertakan.' });
+      return;
+    }
+
+    try {
+      const targetUrl = MediaProxyToken.verifyToken(token);
+
+      const upstream = await fetch(targetUrl);
+      if (!upstream.ok || !upstream.body) {
+        this.logger.warn(`[TikTokMediaProxy] Gagal fetch upstream: HTTP ${upstream.status} dari ${targetUrl}`);
+        res.status(upstream.status || HttpStatus.BAD_GATEWAY).send('Upstream media fetch failed');
+        return;
+      }
+
+      const contentType = upstream.headers.get('content-type') || 'image/webp';
+      const contentLength = upstream.headers.get('content-length');
+
+      res.setHeader('Content-Type', contentType);
+      if (contentLength) {
+        res.setHeader('Content-Length', contentLength);
+      }
+      res.setHeader('Cache-Control', 'public, max-age=7200, immutable');
+      res.setHeader('Access-Control-Allow-Origin', '*');
+
+      const { Readable } = await import('node:stream');
+      Readable.fromWeb(upstream.body as any).pipe(res);
+    } catch (err: any) {
+      this.logger.warn(`[TikTokMediaProxy] Akses ditolak: ${err.message}`);
+      res.status(HttpStatus.FORBIDDEN).json({ error: err.message });
+    }
   }
 }
 
