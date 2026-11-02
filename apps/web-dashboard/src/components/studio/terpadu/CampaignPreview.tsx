@@ -46,6 +46,7 @@ import {
   X,
   Video,
   AlertTriangle,
+  Info,
 } from 'lucide-react';
 import { ApiClient } from '@/lib/api-client';
 import { downloadImageFile } from '@/lib/utils';
