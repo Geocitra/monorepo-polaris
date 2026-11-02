@@ -340,6 +340,7 @@ export class OpenAIAIEngineAdapter implements ILLMProviderPort {
     tenantBrandHex?: string;
     tenantId?: string;
     variationKey?: string;
+    isInfographic?: boolean;
   }): Promise<ArtCollagePosterResult> {
     return ArtCollagePosterPipeline.generate(params);
   }

@@ -1050,4 +1050,237 @@ export const POSTER_BLUEPRINT_CATALOG: PreAnalyzedPosterBlueprint[] = [
       canMutatePalette: true,
     },
   },
+
+  // ---------------------------------------------------------------------------
+  // 23. INFOGRAFIS 01: GELOMBANG NARATIF (MULTI-DIMENSI)
+  // ---------------------------------------------------------------------------
+  {
+    id: 'INF-01-NARRATIVE-WAVE',
+    name: 'Gelombang Naratif (Multi-Dimensi)',
+    archetype: 'INFOGRAPHIC_NARRATIVE_WAVE',
+    referenceFile: 'template-01-red-wave-narrative.jpg',
+    description: 'Pita narasi merah bergelombang (S-curve) membelah tahapan/dimensi isu, dengan potongan foto humanis kolase hitam-putih di atas kertas krem vintage.',
+    tags: ['infografis', 'gelombang', 'multi-dimensi', 'tahapan', 'narasi', 'merah', 'humanis', 'kolase'],
+    aspectRatio: '4:5',
+    colorPalette: {
+      primaryAccent: '#9E1B1E',
+      secondaryAccent: '#1F2937',
+      backgroundBase: '#F6F3EB',
+      textColor: '#FFFFFF',
+      subTextColor: '#4B5563',
+    },
+    scenePromptHint: 'Dramatic graphic art poster with a deep crimson flowing organic S-curve ribbon dividing the canvas into distinct story stages, black-and-white halftone photo cutouts of everyday people, warm textured cream newsprint, surreal botanical cutouts, clean paper areas reserved for typography.',
+    negativeSpaceZone: 'Divided sections along the crimson curve with clear uncluttered background paper zones for text dimensions.',
+    slotManifest: {
+      canvas: { width: 1080, height: 1350, aspectRatio: '4:5' },
+      slots: {
+        subjectPhoto: { x: 0.50, y: 0.38, w: 0.45, h: 0.50, anchor: 'center' },
+        headlineBlock: { x: 0.08, y: 0.04, w: 0.84, maxLines: 2, fontFamily: 'Bebas Neue', fontSizePx: 80, textColor: '#9E1B1E', isUppercase: true },
+        quoteStatement: { x: 0.08, y: 0.92, w: 0.84, fontFamily: 'Plus Jakarta Sans', fontSizePx: 14, textColor: '#4B5563' },
+        memberIdentity: { x: 0.08, y: 0.95, w: 0.45, nameFontSizePx: 16, titleFontSizePx: 12, nameColor: '#1F2937', titleColor: '#9E1B1E' },
+        officialEmblem: { x: 0.82, y: 0.03, w: 0.12, maxHeightPx: 38, placement: 'top-right' },
+      },
+    },
+    fixedConstraints: {
+      baseBackgroundTone: 'WARM_PAPER',
+      requiredFontFamilies: {
+        headline: 'Bebas Neue',
+        body: 'Plus Jakarta Sans',
+      },
+      imageNegativeAllow: ['banner', 'frame', 'border'],
+      toneSafety: 'ALL_TOPICS',
+    },
+    variationRules: {
+      allowedLayoutVariants: ['TOP_BANNER', 'EDITORIAL_SPLIT'],
+      allowedHeaderPlacements: ['top'],
+      allowedCardArrangements: ['stacked', 'grid_compact'],
+      canMutatePalette: true,
+    },
+  },
+
+  // ---------------------------------------------------------------------------
+  // 24. INFOGRAFIS 02: KRONIK TOKOH & GRID SEJARAH
+  // ---------------------------------------------------------------------------
+  {
+    id: 'INF-02-CHRONICLE-GRID',
+    name: 'Kronik Tokoh & Grid Militer/Sejarah',
+    archetype: 'INFOGRAPHIC_CHRONICLE_GRID',
+    referenceFile: 'template-02-biography-timeline-grid.jpg',
+    description: 'Grid infografis biografi koran dengan masthead vertikal oranye tebal di sisi kiri, foto potret tokoh, dan kartu-kartu rekam jejak perjuangan/pendidikan di sebelah kanan.',
+    tags: ['infografis', 'biografi', 'kronik', 'tokoh', 'sejarah', 'militer', 'timeline', 'grid', 'oranye'],
+    aspectRatio: '4:5',
+    colorPalette: {
+      primaryAccent: '#E25822',
+      secondaryAccent: '#2C5E43',
+      backgroundBase: '#FBF9F4',
+      textColor: '#111827',
+      subTextColor: '#374151',
+    },
+    scenePromptHint: 'Editorial newspaper chronicle infographic, strong vertical orange masthead column on the left with a prominent biographical portrait bust cutout, structured multi-tiered milestone cards on the right with sepia archival photographs, clean typography gutters.',
+    negativeSpaceZone: 'The right 65% is composed of organized rectangular newsprint cards with calm cream paper gutters, leaving generous space for editorial copy.',
+    slotManifest: {
+      canvas: { width: 1080, height: 1350, aspectRatio: '4:5' },
+      slots: {
+        subjectPhoto: { x: 0.17, y: 0.48, w: 0.28, h: 0.35, anchor: 'center' },
+        headlineBlock: { x: 0.05, y: 0.05, w: 0.28, maxLines: 4, fontFamily: 'Bebas Neue', fontSizePx: 84, textColor: '#FFFFFF', isUppercase: true },
+        memberIdentity: { x: 0.05, y: 0.90, w: 0.30, nameFontSizePx: 16, titleFontSizePx: 12, nameColor: '#FFFFFF', titleColor: '#E25822' },
+        officialEmblem: { x: 0.82, y: 0.03, w: 0.12, maxHeightPx: 38, placement: 'top-right' },
+      },
+    },
+    fixedConstraints: {
+      baseBackgroundTone: 'WARM_PAPER',
+      requiredFontFamilies: {
+        headline: 'Bebas Neue',
+        body: 'Plus Jakarta Sans',
+      },
+      imageNegativeAllow: ['banner', 'frame', 'border'],
+      toneSafety: 'ALL_TOPICS',
+    },
+    variationRules: {
+      allowedLayoutVariants: ['EDITORIAL_SPLIT'],
+      allowedHeaderPlacements: ['top', 'center'],
+      allowedCardArrangements: ['stacked', 'grid_compact'],
+      canMutatePalette: true,
+    },
+  },
+
+  // ---------------------------------------------------------------------------
+  // 25. INFOGRAFIS 03: LINTASAN WAKTU JAM MELINGKAR
+  // ---------------------------------------------------------------------------
+  {
+    id: 'INF-03-RADIAL-CLOCK',
+    name: 'Lintasan Waktu Jam Melingkar',
+    archetype: 'INFOGRAPHIC_RADIAL_CLOCK',
+    referenceFile: 'template-03-radial-clock-chronicle.jpg',
+    description: 'Dial jam saku antik di sisi kiri dengan sektor waktu radial memancar ke tonggak-tonggak sejarah/kebijakan, ukiran klasik, dan judul vertikal dekoratif.',
+    tags: ['infografis', 'jam', 'radial', 'waktu', 'sejarah', 'evolusi', 'kronologi', 'antik', 'parchment'],
+    aspectRatio: '4:5',
+    colorPalette: {
+      primaryAccent: '#8B4513',
+      secondaryAccent: '#2E5B88',
+      backgroundBase: '#F5EFEB',
+      textColor: '#1C1917',
+      subTextColor: '#44403C',
+    },
+    scenePromptHint: 'Vintage educational chronicle poster, featuring an ornate antique mechanical clock dial on the left radiating era wedges outward into historical vignettes, classical engravings, book stacks, parchment paper grain, warm museum lighting.',
+    negativeSpaceZone: 'Radiating segments and right margins have soft beige parchment surfaces with ample breathing room for epoch callouts.',
+    slotManifest: {
+      canvas: { width: 1080, height: 1350, aspectRatio: '4:5' },
+      slots: {
+        subjectPhoto: { x: 0.22, y: 0.48, w: 0.30, h: 0.35, anchor: 'center' },
+        headlineBlock: { x: 0.04, y: 0.08, w: 0.16, maxLines: 6, fontFamily: 'Bebas Neue', fontSizePx: 54, textColor: '#8B4513', isUppercase: true },
+        quoteStatement: { x: 0.25, y: 0.90, w: 0.70, fontFamily: 'Plus Jakarta Sans', fontSizePx: 14, textColor: '#44403C' },
+        memberIdentity: { x: 0.05, y: 0.94, w: 0.30, nameFontSizePx: 16, titleFontSizePx: 12, nameColor: '#1C1917', titleColor: '#8B4513' },
+        officialEmblem: { x: 0.82, y: 0.03, w: 0.12, maxHeightPx: 38, placement: 'top-right' },
+      },
+    },
+    fixedConstraints: {
+      baseBackgroundTone: 'WARM_PAPER',
+      requiredFontFamilies: {
+        headline: 'Bebas Neue',
+        body: 'Plus Jakarta Sans',
+      },
+      imageNegativeAllow: ['banner', 'frame', 'border'],
+      toneSafety: 'ALL_TOPICS',
+    },
+    variationRules: {
+      allowedLayoutVariants: ['EDITORIAL_SPLIT'],
+      allowedHeaderPlacements: ['top'],
+      allowedCardArrangements: ['stacked'],
+      canMutatePalette: true,
+    },
+  },
+
+  // ---------------------------------------------------------------------------
+  // 26. INFOGRAFIS 04: ADVOKASI DATA & 5 PILAR AKSI
+  // ---------------------------------------------------------------------------
+  {
+    id: 'INF-04-ADVOCACY-PILLARS',
+    name: 'Advokasi Data & 5 Pilar Aksi',
+    archetype: 'INFOGRAPHIC_ADVOCACY_PILLARS',
+    referenceFile: 'template-04-advocacy-data-pillars.jpg',
+    description: 'Infografis advokasi kerakyatan berlatar motif batik Indonesia, kartu statistik angka persentase besar, ilustrasi warga, dan 5 pilar kapsul solusi vertikal (akronim aksi).',
+    tags: ['infografis', 'advokasi', 'kemiskinan', 'data', 'statistik', 'pilar', 'batik', 'kerakyatan', 'solusi'],
+    aspectRatio: '4:5',
+    colorPalette: {
+      primaryAccent: '#2E7D32',
+      secondaryAccent: '#D97706',
+      backgroundBase: '#C67D48',
+      textColor: '#FFFFFF',
+      subTextColor: '#FEF3C7',
+    },
+    scenePromptHint: 'Civic advocacy cartoon data infographic poster, subtle traditional Indonesian batik motif backdrop, high-contrast statistical data badge, poignant illustrated citizens, five rounded vertical solution pillar cards at the bottom with icon circles, vibrant colors.',
+    negativeSpaceZone: 'Top data badge areas and bottom rounded pillar cards provide clean contrast surfaces for stats and action steps.',
+    slotManifest: {
+      canvas: { width: 1080, height: 1350, aspectRatio: '4:5' },
+      slots: {
+        subjectPhoto: { x: 0.40, y: 0.45, w: 0.45, h: 0.40, anchor: 'center' },
+        headlineBlock: { x: 0.08, y: 0.04, w: 0.84, maxLines: 2, fontFamily: 'Anton', fontSizePx: 76, textColor: '#FFFFFF', isUppercase: true },
+        memberIdentity: { x: 0.08, y: 0.94, w: 0.45, nameFontSizePx: 16, titleFontSizePx: 12, nameColor: '#FFFFFF', titleColor: '#FEF3C7' },
+        officialEmblem: { x: 0.82, y: 0.03, w: 0.12, maxHeightPx: 38, placement: 'top-right' },
+      },
+    },
+    fixedConstraints: {
+      baseBackgroundTone: 'WARM_PAPER',
+      requiredFontFamilies: {
+        headline: 'Anton',
+        body: 'Plus Jakarta Sans',
+      },
+      imageNegativeAllow: ['banner', 'frame', 'border'],
+      toneSafety: 'ALL_TOPICS',
+    },
+    variationRules: {
+      allowedLayoutVariants: ['TOP_BANNER', 'CENTERED_HERO'],
+      allowedHeaderPlacements: ['top'],
+      allowedCardArrangements: ['stacked', 'grid_compact'],
+      canMutatePalette: true,
+    },
+  },
+
+  // ---------------------------------------------------------------------------
+  // 27. INFOGRAFIS 05: GARIS WAKTU VISIONER MODERN
+  // ---------------------------------------------------------------------------
+  {
+    id: 'INF-05-VISIONARY-TIMELINE',
+    name: 'Garis Waktu Visioner Modern',
+    archetype: 'INFOGRAPHIC_VISIONARY_TIMELINE',
+    referenceFile: 'template-05-visionary-milestone-timeline.jpg',
+    description: 'Profil editorial modern minimalis monokrom dengan kartu frosted glassmorphism, kutipan inspiratif, tipografi nama tokoh besar, dan pita garis waktu horizontal di bagian bawah.',
+    tags: ['infografis', 'visioner', 'tokoh', 'modern', 'monokrom', 'glassmorphism', 'inovasi', 'timeline', 'minimalis'],
+    aspectRatio: '4:5',
+    colorPalette: {
+      primaryAccent: '#111827',
+      secondaryAccent: '#6B7280',
+      backgroundBase: '#F3F4F6',
+      textColor: '#111827',
+      subTextColor: '#374151',
+    },
+    scenePromptHint: 'Ultra-modern high-contrast editorial visionary profile poster, centered artistic portrait bust illustration, frosted glassmorphism cards with subtle specular highlights, clean white studio background, dark horizontal milestone timeline ribbon across the bottom.',
+    negativeSpaceZone: 'Upper quote zone, side editorial description zone, and lower horizontal timeline bar offer crisp, pristine typographical areas.',
+    slotManifest: {
+      canvas: { width: 1080, height: 1350, aspectRatio: '4:5' },
+      slots: {
+        subjectPhoto: { x: 0.45, y: 0.35, w: 0.45, h: 0.50, anchor: 'center' },
+        headlineBlock: { x: 0.08, y: 0.16, w: 0.45, maxLines: 2, fontFamily: 'Bebas Neue', fontSizePx: 88, textColor: '#111827', isUppercase: true },
+        quoteStatement: { x: 0.08, y: 0.05, w: 0.60, fontFamily: 'Plus Jakarta Sans', fontSizePx: 18, textColor: '#111827' },
+        memberIdentity: { x: 0.08, y: 0.94, w: 0.45, nameFontSizePx: 16, titleFontSizePx: 12, nameColor: '#111827', titleColor: '#6B7280' },
+        officialEmblem: { x: 0.82, y: 0.03, w: 0.12, maxHeightPx: 38, placement: 'top-right' },
+      },
+    },
+    fixedConstraints: {
+      baseBackgroundTone: 'LIGHT',
+      requiredFontFamilies: {
+        headline: 'Bebas Neue',
+        body: 'Plus Jakarta Sans',
+      },
+      imageNegativeAllow: ['banner', 'frame', 'border'],
+      toneSafety: 'ALL_TOPICS',
+    },
+    variationRules: {
+      allowedLayoutVariants: ['EDITORIAL_SPLIT', 'BOTTOM_ANCHOR'],
+      allowedHeaderPlacements: ['top', 'center'],
+      allowedCardArrangements: ['stacked', 'single_hero_card'],
+      canMutatePalette: true,
+    },
+  },
 ];

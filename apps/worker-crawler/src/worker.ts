@@ -176,3 +176,7 @@ async function shutdown(signal: string) {
 
 process.on('SIGTERM', () => shutdown('SIGTERM'));
 process.on('SIGINT', () => shutdown('SIGINT'));
+
+// Worker trigger reload
+
+// Reload 17:44:51

@@ -562,6 +562,14 @@ Keluarkan output HANYA dalam format JSON murni:
 
     let englishPrompt = '';
 
+    const infographicZeroMandate = `
+[CRITICAL ZERO-TEXT / ZERO-WATERMARK MANDATE]
+- DO NOT generate any text, letters, numbers, words, headlines, coordinate labels, percentage values, signs, or watermarks.
+- DO NOT generate any fake logos, emblems, or brand signatures.
+- Authentic real-world scene with natural environmental details and genuine documentary civic activities, workers, or farmers in the field.
+- Clean visual photograph ready for crisp editorial compositing.
+`.trim();
+
     const zeroMandate = `
 [CRITICAL ZERO-HUMAN / ZERO-TEXT / ZERO-COORDINATE MANDATE]
 - Absolutely ZERO human faces, ZERO portraits, ZERO people, ZERO politicians, and ZERO human silhouettes.
@@ -812,6 +820,61 @@ Atmospheric documentary civic infrastructure setting with authentic journalistic
 Top 20% and column margins preserved as clean off-white paper with clean, uncluttered, soft open space.
 
 ${zeroMandate}
+      `.trim();
+    } else if (blueprint.archetype === 'INFOGRAPHIC_CHRONICLE_GRID') {
+      // INFOGRAPHIC 02: KRONIK GRID TOKOH & SEJARAH
+      englishPrompt = `
+[ROLE & EDITORIAL CIVIC DOCUMENTARY ART DIRECTION]
+High-impact, realistic documentary photographic journalism capturing the real-world civic environment for: "${cleanTopic}".
+Authentic documentary photos of Indonesian regional infrastructure, community initiatives, public works, and local civic engagement.
+Rich natural cinematic lighting, authentic 35mm film documentary texture, deep tonal contrast, clear physical details.
+Full-frame organic photographic scene with realistic depth, suitable for archival documentary editorial cropping.
+
+${infographicZeroMandate}
+      `.trim();
+    } else if (blueprint.archetype === 'INFOGRAPHIC_ADVOCACY_PILLARS') {
+      // INFOGRAPHIC 04: 5 PILAR ADVOKASI AKAR RUMPUT
+      englishPrompt = `
+[ROLE & EDITORIAL ADVOCACY DOCUMENTARY ART DIRECTION]
+Warm, human-centered documentary photojournalism capturing civic advocacy, community empowerment, and public welfare regarding: "${cleanTopic}".
+Authentic Indonesian grassroots community scenes, dedicated public servants, social progress, and civic dialogue in natural daylight.
+Rich documentary realism, authentic warm color grading with vibrant green and orange earth tones, 35mm film texture.
+Full-frame realistic environment with natural organic textures.
+
+${infographicZeroMandate}
+      `.trim();
+    } else if (blueprint.archetype === 'INFOGRAPHIC_NARRATIVE_WAVE') {
+      // INFOGRAPHIC 01: PITA NARASI GELOMBANG
+      englishPrompt = `
+[ROLE & NARRATIVE EDITORIAL DOCUMENTARY ART DIRECTION]
+Evocative documentary editorial photography capturing multifaceted public progress and civic life concerning: "${cleanTopic}".
+Authentic environmental perspective showing community resilience, modern public facilities, and cultural civic engagement in Indonesia.
+Dramatic natural lighting, rich textures, expressive mood with deep shadows and clean highlights.
+Full-frame authentic photographic capture.
+
+${infographicZeroMandate}
+      `.trim();
+    } else if (blueprint.archetype === 'INFOGRAPHIC_RADIAL_CLOCK') {
+      // INFOGRAPHIC 03: JAM RADIAL TONGGAK WAKTU
+      englishPrompt = `
+[ROLE & HISTORICAL & CONTEMPORARY DOCUMENTARY ART DIRECTION]
+Rich archival and contemporary documentary photojournalism representing the timeline, history, and development of: "${cleanTopic}".
+Indonesian historical milestones, cultural heritage, and modern civic infrastructure photographed in authentic documentary style.
+Atmospheric warm vintage grading, tactile archival paper texture, dignified civic gravitas.
+Full-frame authentic documentary scene.
+
+${infographicZeroMandate}
+      `.trim();
+    } else if (blueprint.archetype === 'INFOGRAPHIC_VISIONARY_TIMELINE') {
+      // INFOGRAPHIC 05: TIMELINE PROFIL VISIONER
+      englishPrompt = `
+[ROLE & MODERN VISIONARY EDITORIAL ART DIRECTION]
+Sleek, high-profile modern civic documentary photograph capturing technological innovation and forward-looking public governance for: "${cleanTopic}".
+Modern Indonesian infrastructure, smart public utilities, architectural lines, and dynamic public innovation.
+Clean high-contrast lighting, crisp details, refined contemporary atmosphere with subtle glass and steel textures.
+Full-frame documentary realism.
+
+${infographicZeroMandate}
       `.trim();
     } else if (blueprint.archetype === 'TECHNICAL_GRID_CALLOUT') {
       // TPL-22: TECHNICAL BLUEPRINT & ARCHITECTURAL CALLOUT

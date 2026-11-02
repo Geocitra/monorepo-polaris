@@ -118,9 +118,10 @@ export default function InfografisStudioPage() {
   // Prompt Form States
   const [promptInput, setPromptInput] = useState('');
   const [selectedStyle, setSelectedStyle] = useState<VisualStyle>('infographic');
-  const [selectedAspectRatio, setSelectedAspectRatio] = useState<AspectRatio>('16:9');
+  const [selectedAspectRatio, setSelectedAspectRatio] = useState<AspectRatio>('4:5');
   const [includeUserPhoto, setIncludeUserPhoto] = useState(false);
   const [refiningPrompt, setRefiningPrompt] = useState(false);
+  const [selectedTemplate, setSelectedTemplate] = useState<string>('INFOGRAPHIC_CHRONICLE_GRID');
 
   // Load sessions from localStorage
   useEffect(() => {
@@ -336,6 +337,7 @@ export default function InfografisStudioPage() {
           generateDallePoster: true,
           aspectRatio: submittedAspectRatio,
           style: submittedStyle,
+          forcedArchetype: (selectedTemplate && selectedTemplate !== 'auto') ? selectedTemplate : (submittedStyle === 'infographic' ? 'auto' : undefined),
           includeUserPhoto,
           compositionMode: includeUserPhoto ? 'FIGURE_CENTERPIECE' : 'PUBLIC_ADVOCACY',
           customPhotoUrl: profile?.photoUrl || (Array.isArray(profile?.photoGallery) && profile.photoGallery[0]) || undefined,
@@ -744,6 +746,8 @@ export default function InfografisStudioPage() {
             onIncludeUserPhotoChange={setIncludeUserPhoto}
             onRefinePrompt={handleRefinePrompt}
             refiningPrompt={refiningPrompt}
+            selectedTemplate={selectedTemplate}
+            onTemplateChange={setSelectedTemplate}
           />
         </main>
       </div>

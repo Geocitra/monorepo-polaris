@@ -7,3 +7,4 @@ export * from './composition-planner.js';
 export * from './blueprint-repository.js';
 export * from './reference-vision-analyzer.js';
 export * from './art-collage/index.js';
+export * from './dynamic-infographic/index.js';

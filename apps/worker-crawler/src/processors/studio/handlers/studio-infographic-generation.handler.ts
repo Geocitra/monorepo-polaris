@@ -11,8 +11,15 @@ import {
   findSimilarKnowledgeChunks,
   withTenantContext,
 } from '@polaris/database';
-import { OpenAIAIEngineAdapter } from '@polaris/ai-engine';
-import { CloudflareR2StorageAdapter, ChromiumPosterCompositor } from '@polaris/storage';
+import {
+  OpenAIAIEngineAdapter,
+  DynamicInfographicOrchestrator,
+} from '@polaris/ai-engine';
+import {
+  CloudflareR2StorageAdapter,
+  ChromiumPosterCompositor,
+  DynamicInfographicCompositor,
+} from '@polaris/storage';
 import { ContentStatus, AssetType } from '@polaris/shared-types';
 import { AiCostCalculator } from '@polaris/core-domain';
 import { StudioGenerationJobPayload } from '../../../queues/studio.queue.js';
@@ -48,6 +55,7 @@ export class StudioInfographicGenerationHandler {
           customDapil: tenantMembers.customDapilName,
           personalCoverage: tenantMembers.personalCoverage,
           photoUrl: tenantMembers.photoUrl,
+          photoGallery: tenantMembers.photoGallery,
           commissionName: tenantMembers.commissionName,
           legislativeLevel: tenantMembers.legislativeLevel,
         })
@@ -86,6 +94,7 @@ export class StudioInfographicGenerationHandler {
         const escapedName = member.fullName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
         cleanPrompt = cleanPrompt.replace(new RegExp(`\\b${escapedName}\\b`, 'gi'), '');
       }
+
       cleanPrompt = cleanPrompt
         .replace(/menampilkan\s+[^,.]+(dengan|yang|untuk)/gi, '$1')
         .replace(/tokoh\s+[^,.]+/gi, '')
@@ -97,7 +106,8 @@ export class StudioInfographicGenerationHandler {
         data.headline ||
         (cleanPrompt.length <= 80 ? cleanPrompt : cleanPrompt.slice(0, 77) + '...');
 
-      // Keputusan Desain Mutlak: AI tidak merender wajah tokoh dan sistem tidak menaruh foto tokoh pada poster
+      // Resolusi identitas representasi resmi (Dewan/Tokoh Publik)
+      const roleIdentity = StudioContextHelper.resolveSignatureAndHeader(member, dapilName);
 
       const tenantBrandHex = await StudioContextHelper.resolveTenantBrandColor(
         tenantId,
@@ -169,61 +179,143 @@ export class StudioInfographicGenerationHandler {
       await StudioContextHelper.emitProgress(
         tenantId,
         jobId,
-        35,
-        'Merumuskan naskah editorial dan komposisi visual...'
+        25,
+        'Menentukan template & gaya naratif infografis...'
       );
 
-      // Pipeline tunggal Chromium — tanpa fallback Satori. Kegagalan dilempar apa adanya.
-      console.log(`[StudioInfographic] Menjalankan Art-Collage Pipeline + Chromium renderer...`);
-      const artCollage = await aiEngine.generateArtCollagePoster({
-        topic: cleanPrompt,
-        groundedContextSummary,
-        forcedArchetype: (data.forcedArchetype as any) || undefined,
-        tenantBrandHex,
-        tenantId,
-        variationKey: `${publicationId}:${jobId}`,
-      });
+      // Random picker otomatis dari 5 template infografis terkurasi
+      const infographicArchetypeList = [
+        'INFOGRAPHIC_CHRONICLE_GRID',
+        'INFOGRAPHIC_ADVOCACY_PILLARS',
+        'INFOGRAPHIC_NARRATIVE_WAVE',
+        'INFOGRAPHIC_RADIAL_CLOCK',
+        'INFOGRAPHIC_VISIONARY_TIMELINE',
+      ] as const;
 
-      const roleIdentity = StudioContextHelper.resolveSignatureAndHeader(member, dapilName);
+      let chosenArchetype = data.forcedArchetype as string | undefined;
+      if (!chosenArchetype || chosenArchetype === 'auto' || !infographicArchetypeList.includes(chosenArchetype as any)) {
+        chosenArchetype = infographicArchetypeList[Math.floor(Math.random() * infographicArchetypeList.length)];
+      }
 
-      await StudioContextHelper.emitProgress(
-        tenantId,
-        jobId,
-        70,
-        'Merender tipografi poster via Chromium...'
-      );
+      // Map archetype ke file referensi gambar template di uploads/references/infografis/
+      let templateRefFile = 'uploads/references/infografis/template-03-radial-clock-chronicle.jpg';
+      if (chosenArchetype === 'INFOGRAPHIC_CHRONICLE_GRID') {
+        templateRefFile = 'uploads/references/infografis/template-02-biography-timeline-grid.jpg';
+      } else if (chosenArchetype === 'INFOGRAPHIC_NARRATIVE_WAVE') {
+        templateRefFile = 'uploads/references/infografis/template-01-red-wave-narrative.jpg';
+      } else if (chosenArchetype === 'INFOGRAPHIC_ADVOCACY_PILLARS') {
+        templateRefFile = 'uploads/references/infografis/template-04-advocacy-data-pillars.jpg';
+      } else if (chosenArchetype === 'INFOGRAPHIC_VISIONARY_TIMELINE') {
+        templateRefFile = 'uploads/references/infografis/template-05-visionary-milestone-timeline.jpg';
+      }
 
-      const composed = await ChromiumPosterCompositor.compose({
-        canvasBuffer: artCollage.imageBuffer,
-        copy: artCollage.copy,
-        zones: artCollage.layout,
-        palette: {
-          accentHex: artCollage.mutation.palette.accentHex,
-          secondaryHex: artCollage.mutation.palette.secondaryHex,
-        },
-        signature: roleIdentity.signature,
-        headerTag: roleIdentity.headerTag,
-        editionTag: roleIdentity.editionTag,
-        textToneHint: artCollage.layout.textTone,
-        archetype: artCollage.archetype,
-      });
+      let posterBuffer: Buffer | null = null;
+      let posterSizeBytes = 0;
+      let promptUsedJson = '';
 
-      const posterBuffer = composed.buffer;
-      const posterSizeBytes = composed.sizeBytes;
-      const promptUsedJson = JSON.stringify({
-        engine: 'ART_COLLAGE_CHROMIUM',
-        renderer: 'chromium',
-        blueprintId: artCollage.blueprintId,
-        archetype: artCollage.archetype,
-        referenceFile: artCollage.referenceFile,
-        usedStyleReference: artCollage.usedStyleReference,
-        mutation: artCollage.mutation,
-        layout: artCollage.layout,
-        imagePrompt: artCollage.imagePrompt,
-        imageProvider: artCollage.imageProvider,
-        detectedLuminance: composed.detectedLuminance,
-        blendModeUsed: composed.blendModeUsed,
-      });
+      // =========================================================================
+      // AUTONOMOUS AI INFOGRAPHIC PIPELINE (4 LANGKAH DEDIKASI INFOGRAFIS)
+      // =========================================================================
+      try {
+        console.log(`[StudioInfographic] Menjalankan Autonomous AI Infographic Pipeline (${chosenArchetype})...`);
+
+        // Langkah 1, 2, 3: Konten Editorial, Visual Assets, dan Vision Layout Blueprint
+        const prepared = await DynamicInfographicOrchestrator.prepare({
+          topic: cleanPrompt,
+          dapilName,
+          targetRegion,
+          memberName: roleIdentity.signature,
+          memberTitle: roleIdentity.headerTag || `${member?.commissionName || 'KOMISI DPR RI'} // ${dapilName}`,
+          ragContextSummary: groundedContextSummary,
+          referenceTemplatePath: templateRefFile,
+          onProgress: async (percent, status) => {
+            await StudioContextHelper.emitProgress(tenantId, jobId, percent, status);
+          },
+        });
+
+        // Langkah 4: AI Menggabungkan Semua Menjadi Satu Gambar Infografis HD
+        await StudioContextHelper.emitProgress(
+          tenantId,
+          jobId,
+          80,
+          'AI menyatukan seluruh elemen menjadi gambar infografis HD...'
+        );
+
+        const composed = await DynamicInfographicCompositor.compose(
+          prepared.content,
+          prepared.layoutSpec,
+          {
+            motifImageBuffer: prepared.visualAssets.motifImageBuffer,
+            sectionImageBuffers: prepared.visualAssets.sectionImageBuffers,
+            decorations: prepared.visualAssets.decorations,
+          },
+          {
+            outputFormat: 'webp',
+            quality: 92,
+          }
+        );
+
+        posterBuffer = composed.buffer;
+        posterSizeBytes = composed.sizeBytes;
+        promptUsedJson = JSON.stringify({
+          engine: 'AUTONOMOUS_AI_INFOGRAPHIC_V1',
+          archetype: chosenArchetype,
+          templateReference: templateRefFile,
+          mainTitle: prepared.content.mainTitle,
+          layoutStyle: prepared.layoutSpec.styleName,
+          sectionsCount: prepared.content.sections.length,
+        });
+
+        console.log(`[StudioInfographic] Autonomous Infographic sukses terbuat (${posterSizeBytes} bytes)`);
+      } catch (dynamicErr: any) {
+        console.warn(
+          `[StudioInfographic] Autonomous pipeline mengalami kendala (${dynamicErr.message}), beralih ke engine cadangan...`
+        );
+      }
+
+      // Fallback ke Art-Collage Chromium jika Autonomous Infographic mengalami kendala
+      if (!posterBuffer) {
+        console.log(`[StudioInfographic] Menjalankan Art-Collage Chromium fallback...`);
+        await StudioContextHelper.emitProgress(
+          tenantId,
+          jobId,
+          60,
+          'Merender visual alternatif via Chromium Art-Collage...'
+        );
+
+        const artCollage = await aiEngine.generateArtCollagePoster({
+          topic: cleanPrompt,
+          groundedContextSummary,
+          forcedArchetype: (chosenArchetype as any) || undefined,
+          tenantBrandHex,
+          tenantId,
+          variationKey: `${publicationId}:${jobId}`,
+        });
+
+        const composed = await ChromiumPosterCompositor.compose({
+          canvasBuffer: artCollage.imageBuffer,
+          copy: artCollage.copy,
+          zones: artCollage.layout,
+          palette: {
+            accentHex: artCollage.mutation.palette.accentHex,
+            secondaryHex: artCollage.mutation.palette.secondaryHex,
+          },
+          signature: roleIdentity.signature,
+          headerTag: roleIdentity.headerTag,
+          editionTag: roleIdentity.editionTag,
+          textToneHint: artCollage.layout.textTone,
+          archetype: artCollage.archetype,
+        });
+
+        posterBuffer = composed.buffer;
+        posterSizeBytes = composed.sizeBytes;
+        promptUsedJson = JSON.stringify({
+          engine: 'ART_COLLAGE_CHROMIUM_FALLBACK',
+          blueprintId: artCollage.blueprintId,
+          archetype: artCollage.archetype,
+          referenceFile: artCollage.referenceFile,
+        });
+      }
 
       await StudioContextHelper.emitProgress(tenantId, jobId, 85, 'Menyimpan aset infografis HD...');
 

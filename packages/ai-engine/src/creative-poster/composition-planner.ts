@@ -7,6 +7,7 @@ import {
   SurfaceMode,
   SubjectCompositionMode,
   resolveColorAuthority,
+  isInfographicArchetype,
 } from '@polaris/shared-types';
 import { PreAnalyzedPosterBlueprint, SynthesizedEditorialCopy } from './types.js';
 
@@ -262,6 +263,15 @@ export class CompositionPlanner {
   ): string {
     const compensation = isPreCrop916 ? 0.12 : 0.0;
     const { layoutVariant } = plan;
+
+    if (isInfographicArchetype(blueprint.archetype)) {
+      return `
+[SPATIAL COMPOSITION - FULL-FRAME DOCUMENTARY PHOTOJOURNALISM]
+- A full-frame, rich authentic documentary photography scene across the entire canvas capturing real-world physical details, environment, equipment, or community settings.
+- Natural photographic perspective with genuine documentary depth and authentic lighting.
+- Absolutely NO synthetic flat colored rectangles, NO drawn UI boxes, NO artificial empty colored panels, NO split borders, and NO text blocks.
+`.trim();
+    }
 
     let spatialDirectives = '';
 

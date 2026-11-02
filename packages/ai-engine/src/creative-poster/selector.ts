@@ -1,5 +1,6 @@
 import { POSTER_BLUEPRINT_CATALOG } from './catalog.js';
 import { CreativePosterArchetype, PreAnalyzedPosterBlueprint } from './types.js';
+import { isInfographicArchetype } from '@polaris/shared-types';
 
 export interface SelectBlueprintOptions {
   topic?: string;
@@ -8,6 +9,7 @@ export interface SelectBlueprintOptions {
   excludeBlueprintId?: string; // Untuk tombol "Acak Variasi Lain" agar tidak dapat yang sama persis
   forcedBrandHex?: string;
   strictlyEnforceBrandColor?: boolean;
+  isInfographic?: boolean;
 }
 
 export class PosterBlueprintSelector {
@@ -48,6 +50,24 @@ export class PosterBlueprintSelector {
 
     // 2. Kumpulan awal seluruh katalog
     let pool = [...catalog];
+
+    // Filter mode infografis: hanya 5 template infografis jika isInfographic aktif
+    const isInfographicMode = options.isInfographic || isInfographicArchetype(forcedArchetype);
+    if (isInfographicMode) {
+      const infographicPool = pool.filter(
+        (b) => isInfographicArchetype(b.archetype) || b.id.startsWith('INF-')
+      );
+      if (infographicPool.length > 0) {
+        pool = infographicPool;
+      }
+    } else if (options.isInfographic === false) {
+      const nonInfographicPool = pool.filter(
+        (b) => !isInfographicArchetype(b.archetype) && !b.id.startsWith('INF-')
+      );
+      if (nonInfographicPool.length > 0) {
+        pool = nonInfographicPool;
+      }
+    }
 
     // Exclude template sebelumnya (Anti-Repeat / Cooldown Memory)
     if (excludeBlueprintId && pool.length > 1) {
@@ -104,6 +124,18 @@ export class PosterBlueprintSelector {
       if (/anggaran|apbd|apbn|audit|keuangan|dana/i.test(normalizedTopic)) {
         if (blueprint.tags.some((t) => /infografis|data|grid|broadsheet/i.test(t))) score += 4;
       }
+      if (/waktu|jam|evolusi|periode|era|dekade|sejarah|kronik|biografi/i.test(normalizedTopic)) {
+        if (blueprint.tags.some((t) => /jam|radial|waktu|evolusi|sejarah|kronik|biografi|timeline/i.test(t))) score += 5;
+      }
+      if (/advokasi|kemiskinan|solusi|rakyat|bansos|bantuan|pilar|aksi/i.test(normalizedTopic)) {
+        if (blueprint.tags.some((t) => /advokasi|pilar|kerakyatan|solusi/i.test(t))) score += 5;
+      }
+      if (/visioner|tokoh|profil|pemimpin|modern|inovasi/i.test(normalizedTopic)) {
+        if (blueprint.tags.some((t) => /visioner|tokoh|inovasi|modern/i.test(t))) score += 5;
+      }
+      if (/tahapan|langkah|dimensi|alur|fase/i.test(normalizedTopic)) {
+        if (blueprint.tags.some((t) => /multi-dimensi|tahapan|gelombang|narasi/i.test(t))) score += 5;
+      }
 
       return { blueprint, score };
     });
@@ -111,7 +143,7 @@ export class PosterBlueprintSelector {
     // Urutkan berdasarkan skor relevansi
     scoredPool.sort((a, b) => b.score - a.score);
 
-    // Ambil kandidat relevan teratas (Top 8 - 10)
+    // Ambil kandidat relevan teratas
     const topCandidates = scoredPool.slice(0, Math.min(8, scoredPool.length)).map((s) => s.blueprint);
 
     // Ambil 2 - 3 Wildcard dari sisa pool yang belum masuk untuk menjaga keanekaragaman
@@ -125,7 +157,7 @@ export class PosterBlueprintSelector {
     const candidatePool = [...topCandidates, ...wildcards];
 
     // -------------------------------------------------------------------------
-    // STEP 3: TRUE RANDOM DRAW DI DALAM CANDIDATE POOL (8-12 Variasi)
+    // STEP 3: TRUE RANDOM DRAW DI DALAM CANDIDATE POOL
     // -------------------------------------------------------------------------
     const randomIndex = Math.floor(Math.random() * candidatePool.length);
     const chosen = candidatePool[randomIndex] || pool[0];

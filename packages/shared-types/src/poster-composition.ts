@@ -25,7 +25,26 @@ export type CreativePosterArchetype =
   | 'POLAROID_ADVENTURE'
   | 'VINTAGE_PERSONA_GAZETTE'
   | 'BROADSHEET_NEWSPAPER'
-  | 'TECHNICAL_GRID_CALLOUT';
+  | 'TECHNICAL_GRID_CALLOUT'
+  // 5 Arketipe Infografis Terkurasi dari Referensi
+  | 'INFOGRAPHIC_NARRATIVE_WAVE'
+  | 'INFOGRAPHIC_CHRONICLE_GRID'
+  | 'INFOGRAPHIC_RADIAL_CLOCK'
+  | 'INFOGRAPHIC_ADVOCACY_PILLARS'
+  | 'INFOGRAPHIC_VISIONARY_TIMELINE';
+
+export const INFOGRAPHIC_ARCHETYPES: CreativePosterArchetype[] = [
+  'INFOGRAPHIC_NARRATIVE_WAVE',
+  'INFOGRAPHIC_CHRONICLE_GRID',
+  'INFOGRAPHIC_RADIAL_CLOCK',
+  'INFOGRAPHIC_ADVOCACY_PILLARS',
+  'INFOGRAPHIC_VISIONARY_TIMELINE',
+];
+
+export function isInfographicArchetype(archetype?: string | null): boolean {
+  if (!archetype) return false;
+  return INFOGRAPHIC_ARCHETYPES.includes(archetype as CreativePosterArchetype);
+}
 
 export type PosterAspectRatio = '4:5' | '9:16' | '1:1' | '3:4' | '16:9';
 
@@ -304,6 +323,45 @@ export const LAYOUT_BLOCK_SCHEMA: Record<CreativePosterArchetype, LayoutBlockSpe
   RETRO_SPLIT_MITIGATION: [],
   MODULAR_GRID_CARDS: [],
   VINTAGE_PERSONA_GAZETTE: [],
+  INFOGRAPHIC_NARRATIVE_WAVE: [
+    { slotId: 'stage_1', roleDescription: 'Dimensi / tahap narasi pertama', headerMaxChars: 24, bodyMinChars: 80, bodyMaxChars: 180, defaultHeader: 'DIMENSI STRUKTURAL' },
+    { slotId: 'stage_2', roleDescription: 'Dimensi / tahap narasi kedua', headerMaxChars: 24, bodyMinChars: 80, bodyMaxChars: 180, defaultHeader: 'DIMENSI SOSIAL' },
+    { slotId: 'stage_3', roleDescription: 'Dimensi / tahap narasi ketiga', headerMaxChars: 24, bodyMinChars: 80, bodyMaxChars: 180, defaultHeader: 'DIMENSI EMOSIONAL' },
+    { slotId: 'stage_4', roleDescription: 'Dimensi / tahap narasi keempat', headerMaxChars: 24, bodyMinChars: 80, bodyMaxChars: 180, defaultHeader: 'DIMENSI STRATEGIS' },
+  ],
+  INFOGRAPHIC_CHRONICLE_GRID: [
+    { slotId: 'chronicle_1', roleDescription: 'Rekam jejak tahap awal / latar belakang', headerMaxChars: 36, bodyMinChars: 60, bodyMaxChars: 180, defaultHeader: 'RIWAYAT & LATAR BELAKANG' },
+    { slotId: 'chronicle_2', roleDescription: 'Pencapaian utama / fase perjuangan', headerMaxChars: 36, bodyMinChars: 60, bodyMaxChars: 180, defaultHeader: 'PERJUANGAN & KARIER' },
+    { slotId: 'chronicle_3', roleDescription: 'Langkah strategis / momentum penting', headerMaxChars: 36, bodyMinChars: 60, bodyMaxChars: 180, defaultHeader: 'MOMENTUM KRUSIAL' },
+    { slotId: 'chronicle_4', roleDescription: 'Pengawasan lapangan / rute aksi', headerMaxChars: 36, bodyMinChars: 60, bodyMaxChars: 180, defaultHeader: 'PENGAWASAN & PENANGANAN' },
+    { slotId: 'chronicle_5', roleDescription: 'Tantangan kesehatan / kendala lapangan', headerMaxChars: 36, bodyMinChars: 40, bodyMaxChars: 140, defaultHeader: 'TANTANGAN LAPANGAN' },
+    { slotId: 'chronicle_6', roleDescription: 'Capaian akhir / pengakuan kedaulatan', headerMaxChars: 36, bodyMinChars: 40, bodyMaxChars: 140, defaultHeader: 'CAPAIAN AKHIR & HARAPAN' },
+    { slotId: 'bio_1', roleDescription: 'Fakta profil / lokasi', headerMaxChars: 24, bodyMinChars: 30, bodyMaxChars: 120, defaultHeader: 'Lokasi & Wilayah' },
+    { slotId: 'bio_2', roleDescription: 'Fakta dampak warga', headerMaxChars: 24, bodyMinChars: 30, bodyMaxChars: 120, defaultHeader: 'Latar Belakang Masalah' },
+    { slotId: 'bio_3', roleDescription: 'Fakta regulasi kebijakan', headerMaxChars: 24, bodyMinChars: 30, bodyMaxChars: 120, defaultHeader: 'Regulasi & Alokasi Dana' },
+    { slotId: 'bio_4', roleDescription: 'Fakta komitmen & integritas', headerMaxChars: 24, bodyMinChars: 30, bodyMaxChars: 120, defaultHeader: 'Pengawalan Berkelanjutan' },
+  ],
+  INFOGRAPHIC_RADIAL_CLOCK: [
+    { slotId: 'epoch_1', roleDescription: 'Era / tonggak lintasan waktu ke-1 (Fase Inisiasi, Tradisi & Mandat Awal)', headerMaxChars: 28, bodyMinChars: 70, bodyMaxChars: 180, defaultHeader: 'FASE INISIASI & TRADISI' },
+    { slotId: 'epoch_2', roleDescription: 'Era / tonggak lintasan waktu ke-2 (Fase Regulasi, Payung Hukum & Kodifikasi)', headerMaxChars: 28, bodyMinChars: 70, bodyMaxChars: 180, defaultHeader: 'FASE REGULASI & KODIFIKASI' },
+    { slotId: 'epoch_3', roleDescription: 'Era / tonggak lintasan waktu ke-3 (Fase Mobilisasi, Gotong Royong & Aksi Lapangan)', headerMaxChars: 28, bodyMinChars: 70, bodyMaxChars: 180, defaultHeader: 'FASE MOBILISASI & PERGERAKAN' },
+    { slotId: 'epoch_4', roleDescription: 'Era / tonggak lintasan waktu ke-4 (Fase Modernisasi, Edukasi & Dokumen Publik)', headerMaxChars: 28, bodyMinChars: 70, bodyMaxChars: 180, defaultHeader: 'FASE MODERNISASI & DOKUMEN' },
+    { slotId: 'epoch_5', roleDescription: 'Era / tonggak lintasan waktu ke-5 (Fase Pertahanan, Resiliensi & Tanggap Lapangan)', headerMaxChars: 28, bodyMinChars: 70, bodyMaxChars: 180, defaultHeader: 'FASE PERTAHANAN & RESILIENSI' },
+    { slotId: 'epoch_6', roleDescription: 'Era / tonggak lintasan waktu ke-6 (Era Kontemporer, Akuntabilitas & Solusi Digital)', headerMaxChars: 28, bodyMinChars: 70, bodyMaxChars: 180, defaultHeader: 'ERA KONTEMPORER & DIGITAL' },
+  ],
+  INFOGRAPHIC_ADVOCACY_PILLARS: [
+    { slotId: 'pillar_p', roleDescription: 'Pilar aksi advokasi ke-1', headerMaxChars: 24, bodyMinChars: 60, bodyMaxChars: 140, defaultHeader: 'PEDULI SESAMA' },
+    { slotId: 'pillar_u', roleDescription: 'Pilar aksi advokasi ke-2', headerMaxChars: 24, bodyMinChars: 60, bodyMaxChars: 140, defaultHeader: 'UTAMAKAN KEADILAN' },
+    { slotId: 'pillar_t', roleDescription: 'Pilar aksi advokasi ke-3', headerMaxChars: 24, bodyMinChars: 60, bodyMaxChars: 140, defaultHeader: 'TINDAK NYATA' },
+    { slotId: 'pillar_u2', roleDescription: 'Pilar aksi advokasi ke-4', headerMaxChars: 24, bodyMinChars: 60, bodyMaxChars: 140, defaultHeader: 'UPAYAKAN SOLUSI' },
+    { slotId: 'pillar_s', roleDescription: 'Pilar aksi advokasi ke-5', headerMaxChars: 24, bodyMinChars: 60, bodyMaxChars: 140, defaultHeader: 'SATUKAN LANGKAH' },
+  ],
+  INFOGRAPHIC_VISIONARY_TIMELINE: [
+    { slotId: 'milestone_1', roleDescription: 'Kelahiran ide / inisiasi karya', headerMaxChars: 24, bodyMinChars: 70, bodyMaxChars: 160, defaultHeader: 'AWAL INOVASI' },
+    { slotId: 'milestone_2', roleDescription: 'Krisis & titik balik kepemimpinan', headerMaxChars: 24, bodyMinChars: 70, bodyMaxChars: 160, defaultHeader: 'TITIK BALIK' },
+    { slotId: 'milestone_3', roleDescription: 'Kebangkitan & revolusi teknologi', headerMaxChars: 24, bodyMinChars: 70, bodyMaxChars: 160, defaultHeader: 'REVOLUSI KARYA' },
+    { slotId: 'milestone_4', roleDescription: 'Warisan pemikiran & visi masa depan', headerMaxChars: 24, bodyMinChars: 70, bodyMaxChars: 160, defaultHeader: 'WARISAN VISIONER' },
+  ],
 };
 
 export interface PosterQAMetrics {

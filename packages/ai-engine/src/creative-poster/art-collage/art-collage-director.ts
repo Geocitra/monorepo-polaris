@@ -13,6 +13,7 @@
 import { openaiClient } from '../../client.js';
 import { MasterEditorialSanitizer } from '../../master-editorial-sanitizer.js';
 import type { CreativePosterArchetype } from '../types.js';
+import { isInfographicArchetype } from '@polaris/shared-types';
 import type {
   ArtCollageAnchor,
   ArtCollageCopy,
@@ -153,10 +154,40 @@ export const ART_COLLAGE_DNA: Record<CreativePosterArchetype, ArtCollageDna> = {
     anchors: ['TEXT_TOP', 'TEXT_BOTTOM'],
     paperTone: 'LIGHT',
   },
-  TECHNICAL_GRID_CALLOUT: {
+    TECHNICAL_GRID_CALLOUT: {
     style:
       'off-white dotted grid paper; a black-and-white photo cutout of an anonymous figure at the bottom with a thick colored outline stroke around the silhouette, hand-drawn dashed curved arrows and highlighter marks',
     anchors: ['TEXT_TOP'],
+    paperTone: 'LIGHT',
+  },
+  INFOGRAPHIC_NARRATIVE_WAVE: {
+    style:
+      'editorial graphic narrative infographic on textured warm cream paper; an organic crimson red S-curve ribbon flows across the canvas separating distinct thematic sections, black-and-white halftone cutouts of everyday people and surreal botanical accents, clean paper background margins',
+    anchors: ['TEXT_TOP', 'TEXT_BOTTOM'],
+    paperTone: 'LIGHT',
+  },
+  INFOGRAPHIC_CHRONICLE_GRID: {
+    style:
+      'vintage newspaper chronicle infographic on clean off-white newsprint; a solid orange vertical masthead column along the left with a prominent monochrome portrait bust cutout, and clean structured grid milestone cards with aged archival photos and forest green accent tags on the right',
+    anchors: ['TEXT_RIGHT', 'TEXT_TOP'],
+    paperTone: 'LIGHT',
+  },
+  INFOGRAPHIC_RADIAL_CLOCK: {
+    style:
+      'vintage antique chronicle poster on aged parchment paper; an ornate pocket-watch clock dial on the left with radial epoch time sectors radiating outward, vintage book stacks, historical copperplate engravings, sepia ink wash texture',
+    anchors: ['TEXT_RIGHT', 'TEXT_TOP'],
+    paperTone: 'LIGHT',
+  },
+  INFOGRAPHIC_ADVOCACY_PILLARS: {
+    style:
+      'civic advocacy cartoon data infographic with subtle Indonesian batik cloud pattern backdrop; high-contrast percentage statistic badge, expressive citizen illustrations, and five clean rounded vertical solution pillar cards with small icon circles at the bottom, warm wood and earthy tones',
+    anchors: ['TEXT_TOP', 'TEXT_BOTTOM'],
+    paperTone: 'LIGHT',
+  },
+  INFOGRAPHIC_VISIONARY_TIMELINE: {
+    style:
+      'modern high-contrast editorial visionary profile on pure light background; centered artistic portrait sketch or cutout, frosted glassmorphism cards with crisp edges, pull quote styling, and a clean dark horizontal milestone timeline bar running across the bottom',
+    anchors: ['TEXT_TOP', 'TEXT_BOTTOM'],
     paperTone: 'LIGHT',
   },
 };
@@ -302,11 +333,15 @@ function clampSentence(text: string, max: number): string {
   return `${clampWords(clean, max - 1).replace(/[,;:\s]+$/, '')}.`;
 }
 
-function finalizeCopy(raw: Partial<ArtCollageCopy>, topic: string): ArtCollageCopy {
+function finalizeCopy(
+  raw: Partial<ArtCollageCopy>,
+  topic: string,
+  archetype?: CreativePosterArchetype
+): ArtCollageCopy {
   const s = (t?: string) => MasterEditorialSanitizer.sanitize(t || '');
   const points = (Array.isArray(raw.points) ? raw.points : [])
     .filter((pt) => pt && (pt.label || pt.text))
-    .slice(0, 3)
+    .slice(0, archetype === 'INFOGRAPHIC_ADVOCACY_PILLARS' ? 5 : isInfographicArchetype(archetype) ? 4 : 3)
     .map((pt) => ({
       label: clampWords(MasterEditorialSanitizer.cleanHeadline(pt.label || ''), COPY_LIMITS.pointLabel).toUpperCase(),
       text: clampSentence(s(pt.text), COPY_LIMITS.pointText),
@@ -335,18 +370,32 @@ function finalizeCopy(raw: Partial<ArtCollageCopy>, topic: string): ArtCollageCo
 export async function synthesizeArtCollageCopy(params: {
   topic: string;
   groundedContext?: string;
+  archetype?: CreativePosterArchetype;
 }): Promise<ArtCollageCopy> {
-  const { topic, groundedContext } = params;
+  const { topic, groundedContext, archetype } = params;
+
+  let infographicGuide = '';
+  if (archetype === 'INFOGRAPHIC_ADVOCACY_PILLARS') {
+    infographicGuide = '\nSTRUKTUR INFOGRAFIS PILAR AKSI:\nTulis points TEPAT 5 item langkah aksi solutif (misal pilar tindakan atau akronim kata kerja), label kata singkat maks 18 karakter.\n';
+  } else if (archetype === 'INFOGRAPHIC_NARRATIVE_WAVE') {
+    infographicGuide = '\nSTRUKTUR INFOGRAFIS GELOMBANG NARATIF:\nTulis points TEPAT 4 item mewakili 4 sudut pandang atau dimensi isu (misal: Dimensi Regulasi, Dimensi Sosial, Tantangan Lapangan, Solusi Terarah).\n';
+  } else if (
+    archetype === 'INFOGRAPHIC_CHRONICLE_GRID' ||
+    archetype === 'INFOGRAPHIC_RADIAL_CLOCK' ||
+    archetype === 'INFOGRAPHIC_VISIONARY_TIMELINE'
+  ) {
+    infographicGuide = '\nSTRUKTUR INFOGRAFIS KRONIK / LINTASAN WAKTU:\nTulis points 3 atau 4 item berupa urutan tonggak peristiwa, rekam jejak atau fase kronologi waktu strategis.\n';
+  }
 
   const systemPrompt = `Anda adalah copywriter editorial kebijakan publik profesional berstandar tinggi (mengikuti Master Editorial Rules).
 Tulis teks poster ringkas bertopik: "${topic}".
-${groundedContext ? `\nFAKTA RISET (gunakan angka HANYA jika ada di sini, jangan mengarang angka):\n${groundedContext.slice(0, 1800)}\n` : ''}
+${infographicGuide}${groundedContext ? `\nFAKTA RISET (gunakan angka HANYA jika ada di sini, jangan mengarang angka):\n${groundedContext.slice(0, 1800)}\n` : ''}
 PEDOMAN MASTER EDITORIAL RULES (WAJIB DIPATUHI):
 - Bahasa Indonesia baku, modern, matang, berbobot substantif, bukan gaya birokrasi kaku atau brosur jualan.
 - headline: 2 sampai 4 kata spesifik dan kontemporer, maks ${COPY_LIMITS.headline} karakter.
 - kicker: label rubrik ringkas di atas judul (misal: "TELAAH ISU", "KEBIJAKAN KESEHATAN", "INFRASTRUKTUR WILAYAH"), maks ${COPY_LIMITS.kicker} karakter. Jangan mencantumkan "PARLEMEN" atau "LEGISLATIF" jika bukan akun parlemen.
 - deck: 1 kalimat pengantar tuntas yang memperjelas tesis persoalan (bukan mengulang judul), maks ${COPY_LIMITS.deck} karakter.
-- points: TEPAT 2 atau 3 butir analisis konkret. label maks ${COPY_LIMITS.pointLabel} karakter (misal: "AKSES LAYANAN", "KENDALA ANGGARAN", "SOLUSI TEKNIS"), text 1 kalimat analitis tuntas maks ${COPY_LIMITS.pointText} karakter.
+- points: TEPAT 2 atau 3 butir analisis konkret (kecuali instruksi infografis di atas menentukan lain). label maks ${COPY_LIMITS.pointLabel} karakter (misal: "AKSES LAYANAN", "KENDALA ANGGARAN", "SOLUSI TEKNIS"), text 1 kalimat analitis tuntas maks ${COPY_LIMITS.pointText} karakter.
 - closingLine: 1 kalimat sintesis arah tindak lanjut terukur, maks ${COPY_LIMITS.closing} karakter. DILARANG membuat slogan motivasional generik seperti "Bersama kita wujudkan...".
 - PANTANGAN MUTLAK:
   * DILARANG kata "nyata" (ganti dengan "konkret", "terukur", atau data riil).
@@ -367,7 +416,7 @@ Keluarkan JSON murni:
       messages: [{ role: 'system', content: systemPrompt }],
     });
     const parsed = JSON.parse(response.choices[0]?.message?.content || '{}') as Partial<ArtCollageCopy>;
-    const copy = finalizeCopy(parsed, topic);
+    const copy = finalizeCopy(parsed, topic, archetype);
     if (!copy.headline || copy.points.length < 2) {
       throw new Error('Copy AI tidak lengkap (headline/points).');
     }
@@ -386,7 +435,8 @@ Keluarkan JSON murni:
         closingLine: 'Dibutuhkan komitmen konkret untuk perbaikan berkelanjutan.',
         visualSubject: `everyday Indonesian civic life directly related to: ${topic}`,
       },
-      topic
+      topic,
+      archetype
     );
   }
 }
