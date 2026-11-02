@@ -173,6 +173,11 @@ export class XPublisherAdapter {
     const data = (await res.json().catch(() => ({}))) as any;
 
     if (!res.ok || !data.data?.id) {
+      if (res.status === 402 || data.detail === 'credits depleted' || data.title === 'credits depleted') {
+        throw new Error(
+          '[XTweetError] Saldo kredit developer X (Twitter) habis (credits depleted). Silakan top up saldo prabayar di Developer Console (console.x.com).'
+        );
+      }
       const errMsg = data.detail || data.title || JSON.stringify(data);
       throw new Error(`[XTweetError] Gagal menerbitkan cuitan: ${errMsg}`);
     }
