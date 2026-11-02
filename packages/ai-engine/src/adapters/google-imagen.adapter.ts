@@ -123,11 +123,16 @@ export class GoogleImagenAdapter {
       if (!allowed.includes('border')) forbiddenLayoutTerms.push('borders');
       const forbiddenLayoutStr = forbiddenLayoutTerms.join(', ');
 
+      let activeModel = preferredModel;
+      let usageTokens = { inputTokens: Math.max(1, Math.ceil(refinedPrompt.length / 4)), outputTokens: 0 };
+
       try {
+        activeModel = studioImageModel;
         const contentResponse = await this.client.models.generateContent({
           model: studioImageModel,
           contents: `${refinedPrompt}. Visual aspect ratio: ${aspectRatio}. Generate a pure, textless photograph or illustration artwork only. DO NOT design a poster, DO NOT draw any ${forbiddenLayoutStr}, and DO NOT render any letters, words, numbers, or hex color codes anywhere in the image. Strict negative constraint: clean background, no text, no typography, no words, no human portrait in center, no double subjects.`,
         });
+        usageTokens = AiTelemetryService.extractGeminiUsage(contentResponse, refinedPrompt);
 
         const parts = contentResponse.candidates?.[0]?.content?.parts || [];
         for (const p of parts) {
@@ -150,6 +155,7 @@ export class GoogleImagenAdapter {
             ? process.env.GOOGLE_IMAGE_MODEL
             : 'imagen-3.0-generate-002';
 
+        activeModel = enterpriseModel;
         const response = await this.client.models.generateImages({
           model: enterpriseModel,
           prompt: refinedPrompt,
@@ -175,11 +181,13 @@ export class GoogleImagenAdapter {
       }
 
       await telemetry.endTrace({
-        inputTokens: 1000,
-        outputTokens: 0,
+        inputTokens: usageTokens.inputTokens,
+        outputTokens: usageTokens.outputTokens,
         status: 'SUCCESS',
+        actualModel: activeModel,
+        imageCalls: 1,
         outputPreview: {
-          model: preferredModel,
+          model: activeModel,
           aspectRatio,
           dataUrlPrefix: temporaryImageUrl.slice(0, 50),
         },
@@ -236,6 +244,8 @@ export class GoogleImagenAdapter {
       mimeType: mime,
     });
 
+    let usageTokens = { inputTokens: Math.max(1, Math.ceil(params.prompt.length / 4)), outputTokens: 0 };
+
     // Jalur 1: Gemini multimodal image (prompt + referensi gaya opsional)
     const tryGemini = async (withReference: boolean) => {
       const parts: any[] = [];
@@ -250,6 +260,7 @@ export class GoogleImagenAdapter {
         contents: [{ role: 'user', parts }],
         config: { responseModalities: ['IMAGE'], imageConfig: { aspectRatio } } as any,
       });
+      usageTokens = AiTelemetryService.extractGeminiUsage(res, params.prompt);
       for (const p of res.candidates?.[0]?.content?.parts || []) {
         if (p.inlineData?.data) return decode(p.inlineData.data, p.inlineData.mimeType || 'image/png');
       }
@@ -297,9 +308,11 @@ export class GoogleImagenAdapter {
       }
 
       await telemetry.endTrace({
-        inputTokens: 1000,
-        outputTokens: 0,
+        inputTokens: usageTokens.inputTokens,
+        outputTokens: usageTokens.outputTokens,
         status: 'SUCCESS',
+        actualModel: provider,
+        imageCalls: 1,
         outputPreview: { provider, usedStyleReference, bytes: result.imageBuffer.length },
       });
       return { ...result, provider, usedStyleReference };
@@ -314,4 +327,3 @@ export class GoogleImagenAdapter {
     }
   }
 }
-

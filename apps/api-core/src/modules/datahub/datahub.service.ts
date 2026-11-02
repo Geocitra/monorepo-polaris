@@ -143,7 +143,9 @@ export class DatahubService {
             if (fileData?.extractedRawText) {
               const cls = await DocumentClassifierService.classifyDocument(
                 originalName,
-                fileData.extractedRawText
+                fileData.extractedRawText,
+                undefined,
+                tenantId
               );
               categoryTag = cls.category;
             }
@@ -207,7 +209,8 @@ export class DatahubService {
       const extraction = await DocumentExtractorService.extractText(
         file.buffer,
         file.mimetype,
-        originalName
+        originalName,
+        tenantId
       );
       extractedText = extraction.text;
       totalPages = extraction.totalPages;
@@ -219,6 +222,7 @@ export class DatahubService {
           extractedText,
           existingCategory: dto.categoryTag,
           customTitle: finalDocTitle,
+          tenantId,
         });
         categoryTag = classification.category;
         if (finalDocTitle === originalName && classification.suggestedTitle) {
@@ -281,7 +285,7 @@ export class DatahubService {
       // 9. Batch Vector Embedding
       if (chunks.length > 0) {
         const chunkTexts = chunks.map((c) => c.fullChunkText);
-        const embeddings = await DatahubEmbedderService.generateBatchEmbeddings(chunkTexts);
+        const embeddings = await DatahubEmbedderService.generateBatchEmbeddings(chunkTexts, 50, tenantId);
 
         // Simpan seluruh chunk dan vektor ke pgvector
         const chunkValues = chunks.map((chunk, idx) => ({

@@ -1,6 +1,7 @@
 import { PDFParse } from 'pdf-parse';
 import mammoth from 'mammoth';
 import { googleGenAiClient } from '../client.js';
+import { AiTelemetryService } from '../telemetry/ai-telemetry.service.js';
 
 export interface ExtractionResult {
   text: string;
@@ -21,7 +22,8 @@ export class DocumentExtractorService {
   public static async extractText(
     buffer: Buffer,
     mimeType: string,
-    fileName: string
+    fileName: string,
+    tenantId?: string
   ): Promise<ExtractionResult> {
     const cleanMime = mimeType.toLowerCase();
     const lowerName = fileName.toLowerCase();
@@ -46,7 +48,7 @@ export class DocumentExtractorService {
 
         // Fallback ke Gemini Vision jika PDF adalah scan gambar dan Gemini client aktif
         if (googleGenAiClient) {
-          const visionText = await this.extractWithGeminiVision(buffer, 'application/pdf');
+          const visionText = await this.extractWithGeminiVision(buffer, 'application/pdf', tenantId);
           if (visionText && visionText.trim().length > 0) {
             return {
               text: visionText.trim(),
@@ -65,7 +67,7 @@ export class DocumentExtractorService {
         console.warn(`[DocumentExtractor] pdf-parse gagal untuk ${fileName}:`, err);
         // Coba fallback ke vision jika PDF error
         if (googleGenAiClient) {
-          const visionText = await this.extractWithGeminiVision(buffer, 'application/pdf');
+          const visionText = await this.extractWithGeminiVision(buffer, 'application/pdf', tenantId);
           return {
             text: visionText.trim(),
             totalPages: 1,
@@ -108,7 +110,8 @@ export class DocumentExtractorService {
 
       const visionText = await this.extractWithGeminiVision(
         buffer,
-        cleanMime.startsWith('image/') ? cleanMime : 'image/jpeg'
+        cleanMime.startsWith('image/') ? cleanMime : 'image/jpeg',
+        tenantId
       );
 
       return {
@@ -256,7 +259,11 @@ export class DocumentExtractorService {
    * Menggunakan Gemini Multimodal Vision untuk mentranskripsi dokumen scan, foto, atau infografis
    * menjadi Markdown yang rapi dan terstruktur (termasuk rekonstruksi tabel).
    */
-  private static async extractWithGeminiVision(buffer: Buffer, mimeType: string): Promise<string> {
+  private static async extractWithGeminiVision(
+    buffer: Buffer,
+    mimeType: string,
+    tenantId?: string
+  ): Promise<string> {
     if (!googleGenAiClient) return '';
 
     const base64Data = buffer.toString('base64');
@@ -268,27 +275,52 @@ Tugas Anda adalah membaca dan menyalin (transkrip) seluruh isi berkas/gambar ini
 - Kembalikan langsung teks hasil ekstraksi dalam format Markdown bersih tanpa kalimat basa-basi seperti "Berikut transkripnya".`;
 
     const modelName = process.env.GEMINI_VISION_MODEL || 'gemini-2.5-flash';
-
-    const response = await googleGenAiClient.models.generateContent({
+    const telemetry = AiTelemetryService.startTrace({
+      operation: 'datahub-gemini-vision-ocr',
       model: modelName,
-      contents: [
-        {
-          role: 'user',
-          parts: [
-            {
-              inlineData: {
-                data: base64Data,
-                mimeType,
-              },
-            },
-            {
-              text: prompt,
-            },
-          ],
-        },
-      ],
+      tenantId,
+      metadata: { mimeType, byteLength: buffer.length },
     });
 
-    return response.text || '';
+    try {
+      const response = await googleGenAiClient.models.generateContent({
+        model: modelName,
+        contents: [
+          {
+            role: 'user',
+            parts: [
+              {
+                inlineData: {
+                  data: base64Data,
+                  mimeType,
+                },
+              },
+              {
+                text: prompt,
+              },
+            ],
+          },
+        ],
+      });
+
+      const text = response.text || '';
+      const usage = AiTelemetryService.extractGeminiUsage(response, prompt.length + 1000, text.length);
+      await telemetry.endTrace({
+        inputTokens: usage.inputTokens,
+        outputTokens: usage.outputTokens,
+        status: 'SUCCESS',
+        outputSummary: text.slice(0, 200),
+      });
+
+      return text;
+    } catch (err: any) {
+      await telemetry.endTrace({
+        inputTokens: Math.ceil(prompt.length / 4),
+        outputTokens: 0,
+        status: 'FAILED',
+        errorMessage: err?.message,
+      });
+      throw err;
+    }
   }
 }

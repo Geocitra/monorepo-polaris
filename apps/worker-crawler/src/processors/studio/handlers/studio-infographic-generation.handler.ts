@@ -277,6 +277,7 @@ export class StudioInfographicGenerationHandler {
           })
           .where(eq(contentPublications.id, publicationId));
 
+        // Single Source of Truth: Token & biaya USD infografis sudah dicatat oleh AiTelemetryService.endTrace().
         const currentMonth = new Date().toISOString().slice(0, 7);
         await tx
           .insert(tenantQuotaLedgers)
@@ -287,15 +288,13 @@ export class StudioInfographicGenerationHandler {
             articleUsed: 0,
             dalleLimit: 0,
             dalleUsed: 1,
-            totalTokensConsumed: 400,
-            estimatedCostUsd: String(AiCostCalculator.DALLE3_COST_PER_IMAGE_USD),
+            totalTokensConsumed: 0,
+            estimatedCostUsd: '0.00000',
           })
           .onConflictDoUpdate({
             target: [tenantQuotaLedgers.tenantId, tenantQuotaLedgers.billingCycleMonth],
             set: {
               dalleUsed: sql`${tenantQuotaLedgers.dalleUsed} + 1`,
-              totalTokensConsumed: sql`${tenantQuotaLedgers.totalTokensConsumed} + 400`,
-              estimatedCostUsd: sql`${tenantQuotaLedgers.estimatedCostUsd} + ${AiCostCalculator.DALLE3_COST_PER_IMAGE_USD}`,
               updatedAt: new Date(),
             },
           });

@@ -57,7 +57,8 @@ export class SourceCredibilityAssessor {
    */
   public static async assessSource(
     candidate: SourceCandidateInput,
-    researchTopic: string
+    researchTopic: string,
+    tenantId?: string
   ): Promise<CredibilityAssessmentResult> {
     const publisherScore = this.calculatePublisherBaselineScore(candidate.domain, candidate.publisherType);
 
@@ -124,6 +125,7 @@ Keluarkan JSON murni:
     const telemetry = AiTelemetryService.startTrace({
       operation: 'source-credibility-assessment',
       model: 'gpt-4o-mini',
+      tenantId,
       metadata: { url: candidate.url, domain: candidate.domain, doi: candidate.doi },
     });
 

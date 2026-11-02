@@ -176,7 +176,8 @@ export class AutonomousResearchOrchestrator {
             isPeerReviewed: paper.isPeerReviewed,
             hasRetractions: paper.hasRetractionsOrCorrections,
           },
-          plan.mainTopic
+          plan.mainTopic,
+          input.tenantId
         );
 
         // Penulisan multi-tabel sources + sourceVersions + sourceAssessments + researchJobSources secara atomik via repo
@@ -200,7 +201,8 @@ export class AutonomousResearchOrchestrator {
             extractedText: web.extractedText,
             publisherType: PublisherType.MEDIA,
           },
-          plan.mainTopic
+          plan.mainTopic,
+          input.tenantId
         );
 
         // Penulisan multi-tabel sources + sourceVersions + sourceAssessments + researchJobSources secara atomik via repo
@@ -226,7 +228,8 @@ export class AutonomousResearchOrchestrator {
       const extractedClaims = await ClaimEvidenceExtractor.extractClaimsAndEvidence(
         plan.mainTopic,
         insertedQuestions.map((q, idx) => ({ index: idx + 1, question: q.question })),
-        acceptedSources
+        acceptedSources,
+        input.tenantId
       );
 
       // Simpan claims, evidence_spans, dan claim_evidence secara atomik dalam satu DB transaction via repo

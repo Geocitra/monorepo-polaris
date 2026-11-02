@@ -218,7 +218,7 @@ export class TwoStageArticleEngine {
   public static async generateOutline(
     params: GenerateArticleParams,
     lengthPlan: ReturnType<typeof TwoStageArticleEngine.resolveLengthPlan>
-  ): Promise<{ outline: OutlineResult; tokensUsed: number }> {
+  ): Promise<{ outline: OutlineResult; tokensUsed: number; inputTokens: number; outputTokens: number }> {
     const profile = EditorialStyleProfileResolver.resolve(params.writingStyle, params.framingStance);
 
     const outlinePrompt = `ANDA ADALAH CHIEF EDITORIAL DIRECTOR & DRAFTER KEBIJAKAN EKSEKUTIF SENIOR.
@@ -312,7 +312,9 @@ Keluarkan hasil HANYA dalam format JSON valid berikut:
     });
 
     const parsed = JSON.parse(completion.choices[0]?.message?.content || '{}') as OutlineResult;
-    const tokens = (completion.usage?.prompt_tokens || 0) + (completion.usage?.completion_tokens || 0);
+    const inputTokens = completion.usage?.prompt_tokens || 0;
+    const outputTokens = completion.usage?.completion_tokens || 0;
+    const tokens = inputTokens + outputTokens;
 
     // Defensive Fallback Mapping (RISK-01)
     const sanitizedChapters: ChapterBlueprint[] = (parsed.chapters || []).map((ch, idx) => {
@@ -372,7 +374,7 @@ Keluarkan hasil HANYA dalam format JSON valid berikut:
       chapters: sanitizedChapters,
     };
 
-    return { outline: sanitizedOutline, tokensUsed: tokens };
+    return { outline: sanitizedOutline, tokensUsed: tokens, inputTokens, outputTokens };
   }
 
   /**
@@ -391,7 +393,13 @@ Keluarkan hasil HANYA dalam format JSON valid berikut:
     articleTitle: string,
     params: GenerateArticleParams,
     previousChapterSummary?: string
-  ): Promise<{ chapterMarkdown: string; chapterSummary: string; tokensUsed: number }> {
+  ): Promise<{
+    chapterMarkdown: string;
+    chapterSummary: string;
+    tokensUsed: number;
+    inputTokens?: number;
+    outputTokens?: number;
+  }> {
     const profile = EditorialStyleProfileResolver.resolve(params.writingStyle, params.framingStance);
 
     let structuralMandate = '';
@@ -546,7 +554,9 @@ Keluarkan hasil dalam format JSON:
     });
 
     const parsed = JSON.parse(completion.choices[0]?.message?.content || '{}');
-    const tokens = (completion.usage?.prompt_tokens || 0) + (completion.usage?.completion_tokens || 0);
+    const inputTokens = completion.usage?.prompt_tokens || 0;
+    const outputTokens = completion.usage?.completion_tokens || 0;
+    const tokens = inputTokens + outputTokens;
 
     const rawMarkdown = parsed.chapterMarkdown || `${headingDirective}\n\n(Konten bab)`;
     const sanitizedMarkdown = TwoStageArticleEngine.normalizeFormattingSpaces(
@@ -557,6 +567,8 @@ Keluarkan hasil dalam format JSON:
       chapterMarkdown: sanitizedMarkdown,
       chapterSummary: parsed.keyTakeawaysSummary ? MasterEditorialSanitizer.sanitize(parsed.keyTakeawaysSummary) : '',
       tokensUsed: tokens,
+      inputTokens,
+      outputTokens,
     };
   }
 
@@ -675,9 +687,19 @@ Keluarkan hasil dalam format JSON:
           25
         );
       }
-      const { outline, tokensUsed: outlineTokens } = await this.generateOutline(params, lengthPlan);
+      const outlineRes = await this.generateOutline(params, lengthPlan);
+      const { outline, tokensUsed: outlineTokens } = outlineRes;
 
       let totalTokens = outlineTokens;
+      let totalInputTokens =
+        outlineRes.inputTokens !== undefined
+          ? outlineRes.inputTokens
+          : Math.round(outlineTokens * 0.4);
+      let totalOutputTokens =
+        outlineRes.outputTokens !== undefined
+          ? outlineRes.outputTokens
+          : outlineTokens - totalInputTokens;
+
       const chapterContents: string[] = [];
       let runningSummary = '';
 
@@ -704,6 +726,16 @@ Keluarkan hasil dalam format JSON:
         chapterContents.push(chapterResult.chapterMarkdown);
         runningSummary = chapterResult.chapterSummary;
         totalTokens += chapterResult.tokensUsed;
+        const chIn =
+          chapterResult.inputTokens !== undefined
+            ? chapterResult.inputTokens
+            : Math.round(chapterResult.tokensUsed * 0.4);
+        const chOut =
+          chapterResult.outputTokens !== undefined
+            ? chapterResult.outputTokens
+            : chapterResult.tokensUsed - chIn;
+        totalInputTokens += chIn;
+        totalOutputTokens += chOut;
       }
 
       // Gabungkan keseluruhan naskah secara bersih dan padat
@@ -722,8 +754,8 @@ Keluarkan hasil dalam format JSON:
       }
 
       await telemetry.endTrace({
-        inputTokens: Math.round(totalTokens * 0.4),
-        outputTokens: Math.round(totalTokens * 0.6),
+        inputTokens: totalInputTokens,
+        outputTokens: totalOutputTokens,
         status: 'SUCCESS',
         outputPreview: {
           title: outline.title,

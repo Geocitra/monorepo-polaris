@@ -1,5 +1,6 @@
 import { DatahubCategory } from '@polaris/shared-types';
 import { googleGenAiClient } from '../client.js';
+import { AiTelemetryService } from '../telemetry/ai-telemetry.service.js';
 
 export interface ClassificationResult {
   category: DatahubCategory;
@@ -58,10 +59,12 @@ export class DocumentClassifierService {
           extractedText: string;
           existingCategory?: DatahubCategory;
           customTitle?: string;
+          tenantId?: string;
         }
       | string,
     extractedTextArg?: string,
-    existingCategoryArg?: DatahubCategory
+    existingCategoryArg?: DatahubCategory,
+    tenantIdArg?: string
   ): Promise<ClassificationResult> {
     const params =
       typeof paramsOrFileName === 'string'
@@ -69,6 +72,7 @@ export class DocumentClassifierService {
             fileName: paramsOrFileName,
             extractedText: extractedTextArg || '',
             existingCategory: existingCategoryArg,
+            tenantId: tenantIdArg,
           }
         : paramsOrFileName;
 
@@ -93,7 +97,8 @@ export class DocumentClassifierService {
           params.fileName,
           textSample,
           params.customTitle,
-          3000
+          3000,
+          params.tenantId
         );
 
         if (geminiResult) {
@@ -133,7 +138,8 @@ export class DocumentClassifierService {
     fileName: string,
     textSample: string,
     customTitle?: string,
-    timeoutMs = 3000
+    timeoutMs = 3000,
+    tenantId?: string
   ): Promise<ClassificationResult | null> {
     let timer: NodeJS.Timeout | undefined;
 
@@ -146,7 +152,7 @@ export class DocumentClassifierService {
 
     try {
       return await Promise.race([
-        this.classifyWithGemini(fileName, textSample, customTitle),
+        this.classifyWithGemini(fileName, textSample, customTitle, tenantId),
         timeoutPromise,
       ]);
     } finally {
@@ -160,7 +166,8 @@ export class DocumentClassifierService {
   private static async classifyWithGemini(
     fileName: string,
     textSample: string,
-    customTitle?: string
+    customTitle?: string,
+    tenantId?: string
   ): Promise<ClassificationResult | null> {
     if (!googleGenAiClient) return null;
 
@@ -191,34 +198,59 @@ Kembalikan format JSON persis seperti ini (tanpa markdown backtick):
 }`;
 
     const modelName = process.env.GEMINI_TEXT_MODEL || 'gemini-2.5-flash';
-    const response = await googleGenAiClient.models.generateContent({
+    const telemetry = AiTelemetryService.startTrace({
+      operation: 'datahub-document-classifier',
       model: modelName,
-      contents: [{ role: 'user', parts: [{ text: prompt }] }],
+      tenantId,
+      inputPayload: { fileName, customTitle },
     });
 
-    const responseText = response.text || '';
-    const jsonMatch = responseText.match(/\{[\s\S]*\}/);
-    if (!jsonMatch) {
-      throw new Error('Respon Gemini tidak memuat objek JSON yang valid.');
+    try {
+      const response = await googleGenAiClient.models.generateContent({
+        model: modelName,
+        contents: [{ role: 'user', parts: [{ text: prompt }] }],
+      });
+
+      const responseText = response.text || '';
+      const usage = AiTelemetryService.extractGeminiUsage(response, prompt.length, responseText.length);
+      await telemetry.endTrace({
+        inputTokens: usage.inputTokens,
+        outputTokens: usage.outputTokens,
+        status: 'SUCCESS',
+        outputSummary: responseText.slice(0, 200),
+      });
+
+      const jsonMatch = responseText.match(/\{[\s\S]*\}/);
+      if (!jsonMatch) {
+        throw new Error('Respon Gemini tidak memuat objek JSON yang valid.');
+      }
+
+      const parsed = JSON.parse(jsonMatch[0]);
+
+      const validCategories = Object.values(DatahubCategory);
+      const category = validCategories.includes(parsed.category)
+        ? (parsed.category as DatahubCategory)
+        : DatahubCategory.DOKUMEN_INTERNAL;
+
+      const confidenceScore = Math.max(0.5, Math.min(1.0, Number(parsed.confidenceScore) || 0.85));
+
+      return {
+        category,
+        confidenceScore,
+        isDeterministic: false,
+        reasoningSnippet: parsed.reasoningSnippet || 'Dianalisis secara semantik oleh Gemini.',
+        suggestedTitle: parsed.suggestedTitle || undefined,
+        needsReview: confidenceScore < 0.85,
+      };
+    } catch (err: any) {
+      await telemetry.endTrace({
+        inputTokens: Math.ceil(prompt.length / 4),
+        outputTokens: 0,
+        status: 'FAILED',
+        errorMessage: err?.message,
+      });
+      throw err;
     }
-
-    const parsed = JSON.parse(jsonMatch[0]);
-
-    const validCategories = Object.values(DatahubCategory);
-    const category = validCategories.includes(parsed.category)
-      ? (parsed.category as DatahubCategory)
-      : DatahubCategory.DOKUMEN_INTERNAL;
-
-    const confidenceScore = Math.max(0.5, Math.min(1.0, Number(parsed.confidenceScore) || 0.85));
-
-    return {
-      category,
-      confidenceScore,
-      isDeterministic: false,
-      reasoningSnippet: parsed.reasoningSnippet || 'Dianalisis secara semantik oleh Gemini.',
-      suggestedTitle: parsed.suggestedTitle || undefined,
-      needsReview: confidenceScore < 0.85,
-    };
   }
 
   /**

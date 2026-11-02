@@ -312,6 +312,7 @@ export class StudioRadarService {
       legislativeLevel: member.level || undefined,
       commissionName: member.commissionName || undefined,
       recentNewsHeadlines: recentHeadlines,
+      tenantId,
     });
 
     return {

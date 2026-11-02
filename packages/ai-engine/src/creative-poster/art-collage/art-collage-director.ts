@@ -12,6 +12,7 @@
 
 import { openaiClient } from '../../client.js';
 import { MasterEditorialSanitizer } from '../../master-editorial-sanitizer.js';
+import { AiTelemetryService } from '../../telemetry/ai-telemetry.service.js';
 import type { CreativePosterArchetype } from '../types.js';
 import type {
   ArtCollageAnchor,
@@ -335,8 +336,10 @@ function finalizeCopy(raw: Partial<ArtCollageCopy>, topic: string): ArtCollageCo
 export async function synthesizeArtCollageCopy(params: {
   topic: string;
   groundedContext?: string;
+  tenantId?: string;
 }): Promise<ArtCollageCopy> {
-  const { topic, groundedContext } = params;
+  const { topic, groundedContext, tenantId } = params;
+  const modelName = process.env.POSTER_COPY_MODEL || 'gpt-4o-mini';
 
   const systemPrompt = `Anda adalah copywriter editorial kebijakan publik profesional berstandar tinggi (mengikuti Master Editorial Rules).
 Tulis teks poster ringkas bertopik: "${topic}".
@@ -359,20 +362,41 @@ PEDOMAN MASTER EDITORIAL RULES (WAJIB DIPATUHI):
 Keluarkan JSON murni:
 {"kicker":"","headline":"","deck":"","points":[{"label":"","text":""}],"closingLine":"","visualSubject":""}`;
 
+  const telemetry = AiTelemetryService.startTrace({
+    operation: 'art-collage-copywriter',
+    model: modelName,
+    tenantId,
+    inputPayload: { topic },
+  });
+
   try {
     const response = await openaiClient.chat.completions.create({
-      model: process.env.POSTER_COPY_MODEL || 'gpt-4o-mini',
+      model: modelName,
       temperature: 0.5,
       response_format: { type: 'json_object' },
       messages: [{ role: 'system', content: systemPrompt }],
     });
-    const parsed = JSON.parse(response.choices[0]?.message?.content || '{}') as Partial<ArtCollageCopy>;
+    const content = response.choices[0]?.message?.content || '{}';
+    await telemetry.endTrace({
+      inputTokens: response.usage?.prompt_tokens || Math.ceil(systemPrompt.length / 4),
+      outputTokens: response.usage?.completion_tokens || Math.ceil(content.length / 4),
+      status: 'SUCCESS',
+      outputSummary: content.slice(0, 200),
+    });
+
+    const parsed = JSON.parse(content) as Partial<ArtCollageCopy>;
     const copy = finalizeCopy(parsed, topic);
     if (!copy.headline || copy.points.length < 2) {
       throw new Error('Copy AI tidak lengkap (headline/points).');
     }
     return copy;
   } catch (err: any) {
+    await telemetry.endTrace({
+      inputTokens: Math.ceil(systemPrompt.length / 4),
+      outputTokens: 0,
+      status: 'FAILED',
+      errorMessage: err?.message,
+    });
     console.warn(`[ArtCollageDirector] Copy AI gagal, memakai fallback deterministik: ${err?.message}`);
     return finalizeCopy(
       {

@@ -199,9 +199,11 @@ export class OpenAIAIEngineAdapter implements ILLMProviderPort {
         }
 
         await telemetry.endTrace({
-          inputTokens: 1000,
+          inputTokens: Math.max(1, Math.ceil(englishPrompt.length / 4)),
           outputTokens: 0,
           status: 'SUCCESS',
+          actualModel: activeModel,
+          imageCalls: 1,
           outputPreview: { temporaryImageUrl: temporaryImageUrl.slice(0, 100), model: activeModel },
         });
 
@@ -275,6 +277,7 @@ export class OpenAIAIEngineAdapter implements ILLMProviderPort {
       blueprint,
       tenantBrandHex: params.tenantBrandHex,
       imageProvider: activeProvider,
+      tenantId: params.tenantId,
     });
 
     const targetSize =
@@ -450,72 +453,158 @@ export class OpenAIAIEngineAdapter implements ILLMProviderPort {
   }
 
   public async generateInfographicSpec(articleContent: string, tenantId?: string): Promise<InfographicDataSpecDto> {
-    const response = await openaiClient.chat.completions.create({
+    const telemetry = AiTelemetryService.startTrace({
+      operation: 'generate-infographic-spec',
       model: 'gpt-4o-mini',
-      temperature: 0.2,
-      response_format: { type: 'json_object' },
-      messages: [
-        { role: 'system', content: PromptTemplates.getInfographicSystemPrompt() },
-        { role: 'user', content: `Artikel rujukan:\n\n${articleContent}` },
-      ],
+      tenantId,
+      metadata: { contentLength: articleContent.length },
     });
 
-    return JSON.parse(response.choices[0]?.message?.content || '{}');
+    try {
+      const response = await openaiClient.chat.completions.create({
+        model: 'gpt-4o-mini',
+        temperature: 0.2,
+        response_format: { type: 'json_object' },
+        messages: [
+          { role: 'system', content: PromptTemplates.getInfographicSystemPrompt() },
+          { role: 'user', content: `Artikel rujukan:\n\n${articleContent}` },
+        ],
+      });
+
+      const rawContent = response.choices[0]?.message?.content || '{}';
+      const parsed = JSON.parse(rawContent) as InfographicDataSpecDto;
+
+      await telemetry.endTrace({
+        inputTokens: response.usage?.prompt_tokens || 0,
+        outputTokens: response.usage?.completion_tokens || 0,
+        status: 'SUCCESS',
+        outputPreview: { headline: parsed.headline },
+      });
+
+      return parsed;
+    } catch (error: any) {
+      await telemetry.endTrace({
+        inputTokens: 0,
+        outputTokens: 0,
+        status: 'FAILED',
+        errorMessage: error.message,
+      });
+      throw error;
+    }
   }
 
   public async generateDallePrompt(infographicSpec: InfographicDataSpecDto): Promise<string> {
     return PromptTemplates.getDalleVisualPrompt(infographicSpec.headline, infographicSpec.policyTakeaway);
   }
 
-  public async generateSocialSnippets(articleContent: string): Promise<GeneratedSocialPackResult> {
-    const response = await openaiClient.chat.completions.create({
+  public async generateSocialSnippets(
+    articleContent: string,
+    tenantId?: string
+  ): Promise<GeneratedSocialPackResult> {
+    const telemetry = AiTelemetryService.startTrace({
+      operation: 'generate-social-snippets',
       model: 'gpt-4o-mini',
-      temperature: 0.4,
-      response_format: { type: 'json_object' },
-      messages: [
-        { role: 'system', content: PromptTemplates.getSocialSnippetSystemPrompt() },
-        { role: 'user', content: `Artikel rujukan:\n\n${articleContent}` },
-      ],
+      tenantId,
+      metadata: { contentLength: articleContent.length },
     });
 
-    const parsed = JSON.parse(response.choices[0]?.message?.content || '{}') as GeneratedSocialPackResult;
-    return {
-      instagramCaption: MasterEditorialSanitizer.sanitize(parsed.instagramCaption || ''),
-      twitterThreads: (parsed.twitterThreads || []).map((t) =>
-        MasterEditorialSanitizer.sanitize(t || '')
-      ),
-      whatsappBroadcast: MasterEditorialSanitizer.sanitize(parsed.whatsappBroadcast || ''),
-    };
+    try {
+      const response = await openaiClient.chat.completions.create({
+        model: 'gpt-4o-mini',
+        temperature: 0.4,
+        response_format: { type: 'json_object' },
+        messages: [
+          { role: 'system', content: PromptTemplates.getSocialSnippetSystemPrompt() },
+          { role: 'user', content: `Artikel rujukan:\n\n${articleContent}` },
+        ],
+      });
+
+      const parsed = JSON.parse(response.choices[0]?.message?.content || '{}') as GeneratedSocialPackResult;
+      const result: GeneratedSocialPackResult = {
+        instagramCaption: MasterEditorialSanitizer.sanitize(parsed.instagramCaption || ''),
+        twitterThreads: (parsed.twitterThreads || []).map((t) =>
+          MasterEditorialSanitizer.sanitize(t || '')
+        ),
+        whatsappBroadcast: MasterEditorialSanitizer.sanitize(parsed.whatsappBroadcast || ''),
+      };
+
+      await telemetry.endTrace({
+        inputTokens: response.usage?.prompt_tokens || 0,
+        outputTokens: response.usage?.completion_tokens || 0,
+        status: 'SUCCESS',
+        outputPreview: {
+          instagramLength: result.instagramCaption.length,
+          threadsCount: result.twitterThreads.length,
+        },
+      });
+
+      return result;
+    } catch (error: any) {
+      await telemetry.endTrace({
+        inputTokens: 0,
+        outputTokens: 0,
+        status: 'FAILED',
+        errorMessage: error.message,
+      });
+      throw error;
+    }
   }
 
   public async performVisionOCR(params: {
     base64Data: string;
     mimeType: string;
     fileName: string;
+    tenantId?: string;
   }): Promise<string> {
-    const imageUrl = params.base64Data.startsWith('data:')
-      ? params.base64Data
-      : `data:${params.mimeType};base64,${params.base64Data}`;
-
-    const response = await openaiClient.chat.completions.create({
+    const telemetry = AiTelemetryService.startTrace({
+      operation: 'openai-vision-ocr',
       model: 'gpt-4o',
-      temperature: 0.1,
-      max_tokens: 2000,
-      messages: [
-        {
-          role: 'system',
-          content: 'Ekstrak seluruh teks dan data tabel dari dokumen lampiran ke dalam format Markdown rapi.',
-        },
-        {
-          role: 'user',
-          content: [
-            { type: 'text', text: `Transkripsikan isi dokumen "${params.fileName}":` },
-            { type: 'image_url', image_url: { url: imageUrl, detail: 'high' } },
-          ],
-        },
-      ],
+      tenantId: params.tenantId,
+      metadata: { fileName: params.fileName, mimeType: params.mimeType },
     });
 
-    return response.choices[0]?.message?.content || 'Tidak ada teks yang terdeteksi.';
+    try {
+      const imageUrl = params.base64Data.startsWith('data:')
+        ? params.base64Data
+        : `data:${params.mimeType};base64,${params.base64Data}`;
+
+      const response = await openaiClient.chat.completions.create({
+        model: 'gpt-4o',
+        temperature: 0.1,
+        max_tokens: 2000,
+        messages: [
+          {
+            role: 'system',
+            content: 'Ekstrak seluruh teks dan data tabel dari dokumen lampiran ke dalam format Markdown rapi.',
+          },
+          {
+            role: 'user',
+            content: [
+              { type: 'text', text: `Transkripsikan isi dokumen "${params.fileName}":` },
+              { type: 'image_url', image_url: { url: imageUrl, detail: 'high' } },
+            ],
+          },
+        ],
+      });
+
+      const extractedText = response.choices[0]?.message?.content || 'Tidak ada teks yang terdeteksi.';
+
+      await telemetry.endTrace({
+        inputTokens: response.usage?.prompt_tokens || 0,
+        outputTokens: response.usage?.completion_tokens || 0,
+        status: 'SUCCESS',
+        outputPreview: { extractedLength: extractedText.length },
+      });
+
+      return extractedText;
+    } catch (error: any) {
+      await telemetry.endTrace({
+        inputTokens: 0,
+        outputTokens: 0,
+        status: 'FAILED',
+        errorMessage: error.message,
+      });
+      throw error;
+    }
   }
 }

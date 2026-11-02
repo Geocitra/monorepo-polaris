@@ -10,6 +10,7 @@ import {
   LayoutBlockSpec,
 } from './types.js';
 import { openaiClient } from '../client.js';
+import { AiTelemetryService } from '../telemetry/ai-telemetry.service.js';
 import { resolveHarmoniousPalette, getRandomHarmoniousPalette } from './palettes.js';
 import { TwoStageArticleEngine } from '../two-stage-article.engine.js';
 import { MasterEditorialSanitizer } from '../master-editorial-sanitizer.js';
@@ -23,6 +24,7 @@ export interface CompilePosterPromptOptions {
   compositionMode?: SubjectCompositionMode;
   tenantBrandHex?: string;
   imageProvider?: ImageGeneratorProvider;
+  tenantId?: string;
 }
 
 /**
@@ -37,9 +39,9 @@ export function hexToNaturalColorName(hex?: string, fallbackName = 'neutral tone
   const fullHex =
     cleanHex.length === 3
       ? cleanHex
-          .split('')
-          .map((c) => c + c)
-          .join('')
+        .split('')
+        .map((c) => c + c)
+        .join('')
       : cleanHex;
 
   // Exact map untuk palet dan token desain umum polaris
@@ -191,7 +193,8 @@ export class PosterPromptCompiler {
   public static async synthesizeEditorialCopyAndVisuals(
     topic: string,
     blueprint: PreAnalyzedPosterBlueprint,
-    groundedContext?: string
+    groundedContext?: string,
+    tenantId?: string
   ): Promise<SynthesizedEditorialCopy> {
     const blockSpecs: LayoutBlockSpec[] =
       LAYOUT_BLOCK_SCHEMA[blueprint.archetype] ||
@@ -207,11 +210,11 @@ export class PosterPromptCompiler {
     const blockConstraintsText =
       blockSpecs.length > 0
         ? blockSpecs
-            .map(
-              (b) =>
-                `- Slot ID "${b.slotId}": Header maks ${b.headerMaxChars} karakter (${b.roleDescription}). Body WAJIB antara ${b.bodyMinChars} s/d ${b.bodyMaxChars} karakter.`
-            )
-            .join('\n')
+          .map(
+            (b) =>
+              `- Slot ID "${b.slotId}": Header maks ${b.headerMaxChars} karakter (${b.roleDescription}). Body WAJIB antara ${b.bodyMinChars} s/d ${b.bodyMaxChars} karakter.`
+          )
+          .join('\n')
         : '- Format teks naskah sesuai kebutuhan arketipe editorial.';
 
     const sampleBlocks: Record<string, { header: string; body: string }> = {};
@@ -305,6 +308,13 @@ Keluarkan output HANYA dalam format JSON murni:
   }
 }`;
 
+    const telemetry = AiTelemetryService.startTrace({
+      operation: 'poster-editorial-copywriter',
+      model: 'gpt-4o-mini',
+      tenantId,
+      inputPayload: { topic, archetype: blueprint.archetype },
+    });
+
     try {
       const response = await openaiClient.chat.completions.create({
         model: 'gpt-4o-mini',
@@ -313,7 +323,15 @@ Keluarkan output HANYA dalam format JSON murni:
         messages: [{ role: 'system', content: systemPrompt }],
       });
 
-      const parsed = JSON.parse(response.choices[0]?.message?.content || '{}') as SynthesizedEditorialCopy;
+      const content = response.choices[0]?.message?.content || '{}';
+      await telemetry.endTrace({
+        inputTokens: response.usage?.prompt_tokens || Math.ceil(systemPrompt.length / 4),
+        outputTokens: response.usage?.completion_tokens || Math.ceil(content.length / 4),
+        status: 'SUCCESS',
+        outputSummary: content.slice(0, 200),
+      });
+
+      const parsed = JSON.parse(content) as SynthesizedEditorialCopy;
 
       // Resolusi palet warna senada aktif dari pilihan Art Director AI
       const resolvedPalette = resolveHarmoniousPalette(parsed.colorMood || blueprint.colorPalette.primaryAccent);
@@ -339,7 +357,13 @@ Keluarkan output HANYA dalam format JSON murni:
       }
 
       return this.enforceCharacterBudgets(parsed, blueprint);
-    } catch (error) {
+    } catch (error: any) {
+      await telemetry.endTrace({
+        inputTokens: Math.ceil(systemPrompt.length / 4),
+        outputTokens: 0,
+        status: 'FAILED',
+        errorMessage: error?.message,
+      });
       // Fallback deterministik kontekstual jika LLM timeout
       const randomPalette = getRandomHarmoniousPalette();
       const variants: PosterLayoutVariant[] = ['TOP_BANNER', 'BOTTOM_ANCHOR', 'EDITORIAL_SPLIT', 'CENTERED_HERO'];
@@ -542,7 +566,8 @@ Keluarkan output HANYA dalam format JSON murni:
     const synthesizedCopy = await this.synthesizeEditorialCopyAndVisuals(
       topic,
       blueprint,
-      groundedContextSummary
+      groundedContextSummary,
+      options.tenantId
     );
 
     const rawTopic = options.topic || '';

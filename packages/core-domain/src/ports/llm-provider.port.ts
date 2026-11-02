@@ -68,6 +68,6 @@ export interface ILLMProviderPort {
     aspectRatio?: '4:5' | '1:1' | '16:9' | '9:16' | '3:4' | '4:3';
     tenantId?: string;
   }): Promise<{ temporaryImageUrl: string; canonicalTraceId: string }>;
-  generateSocialSnippets(articleContent: string): Promise<GeneratedSocialPackResult>;
+  generateSocialSnippets(articleContent: string, tenantId?: string): Promise<GeneratedSocialPackResult>;
   generatePublicConcierge(params: GeneratePublicConciergeParams): Promise<GeneratedConciergeResult>;
 }

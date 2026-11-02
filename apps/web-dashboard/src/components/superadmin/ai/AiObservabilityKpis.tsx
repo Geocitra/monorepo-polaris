@@ -34,13 +34,25 @@ export function AiObservabilityKpis({ summary, langfuse }: AiObservabilityKpisPr
               <h2 className="text-base font-extrabold text-slate-900 dark:text-white leading-tight">
                 Langfuse LLM Telemetry & Cost Tracer
               </h2>
-              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800/60">
-                <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-ping" />
-                <span>{langfuse?.status || 'CONNECTED'}</span>
+              <span
+                className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold border ${
+                  langfuse?.status === 'CONNECTED'
+                    ? 'bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800/60'
+                    : 'bg-amber-50 text-amber-700 dark:bg-amber-950/40 dark:text-amber-300 border-amber-200 dark:border-amber-800/60'
+                }`}
+              >
+                <span
+                  className={`h-1.5 w-1.5 rounded-full ${
+                    langfuse?.status === 'CONNECTED'
+                      ? 'bg-emerald-500 animate-ping'
+                      : 'bg-amber-500'
+                  }`}
+                />
+                <span>{langfuse?.status || 'LOCAL_DB_ONLY'}</span>
               </span>
             </div>
             <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-              Host: <span className="font-mono text-slate-700 dark:text-slate-300 font-semibold">{langfuse?.host || 'https://cloud.langfuse.com'}</span> • Public Key: <span className="font-mono text-slate-500">{langfuse?.publicKey || 'pk-lf-***'}</span>
+              Host: <span className="font-mono text-slate-700 dark:text-slate-300 font-semibold">{langfuse?.host || 'https://cloud.langfuse.com'}</span> • Public Key: <span className="font-mono text-slate-500">{langfuse?.publicKey || 'BELUM_DIKONFIGURASI'}</span>
             </p>
           </div>
         </div>
@@ -69,7 +81,7 @@ export function AiObservabilityKpis({ summary, langfuse }: AiObservabilityKpisPr
             </div>
           </div>
           <div className="text-2xl font-black text-slate-900 dark:text-white tracking-tight">
-            {summary?.totalTokens ? summary.totalTokens.toLocaleString('id-ID') : '128.450'}
+            {(summary?.totalTokens ?? 0).toLocaleString('id-ID')}
           </div>
           <span className="text-[10px] text-slate-400 font-medium block">
             Input & output tokens gabungan
@@ -85,10 +97,10 @@ export function AiObservabilityKpis({ summary, langfuse }: AiObservabilityKpisPr
             </div>
           </div>
           <div className="text-2xl font-black text-emerald-600 dark:text-emerald-400 tracking-tight">
-            ${summary?.totalCostUsd ?? '1.68'}
+            ${Number(summary?.totalCostUsd ?? 0).toFixed(4)}
           </div>
           <span className="text-[10px] text-slate-500 dark:text-slate-400 font-medium block">
-            Setara Rp {(summary?.totalCostIdr ?? 27300).toLocaleString('id-ID')}
+            Setara Rp {(summary?.totalCostIdr ?? 0).toLocaleString('id-ID')}
           </span>
         </div>
 
@@ -101,10 +113,10 @@ export function AiObservabilityKpis({ summary, langfuse }: AiObservabilityKpisPr
             </div>
           </div>
           <div className="text-2xl font-black text-slate-900 dark:text-white tracking-tight">
-            {summary?.totalGenerations ?? 18}
+            {(summary?.totalGenerations ?? 0).toLocaleString('id-ID')}
           </div>
           <span className="text-[10px] text-slate-400 font-medium block">
-            Artikel, infografis & sosmed
+            Total eksekusi AI terverifikasi
           </span>
         </div>
 
@@ -117,7 +129,7 @@ export function AiObservabilityKpis({ summary, langfuse }: AiObservabilityKpisPr
             </div>
           </div>
           <div className="text-2xl font-black text-amber-600 dark:text-amber-400 tracking-tight">
-            {summary?.avgLatencySeconds ?? 1.84}s
+            {Number(summary?.avgLatencySeconds ?? 0).toFixed(2)}s
           </div>
           <span className="text-[10px] text-slate-400 font-medium block">
             Performa inferensi global

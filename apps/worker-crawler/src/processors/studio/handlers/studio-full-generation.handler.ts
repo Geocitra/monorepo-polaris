@@ -194,7 +194,8 @@ export class StudioFullGenerationHandler {
               const extraction = await DocumentExtractorService.extractText(
                 fileBuffer,
                 cleanMime,
-                cleanName
+                cleanName,
+                tenantId
               );
               const extractedText = (extraction.text || '').trim();
 
@@ -231,7 +232,9 @@ export class StudioFullGenerationHandler {
               try {
                 const cls = await DocumentClassifierService.classifyDocument(
                   cleanName,
-                  extractedText
+                  extractedText,
+                  undefined,
+                  tenantId
                 );
                 detectedCategory = cls.category;
               } catch (clsErr: any) {
@@ -271,7 +274,7 @@ export class StudioFullGenerationHandler {
               // Batch Embeddings & Simpan ke pgvector
               if (generatedChunks.length > 0) {
                 const chunkTexts = generatedChunks.map((c) => c.fullChunkText || c.chunkContent);
-                const embeddings = await DatahubEmbedderService.generateBatchEmbeddings(chunkTexts);
+                const embeddings = await DatahubEmbedderService.generateBatchEmbeddings(chunkTexts, 50, tenantId);
 
                 const chunkRows = generatedChunks.map((c, idx) => ({
                   fileId: targetFileId,
@@ -317,7 +320,7 @@ export class StudioFullGenerationHandler {
                 refCategory = priorRef.categoryTag as DatahubCategory;
               } else if (fileChunks.length > 0) {
                 const sampleText = fileChunks.map((c) => c.chunkContent).join('\n').slice(0, 3000);
-                const cls = await DocumentClassifierService.classifyDocument(cleanName, sampleText);
+                const cls = await DocumentClassifierService.classifyDocument(cleanName, sampleText, undefined, tenantId);
                 refCategory = cls.category;
               }
 
@@ -517,7 +520,8 @@ export class StudioFullGenerationHandler {
       };
       try {
         const generatedSocialPack = await aiEngine.generateSocialSnippets(
-          generatedArticle.contentMarkdown
+          generatedArticle.contentMarkdown,
+          tenantId
         );
         socialPack = {
           instagramCaption: generatedSocialPack.instagramCaption || '',
@@ -569,6 +573,8 @@ export class StudioFullGenerationHandler {
 
         const currentMonth = new Date().toISOString().slice(0, 7);
 
+        // Single Source of Truth: Token dan biaya USD sudah dicatat secara atomik per-trace oleh AiTelemetryService.endTrace().
+        // Di sini kita hanya menaikkan counter kuota naskah (articleUsed + 1).
         await tx
           .insert(tenantQuotaLedgers)
           .values({
@@ -578,15 +584,13 @@ export class StudioFullGenerationHandler {
             articleUsed: 1,
             dalleLimit: 0,
             dalleUsed: 0,
-            totalTokensConsumed: generatedArticle.totalTokensUsed,
-            estimatedCostUsd: String(textCostUsd),
+            totalTokensConsumed: 0,
+            estimatedCostUsd: '0.00000',
           })
           .onConflictDoUpdate({
             target: [tenantQuotaLedgers.tenantId, tenantQuotaLedgers.billingCycleMonth],
             set: {
               articleUsed: sql`${tenantQuotaLedgers.articleUsed} + 1`,
-              totalTokensConsumed: sql`${tenantQuotaLedgers.totalTokensConsumed} + ${generatedArticle.totalTokensUsed}`,
-              estimatedCostUsd: sql`${tenantQuotaLedgers.estimatedCostUsd} + ${textCostUsd}`,
               updatedAt: new Date(),
             },
           });
@@ -741,19 +745,28 @@ export class StudioFullGenerationHandler {
               fileSizeBytes: finalSizeBytes,
             });
 
+            // Biaya USD & token poster sudah dicatat secara atomik oleh AiTelemetryService.endTrace().
+            // Di sini kita hanya menaikkan counter kuota poster/visual (dalleUsed + 1).
+            const currentMonth = new Date().toISOString().slice(0, 7);
             await tx
-              .update(tenantQuotaLedgers)
-              .set({
-                dalleUsed: sql`${tenantQuotaLedgers.dalleUsed} + 1`,
-                estimatedCostUsd: sql`${tenantQuotaLedgers.estimatedCostUsd} + ${AiCostCalculator.DALLE3_COST_PER_IMAGE_USD}`,
-                updatedAt: new Date(),
+              .insert(tenantQuotaLedgers)
+              .values({
+                tenantId,
+                billingCycleMonth: currentMonth,
+                articleLimit: 0,
+                articleUsed: 0,
+                dalleLimit: 0,
+                dalleUsed: 1,
+                totalTokensConsumed: 0,
+                estimatedCostUsd: '0.00000',
               })
-              .where(
-                and(
-                  eq(tenantQuotaLedgers.tenantId, tenantId),
-                  eq(tenantQuotaLedgers.billingCycleMonth, new Date().toISOString().slice(0, 7))
-                )
-              );
+              .onConflictDoUpdate({
+                target: [tenantQuotaLedgers.tenantId, tenantQuotaLedgers.billingCycleMonth],
+                set: {
+                  dalleUsed: sql`${tenantQuotaLedgers.dalleUsed} + 1`,
+                  updatedAt: new Date(),
+                },
+              });
           });
           posterSucceeded = true;
         } catch (error: unknown) {

@@ -1,5 +1,6 @@
 import { GoogleGenAI } from '@google/genai';
 import dns from 'node:dns';
+import { AiTelemetryService } from '../telemetry/ai-telemetry.service.js';
 
 try {
   dns.setDefaultResultOrder('ipv4first');
@@ -12,6 +13,7 @@ export interface RefinePromptOptions {
   memberName?: string;
   partyAffiliation?: string;
   commissionName?: string;
+  tenantId?: string;
 }
 
 export interface GenerateDapilTopicsOptions {
@@ -23,6 +25,7 @@ export interface GenerateDapilTopicsOptions {
   legislativeLevel?: string;
   commissionName?: string;
   recentNewsHeadlines?: string[];
+  tenantId?: string;
 }
 
 export class PromptRefinerService {
@@ -67,13 +70,38 @@ Aturan:
       if (partyAffiliation) contextParts.push(`Fraksi/Partai: ${partyAffiliation}`);
       const contextStr = contextParts.length > 0 ? ` (Konteks Tokoh: ${contextParts.join(', ')})` : '';
 
-      const response = await client.models.generateContent({
+      const fullPrompt = `${instruction}\n\nIde Kasar Pengguna: "${rawPrompt}"${contextStr}\n\nHasil Sempurna:`;
+      const telemetry = AiTelemetryService.startTrace({
+        operation: 'prompt-refiner-gemini',
         model,
-        contents: `${instruction}\n\nIde Kasar Pengguna: "${rawPrompt}"${contextStr}\n\nHasil Sempurna:`,
+        tenantId: options.tenantId,
+        inputPayload: { style, rawPromptLength: rawPrompt.length },
       });
 
-      const refined = response.text?.trim();
-      return { refinedPrompt: refined || rawPrompt };
+      try {
+        const response = await client.models.generateContent({
+          model,
+          contents: fullPrompt,
+        });
+
+        const refined = response.text?.trim();
+        const usage = AiTelemetryService.extractGeminiUsage(response, fullPrompt.length, (refined || '').length);
+        await telemetry.endTrace({
+          inputTokens: usage.inputTokens,
+          outputTokens: usage.outputTokens,
+          status: 'SUCCESS',
+          outputSummary: (refined || rawPrompt).slice(0, 200),
+        });
+        return { refinedPrompt: refined || rawPrompt };
+      } catch (innerErr: any) {
+        await telemetry.endTrace({
+          inputTokens: Math.ceil(fullPrompt.length / 4),
+          outputTokens: 0,
+          status: 'FAILED',
+          errorMessage: innerErr?.message,
+        });
+        throw innerErr;
+      }
     } catch (err: any) {
       console.warn('[PromptRefinerService] Fallback ke prompt asli:', err.message);
       return { refinedPrompt: rawPrompt };
@@ -131,18 +159,43 @@ Aturan:
 3. Kembalikan HANYA format JSON array murni tanpa markdown, tanpa backticks, contoh format:
 ["Topik 1", "Topik 2", "Topik 3", "Topik 4"]`;
 
-      const response = await client.models.generateContent({
+      const telemetry = AiTelemetryService.startTrace({
+        operation: 'trending-dapil-topics-gemini',
         model,
-        contents: prompt,
+        tenantId: options.tenantId,
+        inputPayload: { dapilName, memberName },
       });
 
-      const text = (response.text || '').trim();
-      const cleanJson = text.replace(/^```(json)?|```$/gi, '').trim();
-      const parsed = JSON.parse(cleanJson);
-      if (Array.isArray(parsed) && parsed.length >= 3) {
-        return parsed.slice(0, 4).map((t) => String(t).trim());
+      try {
+        const response = await client.models.generateContent({
+          model,
+          contents: prompt,
+        });
+
+        const text = (response.text || '').trim();
+        const usage = AiTelemetryService.extractGeminiUsage(response, prompt.length, text.length);
+        await telemetry.endTrace({
+          inputTokens: usage.inputTokens,
+          outputTokens: usage.outputTokens,
+          status: 'SUCCESS',
+          outputSummary: text.slice(0, 200),
+        });
+
+        const cleanJson = text.replace(/^```(json)?|```$/gi, '').trim();
+        const parsed = JSON.parse(cleanJson);
+        if (Array.isArray(parsed) && parsed.length >= 3) {
+          return parsed.slice(0, 4).map((t) => String(t).trim());
+        }
+        return fallbackTopics;
+      } catch (innerErr: any) {
+        await telemetry.endTrace({
+          inputTokens: Math.ceil(prompt.length / 4),
+          outputTokens: 0,
+          status: 'FAILED',
+          errorMessage: innerErr?.message,
+        });
+        throw innerErr;
       }
-      return fallbackTopics;
     } catch (err: any) {
       console.warn('[PromptRefinerService] Gagal generate trending topics, fallback:', err.message);
       return fallbackTopics;

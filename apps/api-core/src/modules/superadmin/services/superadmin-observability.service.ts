@@ -9,9 +9,13 @@ import {
   platformTokenPools,
   platformTopupHistories,
 } from '@polaris/database';
+import { PlatformTokenPool, CircuitState } from '@polaris/core-domain';
+import { AiTelemetryService } from '@polaris/ai-engine';
 import { TopupTokenPoolDto } from '../dto/superadmin.dto.js';
 import { TokenCircuitBreakerService } from '../../billing/token-circuit-breaker.service.js';
 import { SuperadminDashboardService } from './superadmin-dashboard.service.js';
+
+const USD_TO_IDR_RATE = 16250;
 
 @Injectable()
 export class SuperadminObservabilityService {
@@ -23,42 +27,9 @@ export class SuperadminObservabilityService {
   ) {}
 
   /**
-   * AI Observability & Langfuse Telemetry Stats
+   * AI Observability & Langfuse Telemetry Stats (100% Real-Time Database & Telemetry Aggregation)
    */
   async getAiObservability() {
-    const tenantIds = await db.select({ id: tenantMembers.id }).from(tenantMembers);
-    let totalArticlesGen = 0;
-    let totalDalleGen = 0;
-    for (const tenant of tenantIds) {
-      const counts = await this.dashboardService.getTenantRlsCounts(tenant.id);
-      totalArticlesGen += counts.publications;
-      totalDalleGen += counts.media;
-    }
-
-    const ledgers = await db
-      .select({
-        tenantId: tenantQuotaLedgers.tenantId,
-        articleLimit: tenantQuotaLedgers.articleLimit,
-        articleUsed: tenantQuotaLedgers.articleUsed,
-        dalleLimit: tenantQuotaLedgers.dalleLimit,
-        dalleUsed: tenantQuotaLedgers.dalleUsed,
-        totalTokensConsumed: tenantQuotaLedgers.totalTokensConsumed,
-      })
-      .from(tenantQuotaLedgers);
-
-    const articleTokens = totalArticlesGen * 4200;
-    const socialTokens = totalArticlesGen * 850;
-    const recordedTokens = ledgers.reduce((acc, l) => acc + (l.totalTokensConsumed || 0), 0);
-    const totalTokens = Math.max(articleTokens + socialTokens, recordedTokens, 128450);
-
-    const gpt4oTokens = Math.round(totalTokens * 0.82);
-    const gpt4oMiniTokens = Math.round(totalTokens * 0.18);
-    const gpt4oCost = (gpt4oTokens / 1_000_000) * 12.0;
-    const gpt4oMiniCost = (gpt4oMiniTokens / 1_000_000) * 0.45;
-    const dalleCost = totalDalleGen * 0.08;
-    const totalCostUsd = Number((gpt4oCost + gpt4oMiniCost + dalleCost).toFixed(3));
-    const totalCostIdr = Math.round(totalCostUsd * 16250);
-
     const tenants = await db
       .select({
         id: tenantMembers.id,
@@ -69,23 +40,120 @@ export class SuperadminObservabilityService {
         status: subscriptions.status,
       })
       .from(tenantMembers)
-      .leftJoin(subscriptions, eq(subscriptions.tenantId, tenantMembers.id))
-      .limit(10);
+      .leftJoin(subscriptions, eq(subscriptions.tenantId, tenantMembers.id));
 
-    const tenantBreakdowns = tenants.map((t, idx) => {
-      const ledger = ledgers.find((l) => l.tenantId === t.id);
-      const usedArt = ledger ? ledger.articleUsed : 1;
-      const limitArt = ledger ? ledger.articleLimit : 9999;
-      const usedImg = ledger ? ledger.dalleUsed : 2;
-      const limitImg = ledger ? ledger.dalleLimit : 9999;
-      const tokens = ledger?.totalTokensConsumed || 14250 * (idx + 1);
+    const rlsCountsMap = new Map<string, { publications: number; media: number }>();
+    let totalArticlesGen = 0;
+    let totalDalleGen = 0;
+    for (const tenant of tenants) {
+      const counts = await this.dashboardService.getTenantRlsCounts(tenant.id);
+      rlsCountsMap.set(tenant.id, { publications: counts.publications, media: counts.media });
+      totalArticlesGen += counts.publications;
+      totalDalleGen += counts.media;
+    }
+
+    // 1. Agregasi Global Riil dari ai_trace_logs
+    const [globalTraceAgg] = await db
+      .select({
+        totalTokens: sql<number>`COALESCE(SUM(${aiTraceLogs.totalTokens}), 0)::bigint`,
+        totalCostUsd: sql<number>`COALESCE(SUM(${aiTraceLogs.costUsd}), 0)::float`,
+        totalCalls: sql<number>`COUNT(*)::int`,
+        successfulCalls: sql<number>`COUNT(*) FILTER (WHERE ${aiTraceLogs.status} = 'SUCCESS')::int`,
+        avgLatencyMs: sql<number>`COALESCE(AVG(${aiTraceLogs.latencyMs}), 0)::float`,
+      })
+      .from(aiTraceLogs);
+
+    // 2. Agregasi Per-Model Riil dari ai_trace_logs
+    const modelTraceRows = await db
+      .select({
+        model: aiTraceLogs.model,
+        tokens: sql<number>`COALESCE(SUM(${aiTraceLogs.totalTokens}), 0)::bigint`,
+        calls: sql<number>`COUNT(*)::int`,
+        successCalls: sql<number>`COUNT(*) FILTER (WHERE ${aiTraceLogs.status} = 'SUCCESS')::int`,
+        costUsd: sql<number>`COALESCE(SUM(${aiTraceLogs.costUsd}), 0)::float`,
+        avgLatencyMs: sql<number>`COALESCE(AVG(${aiTraceLogs.latencyMs}), 0)::float`,
+      })
+      .from(aiTraceLogs)
+      .groupBy(aiTraceLogs.model);
+
+    // 3. Agregasi Per-Tenant Riil dari ai_trace_logs & tenant_quota_ledgers
+    const tenantTraceRows = await db
+      .select({
+        tenantId: aiTraceLogs.tenantId,
+        tokens: sql<number>`COALESCE(SUM(${aiTraceLogs.totalTokens}), 0)::bigint`,
+        costUsd: sql<number>`COALESCE(SUM(${aiTraceLogs.costUsd}), 0)::float`,
+        calls: sql<number>`COUNT(*)::int`,
+      })
+      .from(aiTraceLogs)
+      .where(sql`${aiTraceLogs.tenantId} IS NOT NULL`)
+      .groupBy(aiTraceLogs.tenantId);
+
+    const tenantTraceMap = new Map(
+      tenantTraceRows.map((r) => [
+        r.tenantId as string,
+        {
+          tokens: Number(r.tokens || 0),
+          costUsd: Number(r.costUsd || 0),
+          calls: Number(r.calls || 0),
+        },
+      ])
+    );
+
+    const ledgerAggRows = await db
+      .select({
+        tenantId: tenantQuotaLedgers.tenantId,
+        articleLimit: sql<number>`MAX(${tenantQuotaLedgers.articleLimit})::int`,
+        articleUsed: sql<number>`COALESCE(SUM(${tenantQuotaLedgers.articleUsed}), 0)::int`,
+        dalleLimit: sql<number>`MAX(${tenantQuotaLedgers.dalleLimit})::int`,
+        dalleUsed: sql<number>`COALESCE(SUM(${tenantQuotaLedgers.dalleUsed}), 0)::int`,
+        totalTokensConsumed: sql<number>`COALESCE(SUM(${tenantQuotaLedgers.totalTokensConsumed}), 0)::bigint`,
+        estimatedCostUsd: sql<number>`COALESCE(SUM(${tenantQuotaLedgers.estimatedCostUsd}), 0)::float`,
+      })
+      .from(tenantQuotaLedgers)
+      .groupBy(tenantQuotaLedgers.tenantId);
+
+    const ledgerMap = new Map(
+      ledgerAggRows.map((l) => [
+        l.tenantId,
+        {
+          articleLimit: Number(l.articleLimit || 0),
+          articleUsed: Number(l.articleUsed || 0),
+          dalleLimit: Number(l.dalleLimit || 0),
+          dalleUsed: Number(l.dalleUsed || 0),
+          totalTokensConsumed: Number(l.totalTokensConsumed || 0),
+          estimatedCostUsd: Number(l.estimatedCostUsd || 0),
+        },
+      ])
+    );
+
+    const ledgerTotalTokens = ledgerAggRows.reduce((acc, l) => acc + Number(l.totalTokensConsumed || 0), 0);
+    const ledgerTotalCostUsd = ledgerAggRows.reduce((acc, l) => acc + Number(l.estimatedCostUsd || 0), 0);
+
+    const totalTokens = Math.max(Number(globalTraceAgg?.totalTokens || 0), ledgerTotalTokens);
+    const rawTotalCostUsd = Math.max(Number(globalTraceAgg?.totalCostUsd || 0), ledgerTotalCostUsd);
+    const totalCostUsd = Number(rawTotalCostUsd.toFixed(4));
+    const totalCostIdr = Math.round(totalCostUsd * USD_TO_IDR_RATE);
+    const totalGenerations = Number(globalTraceAgg?.successfulCalls || 0) || (totalArticlesGen + totalDalleGen);
+    const avgLatencySeconds = Number(((Number(globalTraceAgg?.avgLatencyMs || 0)) / 1000).toFixed(2));
+
+    const tenantBreakdowns = tenants.map((t) => {
+      const ledger = ledgerMap.get(t.id);
+      const traceStat = tenantTraceMap.get(t.id);
+      const rlsCounts = rlsCountsMap.get(t.id) || { publications: 0, media: 0 };
+
+      const usedArt = Math.max(ledger?.articleUsed ?? 0, rlsCounts.publications);
+      const limitArt = ledger?.articleLimit && ledger.articleLimit > 0 ? ledger.articleLimit : 30;
+      const usedImg = Math.max(ledger?.dalleUsed ?? 0, rlsCounts.media);
+      const limitImg = ledger?.dalleLimit && ledger.dalleLimit > 0 ? ledger.dalleLimit : 30;
+      const tokens = Math.max(traceStat?.tokens ?? 0, ledger?.totalTokensConsumed ?? 0);
+      const costUsd = Math.max(traceStat?.costUsd ?? 0, ledger?.estimatedCostUsd ?? 0);
 
       return {
         tenantId: t.id,
         name: t.fullName,
         email: t.email,
         party: t.partyAffiliation,
-        tier: t.planTier || 'PRO',
+        tier: t.planTier || 'STARTER',
         articlesUsed: usedArt,
         articlesLimit: limitArt,
         articlesRemaining: Math.max(0, limitArt - usedArt),
@@ -93,11 +161,13 @@ export class SuperadminObservabilityService {
         dalleLimit: limitImg,
         dalleRemaining: Math.max(0, limitImg - usedImg),
         tokensConsumed: tokens,
-        estimatedCostUsd: Number(((tokens / 1_000_000) * 12 + usedImg * 0.08).toFixed(2)),
+        estimatedCostUsd: Number(costUsd.toFixed(4)),
       };
     });
 
-    // 4. Platform Master Token Pool (OpenAI Master Balance & Quota Tracking)
+    tenantBreakdowns.sort((a, b) => b.estimatedCostUsd - a.estimatedCostUsd || b.tokensConsumed - a.tokensConsumed);
+
+    // 4. Platform Master Token Pool (OpenAI & Gemini Master Credit Pool)
     let [masterPool] = await db.select().from(platformTokenPools).limit(1);
     if (!masterPool) {
       const [inserted] = await db
@@ -110,14 +180,12 @@ export class SuperadminObservabilityService {
         })
         .returning();
       masterPool = inserted;
-    } else {
-      if (totalTokens > (Number(masterPool.totalTokensConsumed) || 0)) {
-        await db
-          .update(platformTokenPools)
-          .set({ totalTokensConsumed: totalTokens, updatedAt: new Date() })
-          .where(eq(platformTokenPools.id, masterPool.id));
-        masterPool.totalTokensConsumed = totalTokens;
-      }
+    } else if (totalTokens !== Number(masterPool.totalTokensConsumed || 0)) {
+      await db
+        .update(platformTokenPools)
+        .set({ totalTokensConsumed: totalTokens, updatedAt: new Date() })
+        .where(eq(platformTokenPools.id, masterPool.id));
+      masterPool.totalTokensConsumed = totalTokens;
     }
 
     const topups = await db
@@ -127,17 +195,29 @@ export class SuperadminObservabilityService {
       .limit(10);
 
     const totalBudgetUsd = Number(masterPool.totalBudgetUsd) || 100;
+    const poolEntity = new PlatformTokenPool({
+      id: masterPool.id,
+      totalBudgetUsd,
+      totalTokensAllocated: Number(masterPool.totalTokensAllocated) || 20000000,
+      totalTokensConsumed: totalTokens,
+      alertThresholdPercent: masterPool.alertThresholdPercent || 20,
+      circuitState: (masterPool.circuitState as CircuitState) || 'CLOSED',
+      lastAlertSentAt: masterPool.lastAlertSentAt,
+      lastTopupDate: masterPool.lastTopupDate,
+    });
+    const evalState = poolEntity.evaluateState(totalCostUsd);
+
     const consumedBudgetUsd = totalCostUsd;
-    const remainingBudgetUsd = Math.max(0, Number((totalBudgetUsd - consumedBudgetUsd).toFixed(2)));
-    const remainingBudgetIdr = Math.round(remainingBudgetUsd * 16250);
-    const percentRemaining = Math.max(0, Math.min(100, Math.round((remainingBudgetUsd / (totalBudgetUsd || 1)) * 100)));
-    const percentConsumed = 100 - percentRemaining;
-    const isAlert = remainingBudgetUsd <= (masterPool.alertThresholdPercent || 20);
+    const remainingBudgetUsd = evalState.remainingUsd;
+    const remainingBudgetIdr = Math.round(remainingBudgetUsd * USD_TO_IDR_RATE);
+    const percentRemaining = Math.round(evalState.percentRemaining);
+    const percentConsumed = Math.max(0, 100 - percentRemaining);
+    const isAlert = evalState.isWarning;
 
     const masterPoolData = {
       id: masterPool.id,
       totalBudgetUsd,
-      totalBudgetIdr: Math.round(totalBudgetUsd * 16250),
+      totalBudgetIdr: Math.round(totalBudgetUsd * USD_TO_IDR_RATE),
       consumedBudgetUsd,
       consumedBudgetIdr: totalCostIdr,
       remainingBudgetUsd,
@@ -145,7 +225,7 @@ export class SuperadminObservabilityService {
       percentRemaining,
       percentConsumed,
       totalTokensConsumed: totalTokens,
-      alertThresholdPercent: masterPool.alertThresholdPercent,
+      alertThresholdPercent: masterPool.alertThresholdPercent || 20,
       isAlertActive: isAlert,
       lastTopupDate: masterPool.lastTopupDate,
       recentTopups: topups.map((t) => ({
@@ -159,54 +239,100 @@ export class SuperadminObservabilityService {
       })),
     };
 
+    // 5. Kelompokkan Model Metrics dari data riil ai_trace_logs
+    const bucketStats = {
+      flagship: { tokens: 0, calls: 0, success: 0, costUsd: 0, latencySum: 0 },
+      highSpeed: { tokens: 0, calls: 0, success: 0, costUsd: 0, latencySum: 0 },
+      visualDiffusion: { tokens: 0, calls: 0, success: 0, costUsd: 0, latencySum: 0 },
+    };
+
+    for (const row of modelTraceRows) {
+      const m = (row.model || '').toLowerCase();
+      const calls = Number(row.calls || 0);
+      const tokens = Number(row.tokens || 0);
+      const success = Number(row.successCalls || 0);
+      const costUsd = Number(row.costUsd || 0);
+      const avgLat = Number(row.avgLatencyMs || 0);
+
+      if (m.includes('image') || m.includes('dall-e') || m.includes('imagen')) {
+        bucketStats.visualDiffusion.tokens += tokens;
+        bucketStats.visualDiffusion.calls += calls;
+        bucketStats.visualDiffusion.success += success;
+        bucketStats.visualDiffusion.costUsd += costUsd;
+        bucketStats.visualDiffusion.latencySum += avgLat * calls;
+      } else if (m.includes('mini') || m.includes('embedding') || m.includes('flash')) {
+        bucketStats.highSpeed.tokens += tokens;
+        bucketStats.highSpeed.calls += calls;
+        bucketStats.highSpeed.success += success;
+        bucketStats.highSpeed.costUsd += costUsd;
+        bucketStats.highSpeed.latencySum += avgLat * calls;
+      } else {
+        bucketStats.flagship.tokens += tokens;
+        bucketStats.flagship.calls += calls;
+        bucketStats.flagship.success += success;
+        bucketStats.flagship.costUsd += costUsd;
+        bucketStats.flagship.latencySum += avgLat * calls;
+      }
+    }
+
+    const formatQuality = (success: number, calls: number) =>
+      calls > 0 ? `${((success / calls) * 100).toFixed(1)}%` : '100.0%';
+
+    const modelMetrics = [
+      {
+        model: 'GPT-4o (Flagship Reasoning)',
+        useCase: 'Sintesis Naskah Kebijakan 2-Stage, Ekstraksi Klaim Verbatim & Vision Blueprint',
+        tokens: bucketStats.flagship.tokens,
+        calls: bucketStats.flagship.calls,
+        costUsd: Number(bucketStats.flagship.costUsd.toFixed(4)),
+        avgLatencyMs:
+          bucketStats.flagship.calls > 0
+            ? Math.round(bucketStats.flagship.latencySum / bucketStats.flagship.calls)
+            : 0,
+        qualityScore: formatQuality(bucketStats.flagship.success, bucketStats.flagship.calls),
+      },
+      {
+        model: 'Gemini Imagen & DALL-E (Visual Engine)',
+        useCase: 'Kanvas Seni Kolase Poster, Infografis Legislatif & Ilustrasi Editorial',
+        tokens: bucketStats.visualDiffusion.tokens,
+        calls: bucketStats.visualDiffusion.calls,
+        costUsd: Number(bucketStats.visualDiffusion.costUsd.toFixed(4)),
+        avgLatencyMs:
+          bucketStats.visualDiffusion.calls > 0
+            ? Math.round(bucketStats.visualDiffusion.latencySum / bucketStats.visualDiffusion.calls)
+            : 0,
+        qualityScore: formatQuality(
+          bucketStats.visualDiffusion.success,
+          bucketStats.visualDiffusion.calls
+        ),
+      },
+      {
+        model: 'GPT-4o Mini & Gemini Flash (High Speed)',
+        useCase: 'Research Planner, Copywriter Poster, Vision Locator, OCR DataHub & RAG Embedding',
+        tokens: bucketStats.highSpeed.tokens,
+        calls: bucketStats.highSpeed.calls,
+        costUsd: Number(bucketStats.highSpeed.costUsd.toFixed(4)),
+        avgLatencyMs:
+          bucketStats.highSpeed.calls > 0
+            ? Math.round(bucketStats.highSpeed.latencySum / bucketStats.highSpeed.calls)
+            : 0,
+        qualityScore: formatQuality(bucketStats.highSpeed.success, bucketStats.highSpeed.calls),
+      },
+    ];
+
     return {
       masterPool: masterPoolData,
       summary: {
         totalTokens,
         totalCostUsd,
         totalCostIdr,
-        totalGenerations: totalArticlesGen + totalDalleGen + (totalArticlesGen * 3),
+        totalGenerations,
         totalArticlesGenerated: totalArticlesGen,
         totalDalleGenerated: totalDalleGen,
-        avgLatencySeconds: 1.84,
+        avgLatencySeconds,
       },
-      langfuse: {
-        status: 'CONNECTED',
-        host: process.env.LANGFUSE_HOST || 'https://cloud.langfuse.com',
-        publicKey: (process.env.LANGFUSE_PUBLIC_KEY || 'pk-lf-live').substring(0, 9) + '••••••••',
-        sdkVersion: '3.39.2',
-        telemetryActive: true,
-        traceUrl: 'https://cloud.langfuse.com',
-      },
-      modelMetrics: [
-        {
-          model: 'GPT-4o (Flagship)',
-          useCase: 'Analisis Kebijakan, Regulasi, Kajian APBD 3.000 Kata',
-          tokens: gpt4oTokens,
-          calls: totalArticlesGen + 12,
-          costUsd: Number(gpt4oCost.toFixed(3)),
-          avgLatencyMs: 2420,
-          qualityScore: '99.4%',
-        },
-        {
-          model: 'DALL-E 3 (HD Diffusion)',
-          useCase: 'Infografis Legislatif, Bagan Data, & Visual Advokasi',
-          tokens: totalDalleGen * 1000,
-          calls: totalDalleGen || 4,
-          costUsd: Number(dalleCost.toFixed(2)),
-          avgLatencyMs: 4150,
-          qualityScore: '98.8%',
-        },
-        {
-          model: 'GPT-4o Mini (High Speed)',
-          useCase: 'Ekstraksi Ringkasan Aspirasi, Tweet, Instagram Pack',
-          tokens: gpt4oMiniTokens,
-          calls: totalArticlesGen * 3 + 45,
-          costUsd: Number(gpt4oMiniCost.toFixed(3)),
-          avgLatencyMs: 620,
-          qualityScore: '99.8%',
-        },
-      ],
+      langfuse: AiTelemetryService.getLangfuseStatus(),
+      modelMetrics,
       tenantBreakdowns,
     };
   }

@@ -147,6 +147,7 @@ export class StudioService {
       memberName: dto.memberName,
       partyAffiliation: dto.partyAffiliation,
       commissionName: dto.commissionName,
+      tenantId,
     });
   }
 

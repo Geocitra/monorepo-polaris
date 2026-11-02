@@ -11,6 +11,7 @@
  */
 
 import { googleGenAiClient, openaiClient } from '../../client.js';
+import { AiTelemetryService } from '../../telemetry/ai-telemetry.service.js';
 import type {
   ArtCollageAnchor,
   NormalizedBox,
@@ -125,38 +126,84 @@ function extractJson(text: string): any {
   return JSON.parse(cleaned.slice(start, end + 1));
 }
 
-async function locateWithGemini(imageBase64: string, mimeType: string, prompt: string): Promise<any> {
+async function locateWithGemini(imageBase64: string, mimeType: string, prompt: string, tenantId?: string): Promise<any> {
   if (!googleGenAiClient) throw new Error('Gemini client tidak tersedia.');
-  const response = await googleGenAiClient.models.generateContent({
-    model: process.env.POSTER_VISION_MODEL || process.env.GEMINI_TEXT_MODEL || 'gemini-3.8-flash',
-    contents: [
-      {
-        role: 'user',
-        parts: [{ inlineData: { mimeType, data: imageBase64 } }, { text: prompt }],
-      },
-    ],
-    config: { responseMimeType: 'application/json', temperature: 0.1 } as any,
+  const modelName = process.env.POSTER_VISION_MODEL || process.env.GEMINI_TEXT_MODEL || 'gemini-3.8-flash';
+  const telemetry = AiTelemetryService.startTrace({
+    operation: 'vision-layout-locator-gemini',
+    model: modelName,
+    tenantId,
   });
-  const text = (response as any).text ?? response.candidates?.[0]?.content?.parts?.map((p: any) => p.text || '').join('') ?? '';
-  return extractJson(String(text));
+  try {
+    const response = await googleGenAiClient.models.generateContent({
+      model: modelName,
+      contents: [
+        {
+          role: 'user',
+          parts: [{ inlineData: { mimeType, data: imageBase64 } }, { text: prompt }],
+        },
+      ],
+      config: { responseMimeType: 'application/json', temperature: 0.1 } as any,
+    });
+    const text = (response as any).text ?? response.candidates?.[0]?.content?.parts?.map((p: any) => p.text || '').join('') ?? '';
+    const usage = AiTelemetryService.extractGeminiUsage(response, prompt.length + 1000, String(text).length);
+    await telemetry.endTrace({
+      inputTokens: usage.inputTokens,
+      outputTokens: usage.outputTokens,
+      status: 'SUCCESS',
+      outputSummary: String(text).slice(0, 200),
+    });
+    return extractJson(String(text));
+  } catch (err: any) {
+    await telemetry.endTrace({
+      inputTokens: Math.ceil(prompt.length / 4),
+      outputTokens: 0,
+      status: 'FAILED',
+      errorMessage: err?.message,
+    });
+    throw err;
+  }
 }
 
-async function locateWithOpenAI(imageBase64: string, mimeType: string, prompt: string): Promise<any> {
-  const response = await openaiClient.chat.completions.create({
-    model: process.env.POSTER_VISION_OPENAI_MODEL || 'gpt-4o-mini',
-    temperature: 0.1,
-    response_format: { type: 'json_object' },
-    messages: [
-      {
-        role: 'user',
-        content: [
-          { type: 'text', text: prompt },
-          { type: 'image_url', image_url: { url: `data:${mimeType};base64,${imageBase64}`, detail: 'low' } },
-        ],
-      },
-    ],
+async function locateWithOpenAI(imageBase64: string, mimeType: string, prompt: string, tenantId?: string): Promise<any> {
+  const modelName = process.env.POSTER_VISION_OPENAI_MODEL || 'gpt-4o-mini';
+  const telemetry = AiTelemetryService.startTrace({
+    operation: 'vision-layout-locator-openai',
+    model: modelName,
+    tenantId,
   });
-  return extractJson(response.choices[0]?.message?.content || '{}');
+  try {
+    const response = await openaiClient.chat.completions.create({
+      model: modelName,
+      temperature: 0.1,
+      response_format: { type: 'json_object' },
+      messages: [
+        {
+          role: 'user',
+          content: [
+            { type: 'text', text: prompt },
+            { type: 'image_url', image_url: { url: `data:${mimeType};base64,${imageBase64}`, detail: 'low' } },
+          ],
+        },
+      ],
+    });
+    const content = response.choices[0]?.message?.content || '{}';
+    await telemetry.endTrace({
+      inputTokens: response.usage?.prompt_tokens || Math.ceil(prompt.length / 4) + 85,
+      outputTokens: response.usage?.completion_tokens || Math.ceil(content.length / 4),
+      status: 'SUCCESS',
+      outputSummary: content.slice(0, 200),
+    });
+    return extractJson(content);
+  } catch (err: any) {
+    await telemetry.endTrace({
+      inputTokens: Math.ceil(prompt.length / 4),
+      outputTokens: 0,
+      status: 'FAILED',
+      errorMessage: err?.message,
+    });
+    throw err;
+  }
 }
 
 export class VisionLayoutLocator {
@@ -165,6 +212,7 @@ export class VisionLayoutLocator {
     mimeType?: string;
     anchor: ArtCollageAnchor;
     paperTone: 'LIGHT' | 'DARK';
+    tenantId?: string;
   }): Promise<VisionLayoutResult> {
     const fallback = anchorFallbackLayout(params.anchor, params.paperTone);
     const mimeType = params.mimeType || 'image/png';
@@ -172,8 +220,8 @@ export class VisionLayoutLocator {
     const prompt = buildVisionPrompt(params.anchor);
 
     const attempts: Array<{ source: VisionLayoutResult['source']; run: () => Promise<any> }> = [
-      { source: 'GEMINI_VISION', run: () => locateWithGemini(b64, mimeType, prompt) },
-      { source: 'OPENAI_VISION', run: () => locateWithOpenAI(b64, mimeType, prompt) },
+      { source: 'GEMINI_VISION', run: () => locateWithGemini(b64, mimeType, prompt, params.tenantId) },
+      { source: 'OPENAI_VISION', run: () => locateWithOpenAI(b64, mimeType, prompt, params.tenantId) },
     ];
 
     for (const attempt of attempts) {

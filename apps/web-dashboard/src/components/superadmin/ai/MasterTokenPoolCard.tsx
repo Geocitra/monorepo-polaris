@@ -39,16 +39,16 @@ export function MasterTokenPoolCard({ pool, onRefresh }: MasterTokenPoolCardProp
   const [showTopupModal, setShowTopupModal] = useState(false);
   const [showHistoryModal, setShowHistoryModal] = useState(false);
 
-  // Defaults fallback
-  const totalUsd = pool?.totalBudgetUsd ?? 150;
+  // Real-time values (0 fallback instead of phantom dummy metrics)
+  const totalUsd = pool?.totalBudgetUsd ?? 100;
   const totalIdr = pool?.totalBudgetIdr ?? Math.round(totalUsd * 16250);
-  const consumedUsd = pool?.consumedBudgetUsd ?? 12.25;
+  const consumedUsd = pool?.consumedBudgetUsd ?? 0;
   const consumedIdr = pool?.consumedBudgetIdr ?? Math.round(consumedUsd * 16250);
   const remainingUsd = pool?.remainingBudgetUsd ?? Math.max(0, totalUsd - consumedUsd);
   const remainingIdr = pool?.remainingBudgetIdr ?? Math.round(remainingUsd * 16250);
   const percentRemaining = pool?.percentRemaining ?? Math.round((remainingUsd / (totalUsd || 1)) * 100);
   const isAlert = pool?.isAlertActive ?? (percentRemaining <= 20);
-  const totalTokensUsed = pool?.totalTokensConsumed ?? 2450000;
+  const totalTokensUsed = pool?.totalTokensConsumed ?? 0;
 
   return (
     <>

@@ -1,4 +1,5 @@
 import { openaiClient } from '../client.js';
+import { AiTelemetryService } from '../telemetry/ai-telemetry.service.js';
 
 export class DatahubEmbedderService {
   /**
@@ -7,7 +8,8 @@ export class DatahubEmbedderService {
    */
   public static async generateBatchEmbeddings(
     texts: string[],
-    batchSize: number = 50
+    batchSize: number = 50,
+    tenantId?: string
   ): Promise<number[][]> {
     if (!texts || texts.length === 0) {
       return [];
@@ -31,10 +33,24 @@ export class DatahubEmbedderService {
         continue;
       }
 
+      const telemetry = AiTelemetryService.startTrace({
+        operation: 'datahub-batch-embedding',
+        model: 'text-embedding-3-small',
+        tenantId,
+        metadata: { batchIndex: i, chunkCount: batch.length },
+      });
+
       try {
         const response = await openaiClient.embeddings.create({
           model: 'text-embedding-3-small',
           input: batch,
+        });
+
+        await telemetry.endTrace({
+          inputTokens: response.usage?.prompt_tokens || batch.reduce((acc, t) => acc + Math.ceil(t.length / 4), 0),
+          outputTokens: 0,
+          status: 'SUCCESS',
+          outputSummary: `Embedded ${batch.length} chunks`,
         });
 
         // Urutkan kembali berdasarkan index response
@@ -46,6 +62,12 @@ export class DatahubEmbedderService {
           embeddings.push(item.embedding);
         }
       } catch (err) {
+        await telemetry.endTrace({
+          inputTokens: batch.reduce((acc, t) => acc + Math.ceil(t.length / 4), 0),
+          outputTokens: 0,
+          status: 'FAILED',
+          errorMessage: (err as Error).message,
+        });
         console.error(`[DatahubEmbedder] Gagal menghasilkan embedding batch ${i}:`, err);
         throw new Error(`Gagal menghasilkan vector embedding dokumen: ${(err as Error).message}`);
       }

@@ -79,7 +79,11 @@ export class ArtCollagePosterPipeline {
     const mutation = pickArtCollageMutation(archetype, seed);
 
     const [copy, styleReference] = await Promise.all([
-      synthesizeArtCollageCopy({ topic: params.topic, groundedContext: params.groundedContextSummary }),
+      synthesizeArtCollageCopy({
+        topic: params.topic,
+        groundedContext: params.groundedContextSummary,
+        tenantId: params.tenantId,
+      }),
       loadStyleReference(blueprint.referenceFile),
     ]);
 
@@ -102,6 +106,7 @@ export class ArtCollagePosterPipeline {
       mimeType: image.mimeType,
       anchor: mutation.anchor,
       paperTone: dna.paperTone,
+      tenantId: params.tenantId,
     });
 
     return {

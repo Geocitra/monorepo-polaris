@@ -1,4 +1,5 @@
 import { openaiClient } from '../client.js';
+import { AiTelemetryService } from '../telemetry/ai-telemetry.service.js';
 import { PreAnalyzedPosterBlueprint, CreativePosterArchetype } from './types.js';
 
 export interface VisionAnalysisParams {
@@ -7,6 +8,7 @@ export interface VisionAnalysisParams {
   imageBase64?: string;
   referenceFileName: string;
   topicHint?: string;
+  tenantId?: string;
 }
 
 const VALID_ARCHETYPES: CreativePosterArchetype[] = [
@@ -105,35 +107,59 @@ FORMAT OUTPUT JSON WAJIB:
 ${topicHint ? `Petunjuk konteks tema: ${topicHint}` : ''}
 Ekstrak geometri, palet warna, dan blueprint desain sesuai instruksi.`;
 
-    const response = await openaiClient.chat.completions.create({
+    const telemetry = AiTelemetryService.startTrace({
+      operation: 'poster-reference-vision-analyzer',
       model: 'gpt-4o',
-      response_format: { type: 'json_object' },
-      messages: [
-        { role: 'system', content: systemPrompt },
-        {
-          role: 'user',
-          content: [
-            { type: 'text', text: userPrompt },
-            {
-              type: 'image_url',
-              image_url: {
-                url: targetDataUrl,
-                detail: 'high',
-              },
-            },
-          ],
-        },
-      ],
-      temperature: 0.2,
+      tenantId: params.tenantId,
+      inputPayload: { referenceFileName, topicHint },
     });
 
-    const content = response.choices[0]?.message?.content;
-    if (!content) {
-      throw new Error('[PosterReferenceVisionAnalyzer] OpenAI tidak mengembalikan respons analisis vision.');
-    }
+    try {
+      const response = await openaiClient.chat.completions.create({
+        model: 'gpt-4o',
+        response_format: { type: 'json_object' },
+        messages: [
+          { role: 'system', content: systemPrompt },
+          {
+            role: 'user',
+            content: [
+              { type: 'text', text: userPrompt },
+              {
+                type: 'image_url',
+                image_url: {
+                  url: targetDataUrl,
+                  detail: 'high',
+                },
+              },
+            ],
+          },
+        ],
+        temperature: 0.2,
+      });
 
-    const parsed = JSON.parse(content);
-    return this.validateAndSanitizeBlueprint(parsed, referenceFileName);
+      const content = response.choices[0]?.message?.content;
+      if (!content) {
+        throw new Error('[PosterReferenceVisionAnalyzer] OpenAI tidak mengembalikan respons analisis vision.');
+      }
+
+      await telemetry.endTrace({
+        inputTokens: response.usage?.prompt_tokens || Math.ceil((systemPrompt.length + userPrompt.length) / 4) + 765,
+        outputTokens: response.usage?.completion_tokens || Math.ceil(content.length / 4),
+        status: 'SUCCESS',
+        outputSummary: content.slice(0, 200),
+      });
+
+      const parsed = JSON.parse(content);
+      return this.validateAndSanitizeBlueprint(parsed, referenceFileName);
+    } catch (error: any) {
+      await telemetry.endTrace({
+        inputTokens: Math.ceil((systemPrompt.length + userPrompt.length) / 4),
+        outputTokens: 0,
+        status: 'FAILED',
+        errorMessage: error?.message,
+      });
+      throw error;
+    }
   }
 
   /**

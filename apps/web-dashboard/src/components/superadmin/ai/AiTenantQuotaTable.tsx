@@ -92,7 +92,7 @@ export function AiTenantQuotaTable({ tenants }: AiTenantQuotaTableProps) {
                 </td>
 
                 <td className="py-3 px-3 font-mono font-black text-emerald-600 dark:text-emerald-400">
-                  ${t.estimatedCostUsd}
+                  ${Number(t.estimatedCostUsd || 0).toFixed(4)}
                 </td>
 
                 <td className="py-3 px-3 text-right">

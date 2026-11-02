@@ -44,7 +44,8 @@ export class ClaimEvidenceExtractor {
   public static async extractClaimsAndEvidence(
     researchTopic: string,
     questions: Array<{ index: number; question: string }>,
-    sources: VerifiedSourceInput[]
+    sources: VerifiedSourceInput[],
+    tenantId?: string
   ): Promise<ExtractedClaimWithEvidence[]> {
     if (sources.length === 0) return [];
 
@@ -99,6 +100,7 @@ Hasilkan JSON murni dengan format:
     const telemetry = AiTelemetryService.startTrace({
       operation: 'claim-evidence-extraction',
       model: 'gpt-4o',
+      tenantId,
       metadata: { researchTopic, sourcesCount: sources.length, questionsCount: questions.length },
     });
 

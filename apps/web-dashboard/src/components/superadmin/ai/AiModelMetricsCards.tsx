@@ -19,14 +19,18 @@ interface AiModelMetricsCardsProps {
 
 export function AiModelMetricsCards({ metrics }: AiModelMetricsCardsProps) {
   const getIcon = (model: string) => {
-    if (model.includes('DALL-E')) return ImageIcon;
-    if (model.includes('Mini')) return Zap;
+    if (model.includes('DALL-E') || model.includes('Imagen') || model.includes('Visual')) return ImageIcon;
+    if (model.includes('Mini') || model.includes('Flash')) return Zap;
     return Cpu;
   };
 
   const getColor = (model: string) => {
-    if (model.includes('DALL-E')) return 'bg-purple-50 text-purple-600 dark:bg-purple-950/50 dark:text-purple-400';
-    if (model.includes('Mini')) return 'bg-amber-50 text-amber-600 dark:bg-amber-950/50 dark:text-amber-400';
+    if (model.includes('DALL-E') || model.includes('Imagen') || model.includes('Visual')) {
+      return 'bg-purple-50 text-purple-600 dark:bg-purple-950/50 dark:text-purple-400';
+    }
+    if (model.includes('Mini') || model.includes('Flash')) {
+      return 'bg-amber-50 text-amber-600 dark:bg-amber-950/50 dark:text-amber-400';
+    }
     return 'bg-blue-50 text-blue-600 dark:bg-blue-950/50 dark:text-blue-400';
   };
 
@@ -90,7 +94,7 @@ export function AiModelMetricsCards({ metrics }: AiModelMetricsCardsProps) {
                 <div className="p-2 rounded-xl bg-slate-50 dark:bg-slate-900/60 border border-slate-200/60 dark:border-slate-800">
                   <span className="text-[9px] text-slate-400 uppercase font-bold block">Biaya USD</span>
                   <span className="font-black text-xs text-emerald-600 dark:text-emerald-400">
-                    ${m.costUsd}
+                    ${Number(m.costUsd || 0).toFixed(4)}
                   </span>
                 </div>
               </div>
