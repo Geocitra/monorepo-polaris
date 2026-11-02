@@ -20,6 +20,7 @@ import path from 'node:path';
 import { GoogleImagenAdapter } from '../../adapters/google-imagen.adapter.js';
 import { PosterBlueprintSelector } from '../selector.js';
 import type { CreativePosterArchetype } from '../types.js';
+import { isInfographicArchetype } from '@polaris/shared-types';
 import {
   ART_COLLAGE_DNA,
   compileArtCollageImagePrompt,
@@ -89,9 +90,11 @@ export class ArtCollagePosterPipeline {
       : Math.floor(Math.random() * 2 ** 31);
     const mutation = pickArtCollageMutation(archetype, seed);
 
+    const isInfographic = params.isInfographic || isInfographicArchetype(archetype);
+
     const [copy, styleReference] = await Promise.all([
       synthesizeArtCollageCopy({ topic: params.topic, groundedContext: params.groundedContextSummary, archetype }),
-      loadStyleReference(blueprint.referenceFile),
+      isInfographic ? Promise.resolve(undefined) : loadStyleReference(blueprint.referenceFile),
     ]);
 
     const imagePrompt = compileArtCollageImagePrompt({

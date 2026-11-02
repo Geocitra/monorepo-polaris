@@ -162,31 +162,31 @@ export const ART_COLLAGE_DNA: Record<CreativePosterArchetype, ArtCollageDna> = {
   },
   INFOGRAPHIC_NARRATIVE_WAVE: {
     style:
-      'editorial graphic narrative infographic on textured warm cream paper; an organic crimson red S-curve ribbon flows across the canvas separating distinct thematic sections, black-and-white halftone cutouts of everyday people and surreal botanical accents, clean paper background margins',
+      'contemporary editorial graphic narrative infographic on smooth off-white paper; dynamic geometric flow shapes and modern documentary illustrations specifically depicting the subject matter, clean paper margins',
     anchors: ['TEXT_TOP', 'TEXT_BOTTOM'],
     paperTone: 'LIGHT',
   },
   INFOGRAPHIC_CHRONICLE_GRID: {
     style:
-      'vintage newspaper chronicle infographic on clean off-white newsprint; a solid orange vertical masthead column along the left with a prominent monochrome portrait bust cutout, and clean structured grid milestone cards with aged archival photos and forest green accent tags on the right',
+      'editorial newspaper chronicle infographic aesthetic on clean off-white paper; clean structural layout, fine technical grid lines, subtle data accents, and high-quality documentary illustrations specifically depicting the subject matter',
     anchors: ['TEXT_RIGHT', 'TEXT_TOP'],
     paperTone: 'LIGHT',
   },
   INFOGRAPHIC_RADIAL_CLOCK: {
     style:
-      'vintage antique chronicle poster on aged parchment paper; an ornate pocket-watch clock dial on the left with radial epoch time sectors radiating outward, vintage book stacks, historical copperplate engravings, sepia ink wash texture',
+      'vintage editorial chronicle print on clean warm parchment paper; elegant circular milestone motifs, fine cross-hatching and technical engraving textures illustrating the specific subject matter, with generous open negative space',
     anchors: ['TEXT_RIGHT', 'TEXT_TOP'],
     paperTone: 'LIGHT',
   },
   INFOGRAPHIC_ADVOCACY_PILLARS: {
     style:
-      'civic advocacy cartoon data infographic with subtle Indonesian batik cloud pattern backdrop; high-contrast percentage statistic badge, expressive citizen illustrations, and five clean rounded vertical solution pillar cards with small icon circles at the bottom, warm wood and earthy tones',
+      'clean civic policy advocacy infographic illustration on warm ivory paper; modern editorial spot illustrations representing community action and policy impact on the specific subject, elegant minimal geometric accents',
     anchors: ['TEXT_TOP', 'TEXT_BOTTOM'],
     paperTone: 'LIGHT',
   },
   INFOGRAPHIC_VISIONARY_TIMELINE: {
     style:
-      'modern high-contrast editorial visionary profile on pure light background; centered artistic portrait sketch or cutout, frosted glassmorphism cards with crisp edges, pull quote styling, and a clean dark horizontal milestone timeline bar running across the bottom',
+      'sleek modern editorial milestone infographic on crisp light background; professional illustrations and technical milestone markers specifically depicting the subject matter',
     anchors: ['TEXT_TOP', 'TEXT_BOTTOM'],
     paperTone: 'LIGHT',
   },
@@ -281,6 +281,18 @@ export function compileArtCollageImagePrompt(params: {
   const dna = ART_COLLAGE_DNA[params.archetype];
   const spatial = ANCHOR_SPATIAL_PHRASE[params.mutation.anchor];
   const p = params.mutation.palette;
+  const isInfographic = isInfographicArchetype(params.archetype);
+
+  if (isInfographic) {
+    return [
+      `Create a finished, print-quality editorial data infographic illustration (vertical 4:5 ratio) specifically illustrating: ${params.visualSubject}.`,
+      `Aesthetic style: ${dna.style}.`,
+      `Color scheme: ${p.accentName} accent with ${p.secondaryName} details, on clean ${p.paperName} background.`,
+      `The illustrations and visual elements must represent ONLY ${params.visualSubject}. Authentic Indonesian everyday citizens, farmers, workers, infrastructure, or community setting relevant to this specific topic. No unrelated historical figures or unrelated objects.`,
+      `Spatial composition: Keep the top 40% of the canvas as quiet, clean, uncluttered open paper space reserved for typography. Place the detailed thematic illustrations in the lower 60% of the canvas.`,
+      `ABSOLUTELY ZERO TEXT: No words, no letters, no numbers, no fake writing, no labels, no headings, no logos, no watermarks anywhere on the image.`,
+    ].join('\n');
+  }
 
   const referenceClause = params.withStyleReference
     ? 'The attached image is a STYLE reference only. Borrow its printing technique, paper texture, photo treatment and mood. Do NOT copy its layout, its subjects, or any of its text. Create a new, different composition.'
