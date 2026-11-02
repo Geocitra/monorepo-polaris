@@ -336,12 +336,12 @@ export function compileArtCollageImagePrompt(params: {
 // 5. OTAK TEKS: COPY AI DARI TOPIK YANG SAMA
 // =============================================================================
 const COPY_LIMITS = {
-  kicker: 48,
-  headline: 42,
-  deck: 180,
-  pointLabel: 32,
-  pointText: 160,
-  closing: 120,
+  kicker: 56,
+  headline: 48,
+  deck: 240,
+  pointLabel: 48,
+  pointText: 260,
+  closing: 140,
 };
 
 function clampWords(text: string, max: number): string {
@@ -472,11 +472,13 @@ export async function synthesizeArtCollageCopy(params: {
   if (isInfographic) {
     let specificGuide = '';
     if (archetype === 'INFOGRAPHIC_ADVOCACY_PILLARS') {
-      specificGuide = 'Tulis TEPAT 5 pilar aksi terencana. Setiap pilar memiliki target angka/metrik konkret.';
+      specificGuide = 'Tulis TEPAT 5 pilar aksi terencana. Setiap pilar memiliki target angka/metrik konkret dan penjelasan mendalam.';
     } else if (archetype === 'INFOGRAPHIC_NARRATIVE_WAVE') {
-      specificGuide = 'Tulis TEPAT 4 dimensi isu kebijakan (misal: Sisi Anggaran, Titik Kritis Lapangan, Standar Teknis, Kanal Aduan/Akses).';
+      specificGuide = 'Tulis TEPAT 4 sampai 5 dimensi isu kebijakan (misal: Sisi Anggaran, Titik Kritis Lapangan, Standar Teknis, Kanal Aduan/Akses, Regulasi).';
+    } else if (archetype === 'INFOGRAPHIC_RADIAL_CLOCK') {
+      specificGuide = 'Tulis TEPAT 5 tonggak waktu dan aksi strategis terukur (2 metrik urgensi untuk zona atas dan 3 fase implementasi/mitigasi untuk zona bawah).';
     } else {
-      specificGuide = 'Tulis TEPAT 4 tonggak capaian atau tahapan kronologis terukur dengan besaran angka, target hari/bulan, atau volume output riil.';
+      specificGuide = 'Tulis TEPAT 4 sampai 5 tonggak capaian atau tahapan kronologis terukur dengan besaran angka, target hari/bulan, atau volume output riil.';
     }
 
     systemPrompt = `Anda adalah visual data journalist dan analis kebijakan publik senior.
@@ -484,14 +486,14 @@ Tulis naskah INFOGRAFIS DATA EDUKATIF yang KAYA ANGKA, KREDIBEL, dan PADAT DATA 
 ${groundedContext ? `\nFAKTA RISET & KONTEKS DAERAH:\n${groundedContext.slice(0, 1800)}\n` : ''}
 
 PANDUAN STRUKTUR INFOGRAFIS (${specificGuide}):
-1. Tulis 4 sampai 5 butir data konkret (points).
+1. Tulis 4 sampai 5 butir data konkret (points) yang sangat kaya data, angka, persentase, dan fakta lapangan.
 2. SETIAP BUTIR WAJIB MEMUAT ANGKA, METRIK, ATAU INDIKATOR TERUKUR yang realistis dan sangat relevan dengan isu (misalnya: besaran alokasi anggaran dalam Rp/Miliar, jumlah kilometer atau titik ruas, target durasi hari/bulan pengerjaan, persentase peningkatan, indeks capaian, atau nama kecamatan/wilayah spesifik).
 3. headline: Judul infografis yang lugas, padat, dan berbobot (maks ${COPY_LIMITS.headline} karakter).
 4. kicker: Rubrik kebijakan spesifik (misal: "INFRASTRUKTUR DAERAH", "DATA ANGGARAN APBD", "INDIKATOR KESEHATAN").
-5. deck: 1-2 kalimat ringkasan data inti dan urgensi masalah (maks ${COPY_LIMITS.deck} karakter).
-6. points: Daftar 4 atau 5 butir data terstruktur:
+5. deck: 2 kalimat ringkasan data inti dan urgensi masalah (maks ${COPY_LIMITS.deck} karakter).
+6. points: Daftar 4 sampai 5 butir data terstruktur:
    - label: Frasa metrik ringkas bertuliskan angka/indikator (maks ${COPY_LIMITS.pointLabel} karakter, misal: "42 TITIK KRITIS", "ALOKASI RP 48,5 M", "TARGET 90 HARI", "STANDAR HOTMIX 6 CM", "3 KECAMATAN PRIORITAS").
-   - text: Penjelasan data konkret dan terukur (1-2 kalimat padat informasi substantif, maks ${COPY_LIMITS.pointText} karakter).
+   - text: Penjelasan data konkret dan terukur (2 kalimat padat informasi substantif dan edukatif, maks ${COPY_LIMITS.pointText} karakter).
 7. closingLine: 1 kalimat sintesis arah tindak lanjut terukur (maks ${COPY_LIMITS.closing} karakter).
 8. PANTANGAN: DILARANG kata "nyata", DILARANG slogan motivasional klise, DILARANG kalimat kosong tanpa data.
 9. visualSubject: Deskripsi pemandangan latar belakang ilustrasi tanpa teks dalam Bahasa Inggris (maks 35 kata), gambarkan suasana lingkungan, fasilitas, warga, atau aktivitas riil. DILARANG menyebut kotak, card, kartu, bagan, atau pilar (hanya pemandangan latar belakang).

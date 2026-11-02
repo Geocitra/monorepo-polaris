@@ -189,17 +189,17 @@ function renderInfographicArchetypeLayout(params: {
       .wave-card-badge {
         display: inline-block;
         align-self: flex-start;
-        font-size: 11px;
+        font-size: 12px;
         font-weight: 900;
         background: ${accentColor};
         color: #FFFFFF;
-        padding: 3px 10px;
+        padding: 4px 12px;
         border-radius: 4px;
         letter-spacing: 1.2px;
-        margin-bottom: 6px;
+        margin-bottom: 8px;
       }
       .wave-card-title {
-        font-size: 15.5px;
+        font-size: 17.5px;
         font-weight: 800;
         color: ${primaryColor};
         text-transform: uppercase;
@@ -209,8 +209,8 @@ function renderInfographicArchetypeLayout(params: {
         border-bottom: 1.5px solid ${accentColor}33;
       }
       .wave-card-desc {
-        font-size: 13.5px;
-        line-height: 1.45;
+        font-size: 14.5px;
+        line-height: 1.48;
         color: ${secondaryColor};
         font-weight: 600;
       }
@@ -366,17 +366,17 @@ function renderInfographicArchetypeLayout(params: {
       .cgrid-badge {
         display: inline-block;
         align-self: flex-start;
-        font-size: 11px;
+        font-size: 12px;
         font-weight: 900;
         background: ${accentColor};
         color: #FFFFFF;
-        padding: 3px 10px;
+        padding: 4px 12px;
         border-radius: 4px;
-        margin-bottom: 6px;
+        margin-bottom: 8px;
         letter-spacing: 1px;
       }
       .cgrid-title {
-        font-size: 15.5px;
+        font-size: 17.5px;
         font-weight: 800;
         color: ${primaryColor};
         text-transform: uppercase;
@@ -386,8 +386,8 @@ function renderInfographicArchetypeLayout(params: {
         border-bottom: 1.5px solid ${accentColor}33;
       }
       .cgrid-desc {
-        font-size: 13.5px;
-        line-height: 1.45;
+        font-size: 14.5px;
+        line-height: 1.48;
         color: ${secondaryColor};
         font-weight: 600;
       }
@@ -407,136 +407,140 @@ function renderInfographicArchetypeLayout(params: {
   }
 
   if (archetype === 'INFOGRAPHIC_RADIAL_CLOCK') {
-    // Vintage Clock Dial Layout: Left Vertical Masthead Ribbon + Right Epoch Cards
-    const cardsHtml = points.slice(0, 4).map((p, idx) => `
-      <div class="rclock-card">
-        <div class="rclock-epoch-tag">FASE 0${idx + 1}</div>
-        <div class="rclock-title">${esc(p.label)}</div>
-        <div class="rclock-desc">${esc(p.text)}</div>
+    // Radial Clock Dynamic Multi-Zone Layout:
+    // Top-Left: Hero Title Card
+    // Top-Right: 2 High-Impact Metrics Cards (Filling the right parchment)
+    // Bottom: 3 Comprehensive Action & Phase Cards (Filling the lower third across canvas)
+    const topMetrics = points.slice(0, 2);
+    const bottomCards = points.slice(2, 5);
+
+    const topMetricsHtml = topMetrics.map((p, idx) => `
+      <div class="rclock-top-card">
+        <div class="rclock-top-badge">TONGGAK 0${idx + 1}</div>
+        <div class="rclock-top-title">${esc(p.label)}</div>
+        <div class="rclock-top-desc">${esc(p.text)}</div>
       </div>
     `).join('');
 
+    const bottomCardsHtml = (bottomCards.length > 0 ? bottomCards : points.slice(0, 3)).map((p, idx) => `
+      <div class="rclock-bottom-col">
+        <div class="rclock-col-tag">✦ TONGGAK 0${idx + 3}</div>
+        <div class="rclock-col-title">${esc(p.label)}</div>
+        <div class="rclock-col-desc">${esc(p.text)}</div>
+        <div class="rclock-col-metric">✦ MITIGASI TERUKUR</div>
+      </div>
+    `).join('');
+
+    const bottomCount = Math.max(2, Math.min(3, bottomCards.length > 0 ? bottomCards.length : points.length));
+
     const html = `
       <div class="rclock-layout">
-        <div class="rclock-vertical-ribbon">
-          <span>K</span><span>R</span><span>O</span><span>N</span><span>I</span><span>K</span>
-          <span class="ribbon-sep">•</span>
-          <span>W</span><span>A</span><span>K</span><span>T</span><span>U</span>
-        </div>
-
-        <div class="rclock-header">
-          <div class="rclock-kicker">${esc(copy.kicker || 'TELAAH SEJARAH & KRONOLOGI')}</div>
+        <!-- Top-Left Title Block -->
+        <div class="rclock-title-card">
+          <div class="rclock-kicker">${esc(copy.kicker || 'DATA ANGGARAN APBD // TELAAH')}</div>
           <div class="rclock-headline">${esc(headlineText)}</div>
           ${copy.deck ? `<div class="rclock-deck">${esc(copy.deck)}</div>` : ''}
         </div>
 
-        <div class="rclock-cards-stack">
-          ${cardsHtml}
+        <!-- Top-Right Metrics Panel (Filling open right-hand area) -->
+        <div class="rclock-top-metrics-grid">
+          ${topMetricsHtml}
         </div>
 
-        ${copy.closingLine ? `
-          <div class="rclock-closing-banner">
-            ${esc(copy.closingLine)}
+        <!-- Bottom Actions Panel (Filling lower third across canvas) -->
+        <div class="rclock-bottom-section">
+          <div class="rclock-section-tag">FASE MITIGASI &amp; TINDAK LANJUT BERKELANJUTAN</div>
+          <div class="rclock-bottom-grid">
+            ${bottomCardsHtml}
           </div>
-        ` : ''}
+          ${copy.closingLine ? `
+            <div class="rclock-closing-banner">
+              ${esc(copy.closingLine)}
+            </div>
+          ` : ''}
+        </div>
       </div>
     `;
 
     const css = `
       .rclock-layout {
         position: absolute;
-        top: 80px;
-        left: 45px;
-        right: 50px;
+        top: 76px;
+        left: 54px;
+        right: 54px;
         height: 1150px;
       }
-      .rclock-vertical-ribbon {
+      .rclock-title-card {
         position: absolute;
         top: 0;
         left: 0;
-        width: 48px;
-        height: 1150px;
-        background: ${accentColor};
-        color: #FFFFFF;
-        border-radius: 10px;
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        justify-content: space-around;
-        font-family: 'Bebas Neue', sans-serif;
-        font-size: 24px;
-        letter-spacing: 2px;
-        box-shadow: 0 6px 18px rgba(0,0,0,0.15);
-      }
-      .ribbon-sep {
-        font-size: 28px;
-        color: #FDE047;
-      }
-      .rclock-header {
-        position: absolute;
-        top: 0;
-        left: 80px;
-        right: 0;
+        width: 440px;
+        background: ${cardBg};
+        border: 2px solid ${accentColor}55;
+        border-radius: 14px;
+        padding: 18px 22px;
+        box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
+        backdrop-filter: blur(14px);
       }
       .rclock-kicker {
-        font-size: 15px;
+        font-size: 14.5px;
         font-weight: 900;
         color: ${accentColor};
         letter-spacing: 2px;
         text-transform: uppercase;
-        margin-bottom: 4px;
+        margin-bottom: 6px;
       }
       .rclock-headline {
         font-family: 'Bebas Neue', sans-serif;
-        font-size: 54px;
+        font-size: 48px;
         line-height: 0.95;
         letter-spacing: 1.5px;
         color: ${primaryColor};
-        margin-bottom: 6px;
+        margin-bottom: 8px;
       }
       .rclock-deck {
         font-family: 'Playfair Display', serif;
         font-style: italic;
-        font-size: 16.5px;
-        line-height: 1.4;
+        font-size: 15.5px;
+        line-height: 1.45;
         color: ${secondaryColor};
         font-weight: 600;
-        max-width: 90%;
       }
-      .rclock-cards-stack {
+      .rclock-top-metrics-grid {
         position: absolute;
-        top: 165px;
-        left: 380px;
+        top: 0;
+        left: 460px;
         right: 0;
-        display: flex;
-        flex-direction: column;
-        gap: 12px;
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 14px;
       }
-      .rclock-card {
+      .rclock-top-card {
         background: ${cardBg};
         border: 2px solid ${accentColor}66;
-        border-left: 6px solid ${accentColor};
-        border-radius: 12px;
-        padding: 13px 18px;
-        box-shadow: 0 6px 20px rgba(0, 0, 0, 0.1);
+        border-radius: 14px;
+        padding: 16px 18px;
+        box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
+        backdrop-filter: blur(14px);
         display: flex;
         flex-direction: column;
-        backdrop-filter: blur(12px);
+        min-height: 180px;
       }
-      .rclock-epoch-tag {
+      .rclock-top-badge {
         display: inline-block;
         align-self: flex-start;
-        font-size: 11px;
+        font-size: 11.5px;
         font-weight: 900;
         background: ${accentColor};
         color: #FFFFFF;
         padding: 3px 10px;
         border-radius: 4px;
-        margin-bottom: 6px;
         letter-spacing: 1.2px;
+        margin-bottom: 8px;
+        text-transform: uppercase;
       }
-      .rclock-title {
-        font-size: 15.5px;
+      .rclock-top-title {
+        font-size: 16.5px;
         font-weight: 800;
         color: ${primaryColor};
         text-transform: uppercase;
@@ -545,17 +549,86 @@ function renderInfographicArchetypeLayout(params: {
         padding-bottom: 4px;
         border-bottom: 1.5px solid ${accentColor}33;
       }
-      .rclock-desc {
+      .rclock-top-desc {
         font-size: 13.5px;
         line-height: 1.45;
         color: ${secondaryColor};
         font-weight: 600;
       }
-      .rclock-closing-banner {
+      .rclock-bottom-section {
         position: absolute;
-        top: 1090px;
-        left: 80px;
+        top: 760px;
+        left: 0;
         right: 0;
+      }
+      .rclock-section-tag {
+        display: inline-block;
+        background: ${accentColor};
+        color: #FFFFFF;
+        padding: 6px 18px;
+        border-radius: 6px;
+        font-size: 12.5px;
+        font-weight: 800;
+        letter-spacing: 1.5px;
+        margin-bottom: 12px;
+        text-transform: uppercase;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+      }
+      .rclock-bottom-grid {
+        display: grid;
+        grid-template-columns: repeat(${bottomCount}, 1fr);
+        gap: 14px;
+        margin-bottom: 14px;
+      }
+      .rclock-bottom-col {
+        background: ${cardBg};
+        border: 2px solid ${accentColor}66;
+        border-radius: 14px;
+        padding: 18px 16px;
+        display: flex;
+        flex-direction: column;
+        min-height: 290px;
+        box-shadow: 0 8px 24px rgba(0, 0, 0, 0.14);
+        backdrop-filter: blur(14px);
+      }
+      .rclock-col-tag {
+        font-size: 11.5px;
+        font-weight: 900;
+        color: ${accentColor};
+        letter-spacing: 1.2px;
+        margin-bottom: 6px;
+        text-transform: uppercase;
+      }
+      .rclock-col-title {
+        font-size: 16px;
+        font-weight: 800;
+        color: ${primaryColor};
+        text-transform: uppercase;
+        line-height: 1.25;
+        margin-bottom: 8px;
+        padding-bottom: 4px;
+        border-bottom: 1.5px solid ${accentColor}33;
+      }
+      .rclock-col-desc {
+        font-size: 13.5px;
+        line-height: 1.45;
+        color: ${secondaryColor};
+        font-weight: 600;
+        flex-grow: 1;
+      }
+      .rclock-col-metric {
+        margin-top: 10px;
+        font-size: 11px;
+        font-weight: 800;
+        letter-spacing: 1px;
+        color: ${accentColor};
+        background: ${accentColor}18;
+        padding: 4px 8px;
+        border-radius: 4px;
+        border: 1px solid ${accentColor}33;
+        text-align: center;
+      }
+      .rclock-closing-banner {
         background: ${cardBg};
         border-left: 5px solid ${accentColor};
         border-radius: 8px;
@@ -564,6 +637,7 @@ function renderInfographicArchetypeLayout(params: {
         font-weight: 700;
         color: ${primaryColor};
         box-shadow: 0 4px 14px rgba(0,0,0,0.08);
+        backdrop-filter: blur(10px);
       }
     `;
 
@@ -686,15 +760,15 @@ function renderInfographicArchetypeLayout(params: {
         backdrop-filter: blur(12px);
       }
       .apillars-stat-val {
-        font-size: 14.5px;
+        font-size: 16px;
         font-weight: 900;
         color: ${accentColor};
         text-transform: uppercase;
         margin-bottom: 4px;
       }
       .apillars-stat-lbl {
-        font-size: 12px;
-        line-height: 1.38;
+        font-size: 13.5px;
+        line-height: 1.4;
         color: ${secondaryColor};
         font-weight: 600;
       }
@@ -752,7 +826,7 @@ function renderInfographicArchetypeLayout(params: {
         flex-shrink: 0;
       }
       .apillar-name {
-        font-size: 14px;
+        font-size: 16.5px;
         font-weight: 800;
         color: ${primaryColor};
         text-transform: uppercase;
@@ -763,8 +837,8 @@ function renderInfographicArchetypeLayout(params: {
         width: 100%;
       }
       .apillar-desc {
-        font-size: 12.5px;
-        line-height: 1.45;
+        font-size: 14px;
+        line-height: 1.48;
         color: ${secondaryColor};
         font-weight: 600;
         flex-grow: 1;
@@ -921,17 +995,17 @@ function renderInfographicArchetypeLayout(params: {
       margin-bottom: 4px;
     }
     .vtimeline-feature-title {
-      font-size: 14.5px;
+      font-size: 16.5px;
       font-weight: 800;
       color: ${primaryColor};
       text-transform: uppercase;
-      margin-bottom: 4px;
+      margin-bottom: 6px;
       border-bottom: 1.5px solid ${accentColor}33;
-      padding-bottom: 3px;
+      padding-bottom: 4px;
     }
     .vtimeline-feature-text {
-      font-size: 12.5px;
-      line-height: 1.4;
+      font-size: 14px;
+      line-height: 1.48;
       color: ${secondaryColor};
       font-weight: 600;
     }
@@ -1010,7 +1084,7 @@ function renderInfographicArchetypeLayout(params: {
       margin-bottom: 4px;
     }
     .vstep-label {
-      font-size: 14.5px;
+      font-size: 16.5px;
       font-weight: 800;
       color: ${primaryColor};
       text-transform: uppercase;
@@ -1020,8 +1094,8 @@ function renderInfographicArchetypeLayout(params: {
       border-bottom: 1.5px solid ${accentColor}33;
     }
     .vstep-desc {
-      font-size: 12.5px;
-      line-height: 1.45;
+      font-size: 14px;
+      line-height: 1.48;
       color: ${secondaryColor};
       font-weight: 600;
       flex-grow: 1;
