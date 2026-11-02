@@ -101,7 +101,18 @@ function renderInfographicArchetypeLayout(params: {
   } = params;
 
   const points = copy.points || [];
-  const cardBg = isLightPaper ? 'rgba(255, 255, 255, 0.96)' : 'rgba(17, 24, 39, 0.94)';
+
+  // Solid, 100% Opaque High-Contrast Editorial Surfaces (NO INVALID HEX, NO MUDDY BLUR)
+  const cardBgSolid = isLightPaper ? '#FFFFFF' : '#0F172A';
+  const headerBgSolid = isLightPaper ? '#FFFFFF' : '#0F172A';
+  const pillBgSolid = isLightPaper ? '#F8FAFC' : '#1E293B';
+  const borderRuleColor = isLightPaper ? `${accentColor}44` : `${accentColor}66`;
+
+  // 100% Guaranteed High-Contrast Typography (Crisp and legible on any screen)
+  const titleColor = isLightPaper ? '#0F172A' : '#FFFFFF';
+  const bodyTextColor = isLightPaper ? '#1E293B' : '#F1F5F9';
+  const deckTextColor = isLightPaper ? '#334155' : '#E2E8F0';
+  const mutedTextColor = isLightPaper ? '#64748B' : '#94A3B8';
 
   // Helper KPI Stats Primer (4 Metrik Angka Kunci Kredibel)
   const defaultStatValues = ['15,2%', 'RP 1,2 T', '5 KOTA', '100%'];
@@ -163,13 +174,12 @@ function renderInfographicArchetypeLayout(params: {
         top: 76px;
         left: 54px;
         right: 54px;
-        background: ${cardBg}f2;
-        border-top: 3px solid ${accentColor};
-        border-bottom: 1.5px solid ${accentColor}55;
+        background: ${cardBgSolid};
+        border-top: 3.5px solid ${accentColor};
+        border-bottom: 1.5px solid ${borderRuleColor};
         border-radius: 4px;
         padding: 16px 22px;
-        backdrop-filter: blur(14px);
-        box-shadow: 0 4px 18px rgba(0, 0, 0, 0.08);
+        box-shadow: 0 4px 18px rgba(0, 0, 0, 0.06);
       }
       .wave-kicker {
         font-size: 13.5px;
@@ -184,7 +194,7 @@ function renderInfographicArchetypeLayout(params: {
         font-size: 54px;
         line-height: 0.95;
         letter-spacing: 1.5px;
-        color: ${primaryColor};
+        color: ${titleColor};
         margin-bottom: 6px;
       }
       .wave-deck {
@@ -192,22 +202,22 @@ function renderInfographicArchetypeLayout(params: {
         font-style: italic;
         font-size: 16px;
         line-height: 1.45;
-        color: ${secondaryColor};
+        color: ${deckTextColor};
         font-weight: 600;
         max-width: 96%;
       }
       .wave-kpi-row {
         display: grid;
         grid-template-columns: repeat(${Math.min(4, statsList.length)}, 1fr);
-        border-top: 1.5px solid ${accentColor}55;
-        border-bottom: 1.5px solid ${accentColor}55;
+        border-top: 1.5px solid ${borderRuleColor};
+        border-bottom: 1.5px solid ${borderRuleColor};
         margin-top: 10px;
         padding: 8px 0;
       }
       .wave-kpi-pill {
         padding: 0 12px;
         text-align: center;
-        border-right: 1px solid ${accentColor}33;
+        border-right: 1px solid ${borderRuleColor};
       }
       .wave-kpi-pill:last-child {
         border-right: none;
@@ -222,18 +232,17 @@ function renderInfographicArchetypeLayout(params: {
       .wave-kpi-lbl {
         font-size: 10.5px;
         font-weight: 800;
-        color: ${secondaryColor};
+        color: ${deckTextColor};
         text-transform: uppercase;
       }
       .wave-stagger-card {
         position: absolute;
         width: 470px;
-        background: ${cardBg}f0;
-        border: 1.5px solid ${accentColor}66;
+        background: ${cardBgSolid};
+        border: 1.5px solid ${borderRuleColor};
         border-radius: 4px;
         padding: 16px 18px;
-        box-shadow: 0 4px 18px rgba(0, 0, 0, 0.08);
-        backdrop-filter: blur(10px);
+        box-shadow: 0 4px 18px rgba(0, 0, 0, 0.06);
         display: flex;
         flex-direction: column;
       }
@@ -272,17 +281,17 @@ function renderInfographicArchetypeLayout(params: {
       .wave-card-title {
         font-size: 17px;
         font-weight: 800;
-        color: ${primaryColor};
+        color: ${titleColor};
         text-transform: uppercase;
         line-height: 1.25;
         margin-bottom: 6px;
         padding-bottom: 4px;
-        border-bottom: 1.5px solid ${accentColor}33;
+        border-bottom: 1.5px solid ${borderRuleColor};
       }
       .wave-card-desc {
         font-size: 14px;
         line-height: 1.46;
-        color: ${secondaryColor};
+        color: ${bodyTextColor};
         font-weight: 600;
       }
       .wave-closing-banner {
@@ -290,14 +299,14 @@ function renderInfographicArchetypeLayout(params: {
         top: 1180px;
         left: 54px;
         right: 54px;
-        background: ${cardBg}f2;
+        background: ${cardBgSolid};
         border-left: 5px solid ${accentColor};
         border-radius: 4px;
         padding: 12px 18px;
         font-size: 14px;
         font-weight: 700;
-        color: ${primaryColor};
-        box-shadow: 0 4px 14px rgba(0,0,0,0.08);
+        color: ${titleColor};
+        box-shadow: 0 4px 14px rgba(0,0,0,0.06);
       }
     `;
 
@@ -403,18 +412,17 @@ function renderInfographicArchetypeLayout(params: {
         box-sizing: border-box;
       }
       .cgrid-header-zone {
-        background: ${cardBg}f2;
-        border-top: 3px solid ${accentColor};
-        border-bottom: 1.5px solid ${accentColor}55;
+        background: ${cardBgSolid};
+        border-top: 3.5px solid ${accentColor};
+        border-bottom: 1.5px solid ${borderRuleColor};
         padding: 16px 22px;
-        backdrop-filter: blur(14px);
-        box-shadow: 0 4px 18px rgba(0, 0, 0, 0.08);
+        box-shadow: 0 4px 18px rgba(0, 0, 0, 0.06);
       }
       .cgrid-meta-bar {
         display: flex;
         justify-content: space-between;
         align-items: center;
-        border-bottom: 1px solid ${accentColor}33;
+        border-bottom: 1px solid ${borderRuleColor};
         padding-bottom: 6px;
         margin-bottom: 8px;
       }
@@ -429,7 +437,7 @@ function renderInfographicArchetypeLayout(params: {
         font-size: 11px;
         font-weight: 800;
         letter-spacing: 1.2px;
-        color: ${secondaryColor};
+        color: ${deckTextColor};
         opacity: 0.85;
       }
       .cgrid-main-headline {
@@ -437,7 +445,7 @@ function renderInfographicArchetypeLayout(params: {
         font-size: 54px;
         line-height: 0.95;
         letter-spacing: 1.5px;
-        color: ${primaryColor};
+        color: ${titleColor};
         text-transform: uppercase;
         margin-bottom: 8px;
         word-break: break-word;
@@ -447,7 +455,7 @@ function renderInfographicArchetypeLayout(params: {
         font-style: italic;
         font-size: 16px;
         line-height: 1.45;
-        color: ${secondaryColor};
+        color: ${deckTextColor};
         font-weight: 600;
         max-width: 96%;
       }
@@ -456,17 +464,16 @@ function renderInfographicArchetypeLayout(params: {
       .cgrid-metric-strip {
         display: grid;
         grid-template-columns: repeat(${stats4.length}, 1fr);
-        background: ${cardBg}f5;
+        background: ${cardBgSolid};
         border-top: 2px solid ${accentColor};
         border-bottom: 2px solid ${accentColor};
         padding: 10px 0;
-        backdrop-filter: blur(14px);
-        box-shadow: 0 4px 16px rgba(0, 0, 0, 0.06);
+        box-shadow: 0 4px 16px rgba(0, 0, 0, 0.05);
       }
       .cgrid-kpi-col {
         padding: 0 16px;
         text-align: center;
-        border-right: 1px solid ${accentColor}33;
+        border-right: 1px solid ${borderRuleColor};
       }
       .cgrid-kpi-col.last {
         border-right: none;
@@ -482,7 +489,7 @@ function renderInfographicArchetypeLayout(params: {
       .cgrid-kpi-lbl {
         font-size: 11px;
         font-weight: 800;
-        color: ${secondaryColor};
+        color: ${deckTextColor};
         text-transform: uppercase;
         letter-spacing: 0.5px;
         line-height: 1.2;
@@ -493,16 +500,15 @@ function renderInfographicArchetypeLayout(params: {
         display: grid;
         grid-template-columns: 1fr 1fr;
         gap: 16px;
-        background: ${cardBg}f0;
-        border: 1.5px solid ${accentColor}44;
+        background: ${cardBgSolid};
+        border: 1.5px solid ${borderRuleColor};
         border-radius: 4px;
         padding: 16px 20px;
-        backdrop-filter: blur(14px);
-        box-shadow: 0 6px 24px rgba(0, 0, 0, 0.08);
+        box-shadow: 0 6px 24px rgba(0, 0, 0, 0.06);
         flex-grow: 1;
       }
       .cgrid-ledger-col.col-left {
-        border-right: 1px solid ${accentColor}25;
+        border-right: 1px solid ${borderRuleColor};
         padding-right: 14px;
       }
       .cgrid-col-headline {
@@ -517,7 +523,7 @@ function renderInfographicArchetypeLayout(params: {
       }
       .cgrid-ledger-row {
         padding: 8px 0;
-        border-bottom: 1px dashed ${accentColor}33;
+        border-bottom: 1px dashed ${borderRuleColor};
       }
       .cgrid-ledger-row:last-child {
         border-bottom: none;
@@ -537,7 +543,7 @@ function renderInfographicArchetypeLayout(params: {
       .cgrid-row-title {
         font-size: 15.5px;
         font-weight: 800;
-        color: ${primaryColor};
+        color: ${titleColor};
         text-transform: uppercase;
         line-height: 1.25;
         letter-spacing: 0.5px;
@@ -545,18 +551,17 @@ function renderInfographicArchetypeLayout(params: {
       .cgrid-row-desc {
         font-size: 13.5px;
         line-height: 1.45;
-        color: ${secondaryColor};
+        color: ${bodyTextColor};
         font-weight: 600;
       }
 
       /* Data Breakdown Panel */
       .cgrid-breakdown-panel {
-        background: ${cardBg}f5;
-        border: 1.5px solid ${accentColor}55;
+        background: ${cardBgSolid};
+        border: 1.5px solid ${borderRuleColor};
         border-radius: 4px;
         padding: 12px 18px;
-        backdrop-filter: blur(12px);
-        box-shadow: 0 4px 16px rgba(0, 0, 0, 0.06);
+        box-shadow: 0 4px 16px rgba(0, 0, 0, 0.05);
       }
       .cgrid-breakdown-header {
         display: flex;
@@ -574,7 +579,7 @@ function renderInfographicArchetypeLayout(params: {
       .cgrid-breakdown-sub {
         font-size: 11px;
         font-weight: 800;
-        color: ${secondaryColor};
+        color: ${deckTextColor};
         text-transform: uppercase;
       }
       .cgrid-stacked-bar {
@@ -605,7 +610,7 @@ function renderInfographicArchetypeLayout(params: {
         justify-content: space-between;
         font-size: 11px;
         font-weight: 800;
-        color: ${secondaryColor};
+        color: ${deckTextColor};
         text-transform: uppercase;
         letter-spacing: 0.5px;
       }
@@ -626,15 +631,14 @@ function renderInfographicArchetypeLayout(params: {
 
       /* Policy Takeaway Bar */
       .cgrid-takeaway-bar {
-        background: ${cardBg}f2;
+        background: ${cardBgSolid};
         border-left: 5px solid ${accentColor};
         border-radius: 4px;
         padding: 10px 18px;
         display: flex;
         align-items: center;
         gap: 14px;
-        box-shadow: 0 4px 14px rgba(0, 0, 0, 0.08);
-        backdrop-filter: blur(12px);
+        box-shadow: 0 4px 14px rgba(0, 0, 0, 0.05);
       }
       .cgrid-takeaway-tag {
         font-size: 11px;
@@ -650,7 +654,7 @@ function renderInfographicArchetypeLayout(params: {
       .cgrid-takeaway-text {
         font-size: 13.5px;
         font-weight: 700;
-        color: ${primaryColor};
+        color: ${titleColor};
         line-height: 1.4;
       }
     `;
@@ -659,10 +663,13 @@ function renderInfographicArchetypeLayout(params: {
   }
 
   if (archetype === 'INFOGRAPHIC_RADIAL_CLOCK') {
-    // Radial Clock Dynamic Multi-Zone Layout:
-    // Top-Left: Hero Title Card
-    // Top-Right: 3 Primary KPI Stat Badges + 2 High-Impact Metrics Cards
-    // Bottom: 3 Comprehensive Action & Phase Cards (Filling the lower third across canvas)
+    // Authentic Radial Clock Template Layout (Matching template-03-radial-clock-chronicle):
+    // 1. Top Broadsheet Masthead: Across top width, leaving center & left for the clock artwork
+    // 2. Left Expanse (left: 0, width: 440px): 100% UNOBSTRUCTED for the clock, historical figures, & workers
+    // 3. Right-Wing Radial Cascade (left: 470px, right: 0):
+    //    - 3-Column KPI Metric Strip
+    //    - 4 to 5 Cascading Tier Cards (Radial stepping margins, crisp solid white backing, 100% dark readable text)
+    //    - Bottom Takeaway Policy Banner
     const kpiHtml = statsList.slice(0, 3).map((st) => `
       <div class="rclock-kpi-pill">
         <div class="rclock-kpi-val">${esc(st.value)}</div>
@@ -670,273 +677,203 @@ function renderInfographicArchetypeLayout(params: {
       </div>
     `).join('');
 
-    const topMetrics = points.slice(0, 2);
-    const bottomCards = points.slice(2, 5);
-
-    const topMetricsHtml = topMetrics.map((p, idx) => `
-      <div class="rclock-top-card">
-        <div class="rclock-top-badge">TONGGAK 0${idx + 1}</div>
-        <div class="rclock-top-title">${esc(p.label)}</div>
-        <div class="rclock-top-desc">${esc(p.text)}</div>
+    const tiers = points.slice(0, 5);
+    const tiersHtml = tiers.map((p, idx) => `
+      <div class="rclock-tier-card tier-${idx}">
+        <div class="rclock-tier-ribbon">
+          <span class="rclock-tier-badge">TONGGAK 0${idx + 1}</span>
+          <span class="rclock-tier-title">${esc(p.label)}</span>
+        </div>
+        <div class="rclock-tier-desc">${esc(p.text)}</div>
       </div>
     `).join('');
-
-    const bottomCardsHtml = (bottomCards.length > 0 ? bottomCards : points.slice(0, 3)).map((p, idx) => `
-      <div class="rclock-bottom-col">
-        <div class="rclock-col-tag">✦ TONGGAK 0${idx + 3}</div>
-        <div class="rclock-col-title">${esc(p.label)}</div>
-        <div class="rclock-col-desc">${esc(p.text)}</div>
-        <div class="rclock-col-metric">✦ MITIGASI TERUKUR</div>
-      </div>
-    `).join('');
-
-    const bottomCount = Math.max(2, Math.min(3, bottomCards.length > 0 ? bottomCards.length : points.length));
 
     const html = `
-      <div class="rclock-layout">
-        <!-- Top-Left Title Block -->
-        <div class="rclock-title-card">
+      <div class="rclock-sheet">
+        <!-- Top Broadsheet Masthead -->
+        <div class="rclock-masthead">
           <div class="rclock-kicker">${esc(copy.kicker || 'DATA ANGGARAN APBD // TELAAH')}</div>
           <div class="rclock-headline">${esc(headlineText)}</div>
           ${copy.deck ? `<div class="rclock-deck">${esc(copy.deck)}</div>` : ''}
         </div>
 
-        <!-- Top-Right Metrics Panel (KPI Row + 2 Data Cards) -->
-        <div class="rclock-top-right-panel">
+        <!-- Right-Wing Radial Data Cascade (Leaves Left Side Unobstructed for Clock Visual) -->
+        <div class="rclock-right-wing">
+          <!-- KPI Indicator Strip -->
           <div class="rclock-kpi-row">
             ${kpiHtml}
           </div>
-          <div class="rclock-top-metrics-grid">
-            ${topMetricsHtml}
-          </div>
-        </div>
 
-        <!-- Bottom Actions Panel (Filling lower third across canvas) -->
-        <div class="rclock-bottom-section">
-          <div class="rclock-section-tag">FASE MITIGASI, TINDAKAN &amp; PROGRAM BERKELANJUTAN</div>
-          <div class="rclock-bottom-grid">
-            ${bottomCardsHtml}
+          <!-- Cascading Radial Stepped Tiers -->
+          <div class="rclock-tiers-list">
+            ${tiersHtml}
           </div>
-          ${copy.closingLine ? `
-            <div class="rclock-closing-banner">
-              ${esc(copy.closingLine)}
-            </div>
-          ` : ''}
+
+          <!-- Policy Takeaway Banner -->
+          <div class="rclock-takeaway-bar">
+            <span class="rclock-takeaway-tag">SINTESIS KEBIJAKAN</span>
+            <span class="rclock-takeaway-text">${esc(copy.closingLine || 'Pembangunan berkelanjutan menjamin keselamatan dan percepatan roda ekonomi daerah.')}</span>
+          </div>
         </div>
       </div>
     `;
 
     const css = `
-      .rclock-layout {
+      .rclock-sheet {
         position: absolute;
         top: 76px;
         left: 54px;
         right: 54px;
         height: 1150px;
+        box-sizing: border-box;
       }
-      .rclock-title-card {
+      .rclock-masthead {
         position: absolute;
         top: 0;
         left: 0;
-        width: 440px;
-        background: ${cardBg}f2;
-        border: 2px solid ${accentColor};
+        right: 0;
+        background: ${cardBgSolid};
+        border-top: 3.5px solid ${accentColor};
+        border-bottom: 1.5px solid ${borderRuleColor};
         border-radius: 4px;
-        padding: 18px 22px;
-        box-shadow: 0 4px 18px rgba(0, 0, 0, 0.08);
-        backdrop-filter: blur(14px);
+        padding: 14px 22px;
+        box-shadow: 0 4px 16px rgba(0, 0, 0, 0.06);
       }
       .rclock-kicker {
-        font-size: 14.5px;
+        font-size: 13.5px;
         font-weight: 900;
         color: ${accentColor};
         letter-spacing: 2px;
         text-transform: uppercase;
-        margin-bottom: 6px;
+        margin-bottom: 4px;
       }
       .rclock-headline {
         font-family: 'Bebas Neue', sans-serif;
         font-size: 48px;
         line-height: 0.95;
-        letter-spacing: 1.5px;
-        color: ${primaryColor};
-        margin-bottom: 8px;
+        letter-spacing: 1.2px;
+        color: ${titleColor};
+        margin-bottom: 6px;
       }
       .rclock-deck {
         font-family: 'Playfair Display', serif;
         font-style: italic;
-        font-size: 15.5px;
-        line-height: 1.45;
-        color: ${secondaryColor};
+        font-size: 15px;
+        line-height: 1.4;
+        color: ${deckTextColor};
         font-weight: 600;
+        max-width: 96%;
       }
-      .rclock-top-right-panel {
+      .rclock-right-wing {
         position: absolute;
-        top: 0;
-        left: 460px;
+        top: 185px;
+        left: 470px;
         right: 0;
         display: flex;
         flex-direction: column;
-        gap: 12px;
+        gap: 10px;
       }
       .rclock-kpi-row {
         display: grid;
         grid-template-columns: repeat(3, 1fr);
-        gap: 10px;
+        gap: 8px;
+        margin-bottom: 4px;
       }
       .rclock-kpi-pill {
-        background: ${cardBg}f0;
-        border: 1.5px solid ${accentColor}66;
+        background: ${cardBgSolid};
+        border: 1.5px solid ${borderRuleColor};
         border-radius: 4px;
         padding: 8px 10px;
         text-align: center;
-        box-shadow: 0 2px 10px rgba(0,0,0,0.06);
-        backdrop-filter: blur(12px);
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
       }
       .rclock-kpi-val {
         font-family: 'Bebas Neue', sans-serif;
         font-size: 26px;
-        font-weight: normal;
         color: ${accentColor};
-        letter-spacing: 0.8px;
-        line-height: 1.05;
+        line-height: 1;
         margin-bottom: 2px;
       }
       .rclock-kpi-lbl {
-        font-size: 11px;
+        font-size: 10.5px;
         font-weight: 800;
-        color: ${secondaryColor};
-        line-height: 1.25;
+        color: ${deckTextColor};
         text-transform: uppercase;
+        line-height: 1.2;
       }
-      .rclock-top-metrics-grid {
-        display: grid;
-        grid-template-columns: 1fr 1fr;
-        gap: 12px;
-      }
-      .rclock-top-card {
-        background: ${cardBg}f0;
-        border: 1.5px solid ${accentColor}66;
-        border-radius: 4px;
-        padding: 14px 16px;
-        box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08);
-        backdrop-filter: blur(14px);
+      .rclock-tiers-list {
         display: flex;
         flex-direction: column;
-        min-height: 175px;
+        gap: 8px;
       }
-      .rclock-top-badge {
-        display: inline-block;
-        align-self: flex-start;
-        font-size: 11.5px;
-        font-weight: 900;
-        background: ${accentColor};
-        color: #FFFFFF;
-        padding: 3px 10px;
-        border-radius: 4px;
-        letter-spacing: 1.2px;
-        margin-bottom: 6px;
-        text-transform: uppercase;
-      }
-      .rclock-top-title {
-        font-size: 16px;
-        font-weight: 800;
-        color: ${primaryColor};
-        text-transform: uppercase;
-        line-height: 1.25;
-        margin-bottom: 6px;
-        padding-bottom: 4px;
-        border-bottom: 1.5px solid ${accentColor}33;
-      }
-      .rclock-top-desc {
-        font-size: 13.5px;
-        line-height: 1.45;
-        color: ${secondaryColor};
-        font-weight: 600;
-      }
-      .rclock-bottom-section {
-        position: absolute;
-        top: 760px;
-        left: 0;
-        right: 0;
-      }
-      .rclock-section-tag {
-        display: inline-block;
-        background: ${accentColor};
-        color: #FFFFFF;
-        padding: 6px 18px;
-        border-radius: 6px;
-        font-size: 12.5px;
-        font-weight: 800;
-        letter-spacing: 1.5px;
-        margin-bottom: 12px;
-        text-transform: uppercase;
-        box-shadow: 0 4px 12px rgba(0,0,0,0.15);
-      }
-      .rclock-bottom-grid {
-        display: grid;
-        grid-template-columns: repeat(${bottomCount}, 1fr);
-        gap: 14px;
-        margin-bottom: 14px;
-      }
-      .rclock-bottom-col {
-        background: ${cardBg}f0;
-        border: 1.5px solid ${accentColor}66;
-        border-radius: 4px;
-        padding: 18px 16px;
-        display: flex;
-        flex-direction: column;
-        min-height: 290px;
-        box-shadow: 0 4px 18px rgba(0, 0, 0, 0.08);
-        backdrop-filter: blur(14px);
-      }
-      .rclock-col-tag {
-        font-size: 11.5px;
-        font-weight: 900;
-        color: ${accentColor};
-        letter-spacing: 1.2px;
-        margin-bottom: 6px;
-        text-transform: uppercase;
-      }
-      .rclock-col-title {
-        font-size: 16px;
-        font-weight: 800;
-        color: ${primaryColor};
-        text-transform: uppercase;
-        line-height: 1.25;
-        margin-bottom: 8px;
-        padding-bottom: 4px;
-        border-bottom: 1.5px solid ${accentColor}33;
-      }
-      .rclock-col-desc {
-        font-size: 13.5px;
-        line-height: 1.45;
-        color: ${secondaryColor};
-        font-weight: 600;
-        flex-grow: 1;
-      }
-      .rclock-col-metric {
-        margin-top: 10px;
-        font-size: 11px;
-        font-weight: 800;
-        letter-spacing: 1px;
-        color: ${accentColor};
-        background: ${accentColor}18;
-        padding: 4px 8px;
-        border-radius: 4px;
-        border: 1px solid ${accentColor}33;
-        text-align: center;
-      }
-      .rclock-closing-banner {
-        background: ${cardBg}f2;
+      .rclock-tier-card {
+        background: ${cardBgSolid};
+        border: 1.5px solid ${borderRuleColor};
         border-left: 5px solid ${accentColor};
         border-radius: 4px;
-        padding: 12px 18px;
+        padding: 10px 14px;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+      }
+      .rclock-tier-card.tier-0 { margin-left: 0px; }
+      .rclock-tier-card.tier-1 { margin-left: 10px; }
+      .rclock-tier-card.tier-2 { margin-left: 20px; }
+      .rclock-tier-card.tier-3 { margin-left: 10px; }
+      .rclock-tier-card.tier-4 { margin-left: 0px; }
+      .rclock-tier-ribbon {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+      }
+      .rclock-tier-badge {
+        font-size: 10.5px;
+        font-weight: 900;
+        background: ${accentColor};
+        color: #FFFFFF;
+        padding: 2px 8px;
+        border-radius: 3px;
+        letter-spacing: 1px;
+        white-space: nowrap;
+        text-transform: uppercase;
+      }
+      .rclock-tier-title {
         font-size: 14.5px;
+        font-weight: 800;
+        color: ${titleColor};
+        text-transform: uppercase;
+        line-height: 1.25;
+      }
+      .rclock-tier-desc {
+        font-size: 12.5px;
+        line-height: 1.45;
+        color: ${bodyTextColor};
+        font-weight: 600;
+      }
+      .rclock-takeaway-bar {
+        background: ${cardBgSolid};
+        border: 1.5px solid ${borderRuleColor};
+        border-left: 5px solid ${accentColor};
+        border-radius: 4px;
+        padding: 10px 14px;
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+      }
+      .rclock-takeaway-tag {
+        font-size: 10.5px;
+        font-weight: 900;
+        color: ${accentColor};
+        letter-spacing: 1px;
+        text-transform: uppercase;
+      }
+      .rclock-takeaway-text {
+        font-size: 12.5px;
         font-weight: 700;
-        color: ${primaryColor};
-        box-shadow: 0 4px 14px rgba(0,0,0,0.08);
-        backdrop-filter: blur(10px);
+        color: ${bodyTextColor};
+        line-height: 1.4;
       }
     `;
 
@@ -944,17 +881,18 @@ function renderInfographicArchetypeLayout(params: {
   }
 
   if (archetype === 'INFOGRAPHIC_ADVOCACY_PILLARS') {
-    // Advocacy Hero: Top Headline + 3 Stats Middle + 5 Action Pillars Lower Half
-    const letterBadges = ['P', 'U', 'T', 'U', 'S'];
+    // Advocacy Hero: Top Headline + 4 Stats Middle + 5 Action Pillars Lower Half
+    const letterBadges = ['01', '02', '03', '04', '05'];
     const pillarsHtml = points.slice(0, 5).map((p, idx) => `
       <div class="apillar-col">
-        <div class="apillar-badge">${letterBadges[idx] || (idx + 1)}</div>
+        <div class="apillar-badge">◈ ${letterBadges[idx] || (idx + 1)}</div>
         <div class="apillar-name">${esc(p.label)}</div>
         <div class="apillar-desc">${esc(p.text)}</div>
         <div class="apillar-metric-tag">✦ INDIKATOR 0${idx + 1}</div>
       </div>
     `).join('');
 
+    const stats4 = statsList.slice(0, 4);
     const html = `
       <div class="apillars-layout">
         <div class="apillars-header">
@@ -964,7 +902,7 @@ function renderInfographicArchetypeLayout(params: {
         </div>
 
         <div class="apillars-stats-row">
-          ${statsList.map((st) => `
+          ${stats4.map((st) => `
             <div class="apillars-stat-box">
               <div class="apillars-stat-val">${esc(st.value)}</div>
               <div class="apillars-stat-lbl">${esc(st.label)}</div>
@@ -973,7 +911,7 @@ function renderInfographicArchetypeLayout(params: {
         </div>
 
         <div class="apillars-bottom-section">
-          <div class="apillars-section-tag">5 PILAR AKSI ADVOKASI BERKELANJUTAN</div>
+          <div class="apillars-section-tag">PILAR AKSI &amp; ADVOKASI BERKELANJUTAN</div>
           <div class="apillars-cols-container">
             ${pillarsHtml}
           </div>
@@ -999,16 +937,15 @@ function renderInfographicArchetypeLayout(params: {
         top: 0;
         left: 0;
         right: 0;
-        background: ${cardBg}f2;
-        border-top: 3px solid ${accentColor};
-        border-bottom: 1.5px solid ${accentColor}55;
+        background: ${cardBgSolid};
+        border-top: 3.5px solid ${accentColor};
+        border-bottom: 1.5px solid ${borderRuleColor};
         border-radius: 4px;
         padding: 16px 22px;
-        box-shadow: 0 4px 18px rgba(0, 0, 0, 0.08);
-        backdrop-filter: blur(14px);
+        box-shadow: 0 4px 18px rgba(0, 0, 0, 0.06);
       }
       .apillars-kicker {
-        font-size: 14px;
+        font-size: 13.5px;
         font-weight: 900;
         color: ${accentColor};
         letter-spacing: 2px;
@@ -1020,7 +957,7 @@ function renderInfographicArchetypeLayout(params: {
         font-size: 54px;
         line-height: 0.95;
         letter-spacing: 1.5px;
-        color: ${primaryColor};
+        color: ${titleColor};
         margin-bottom: 6px;
       }
       .apillars-deck {
@@ -1028,7 +965,7 @@ function renderInfographicArchetypeLayout(params: {
         font-style: italic;
         font-size: 16px;
         line-height: 1.4;
-        color: ${secondaryColor};
+        color: ${deckTextColor};
         font-weight: 600;
         max-width: 96%;
       }
@@ -1038,16 +975,15 @@ function renderInfographicArchetypeLayout(params: {
         left: 0;
         right: 0;
         display: grid;
-        grid-template-columns: 1fr 1fr 1fr;
-        gap: 14px;
+        grid-template-columns: repeat(${stats4.length}, 1fr);
+        gap: 12px;
       }
       .apillars-stat-box {
-        background: ${cardBg}f0;
-        border: 1.5px solid ${accentColor}66;
+        background: ${cardBgSolid};
+        border: 1.5px solid ${borderRuleColor};
         border-radius: 4px;
         padding: 10px 14px;
-        box-shadow: 0 4px 14px rgba(0, 0, 0, 0.06);
-        backdrop-filter: blur(12px);
+        box-shadow: 0 4px 14px rgba(0, 0, 0, 0.05);
       }
       .apillars-stat-val {
         font-family: 'Bebas Neue', sans-serif;
@@ -1058,9 +994,9 @@ function renderInfographicArchetypeLayout(params: {
         margin-bottom: 4px;
       }
       .apillars-stat-lbl {
-        font-size: 11.5px;
+        font-size: 11px;
         font-weight: 800;
-        color: ${secondaryColor};
+        color: ${deckTextColor};
         text-transform: uppercase;
       }
       .apillars-bottom-section {
@@ -1073,29 +1009,28 @@ function renderInfographicArchetypeLayout(params: {
         display: inline-block;
         background: ${accentColor};
         color: #FFFFFF;
-        padding: 6px 18px;
-        border-radius: 6px;
-        font-size: 12.5px;
+        padding: 5px 16px;
+        border-radius: 4px;
+        font-size: 12px;
         font-weight: 800;
         letter-spacing: 1.5px;
         margin-bottom: 12px;
         text-transform: uppercase;
-        box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+        box-shadow: 0 2px 8px rgba(0,0,0,0.1);
       }
       .apillars-cols-container {
         display: grid;
         grid-template-columns: repeat(${Math.min(5, points.length)}, 1fr);
-        background: ${cardBg}f0;
-        border: 1.5px solid ${accentColor}55;
+        background: ${cardBgSolid};
+        border: 1.5px solid ${borderRuleColor};
         border-bottom: 4px solid ${accentColor};
         border-radius: 4px;
         padding: 16px 10px;
-        box-shadow: 0 4px 18px rgba(0, 0, 0, 0.08);
-        backdrop-filter: blur(12px);
+        box-shadow: 0 4px 18px rgba(0, 0, 0, 0.06);
         margin-bottom: 14px;
       }
       .apillar-col {
-        border-right: 1px solid ${accentColor}25;
+        border-right: 1px solid ${borderRuleColor};
         padding: 10px 10px;
         display: flex;
         flex-direction: column;
@@ -1107,24 +1042,19 @@ function renderInfographicArchetypeLayout(params: {
         border-right: none;
       }
       .apillar-badge {
-        width: 44px;
-        height: 44px;
-        border-radius: 22px;
+        font-size: 13.5px;
+        font-weight: 900;
         background: ${accentColor};
         color: #FFFFFF;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        font-weight: 900;
-        font-size: 20px;
+        padding: 4px 12px;
+        border-radius: 4px;
+        letter-spacing: 1.5px;
         margin-bottom: 10px;
-        box-shadow: 0 3px 10px rgba(0,0,0,0.22);
-        flex-shrink: 0;
       }
       .apillar-name {
-        font-size: 16.5px;
+        font-size: 16px;
         font-weight: 800;
-        color: ${primaryColor};
+        color: ${titleColor};
         text-transform: uppercase;
         line-height: 1.25;
         margin-bottom: 8px;
@@ -1133,9 +1063,9 @@ function renderInfographicArchetypeLayout(params: {
         width: 100%;
       }
       .apillar-desc {
-        font-size: 14px;
+        font-size: 13.5px;
         line-height: 1.48;
-        color: ${secondaryColor};
+        color: ${bodyTextColor};
         font-weight: 600;
         flex-grow: 1;
       }
@@ -1152,23 +1082,21 @@ function renderInfographicArchetypeLayout(params: {
         width: 90%;
       }
       .apillars-closing-banner {
-        background: ${cardBg}f2;
+        background: ${cardBgSolid};
         border-left: 5px solid ${accentColor};
         border-radius: 4px;
         padding: 12px 18px;
         font-size: 14px;
         font-weight: 700;
-        color: ${primaryColor};
-        box-shadow: 0 4px 14px rgba(0,0,0,0.08);
-        backdrop-filter: blur(10px);
+        color: ${titleColor};
+        box-shadow: 0 4px 14px rgba(0,0,0,0.06);
       }
     `;
 
     return { html, css };
   }
-
   // INFOGRAPHIC_VISIONARY_TIMELINE
-  // Top Visionary Header + 3 KPI Stat Pills + 4-5 Connected Milestone Cards Lower Half
+  // Top Visionary Header + 4 KPI Stat Pills + 4-5 Connected Milestone Cards Lower Half
   const nodeCount = Math.min(5, Math.max(3, points.length));
   const stepsHtml = points.slice(0, nodeCount).map((p, idx) => `
     <div class="vstep-col">
@@ -1182,16 +1110,17 @@ function renderInfographicArchetypeLayout(params: {
     </div>
   `).join('');
 
+  const stats4V = statsList.slice(0, 4);
   const html = `
     <div class="vtimeline-layout">
       <div class="vtimeline-header">
-        <div class="vtimeline-kicker">${esc(copy.kicker || 'TELAAH KEBIJAKAN & TARGET STRATEGIS')}</div>
+        <div class="vtimeline-kicker">${esc(copy.kicker || 'TELAAH KEBIJAKAN &amp; TARGET STRATEGIS')}</div>
         <div class="vtimeline-headline">${esc(headlineText)}</div>
         ${copy.deck ? `<div class="vtimeline-deck">${esc(copy.deck)}</div>` : ''}
       </div>
 
       <div class="vtimeline-middle-spread">
-        ${statsList.map((st) => `
+        ${stats4V.map((st) => `
           <div class="vtimeline-stat-pill">
             <div class="vtimeline-stat-val">${esc(st.value)}</div>
             <div class="vtimeline-stat-lbl">${esc(st.label)}</div>
@@ -1200,7 +1129,7 @@ function renderInfographicArchetypeLayout(params: {
       </div>
 
       <div class="vtimeline-bottom-bar">
-        <div class="vtimeline-bar-tag">PETA JALAN TARGET & REALISASI CAPAIAN</div>
+        <div class="vtimeline-bar-tag">PETA JALAN TARGET &amp; REALISASI CAPAIAN</div>
         <div class="vtimeline-steps-grid">
           ${stepsHtml}
         </div>
@@ -1226,16 +1155,15 @@ function renderInfographicArchetypeLayout(params: {
       top: 0;
       left: 0;
       right: 0;
-      background: ${cardBg}f2;
-      border-top: 3px solid ${accentColor};
-      border-bottom: 1.5px solid ${accentColor}55;
+      background: ${cardBgSolid};
+      border-top: 3.5px solid ${accentColor};
+      border-bottom: 1.5px solid ${borderRuleColor};
       border-radius: 4px;
       padding: 16px 22px;
-      box-shadow: 0 4px 18px rgba(0, 0, 0, 0.08);
-      backdrop-filter: blur(14px);
+      box-shadow: 0 4px 18px rgba(0, 0, 0, 0.06);
     }
     .vtimeline-kicker {
-      font-size: 14px;
+      font-size: 13.5px;
       font-weight: 900;
       color: ${accentColor};
       letter-spacing: 2px;
@@ -1247,7 +1175,7 @@ function renderInfographicArchetypeLayout(params: {
       font-size: 54px;
       line-height: 0.95;
       letter-spacing: 1.5px;
-      color: ${primaryColor};
+      color: ${titleColor};
       margin-bottom: 6px;
     }
     .vtimeline-deck {
@@ -1255,7 +1183,7 @@ function renderInfographicArchetypeLayout(params: {
       font-style: italic;
       font-size: 16px;
       line-height: 1.4;
-      color: ${secondaryColor};
+      color: ${deckTextColor};
       font-weight: 600;
       max-width: 96%;
     }
@@ -1265,17 +1193,16 @@ function renderInfographicArchetypeLayout(params: {
       left: 0;
       right: 0;
       display: grid;
-      grid-template-columns: repeat(3, 1fr);
-      gap: 14px;
+      grid-template-columns: repeat(${stats4V.length}, 1fr);
+      gap: 12px;
     }
     .vtimeline-stat-pill {
-      background: ${cardBg}f0;
-      border: 1.5px solid ${accentColor}66;
+      background: ${cardBgSolid};
+      border: 1.5px solid ${borderRuleColor};
       border-radius: 4px;
       padding: 10px 14px;
       text-align: center;
-      box-shadow: 0 4px 14px rgba(0, 0, 0, 0.06);
-      backdrop-filter: blur(12px);
+      box-shadow: 0 4px 14px rgba(0, 0, 0, 0.05);
     }
     .vtimeline-stat-val {
       font-family: 'Bebas Neue', sans-serif;
@@ -1286,9 +1213,9 @@ function renderInfographicArchetypeLayout(params: {
       margin-bottom: 4px;
     }
     .vtimeline-stat-lbl {
-      font-size: 11.5px;
+      font-size: 11px;
       font-weight: 800;
-      color: ${secondaryColor};
+      color: ${deckTextColor};
       text-transform: uppercase;
     }
     .vtimeline-bottom-bar {
@@ -1301,30 +1228,29 @@ function renderInfographicArchetypeLayout(params: {
       display: inline-block;
       background: ${accentColor};
       color: #FFFFFF;
-      padding: 6px 18px;
-      border-radius: 6px;
-      font-size: 12.5px;
+      padding: 5px 16px;
+      border-radius: 4px;
+      font-size: 12px;
       font-weight: 800;
       letter-spacing: 1.5px;
       margin-bottom: 12px;
       text-transform: uppercase;
-      box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
     }
     .vtimeline-steps-grid {
       display: grid;
       grid-template-columns: repeat(${nodeCount}, 1fr);
-      background: ${cardBg}f0;
-      border: 1.5px solid ${accentColor}55;
+      background: ${cardBgSolid};
+      border: 1.5px solid ${borderRuleColor};
       border-bottom: 4px solid ${accentColor};
       border-radius: 4px;
       padding: 16px 10px;
-      box-shadow: 0 4px 18px rgba(0, 0, 0, 0.08);
-      backdrop-filter: blur(12px);
+      box-shadow: 0 4px 18px rgba(0, 0, 0, 0.06);
       margin-bottom: 14px;
       position: relative;
     }
     .vstep-col {
-      border-right: 1px solid ${accentColor}25;
+      border-right: 1px solid ${borderRuleColor};
       padding: 12px 10px;
       display: flex;
       flex-direction: column;
@@ -1371,9 +1297,9 @@ function renderInfographicArchetypeLayout(params: {
       margin-bottom: 4px;
     }
     .vstep-label {
-      font-size: 16.5px;
+      font-size: 16px;
       font-weight: 800;
-      color: ${primaryColor};
+      color: ${titleColor};
       text-transform: uppercase;
       line-height: 1.25;
       margin-bottom: 8px;
@@ -1381,9 +1307,9 @@ function renderInfographicArchetypeLayout(params: {
       border-bottom: 1.5px solid ${accentColor}33;
     }
     .vstep-desc {
-      font-size: 14px;
+      font-size: 13.5px;
       line-height: 1.48;
-      color: ${secondaryColor};
+      color: ${bodyTextColor};
       font-weight: 600;
       flex-grow: 1;
     }
@@ -1400,15 +1326,14 @@ function renderInfographicArchetypeLayout(params: {
       text-align: center;
     }
     .vtimeline-closing-banner {
-      background: ${cardBg}f2;
+      background: ${cardBgSolid};
       border-left: 5px solid ${accentColor};
       border-radius: 4px;
       padding: 12px 18px;
       font-size: 14px;
       font-weight: 700;
-      color: ${primaryColor};
-      box-shadow: 0 4px 14px rgba(0,0,0,0.08);
-      backdrop-filter: blur(10px);
+      color: ${titleColor};
+      box-shadow: 0 4px 14px rgba(0,0,0,0.06);
     }
   `;
 
