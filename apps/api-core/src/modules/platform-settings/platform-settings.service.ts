@@ -1,5 +1,5 @@
 import { Injectable, Logger } from '@nestjs/common';
-import { db, platformFeatureFlags, eq } from '@polaris/database';
+import { db, platformFeatureFlags, eq, asc } from '@polaris/database';
 import {
   PlatformFeatureFlagKey,
   PlatformFeatureFlagRecord,
@@ -63,11 +63,15 @@ export class PlatformSettingsService {
   }
 
   /**
-   * Mengambil semua feature flags untuk panel Superadmin.
+   * Mengambil semua feature flags untuk panel Superadmin dengan urutan stabil (deterministik).
    */
   async getAllFlags(): Promise<PlatformFeatureFlagRecord[]> {
     try {
-      const rows = await db.select().from(platformFeatureFlags);
+      const rows = await db
+        .select()
+        .from(platformFeatureFlags)
+        .orderBy(asc(platformFeatureFlags.flagKey));
+
       return rows.map((r) => ({
         flagKey: r.flagKey,
         enabled: r.enabled,

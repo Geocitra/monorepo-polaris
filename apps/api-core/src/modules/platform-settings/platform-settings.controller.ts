@@ -14,3 +14,4 @@ export class PlatformSettingsController {
     return await this.settingsService.getSocialFeatureFlags();
   }
 }
+

@@ -9,3 +9,4 @@ import { PlatformSettingsController } from './platform-settings.controller.js';
   exports: [PlatformSettingsService],
 })
 export class PlatformSettingsModule {}
+

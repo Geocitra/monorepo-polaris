@@ -20,3 +20,4 @@ VALUES
   ('AUTO_PUBLISH_TIKTOK', false),
   ('AUTO_PUBLISH_X_TWITTER', false)
 ON CONFLICT (flag_key) DO NOTHING;
+

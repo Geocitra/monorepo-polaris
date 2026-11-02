@@ -520,6 +520,12 @@ export function CampaignPreview({
 
   // Resolusi tautan artikel resmi yang mengarah ke portal pribadi klien (bukan domain induk)
   const articleSlug = generatedResult?.publication?.slug || '';
+  const basePortalUrl = getPortalUrl(userSubdomain, userCustomDomain);
+  const articleUrl = publishedUrl || (articleSlug ? `${basePortalUrl}/artikel/${articleSlug}` : '');
+  const articleDisplayUrl = articleUrl
+    ? articleUrl.replace(/^https?:\/\//, '')
+    : `${basePortalUrl.replace(/^https?:\/\//, '')}${articleSlug ? `/artikel/${articleSlug}` : '/artikel/...'}`;
+
   function handleCopyCaptionWithPortalLink(rawText: string, platformLabel: string) {
     let textToCopy = (rawText || '').trim();
     if (articleUrl && !textToCopy.includes(articleUrl)) {
@@ -534,12 +540,6 @@ export function CampaignPreview({
         : 'Naskah berhasil disalin ke papan klip.',
     });
   }
-
-  const basePortalUrl = getPortalUrl(userSubdomain, userCustomDomain);
-  const articleUrl = publishedUrl || (articleSlug ? `${basePortalUrl}/artikel/${articleSlug}` : '');
-  const articleDisplayUrl = articleUrl
-    ? articleUrl.replace(/^https?:\/\//, '')
-    : `${basePortalUrl.replace(/^https?:\/\//, '')}${articleSlug ? `/artikel/${articleSlug}` : '/artikel/...'}`;
 
   async function handlePublishToThreads() {
     if (!connectedThreadsAccount) {

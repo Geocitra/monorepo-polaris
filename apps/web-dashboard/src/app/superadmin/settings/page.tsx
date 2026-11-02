@@ -4,14 +4,10 @@ import React, { useEffect, useState } from 'react';
 import {
   Sliders,
   ShieldAlert,
-  ShieldCheck,
   Instagram,
   RefreshCw,
-  AlertTriangle,
   Info,
-  CheckCircle2,
   ExternalLink,
-  Lock,
 } from 'lucide-react';
 import { AdminApiClient } from '@/lib/api-client';
 import { useToast } from '@/components/ui/toast';
@@ -115,9 +111,9 @@ export default function SuperadminPlatformSettingsPage() {
       setFlags(map);
     } catch (err: any) {
       toast({
+        type: 'error',
         title: 'Gagal Memuat Pengaturan',
         description: err.message || 'Terjadi kesalahan koneksi saat memuat feature flags.',
-        variant: 'destructive',
       });
     } finally {
       setLoading(false);
@@ -144,6 +140,7 @@ export default function SuperadminPlatformSettingsPage() {
       }));
 
       toast({
+        type: 'success',
         title: nextValue ? 'Mode Otomatis Diaktifkan' : 'Mode Manual (Default) Diaktifkan',
         description: `Sakelar untuk ${config?.name || flagKey} berhasil diubah menjadi ${
           nextValue ? 'AKTIF (Otomatis)' : 'NONAKTIF (Manual Asisten)'
@@ -151,9 +148,9 @@ export default function SuperadminPlatformSettingsPage() {
       });
     } catch (err: any) {
       toast({
+        type: 'error',
         title: 'Gagal Mengubah Sakelar',
         description: err.message || 'Terjadi kesalahan sistem saat memperbarui flag.',
-        variant: 'destructive',
       });
     } finally {
       setUpdatingKey(null);
@@ -185,7 +182,7 @@ export default function SuperadminPlatformSettingsPage() {
           variant="outline"
           size="sm"
           disabled={loading}
-          className="shrink-0 gap-2 border-slate-200 dark:border-slate-800"
+          className="shrink-0 gap-2 border-slate-200 dark:border-slate-800 cursor-pointer"
         >
           <RefreshCw className={`h-3.5 w-3.5 ${loading ? 'animate-spin' : ''}`} />
           Segarkan
