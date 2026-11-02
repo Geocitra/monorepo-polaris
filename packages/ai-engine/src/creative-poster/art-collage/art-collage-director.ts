@@ -384,7 +384,7 @@ function finalizeCopy(
     : [];
 
   const isInfographic = isInfographicArchetype(archetype);
-  const maxPoints = isInfographic ? 5 : 3;
+  const maxPoints = isInfographic ? 8 : 3;
 
   const points = pointsArray
     .map((pt: any, idx: number) => {
@@ -399,12 +399,12 @@ function finalizeCopy(
           };
         }
         return {
-          label: `POIN 0${idx + 1}`,
+          label: `TONGGAK 0${idx + 1}`,
           text: clampSentence(s(pt), COPY_LIMITS.pointText),
         };
       }
       if (typeof pt === 'object' && pt !== null) {
-        const rawLabel = pt.label || pt.title || pt.name || pt.step || pt.pilar || pt.heading || `POIN 0${idx + 1}`;
+        const rawLabel = pt.label || pt.title || pt.name || pt.step || pt.pilar || pt.heading || `TONGGAK 0${idx + 1}`;
         const rawText = pt.text || pt.description || pt.desc || pt.content || pt.detail || pt.uraian || '';
         return {
           label: clampWords(MasterEditorialSanitizer.cleanHeadline(rawLabel), COPY_LIMITS.pointLabel).toUpperCase(),
@@ -416,35 +416,55 @@ function finalizeCopy(
     .filter((pt): pt is { label: string; text: string } => Boolean(pt && (pt.label || pt.text)))
     .slice(0, maxPoints);
 
-  // Parse stats (3 KPI highlight cards) untuk infografis
+  // Parse stats (3 sampai 4 KPI highlight metrics) untuk infografis
   const rawStatsCandidate = raw.stats || raw.kpis || raw.metrics || [];
   let stats: Array<{ value: string; label: string }> = [];
   if (Array.isArray(rawStatsCandidate) && rawStatsCandidate.length > 0) {
     stats = rawStatsCandidate
       .map((st: any) => ({
         value: clampWords(String(st.value || st.angka || st.metric || '').toUpperCase(), 16),
-        label: clampWords(String(st.label || st.title || st.keterangan || ''), 32),
+        label: clampWords(String(st.label || st.title || st.keterangan || ''), 36),
       }))
       .filter((st) => Boolean(st.value && st.label))
-      .slice(0, 3);
+      .slice(0, 4);
   }
 
-  // Jika stats belum lengkap dari AI, bentuk 3 KPI data berbasis points agar visual padat data
-  if (isInfographic && stats.length < 3) {
+  // Jika stats belum lengkap dari AI, bentuk 4 KPI data berbasis points agar visual padat data
+  if (isInfographic && stats.length < 4) {
     stats = [
       {
-        value: points[0]?.label.split(' ').slice(0, 3).join(' ') || '8.3%',
-        label: points[0]?.text.slice(0, 30) || 'Indeks Kondisi Lapangan',
+        value: points[0]?.label.match(/(?:RP\s*[\d.,]+[BMK]?|[\d.,]+%|\d+\s*(?:KECAMATAN|TITIK|HARI|RUAS|DESA|RIBU|JT|M|KOTA))/i)?.[0] || points[0]?.label.split(' ').slice(0, 2).join(' ') || '15,2%',
+        label: points[0]?.label.replace(/(?:RP\s*[\d.,]+[BMK]?|[\d.,]+%|\d+\s*(?:KECAMATAN|TITIK|HARI|RUAS|DESA|RIBU|JT|M|KOTA))/i, '').trim() || 'Rasio Indikator Kunci',
       },
       {
-        value: points[1]?.label.split(' ').slice(0, 3).join(' ') || 'RP 150 M',
-        label: points[1]?.text.slice(0, 30) || 'Alokasi Anggaran APBD',
+        value: points[1]?.label.match(/(?:RP\s*[\d.,]+[BMK]?|[\d.,]+%|\d+\s*(?:KECAMATAN|TITIK|HARI|RUAS|DESA|RIBU|JT|M|KOTA))/i)?.[0] || points[1]?.label.split(' ').slice(0, 2).join(' ') || 'RP 1,2 T',
+        label: points[1]?.label.replace(/(?:RP\s*[\d.,]+[BMK]?|[\d.,]+%|\d+\s*(?:KECAMATAN|TITIK|HARI|RUAS|DESA|RIBU|JT|M|KOTA))/i, '').trim() || 'Alokasi Pagu Anggaran',
       },
       {
-        value: points[2]?.label.split(' ').slice(0, 3).join(' ') || 'TARGET 2 THN',
-        label: points[2]?.text.slice(0, 30) || 'Sasaran Program Terpadu',
+        value: points[2]?.label.match(/(?:RP\s*[\d.,]+[BMK]?|[\d.,]+%|\d+\s*(?:KECAMATAN|TITIK|HARI|RUAS|DESA|RIBU|JT|M|KOTA))/i)?.[0] || points[2]?.label.split(' ').slice(0, 2).join(' ') || '5 KOTA',
+        label: points[2]?.label.replace(/(?:RP\s*[\d.,]+[BMK]?|[\d.,]+%|\d+\s*(?:KECAMATAN|TITIK|HARI|RUAS|DESA|RIBU|JT|M|KOTA))/i, '').trim() || 'Sebaran Episentrum Fokus',
+      },
+      {
+        value: points[3]?.label.match(/(?:RP\s*[\d.,]+[BMK]?|[\d.,]+%|\d+\s*(?:KECAMATAN|TITIK|HARI|RUAS|DESA|RIBU|JT|M|KOTA))/i)?.[0] || points[3]?.label.split(' ').slice(0, 2).join(' ') || '100%',
+        label: points[3]?.label.replace(/(?:RP\s*[\d.,]+[BMK]?|[\d.,]+%|\d+\s*(?:KECAMATAN|TITIK|HARI|RUAS|DESA|RIBU|JT|M|KOTA))/i, '').trim() || 'Kepatuhan Pelaporan LHKPN',
       },
     ];
+  }
+
+  // Jika infografis dan butir data kurang dari 6, lengkapi butir analitis substantif
+  if (isInfographic && points.length < 6) {
+    const supplementals = [
+      { label: 'KONSENTRASI EPISENTRUM', text: `Pemetaan konsentrasi titik krusial di wilayah Jawa Barat yang memerlukan pengawasan intensif.` },
+      { label: 'TRANSPARANSI ALOKASI ANGGARAN', text: 'Pemeriksaan distribusi alokasi anggaran daerah agar tepat sasaran dan berkeadilan bagi warga.' },
+      { label: 'TARGET AUDIT INDEPENDEN', text: 'Pelaksanaan audit periodik secara terpadu guna memastikan integritas pelaporan publik.' },
+      { label: 'PARTISIPASI KANAL ADUAN WARGA', text: 'Kanal pemantauan dan pengaduan terbuka 24 jam untuk menjamin partisipasi masyarakat luas.' },
+      { label: 'STANDARDISASI REGULASI DAERAH', text: 'Penyelarasan perda dan instrumen kepatuhan berbasis transparansi informasi publik.' },
+      { label: 'EVALUASI SEMESTER BERKALA', text: 'Rapat dengar pendapat dan pemutakhiran berkala indikator kinerja demi akuntabilitas.' },
+    ];
+    for (const sup of supplementals) {
+      if (points.length >= 6) break;
+      points.push(sup);
+    }
   }
 
   // Jika setelah diparse points masih kurang dari 2, lengkapi dari topik agar tidak gagal
@@ -508,21 +528,22 @@ export async function synthesizeArtCollageCopy(params: {
       specificGuide = 'Tulis TEPAT 4 sampai 5 tonggak capaian atau tahapan kronologis terukur dengan besaran angka, target hari/bulan, atau volume output riil.';
     }
 
-    systemPrompt = `Anda adalah Lead Visual Data Journalist & Analis Kebijakan Publik Senior berstandar riset nasional (seperti Katadata, Kompas Data, Lokadata).
+    systemPrompt = `Anda adalah Lead Visual Data Journalist & Analis Kebijakan Publik Senior berstandar riset nasional (seperti Katadata, Kompas Data, Lokadata, Reuters Graphics).
 Tulis naskah INFOGRAFIS DATA RESMI yang SANGAT KAYA DATA, AKURAT, DAN PADAT INFORMASI bertopik: "${topic}".
 ${groundedContext ? `\nFAKTA RISET & DATA DAERAH:\n${groundedContext.slice(0, 2000)}\n` : ''}
 
 STRUKTUR WAJIB INFOGRAFIS DATA KOMPREHENSIF (${specificGuide}):
 1. headline: Judul infografis yang berbobot, lugas, dan relevan (maks ${COPY_LIMITS.headline} karakter, huruf kapital).
-2. kicker: Rubrik analisis kebijakan publik (misal: "DATA ANGGARAN APBD // TELAAH SOSIAL", "INFRASTRUKTUR DAERAH", maks ${COPY_LIMITS.kicker} karakter).
-3. deck: Ringkasan eksekutif 2 kalimat padat yang memuat angka agregat makro dan urgensi penanganan (maks ${COPY_LIMITS.deck} karakter).
-4. stats: TEPAT 3 Indikator Kinerja Utama (Key Performance Indicators / KPI Primer) berupa angka/metrik kuantitatif mencolok:
-   - Stat 1: Angka persentase, rasio, atau volume utama (contoh value: "8,3% / 215 RB", label: "Tingkat Kemiskinan Terkini").
-   - Stat 2: Besaran komitmen fiskal atau alokasi APBD (contoh value: "RP 150 MILIAR", label: "Alokasi Penanganan APBD").
-   - Stat 3: Target kuantitatif capaian atau zona wilayah prioritas (contoh value: "3 KECAMATAN", label: "Zona Intervensi Fokus").
-5. points: TEPAT 5 Butir Data Temuan & Program Aksi Terperinci:
-   - label: Frasa ringkas berbobot diawali angka/fase/metrik (maks ${COPY_LIMITS.pointLabel} karakter, misal: "3 KECAMATAN EPISENTRUM", "ALOKASI RP 150 MILIAR", "TARGET PENURUNAN 2%", "24 KELURAHAN DAMPINGAN", "AUDIT TERPADU DATA DTKS").
-   - text: Uraian substantif 2 kalimat padat informasi, memuat angka dan rincian langkah kebijakan (maks ${COPY_LIMITS.pointText} karakter).
+2. kicker: Rubrik analisis kebijakan publik (misal: "DATA KEKAYAAN PEJABAT // TRANSPARANSI", "DATA ANGGARAN APBD // TELAAH SOSIAL", maks ${COPY_LIMITS.kicker} karakter).
+3. deck: Ringkasan eksekutif 2-3 kalimat padat yang memuat angka agregat makro dan urgensi penanganan (maks ${COPY_LIMITS.deck} karakter).
+4. stats: TEPAT 4 Indikator Kinerja Utama (Key Performance Indicators / KPI Primer) berupa angka/metrik kuantitatif mencolok:
+   - Stat 1: Angka persentase, rasio, atau volume utama (contoh value: "15,2%", label: "Persentase Anggota Terkaya").
+   - Stat 2: Besaran komitmen fiskal atau akumulasi aset/anggaran (contoh value: "RP 1,2 TRILIUN", label: "Total Akumulasi Aset").
+   - Stat 3: Sebaran zona prioritas atau jumlah wilayah (contoh value: "5 KOTA", label: "Konsentrasi Wilayah Terbanyak").
+   - Stat 4: Target kuantitatif capaian atau kepatuhan (contoh value: "100%", label: "Kepatuhan Audit LHKPN").
+5. points: TEPAT 6 sampai 8 Butir Data Temuan, Analisis Lapangan & Aksi Terperinci:
+   - label: Frasa ringkas diawali angka/fase/metrik (maks ${COPY_LIMITS.pointLabel} karakter, misal: "3 ANGGOTA DPR TERKAYA", "ALOKASI RP 50 MILIAR", "TARGET TRANSPARANSI 2024", "AUDIT KEKAYAAN TAHUNAN", "PUBLIKASI LAPORAN 6 BULAN", "SANKSI KETIDAKPATUHAN").
+   - text: Uraian substantif 2 kalimat padat informasi, memuat angka konkret dan rincian langkah kebijakan (maks ${COPY_LIMITS.pointText} karakter).
 6. closingLine: Rekomendasi aksi / penegasan transparansi tata kelola kebijakan (maks ${COPY_LIMITS.closing} karakter).
 7. PANTANGAN: DILARANG kata "nyata", DILARANG slogan motivasional kosong tanpa data, DILARANG butir yang tidak memuat angka atau rincian kebijakan.
 8. visualSubject: Deskripsi pemandangan latar belakang ilustrasi tanpa teks dalam Bahasa Inggris (maks 35 kata), gambarkan aktivitas nyata warga dan fasilitas kota/desa di Indonesia. DILARANG menyebut kotak, card, kartu, bagan, atau pilar.
@@ -560,17 +581,19 @@ Keluarkan JSON murni:
   } catch (err: any) {
     console.warn(`[ArtCollageDirector] Copy AI gagal, memakai fallback deterministik: ${err?.message}`);
     const fallbackStats = [
-      { value: '8.3%', label: 'Rasio Indikator Kunci' },
-      { value: 'RP 150 M', label: 'Alokasi Anggaran APBD' },
-      { value: '3 KECAMATAN', label: 'Zona Intervensi Fokus' },
+      { value: '15,2%', label: 'Rasio Indikator Kunci' },
+      { value: 'RP 1,2 T', label: 'Alokasi Pagu Anggaran' },
+      { value: '5 KOTA', label: 'Konsentrasi Episentrum' },
+      { value: '100%', label: 'Kepatuhan Pelaporan Audit' },
     ];
     const fallbackPoints = isInfographic
       ? [
           { label: '38 TITIK PRIORITAS', text: `Pemetaan lokasi kritis di wilayah ${topic} untuk percepatan penanganan terpadu.` },
           { label: 'ALOKASI RP 45 MILIAR', text: 'Dukungan pagu anggaran APBD dialokasikan guna menjamin realisasi program berdampak langsung.' },
           { label: 'TARGET 90 HARI KERJA', text: 'Penyelesaian tahapan awal dengan pengawasan berkala dan evaluasi terukur lintas instansi.' },
-          { label: '3 KECAMATAN FOKUS', text: 'Konsentrasi pendampingan intensif bagi kawasan dengan tingkat urgensi penanganan tertinggi.' },
+          { label: '5 KOTA & KABUPATEN FOKUS', text: 'Konsentrasi pendampingan intensif bagi kawasan dengan tingkat urgensi penanganan tertinggi.' },
           { label: 'AUDIT DATA & KANAL 24 JAM', text: 'Aktivasi sistem monitoring digital dan partisipasi warga guna memastikan transparansi mutlak.' },
+          { label: 'STANDARDISASI REGULASI DAERAH', text: 'Penyelarasan instrumen hukum dan pelaporan berkala demi akuntabilitas tata kelola.' },
         ]
       : [
           { label: 'Urgensi Isu', text: `Persoalan ${topic} memerlukan perbaikan tata kelola dan pengawasan terintegrasi.` },

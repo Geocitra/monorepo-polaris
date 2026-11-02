@@ -192,7 +192,7 @@ export class StudioInfographicGenerationHandler {
       const chosenArchetype =
         infographicArchetypeList[Math.floor(Math.random() * infographicArchetypeList.length)];
 
-      console.log(`[StudioInfographic] v2.5 Multi-Zone High Data Density Infographics loaded (${chosenArchetype})...`);
+      console.log(`[StudioInfographic] v3.0 Authentic Editorial Broadsheet Infographics loaded (${chosenArchetype})...`);
 
       // =========================================================================
       // ALUR INFOGRAFIS MURNI SEPERTI POSTER (ZERO-SKELETON / FULL AI VISION)

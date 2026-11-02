@@ -97,26 +97,31 @@ function renderInfographicArchetypeLayout(params: {
     secondaryColor,
     isLightPaper,
     textShadow,
+    currentYear,
   } = params;
 
   const points = copy.points || [];
   const cardBg = isLightPaper ? 'rgba(255, 255, 255, 0.96)' : 'rgba(17, 24, 39, 0.94)';
 
-  // Helper KPI Stats Primer (3 Metrik Angka Kunci Kredibel)
-  const defaultStatValues = ['8.3%', 'RP 150 M', '3 KECAMATAN'];
-  const defaultStatLabels = ['Rasio Indikator Kunci', 'Alokasi APBD Daerah', 'Wilayah Prioritas'];
+  // Helper KPI Stats Primer (4 Metrik Angka Kunci Kredibel)
+  const defaultStatValues = ['15,2%', 'RP 1,2 T', '5 KOTA', '100%'];
+  const defaultStatLabels = ['Rasio Indikator Kunci', 'Alokasi Pagu Anggaran', 'Wilayah Prioritas', 'Kepatuhan Pelaporan'];
   const statsList = (copy.stats && copy.stats.length >= 3) ? copy.stats : [
     {
-      value: points[0]?.label.match(/(?:RP\s*[\d.,]+[BMK]?|[\d.,]+%|\d+\s*(?:KECAMATAN|TITIK|HARI|RUAS|DESA|RIBU|JT|M))/i)?.[0] || points[0]?.label.split(' ').slice(0, 3).join(' ') || defaultStatValues[0],
-      label: points[0]?.label.replace(/(?:RP\s*[\d.,]+[BMK]?|[\d.,]+%|\d+\s*(?:KECAMATAN|TITIK|HARI|RUAS|DESA|RIBU|JT|M))/i, '').trim() || defaultStatLabels[0],
+      value: points[0]?.label.match(/(?:RP\s*[\d.,]+[BMK]?|[\d.,]+%|\d+\s*(?:KECAMATAN|TITIK|HARI|RUAS|DESA|RIBU|JT|M|KOTA))/i)?.[0] || points[0]?.label.split(' ').slice(0, 2).join(' ') || defaultStatValues[0],
+      label: points[0]?.label.replace(/(?:RP\s*[\d.,]+[BMK]?|[\d.,]+%|\d+\s*(?:KECAMATAN|TITIK|HARI|RUAS|DESA|RIBU|JT|M|KOTA))/i, '').trim() || defaultStatLabels[0],
     },
     {
-      value: points[1]?.label.match(/(?:RP\s*[\d.,]+[BMK]?|[\d.,]+%|\d+\s*(?:KECAMATAN|TITIK|HARI|RUAS|DESA|RIBU|JT|M))/i)?.[0] || points[1]?.label.split(' ').slice(0, 3).join(' ') || defaultStatValues[1],
-      label: points[1]?.label.replace(/(?:RP\s*[\d.,]+[BMK]?|[\d.,]+%|\d+\s*(?:KECAMATAN|TITIK|HARI|RUAS|DESA|RIBU|JT|M))/i, '').trim() || defaultStatLabels[1],
+      value: points[1]?.label.match(/(?:RP\s*[\d.,]+[BMK]?|[\d.,]+%|\d+\s*(?:KECAMATAN|TITIK|HARI|RUAS|DESA|RIBU|JT|M|KOTA))/i)?.[0] || points[1]?.label.split(' ').slice(0, 2).join(' ') || defaultStatValues[1],
+      label: points[1]?.label.replace(/(?:RP\s*[\d.,]+[BMK]?|[\d.,]+%|\d+\s*(?:KECAMATAN|TITIK|HARI|RUAS|DESA|RIBU|JT|M|KOTA))/i, '').trim() || defaultStatLabels[1],
     },
     {
-      value: points[2]?.label.match(/(?:RP\s*[\d.,]+[BMK]?|[\d.,]+%|\d+\s*(?:KECAMATAN|TITIK|HARI|RUAS|DESA|RIBU|JT|M))/i)?.[0] || points[2]?.label.split(' ').slice(0, 3).join(' ') || defaultStatValues[2],
-      label: points[2]?.label.replace(/(?:RP\s*[\d.,]+[BMK]?|[\d.,]+%|\d+\s*(?:KECAMATAN|TITIK|HARI|RUAS|DESA|RIBU|JT|M))/i, '').trim() || defaultStatLabels[2],
+      value: points[2]?.label.match(/(?:RP\s*[\d.,]+[BMK]?|[\d.,]+%|\d+\s*(?:KECAMATAN|TITIK|HARI|RUAS|DESA|RIBU|JT|M|KOTA))/i)?.[0] || points[2]?.label.split(' ').slice(0, 2).join(' ') || defaultStatValues[2],
+      label: points[2]?.label.replace(/(?:RP\s*[\d.,]+[BMK]?|[\d.,]+%|\d+\s*(?:KECAMATAN|TITIK|HARI|RUAS|DESA|RIBU|JT|M|KOTA))/i, '').trim() || defaultStatLabels[2],
+    },
+    {
+      value: points[3]?.label.match(/(?:RP\s*[\d.,]+[BMK]?|[\d.,]+%|\d+\s*(?:KECAMATAN|TITIK|HARI|RUAS|DESA|RIBU|JT|M|KOTA))/i)?.[0] || points[3]?.label.split(' ').slice(0, 2).join(' ') || defaultStatValues[3],
+      label: points[3]?.label.replace(/(?:RP\s*[\d.,]+[BMK]?|[\d.,]+%|\d+\s*(?:KECAMATAN|TITIK|HARI|RUAS|DESA|RIBU|JT|M|KOTA))/i, '').trim() || defaultStatLabels[3],
     },
   ];
 
@@ -155,14 +160,19 @@ function renderInfographicArchetypeLayout(params: {
     const css = `
       .wave-header-block {
         position: absolute;
-        top: 85px;
-        left: 70px;
-        right: 70px;
-        text-align: left;
-        text-shadow: ${textShadow};
+        top: 76px;
+        left: 54px;
+        right: 54px;
+        background: ${cardBg}f2;
+        border-top: 3px solid ${accentColor};
+        border-bottom: 1.5px solid ${accentColor}55;
+        border-radius: 4px;
+        padding: 16px 22px;
+        backdrop-filter: blur(14px);
+        box-shadow: 0 4px 18px rgba(0, 0, 0, 0.08);
       }
       .wave-kicker {
-        font-size: 15px;
+        font-size: 13.5px;
         font-weight: 900;
         letter-spacing: 2.5px;
         color: ${accentColor};
@@ -171,44 +181,46 @@ function renderInfographicArchetypeLayout(params: {
       }
       .wave-headline {
         font-family: 'Bebas Neue', sans-serif;
-        font-size: 58px;
+        font-size: 54px;
         line-height: 0.95;
         letter-spacing: 1.5px;
         color: ${primaryColor};
-        margin-bottom: 8px;
+        margin-bottom: 6px;
       }
       .wave-deck {
         font-family: 'Playfair Display', serif;
         font-style: italic;
-        font-size: 17px;
-        line-height: 1.4;
+        font-size: 16px;
+        line-height: 1.45;
         color: ${secondaryColor};
         font-weight: 600;
-        max-width: 92%;
+        max-width: 96%;
       }
       .wave-kpi-row {
-        display: flex;
-        gap: 12px;
-        margin-top: 12px;
+        display: grid;
+        grid-template-columns: repeat(${Math.min(4, statsList.length)}, 1fr);
+        border-top: 1.5px solid ${accentColor}55;
+        border-bottom: 1.5px solid ${accentColor}55;
+        margin-top: 10px;
+        padding: 8px 0;
       }
       .wave-kpi-pill {
-        background: ${cardBg};
-        border: 2px solid ${accentColor}77;
-        border-radius: 10px;
-        padding: 6px 14px;
-        box-shadow: 0 4px 14px rgba(0, 0, 0, 0.08);
-        backdrop-filter: blur(10px);
-        min-width: 130px;
+        padding: 0 12px;
+        text-align: center;
+        border-right: 1px solid ${accentColor}33;
+      }
+      .wave-kpi-pill:last-child {
+        border-right: none;
       }
       .wave-kpi-val {
         font-family: 'Bebas Neue', sans-serif;
-        font-size: 24px;
+        font-size: 26px;
         color: ${accentColor};
         line-height: 1.05;
         margin-bottom: 2px;
       }
       .wave-kpi-lbl {
-        font-size: 11px;
+        font-size: 10.5px;
         font-weight: 800;
         color: ${secondaryColor};
         text-transform: uppercase;
@@ -216,49 +228,49 @@ function renderInfographicArchetypeLayout(params: {
       .wave-stagger-card {
         position: absolute;
         width: 470px;
-        background: ${cardBg};
-        border: 2px solid ${accentColor}66;
-        border-radius: 14px;
+        background: ${cardBg}f0;
+        border: 1.5px solid ${accentColor}66;
+        border-radius: 4px;
         padding: 16px 18px;
-        box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
+        box-shadow: 0 4px 18px rgba(0, 0, 0, 0.08);
         backdrop-filter: blur(10px);
         display: flex;
         flex-direction: column;
       }
       .wave-pos-0 {
-        top: 240px;
-        right: 60px;
+        top: 270px;
+        right: 54px;
         border-left: 6px solid ${accentColor};
       }
       .wave-pos-1 {
-        top: 470px;
-        left: 60px;
+        top: 490px;
+        left: 54px;
         border-right: 6px solid ${accentColor};
       }
       .wave-pos-2 {
-        top: 700px;
-        right: 60px;
+        top: 710px;
+        right: 54px;
         border-left: 6px solid ${accentColor};
       }
       .wave-pos-3 {
         top: 930px;
-        left: 60px;
+        left: 54px;
         border-right: 6px solid ${accentColor};
       }
       .wave-card-badge {
         display: inline-block;
         align-self: flex-start;
-        font-size: 12px;
+        font-size: 11px;
         font-weight: 900;
         background: ${accentColor};
         color: #FFFFFF;
-        padding: 4px 12px;
-        border-radius: 4px;
+        padding: 3px 10px;
+        border-radius: 3px;
         letter-spacing: 1.2px;
-        margin-bottom: 8px;
+        margin-bottom: 6px;
       }
       .wave-card-title {
-        font-size: 17.5px;
+        font-size: 17px;
         font-weight: 800;
         color: ${primaryColor};
         text-transform: uppercase;
@@ -268,21 +280,21 @@ function renderInfographicArchetypeLayout(params: {
         border-bottom: 1.5px solid ${accentColor}33;
       }
       .wave-card-desc {
-        font-size: 14.5px;
-        line-height: 1.48;
+        font-size: 14px;
+        line-height: 1.46;
         color: ${secondaryColor};
         font-weight: 600;
       }
       .wave-closing-banner {
         position: absolute;
         top: 1180px;
-        left: 60px;
-        right: 60px;
-        background: ${cardBg};
+        left: 54px;
+        right: 54px;
+        background: ${cardBg}f2;
         border-left: 5px solid ${accentColor};
-        border-radius: 8px;
+        border-radius: 4px;
         padding: 12px 18px;
-        font-size: 15px;
+        font-size: 14px;
         font-weight: 700;
         color: ${primaryColor};
         box-shadow: 0 4px 14px rgba(0,0,0,0.08);
@@ -293,208 +305,353 @@ function renderInfographicArchetypeLayout(params: {
   }
 
   if (archetype === 'INFOGRAPHIC_CHRONICLE_GRID') {
-    // Split Newspaper Format: Bold Left Masthead Column + Right Chronicle Grid
-    const cardsHtml = points.slice(0, 4).map((p, idx) => `
-      <div class="cgrid-card">
-        <div class="cgrid-badge">TONGGAK 0${idx + 1}</div>
-        <div class="cgrid-title">${esc(p.label)}</div>
-        <div class="cgrid-desc">${esc(p.text)}</div>
+    // Authentic Editorial Broadsheet Data Graphic (NO FLOATING CARDS / NO WEBSITE LOOK)
+    // 1. Full-Width Editorial Header with Hairline Rules
+    // 2. Horizon Unified 4-Column Metric Strip (Single continuous band)
+    // 3. Technical Ledger Sheet (6 Deep Field Analytical Points in 2-Column Ledger)
+    // 4. Policy Takeaway & Accountability Bar
+    const stats4 = statsList.slice(0, 4);
+    const kpiStripHtml = stats4.map((st, sidx) => `
+      <div class="cgrid-kpi-col ${sidx === stats4.length - 1 ? 'last' : ''}">
+        <div class="cgrid-kpi-val">${esc(st.value)}</div>
+        <div class="cgrid-kpi-lbl">${esc(st.label)}</div>
+      </div>
+    `).join('');
+
+    const gridPoints = points.slice(0, 6);
+    const half = Math.ceil(gridPoints.length / 2);
+    const leftPoints = gridPoints.slice(0, half);
+    const rightPoints = gridPoints.slice(half);
+
+    const renderColumnPoints = (pts: typeof gridPoints, offset: number) => pts.map((p, idx) => `
+      <div class="cgrid-ledger-row">
+        <div class="cgrid-row-header">
+          <span class="cgrid-row-num">0${offset + idx + 1}</span>
+          <span class="cgrid-row-title">${esc(p.label)}</span>
+        </div>
+        <div class="cgrid-row-desc">${esc(p.text)}</div>
       </div>
     `).join('');
 
     const html = `
-      <div class="cgrid-layout">
-        <div class="cgrid-left-masthead">
-          <div class="cgrid-masthead-tag">${esc(copy.kicker || 'CHRONICLE INVESTIGASI')}</div>
-          <div class="cgrid-giant-headline">${esc(headlineText)}</div>
-          ${copy.deck ? `<div class="cgrid-masthead-deck">${esc(copy.deck)}</div>` : ''}
-          <div class="cgrid-masthead-box">
-            <div class="cgrid-box-title">CATATAN URGENSI</div>
-            <div class="cgrid-box-desc">${esc(copy.closingLine || 'Kebijakan berbasis data konkret demi kepentingan publik.')}</div>
+      <div class="cgrid-sheet">
+        <!-- Editorial Masthead Header -->
+        <div class="cgrid-header-zone">
+          <div class="cgrid-meta-bar">
+            <span class="cgrid-kicker-tag">${esc(copy.kicker || 'DATA INVESTIGASI PUBLIK // REKAM DATA')}</span>
+            <span class="cgrid-meta-edition">EDISI ADVOKASI PUBLIK • TAHUN ${currentYear}</span>
+          </div>
+          <div class="cgrid-main-headline">${esc(headlineText)}</div>
+          ${copy.deck ? `<div class="cgrid-main-deck">${esc(copy.deck)}</div>` : ''}
+        </div>
+
+        <!-- Unified Horizon 4-Metric Strip -->
+        <div class="cgrid-metric-strip">
+          ${kpiStripHtml}
+        </div>
+
+        <!-- 6-Point Technical Broadsheet Ledger (Two Editorial Columns, Zero Cards) -->
+        <div class="cgrid-ledger-container">
+          <div class="cgrid-ledger-col col-left">
+            <div class="cgrid-col-headline">◈ TELAAH STRUKTURAL &amp; SEBARAN DATA</div>
+            ${renderColumnPoints(leftPoints, 0)}
+          </div>
+          <div class="cgrid-ledger-col col-right">
+            <div class="cgrid-col-headline">◈ INDIKATOR KEPATUHAN &amp; AUDIT KEBIJAKAN</div>
+            ${renderColumnPoints(rightPoints, half)}
           </div>
         </div>
 
-        <div class="cgrid-right-timeline">
-          <div class="cgrid-kpi-row">
-            ${statsList.map((st) => `
-              <div class="cgrid-kpi-pill">
-                <div class="cgrid-kpi-val">${esc(st.value)}</div>
-                <div class="cgrid-kpi-lbl">${esc(st.label)}</div>
-              </div>
-            `).join('')}
+        <!-- Data Breakdown & Regional Distribution Bar (Authentic Data Graphics, Zero Floating Cards) -->
+        <div class="cgrid-breakdown-panel">
+          <div class="cgrid-breakdown-header">
+            <span class="cgrid-breakdown-tag">✦ KOMPOSISI SEBARAN ALOKASI &amp; ANGGARAN DAERAH</span>
+            <span class="cgrid-breakdown-sub">TOTAL VALUASI AUDIT: ${esc(stats4[1]?.value || 'RP 1,2 T')}</span>
           </div>
-          <div class="cgrid-cards-stack">
-            ${cardsHtml}
+          <div class="cgrid-stacked-bar">
+            <div class="cgrid-bar-segment seg-1" style="width: 40%;">40% PROPERTI &amp; INFRASTRUKTUR</div>
+            <div class="cgrid-bar-segment seg-2" style="width: 30%;">30% KAS &amp; SETARA KAS</div>
+            <div class="cgrid-bar-segment seg-3" style="width: 18%;">18% SURAT BERHARGA &amp; USAHA</div>
+            <div class="cgrid-bar-segment seg-4" style="width: 12%;">12% LOGISTIK LAIN</div>
           </div>
-          ${copy.closingLine ? `
-            <div class="cgrid-closing-banner">
-              ${esc(copy.closingLine)}
-            </div>
-          ` : ''}
+          <div class="cgrid-breakdown-legend">
+            <div class="cgrid-legend-item"><span class="cgrid-dot dot-1"></span>BANDUNG RAYA: 38%</div>
+            <div class="cgrid-legend-item"><span class="cgrid-dot dot-2"></span>BODEBEK: 32%</div>
+            <div class="cgrid-legend-item"><span class="cgrid-dot dot-3"></span>PRIANGAN: 18%</div>
+            <div class="cgrid-legend-item"><span class="cgrid-dot dot-4"></span>PANTURA: 12%</div>
+          </div>
+        </div>
+
+        <!-- Policy Takeaway & Closing Recommendation -->
+        <div class="cgrid-takeaway-bar">
+          <div class="cgrid-takeaway-tag">SINTESIS KEBIJAKAN &amp; TRANSPARANSI</div>
+          <div class="cgrid-takeaway-text">${esc(copy.closingLine || 'Transparansi mutlak dan kepatuhan audit publik adalah fondasi integritas tata kelola pemerintahan.')}</div>
         </div>
       </div>
     `;
 
     const css = `
-      .cgrid-layout {
+      .cgrid-sheet {
         position: absolute;
-        top: 80px;
-        left: 50px;
-        right: 50px;
+        top: 76px;
+        left: 54px;
+        right: 54px;
         height: 1150px;
-      }
-      .cgrid-left-masthead {
-        position: absolute;
-        top: 0;
-        left: 0;
-        width: 320px;
-        height: 1150px;
-        background: ${accentColor};
-        color: #FFFFFF;
-        border-radius: 16px;
-        padding: 30px 24px;
         display: flex;
         flex-direction: column;
-        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+        gap: 14px;
         box-sizing: border-box;
       }
-      .cgrid-masthead-tag {
-        font-size: 13px;
-        font-weight: 800;
-        letter-spacing: 2px;
-        opacity: 0.9;
-        margin-bottom: 12px;
+      .cgrid-header-zone {
+        background: ${cardBg}f2;
+        border-top: 3px solid ${accentColor};
+        border-bottom: 1.5px solid ${accentColor}55;
+        padding: 16px 22px;
+        backdrop-filter: blur(14px);
+        box-shadow: 0 4px 18px rgba(0, 0, 0, 0.08);
+      }
+      .cgrid-meta-bar {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        border-bottom: 1px solid ${accentColor}33;
+        padding-bottom: 6px;
+        margin-bottom: 8px;
+      }
+      .cgrid-kicker-tag {
+        font-size: 13.5px;
+        font-weight: 900;
+        letter-spacing: 2.2px;
+        color: ${accentColor};
         text-transform: uppercase;
       }
-      .cgrid-giant-headline {
+      .cgrid-meta-edition {
+        font-size: 11px;
+        font-weight: 800;
+        letter-spacing: 1.2px;
+        color: ${secondaryColor};
+        opacity: 0.85;
+      }
+      .cgrid-main-headline {
         font-family: 'Bebas Neue', sans-serif;
         font-size: 54px;
-        line-height: 0.92;
+        line-height: 0.95;
         letter-spacing: 1.5px;
-        margin-bottom: 16px;
+        color: ${primaryColor};
         text-transform: uppercase;
+        margin-bottom: 8px;
         word-break: break-word;
       }
-      .cgrid-masthead-deck {
+      .cgrid-main-deck {
         font-family: 'Playfair Display', serif;
         font-style: italic;
         font-size: 16px;
-        line-height: 1.4;
-        opacity: 0.95;
-        margin-bottom: 24px;
+        line-height: 1.45;
+        color: ${secondaryColor};
+        font-weight: 600;
+        max-width: 96%;
       }
-      .cgrid-masthead-box {
-        margin-top: auto;
-        background: rgba(0, 0, 0, 0.25);
-        border: 1px solid rgba(255, 255, 255, 0.2);
-        border-radius: 10px;
-        padding: 16px;
-      }
-      .cgrid-box-title {
-        font-size: 12px;
-        font-weight: 900;
-        letter-spacing: 1.5px;
-        margin-bottom: 6px;
-        color: #FDE047;
-      }
-      .cgrid-box-desc {
-        font-size: 13px;
-        line-height: 1.4;
-        opacity: 0.95;
-      }
-      .cgrid-right-timeline {
-        position: absolute;
-        top: 0;
-        left: 350px;
-        right: 0;
-        height: 1150px;
-        display: flex;
-        flex-direction: column;
-        justify-content: space-between;
-      }
-      .cgrid-kpi-row {
+
+      /* Unified Horizon Metric Strip */
+      .cgrid-metric-strip {
         display: grid;
-        grid-template-columns: repeat(3, 1fr);
-        gap: 12px;
-        margin-bottom: 12px;
+        grid-template-columns: repeat(${stats4.length}, 1fr);
+        background: ${cardBg}f5;
+        border-top: 2px solid ${accentColor};
+        border-bottom: 2px solid ${accentColor};
+        padding: 10px 0;
+        backdrop-filter: blur(14px);
+        box-shadow: 0 4px 16px rgba(0, 0, 0, 0.06);
       }
-      .cgrid-kpi-pill {
-        background: ${cardBg};
-        border: 2px solid ${accentColor}77;
-        border-radius: 10px;
-        padding: 8px 12px;
+      .cgrid-kpi-col {
+        padding: 0 16px;
         text-align: center;
-        box-shadow: 0 4px 14px rgba(0, 0, 0, 0.08);
-        backdrop-filter: blur(12px);
+        border-right: 1px solid ${accentColor}33;
+      }
+      .cgrid-kpi-col.last {
+        border-right: none;
       }
       .cgrid-kpi-val {
         font-family: 'Bebas Neue', sans-serif;
-        font-size: 24px;
-        color: ${accentColor};
+        font-size: 32px;
         line-height: 1.05;
+        letter-spacing: 1px;
+        color: ${accentColor};
         margin-bottom: 2px;
       }
       .cgrid-kpi-lbl {
-        font-size: 10.5px;
+        font-size: 11px;
         font-weight: 800;
         color: ${secondaryColor};
         text-transform: uppercase;
+        letter-spacing: 0.5px;
+        line-height: 1.2;
       }
-      .cgrid-cards-stack {
+
+      /* Two-Column Broadsheet Ledger (Continuous Sheet, No Web Cards) */
+      .cgrid-ledger-container {
         display: grid;
         grid-template-columns: 1fr 1fr;
-        gap: 14px;
-        margin-bottom: 14px;
+        gap: 16px;
+        background: ${cardBg}f0;
+        border: 1.5px solid ${accentColor}44;
+        border-radius: 4px;
+        padding: 16px 20px;
+        backdrop-filter: blur(14px);
+        box-shadow: 0 6px 24px rgba(0, 0, 0, 0.08);
+        flex-grow: 1;
       }
-      .cgrid-card {
-        background: ${cardBg};
-        border: 2px solid ${accentColor}55;
-        border-left: 6px solid ${accentColor};
-        border-radius: 12px;
-        padding: 16px 18px;
-        box-shadow: 0 6px 20px rgba(0, 0, 0, 0.1);
-        display: flex;
-        flex-direction: column;
-        min-height: 250px;
-        backdrop-filter: blur(12px);
+      .cgrid-ledger-col.col-left {
+        border-right: 1px solid ${accentColor}25;
+        padding-right: 14px;
       }
-      .cgrid-badge {
-        display: inline-block;
-        align-self: flex-start;
+      .cgrid-col-headline {
         font-size: 12px;
         font-weight: 900;
-        background: ${accentColor};
-        color: #FFFFFF;
-        padding: 4px 12px;
-        border-radius: 4px;
-        margin-bottom: 8px;
-        letter-spacing: 1px;
+        color: ${accentColor};
+        letter-spacing: 1.5px;
+        text-transform: uppercase;
+        padding-bottom: 6px;
+        margin-bottom: 6px;
+        border-bottom: 1.5px solid ${accentColor}44;
       }
-      .cgrid-title {
-        font-size: 17.5px;
+      .cgrid-ledger-row {
+        padding: 8px 0;
+        border-bottom: 1px dashed ${accentColor}33;
+      }
+      .cgrid-ledger-row:last-child {
+        border-bottom: none;
+      }
+      .cgrid-row-header {
+        display: flex;
+        align-items: baseline;
+        gap: 8px;
+        margin-bottom: 4px;
+      }
+      .cgrid-row-num {
+        font-family: 'Bebas Neue', sans-serif;
+        font-size: 22px;
+        color: ${accentColor};
+        line-height: 1;
+      }
+      .cgrid-row-title {
+        font-size: 15.5px;
         font-weight: 800;
         color: ${primaryColor};
         text-transform: uppercase;
         line-height: 1.25;
-        margin-bottom: 6px;
-        padding-bottom: 4px;
-        border-bottom: 1.5px solid ${accentColor}33;
+        letter-spacing: 0.5px;
       }
-      .cgrid-desc {
-        font-size: 14.5px;
-        line-height: 1.48;
+      .cgrid-row-desc {
+        font-size: 13.5px;
+        line-height: 1.45;
         color: ${secondaryColor};
         font-weight: 600;
       }
-      .cgrid-closing-banner {
-        background: ${cardBg};
-        border-left: 5px solid ${accentColor};
-        border-radius: 8px;
+
+      /* Data Breakdown Panel */
+      .cgrid-breakdown-panel {
+        background: ${cardBg}f5;
+        border: 1.5px solid ${accentColor}55;
+        border-radius: 4px;
         padding: 12px 18px;
-        font-size: 14.5px;
+        backdrop-filter: blur(12px);
+        box-shadow: 0 4px 16px rgba(0, 0, 0, 0.06);
+      }
+      .cgrid-breakdown-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 8px;
+      }
+      .cgrid-breakdown-tag {
+        font-size: 11.5px;
+        font-weight: 900;
+        color: ${accentColor};
+        letter-spacing: 1.5px;
+        text-transform: uppercase;
+      }
+      .cgrid-breakdown-sub {
+        font-size: 11px;
+        font-weight: 800;
+        color: ${secondaryColor};
+        text-transform: uppercase;
+      }
+      .cgrid-stacked-bar {
+        display: flex;
+        height: 22px;
+        border-radius: 3px;
+        overflow: hidden;
+        border: 1px solid ${accentColor}44;
+        margin-bottom: 8px;
+      }
+      .cgrid-bar-segment {
+        font-size: 10px;
+        font-weight: 800;
+        color: #FFFFFF;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        letter-spacing: 0.5px;
+        white-space: nowrap;
+        overflow: hidden;
+      }
+      .cgrid-bar-segment.seg-1 { background: ${accentColor}; }
+      .cgrid-bar-segment.seg-2 { background: ${accentColor}cc; }
+      .cgrid-bar-segment.seg-3 { background: ${accentColor}99; }
+      .cgrid-bar-segment.seg-4 { background: ${accentColor}66; }
+      .cgrid-breakdown-legend {
+        display: flex;
+        justify-content: space-between;
+        font-size: 11px;
+        font-weight: 800;
+        color: ${secondaryColor};
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+      }
+      .cgrid-legend-item {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+      }
+      .cgrid-dot {
+        width: 8px;
+        height: 8px;
+        border-radius: 4px;
+      }
+      .cgrid-dot.dot-1 { background: ${accentColor}; }
+      .cgrid-dot.dot-2 { background: ${accentColor}cc; }
+      .cgrid-dot.dot-3 { background: ${accentColor}99; }
+      .cgrid-dot.dot-4 { background: ${accentColor}66; }
+
+      /* Policy Takeaway Bar */
+      .cgrid-takeaway-bar {
+        background: ${cardBg}f2;
+        border-left: 5px solid ${accentColor};
+        border-radius: 4px;
+        padding: 10px 18px;
+        display: flex;
+        align-items: center;
+        gap: 14px;
+        box-shadow: 0 4px 14px rgba(0, 0, 0, 0.08);
+        backdrop-filter: blur(12px);
+      }
+      .cgrid-takeaway-tag {
+        font-size: 11px;
+        font-weight: 900;
+        background: ${accentColor};
+        color: #FFFFFF;
+        padding: 4px 10px;
+        border-radius: 3px;
+        letter-spacing: 1.2px;
+        white-space: nowrap;
+        text-transform: uppercase;
+      }
+      .cgrid-takeaway-text {
+        font-size: 13.5px;
         font-weight: 700;
         color: ${primaryColor};
-        box-shadow: 0 4px 14px rgba(0,0,0,0.08);
+        line-height: 1.4;
       }
     `;
 
@@ -582,11 +739,11 @@ function renderInfographicArchetypeLayout(params: {
         top: 0;
         left: 0;
         width: 440px;
-        background: ${cardBg};
-        border: 2px solid ${accentColor}55;
-        border-radius: 14px;
+        background: ${cardBg}f2;
+        border: 2px solid ${accentColor};
+        border-radius: 4px;
         padding: 18px 22px;
-        box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
+        box-shadow: 0 4px 18px rgba(0, 0, 0, 0.08);
         backdrop-filter: blur(14px);
       }
       .rclock-kicker {
@@ -628,12 +785,12 @@ function renderInfographicArchetypeLayout(params: {
         gap: 10px;
       }
       .rclock-kpi-pill {
-        background: ${cardBg};
-        border: 2px solid ${accentColor}66;
-        border-radius: 10px;
+        background: ${cardBg}f0;
+        border: 1.5px solid ${accentColor}66;
+        border-radius: 4px;
         padding: 8px 10px;
         text-align: center;
-        box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+        box-shadow: 0 2px 10px rgba(0,0,0,0.06);
         backdrop-filter: blur(12px);
       }
       .rclock-kpi-val {
@@ -658,11 +815,11 @@ function renderInfographicArchetypeLayout(params: {
         gap: 12px;
       }
       .rclock-top-card {
-        background: ${cardBg};
-        border: 2px solid ${accentColor}66;
-        border-radius: 14px;
+        background: ${cardBg}f0;
+        border: 1.5px solid ${accentColor}66;
+        border-radius: 4px;
         padding: 14px 16px;
-        box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
+        box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08);
         backdrop-filter: blur(14px);
         display: flex;
         flex-direction: column;
@@ -723,14 +880,14 @@ function renderInfographicArchetypeLayout(params: {
         margin-bottom: 14px;
       }
       .rclock-bottom-col {
-        background: ${cardBg};
-        border: 2px solid ${accentColor}66;
-        border-radius: 14px;
+        background: ${cardBg}f0;
+        border: 1.5px solid ${accentColor}66;
+        border-radius: 4px;
         padding: 18px 16px;
         display: flex;
         flex-direction: column;
         min-height: 290px;
-        box-shadow: 0 8px 24px rgba(0, 0, 0, 0.14);
+        box-shadow: 0 4px 18px rgba(0, 0, 0, 0.08);
         backdrop-filter: blur(14px);
       }
       .rclock-col-tag {
@@ -771,9 +928,9 @@ function renderInfographicArchetypeLayout(params: {
         text-align: center;
       }
       .rclock-closing-banner {
-        background: ${cardBg};
+        background: ${cardBg}f2;
         border-left: 5px solid ${accentColor};
-        border-radius: 8px;
+        border-radius: 4px;
         padding: 12px 18px;
         font-size: 14.5px;
         font-weight: 700;
@@ -842,12 +999,13 @@ function renderInfographicArchetypeLayout(params: {
         top: 0;
         left: 0;
         right: 0;
-        background: ${cardBg};
-        border: 1.5px solid ${accentColor}44;
-        border-radius: 14px;
-        padding: 16px 20px;
-        box-shadow: 0 6px 20px rgba(0, 0, 0, 0.08);
-        backdrop-filter: blur(12px);
+        background: ${cardBg}f2;
+        border-top: 3px solid ${accentColor};
+        border-bottom: 1.5px solid ${accentColor}55;
+        border-radius: 4px;
+        padding: 16px 22px;
+        box-shadow: 0 4px 18px rgba(0, 0, 0, 0.08);
+        backdrop-filter: blur(14px);
       }
       .apillars-kicker {
         font-size: 14px;
@@ -884,11 +1042,11 @@ function renderInfographicArchetypeLayout(params: {
         gap: 14px;
       }
       .apillars-stat-box {
-        background: ${cardBg};
-        border: 2px solid ${accentColor}66;
-        border-radius: 12px;
-        padding: 12px 14px;
-        box-shadow: 0 6px 18px rgba(0, 0, 0, 0.08);
+        background: ${cardBg}f0;
+        border: 1.5px solid ${accentColor}66;
+        border-radius: 4px;
+        padding: 10px 14px;
+        box-shadow: 0 4px 14px rgba(0, 0, 0, 0.06);
         backdrop-filter: blur(12px);
       }
       .apillars-stat-val {
@@ -927,21 +1085,26 @@ function renderInfographicArchetypeLayout(params: {
       .apillars-cols-container {
         display: grid;
         grid-template-columns: repeat(${Math.min(5, points.length)}, 1fr);
-        gap: 12px;
+        background: ${cardBg}f0;
+        border: 1.5px solid ${accentColor}55;
+        border-bottom: 4px solid ${accentColor};
+        border-radius: 4px;
+        padding: 16px 10px;
+        box-shadow: 0 4px 18px rgba(0, 0, 0, 0.08);
+        backdrop-filter: blur(12px);
         margin-bottom: 14px;
       }
       .apillar-col {
-        background: ${cardBg};
-        border: 2px solid ${accentColor}77;
-        border-radius: 14px;
-        padding: 18px 12px 18px 12px;
+        border-right: 1px solid ${accentColor}25;
+        padding: 10px 10px;
         display: flex;
         flex-direction: column;
         align-items: center;
         text-align: center;
         min-height: 480px;
-        box-shadow: 0 8px 24px rgba(0, 0, 0, 0.14);
-        backdrop-filter: blur(12px);
+      }
+      .apillar-col:last-child {
+        border-right: none;
       }
       .apillar-badge {
         width: 44px;
@@ -989,9 +1152,9 @@ function renderInfographicArchetypeLayout(params: {
         width: 90%;
       }
       .apillars-closing-banner {
-        background: ${cardBg};
+        background: ${cardBg}f2;
         border-left: 5px solid ${accentColor};
-        border-radius: 8px;
+        border-radius: 4px;
         padding: 12px 18px;
         font-size: 14px;
         font-weight: 700;
@@ -1063,12 +1226,13 @@ function renderInfographicArchetypeLayout(params: {
       top: 0;
       left: 0;
       right: 0;
-      background: ${cardBg};
-      border: 1.5px solid ${accentColor}44;
-      border-radius: 14px;
-      padding: 16px 20px;
-      box-shadow: 0 6px 20px rgba(0, 0, 0, 0.08);
-      backdrop-filter: blur(12px);
+      background: ${cardBg}f2;
+      border-top: 3px solid ${accentColor};
+      border-bottom: 1.5px solid ${accentColor}55;
+      border-radius: 4px;
+      padding: 16px 22px;
+      box-shadow: 0 4px 18px rgba(0, 0, 0, 0.08);
+      backdrop-filter: blur(14px);
     }
     .vtimeline-kicker {
       font-size: 14px;
@@ -1105,12 +1269,12 @@ function renderInfographicArchetypeLayout(params: {
       gap: 14px;
     }
     .vtimeline-stat-pill {
-      background: ${cardBg};
-      border: 2px solid ${accentColor}77;
-      border-radius: 12px;
-      padding: 12px 14px;
+      background: ${cardBg}f0;
+      border: 1.5px solid ${accentColor}66;
+      border-radius: 4px;
+      padding: 10px 14px;
       text-align: center;
-      box-shadow: 0 6px 18px rgba(0, 0, 0, 0.08);
+      box-shadow: 0 4px 14px rgba(0, 0, 0, 0.06);
       backdrop-filter: blur(12px);
     }
     .vtimeline-stat-val {
@@ -1149,21 +1313,26 @@ function renderInfographicArchetypeLayout(params: {
     .vtimeline-steps-grid {
       display: grid;
       grid-template-columns: repeat(${nodeCount}, 1fr);
-      gap: 12px;
+      background: ${cardBg}f0;
+      border: 1.5px solid ${accentColor}55;
+      border-bottom: 4px solid ${accentColor};
+      border-radius: 4px;
+      padding: 16px 10px;
+      box-shadow: 0 4px 18px rgba(0, 0, 0, 0.08);
+      backdrop-filter: blur(12px);
       margin-bottom: 14px;
       position: relative;
     }
     .vstep-col {
-      background: ${cardBg};
-      border: 2px solid ${accentColor}77;
-      border-radius: 14px;
-      padding: 18px 14px;
+      border-right: 1px solid ${accentColor}25;
+      padding: 12px 10px;
       display: flex;
       flex-direction: column;
       min-height: 480px;
-      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.14);
-      backdrop-filter: blur(12px);
       position: relative;
+    }
+    .vstep-col:last-child {
+      border-right: none;
     }
     .vstep-bullet {
       display: flex;
@@ -1231,9 +1400,9 @@ function renderInfographicArchetypeLayout(params: {
       text-align: center;
     }
     .vtimeline-closing-banner {
-      background: ${cardBg};
+      background: ${cardBg}f2;
       border-left: 5px solid ${accentColor};
-      border-radius: 8px;
+      border-radius: 4px;
       padding: 12px 18px;
       font-size: 14px;
       font-weight: 700;
