@@ -81,7 +81,6 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Execute Remote Deployment via SSH
-        if: ${{ secrets.PROD_SSH_HOST != '' }}
         uses: appleboy/ssh-action@v1.2.0
         with:
           host: ${{ secrets.PROD_SSH_HOST }}
