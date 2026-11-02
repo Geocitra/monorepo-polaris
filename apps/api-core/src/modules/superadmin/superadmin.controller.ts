@@ -100,7 +100,7 @@ export class SuperadminController {
   }
 
   @UseGuards(SuperadminGuard)
-  @Patch('tenants/:id/reset-password')
+  @Post('tenants/:id/reset-password')
   @HttpCode(HttpStatus.OK)
   async resetTenantPassword(
     @Param('id') id: string,
@@ -110,29 +110,40 @@ export class SuperadminController {
   }
 
   @UseGuards(SuperadminGuard)
-  @Patch('tenants/:id/verify')
+  @Get('pricing-matrices')
+  @HttpCode(HttpStatus.OK)
+  async getPricingMatrices(@Query('level') level?: LegislativeLevel) {
+    return await this.superadminService.getPricingMatrices(level);
+  }
+
+  @UseGuards(SuperadminGuard)
+  @Patch('pricing-matrices/:id')
+  @HttpCode(HttpStatus.OK)
+  async updatePricingMatrix(
+    @Param('id') id: string,
+    @Body() dto: AdminUpdatePricingMatrixDto,
+  ) {
+    return await this.superadminService.updatePricingMatrix(id, dto);
+  }
+
+  @UseGuards(SuperadminGuard)
+  @Post('tenants/:id/verify')
   @HttpCode(HttpStatus.OK)
   async verifyTenant(@Param('id') id: string, @Body() dto: VerifyTenantDto) {
     return await this.superadminService.verifyTenant(id, dto);
   }
 
   @UseGuards(SuperadminGuard)
-  @Patch('tenants/:id/status')
+  @Post('tenants/:id/status')
   @HttpCode(HttpStatus.OK)
-  async updateTenantStatus(
-    @Param('id') id: string,
-    @Body() dto: UpdateTenantStatusDto,
-  ) {
+  async updateTenantStatus(@Param('id') id: string, @Body() dto: UpdateTenantStatusDto) {
     return await this.superadminService.updateTenantStatus(id, dto);
   }
 
   @UseGuards(SuperadminGuard)
   @Post('tenants/:id/license')
   @HttpCode(HttpStatus.OK)
-  async grantManualLicense(
-    @Param('id') id: string,
-    @Body() dto: ManualLicenseGrantDto,
-  ) {
+  async grantManualLicense(@Param('id') id: string, @Body() dto: ManualLicenseGrantDto) {
     return await this.superadminService.grantManualLicense(id, dto);
   }
 
@@ -158,14 +169,14 @@ export class SuperadminController {
   }
 
   @UseGuards(SuperadminGuard)
-  @Get('dapils')
+  @Get('dapil')
   @HttpCode(HttpStatus.OK)
-  async getDapils(@Query('search') search?: string) {
-    return await this.superadminService.getDapils(search);
+  async getDapils() {
+    return await this.superadminService.getDapils();
   }
 
   @UseGuards(SuperadminGuard)
-  @Post('dapils')
+  @Post('dapil')
   @HttpCode(HttpStatus.CREATED)
   async createDapil(@Body() dto: CreateDapilDto) {
     return await this.superadminService.createDapil(dto);
@@ -174,123 +185,68 @@ export class SuperadminController {
   @UseGuards(SuperadminGuard)
   @Get('commissions')
   @HttpCode(HttpStatus.OK)
-  async getCommissions(@Query('level') level?: LegislativeLevel) {
+  async getCommissions(@Query('level') level?: string) {
     return await this.superadminService.getCommissions(level);
   }
 
   @UseGuards(SuperadminGuard)
-  @Get('pricing-matrices')
-  @HttpCode(HttpStatus.OK)
-  async getPricingMatrices(@Query('level') level?: LegislativeLevel) {
-    return await this.superadminService.getPricingMatrices(level);
+  @Post('commissions')
+  @HttpCode(HttpStatus.CREATED)
+  async createCommission(@Body() dto: any) {
+    return await this.superadminService.createCommission(dto);
   }
 
   @UseGuards(SuperadminGuard)
-  @Patch('pricing-matrices/:id')
+  @Put('commissions/:id')
   @HttpCode(HttpStatus.OK)
-  async updatePricingMatrix(
-    @Param('id') id: string,
-    @Body() dto: AdminUpdatePricingMatrixDto,
-  ) {
-    return await this.superadminService.updatePricingMatrix(id, dto);
+  async updateCommission(@Param('id') id: string, @Body() dto: any) {
+    return await this.superadminService.updateCommission(id, dto);
   }
 
   @UseGuards(SuperadminGuard)
-  @Get('ai-monitoring/metrics')
+  @Get('ai/observability')
   @HttpCode(HttpStatus.OK)
-  async getObservabilityMetrics(@Query('days') days?: string) {
-    return await this.superadminService.getObservabilityMetrics(days ? Number(days) : 7);
+  async getAiObservability() {
+    return await this.superadminService.getAiObservability();
   }
 
   @UseGuards(SuperadminGuard)
-  @Get('ai-monitoring/traces')
+  @Get('ai/traces')
   @HttpCode(HttpStatus.OK)
-  async getAiTraces(
-    @Query('limit') limit?: string,
-    @Query('operation') operation?: string,
-    @Query('status') status?: string,
-  ) {
-    return await this.superadminService.getAiTraces(
-      limit ? Number(limit) : 50,
-      operation,
-      status,
-    );
+  async getAiTraces(@Query('limit') limit?: string) {
+    return await this.superadminService.getAiTraces(Number(limit) || 20);
   }
 
   @UseGuards(SuperadminGuard)
-  @Get('ai-monitoring/token-pool')
-  @HttpCode(HttpStatus.OK)
-  async getTokenPool() {
-    return await this.superadminService.getTokenPool();
-  }
-
-  @UseGuards(SuperadminGuard)
-  @Post('ai-monitoring/token-pool/topup')
-  @HttpCode(HttpStatus.OK)
+  @Post('ai/topup')
+  @HttpCode(HttpStatus.CREATED)
   async topupTokenPool(@Body() dto: TopupTokenPoolDto) {
-    return await this.superadminService.topupTokenPool(dto);
+    return await this.superadminService.topupMasterTokenPool(dto);
   }
 
   @UseGuards(SuperadminGuard)
-  @Get('ai-monitoring/tenants-breakdown')
-  @HttpCode(HttpStatus.OK)
-  async getTenantQuotaBreakdown(@Query('month') month?: string) {
-    return await this.superadminService.getTenantQuotaBreakdown(month);
-  }
-
-  @UseGuards(SuperadminGuard)
-  @Get('ai-monitoring/topup-history')
-  @HttpCode(HttpStatus.OK)
-  async getHistoricalTopups() {
-    return await this.superadminService.getHistoricalTopups();
-  }
-
-  @UseGuards(SuperadminGuard)
-  @Get('audit-logs')
-  @HttpCode(HttpStatus.OK)
-  async getAuditLogs(
-    @Query('tenantId') tenantId?: string,
-    @Query('category') category?: string,
-    @Query('activityType') activityType?: string,
-    @Query('search') search?: string,
-    @Query('startDate') startDate?: string,
-    @Query('endDate') endDate?: string,
-    @Query('page') page?: string,
-    @Query('limit') limit?: string,
-  ) {
-    return await this.superadminService.getAuditLogs({
-      tenantId,
-      category,
-      activityType,
-      search,
-      startDate,
-      endDate,
-      page: page ? Number(page) : 1,
-      limit: limit ? Number(limit) : 20,
-    });
-  }
-
-  @UseGuards(SuperadminGuard)
-  @Get('activity-summary')
+  @Get('members/activity-summary')
   @HttpCode(HttpStatus.OK)
   async getMemberActivitySummary(
     @Query('search') search?: string,
-    @Query('legislativeLevel') legislativeLevel?: string,
+    @Query('dapilId') dapilId?: string,
+    @Query('party') party?: string,
     @Query('commissionId') commissionId?: string,
     @Query('page') page?: string,
     @Query('limit') limit?: string,
   ) {
     return await this.superadminService.getMemberActivitySummary({
       search,
-      legislativeLevel,
+      dapilId,
+      party,
       commissionId,
       page: page ? Number(page) : 1,
-      limit: limit ? Number(limit) : 15,
+      limit: limit ? Number(limit) : 10,
     });
   }
 
   @UseGuards(SuperadminGuard)
-  @Get('activity-summary/:id')
+  @Get('members/:id/activity-logs')
   @HttpCode(HttpStatus.OK)
   async getMemberActivityLogs(
     @Param('id') id: string,
