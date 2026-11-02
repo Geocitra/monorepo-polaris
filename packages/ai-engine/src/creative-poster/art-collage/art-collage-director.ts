@@ -162,31 +162,31 @@ export const ART_COLLAGE_DNA: Record<CreativePosterArchetype, ArtCollageDna> = {
   },
   INFOGRAPHIC_NARRATIVE_WAVE: {
     style:
-      'contemporary editorial graphic narrative infographic on smooth off-white paper; dynamic geometric flow shapes and modern documentary illustrations specifically depicting the subject matter, clean paper margins',
+      'authentic editorial documentary photography and photojournalism capturing Indonesian community reality and public works, natural daylight, professional 35mm lens, sharp photographic detail, realistic newsprint tones',
     anchors: ['TEXT_TOP', 'TEXT_BOTTOM'],
     paperTone: 'LIGHT',
   },
   INFOGRAPHIC_CHRONICLE_GRID: {
     style:
-      'editorial newspaper chronicle infographic aesthetic on clean off-white paper; clean structural layout, fine technical grid lines, subtle data accents, and high-quality documentary illustrations specifically depicting the subject matter',
+      'genuine press documentary photography and photojournalism of Indonesian public infrastructure, government facilities, and community environments, natural editorial lighting, realistic textures, Reuters / Kompas documentary photo quality',
     anchors: ['TEXT_RIGHT', 'TEXT_TOP'],
     paperTone: 'LIGHT',
   },
   INFOGRAPHIC_RADIAL_CLOCK: {
     style:
-      'vintage editorial chronicle print on clean warm parchment paper; elegant circular milestone motifs, fine cross-hatching and technical engraving textures illustrating the specific subject matter, with generous open negative space',
+      'high-impact documentary photojournalism documenting Indonesian community reality, public works, and local development, authentic documentary photography with natural sunlight, genuine Indonesian people and locations',
     anchors: ['TEXT_RIGHT', 'TEXT_TOP'],
     paperTone: 'LIGHT',
   },
   INFOGRAPHIC_ADVOCACY_PILLARS: {
     style:
-      'clean civic policy advocacy infographic illustration on warm ivory paper; modern editorial spot illustrations representing community action and policy impact on the specific subject, elegant minimal geometric accents',
+      'realistic documentary photography capturing Indonesian public services, schools, healthcare, or agricultural activities in real-world settings, genuine everyday citizens and workers, authentic documentary camera shot',
     anchors: ['TEXT_TOP', 'TEXT_BOTTOM'],
     paperTone: 'LIGHT',
   },
   INFOGRAPHIC_VISIONARY_TIMELINE: {
     style:
-      'sleek modern editorial milestone infographic on crisp light background; professional illustrations and technical milestone markers specifically depicting the subject matter',
+      'contemporary high-resolution photojournalism of Indonesian modern infrastructure, regional development, transportation, and public facilities, crisp realistic photography with natural atmospheric lighting',
     anchors: ['TEXT_TOP', 'TEXT_BOTTOM'],
     paperTone: 'LIGHT',
   },
@@ -286,32 +286,31 @@ export function compileArtCollageImagePrompt(params: {
   if (isInfographic) {
     let archetypeSpatialGuide = '';
     if (params.archetype === 'INFOGRAPHIC_NARRATIVE_WAVE') {
-      archetypeSpatialGuide = `Composition: Full-canvas dynamic editorial civic illustration of ${params.visualSubject}. A graceful flowing organic color ribbon in ${p.accentName} weaves through the background landscape. People and community activities are illustrated naturally across the scene. Continuous full-frame scenic artwork with zero diagram boxes.`;
+      archetypeSpatialGuide = `Composition: Full-canvas dynamic editorial photojournalism capturing ${params.visualSubject}. Authentic Indonesian citizens, workers, or landscape in real life. Realistic natural depth of field and environmental context. Pure photographic scene with zero diagram boxes.`;
     } else if (params.archetype === 'INFOGRAPHIC_CHRONICLE_GRID') {
-      archetypeSpatialGuide = `Composition: Full-canvas editorial documentary illustration and authentic photojournalism capturing ${params.visualSubject}. Warm textured newsprint aesthetic with subtle fine architectural grid lines in the background. Authentic Indonesian communities, public works, and civic engagement. Pure scenic documentary scene with zero empty rectangles.`;
+      archetypeSpatialGuide = `Composition: Full-canvas editorial press photography and authentic photojournalism capturing ${params.visualSubject}. Real Indonesian public institutions, infrastructure, city streets, or community settings. Genuine real-life documentary photography with zero empty rectangles or boxes.`;
     } else if (params.archetype === 'INFOGRAPHIC_RADIAL_CLOCK') {
-      archetypeSpatialGuide = `Composition: Full-canvas vintage editorial civic print on aged warm ivory parchment. On the center-left side, an artistic antique mechanical timepiece or compass motif is subtly integrated into historical Indonesian community architecture and progress regarding ${params.visualSubject}. The right side has a calm, open textured parchment backdrop. Pure scenic illustration with zero diagram cards.`;
+      archetypeSpatialGuide = `Composition: Full-canvas realistic documentary photography capturing ${params.visualSubject}. Real Indonesian civic activities, infrastructure, and community environment under natural daylight. Pure realistic photography with zero clock illustrations, zero drawings, and zero diagram cards.`;
     } else if (params.archetype === 'INFOGRAPHIC_ADVOCACY_PILLARS') {
-      archetypeSpatialGuide = `Composition: Full-canvas editorial civic community illustration with subtle Indonesian batik motif textures in the sky. Warm, expressive everyday Indonesian citizens, workers, and public facilities related to ${params.visualSubject}. Pure scenic illustration with people and environment, zero pillar containers or card outlines.`;
+      archetypeSpatialGuide = `Composition: Full-canvas authentic documentary photojournalism capturing real Indonesian citizens, students, workers, or public facilities related to ${params.visualSubject}. Pure real-world photography with people and environment, zero pillar containers, zero cartoon drawings, zero card outlines.`;
     } else {
       // INFOGRAPHIC_VISIONARY_TIMELINE
-      archetypeSpatialGuide = `Composition: Full-canvas contemporary editorial civic illustration depicting ${params.visualSubject}, featuring modern Indonesian civic architecture, public infrastructure, and progressive community life. Sleek modern lighting with refined textures on a crisp clean background. Pure scenic and architectural artwork only, zero timeline bars or frosted panels.`;
+      archetypeSpatialGuide = `Composition: Full-canvas contemporary editorial photojournalism depicting ${params.visualSubject}, featuring real Indonesian modern civic architecture, public infrastructure, and genuine community life. Natural realistic photography, zero timeline bars, zero illustrations, zero frosted panels.`;
     }
 
     return [
-      `Create a finished, print-quality editorial data infographic background illustration (vertical 4:5 ratio) specifically depicting: ${params.visualSubject}.`,
-      `Aesthetic style: ${dna.style}.`,
-      `Color scheme: ${p.accentName} accent with ${p.secondaryName} details, on clean ${p.paperName} background.`,
-      `The illustrations and visual elements must represent ONLY ${params.visualSubject}. Authentic Indonesian everyday citizens, farmers, workers, infrastructure, or community setting relevant to this specific topic. No unrelated historical figures or unrelated objects.`,
+      `Create a high-resolution, print-quality realistic documentary photograph (vertical 4:5 ratio) specifically capturing: ${params.visualSubject}.`,
+      `Photographic Style: ${dna.style}. Shot on professional 35mm / 50mm camera lens with natural daylight and authentic colors.`,
+      `Subject Relevance: The photograph MUST specifically and accurately depict ${params.visualSubject}. Real Indonesian people, genuine Indonesian urban or rural settings, real public facilities or infrastructure relevant to the issue.`,
       archetypeSpatialGuide,
-      `STRICT NEGATIVE INSTRUCTIONS FOR INFOGRAPHIC ARTWORK:`,
-      `- ABSOLUTELY DO NOT DRAW ANY UI CARDS, FROSTED GLASS RECTANGLES, WHITE BOXES, OR BLUR PANELS.`,
-      `- DO NOT DRAW ANY PILLARS, CAPSULES, OR VERTICAL STRIPS.`,
-      `- DO NOT DRAW ANY TIMELINE BARS, PROGRESS LINES, OR BULLET NODES.`,
-      `- DO NOT DRAW ANY CHARTS, PIE GRAPHS, GAUGES, OR QR CODES.`,
-      `- DO NOT DRAW ANY CHALKBOARDS, EMPTY SIGNS, OR FRAMES.`,
-      `- Generate 100% PURE SCENIC ARTWORK / ILLUSTRATION ONLY. All typography, cards, and data will be overlaid programmatically.`,
-      `ABSOLUTELY ZERO TEXT: No words, no letters, no numbers, no fake writing, no labels, no headings, no logos, no watermarks anywhere on the image.`,
+      `STRICT REALISM & ANTI-CARTOON MANDATES:`,
+      `- 100% REALISTIC PHOTOGRAPHY ONLY. Must look like an authentic documentary press photograph from Reuters, Kompas, or National Geographic.`,
+      `- ABSOLUTELY NO ANIMATION, NO ANIME, NO CARTOON, NO 3D RENDER, NO ISOMETRIC VECTOR ART, NO SKETCHES, NO COMICS, NO LINE ART, NO CLIPART, NO VINTAGE ENGRAVINGS, NO PAINTING.`,
+      `- ABSOLUTELY NO FAKE HISTORICAL DRAWINGS, NO CLOCKS, NO COMPASSES, NO RETRO ETCHINGS.`,
+      `- DO NOT DRAW ANY UI CARDS, FROSTED GLASS RECTANGLES, WHITE BOXES, OR BLUR PANELS.`,
+      `- DO NOT DRAW ANY PILLARS, CAPSULES, TIMELINE RAILS, BULLET NODES, CHARTS, OR QR CODES.`,
+      `- Generate 100% PURE REALISTIC PHOTOGRAPHY ONLY. All typography and data will be rendered cleanly by the compositor.`,
+      `ABSOLUTELY ZERO TEXT: No words, no letters, no numbers, no fake writing, no labels, no headings, no logos, no watermarks anywhere on the photograph.`,
     ].join('\n');
   }
 
@@ -502,7 +501,9 @@ function finalizeCopy(
     closingLine: clampSentence(s(raw.closingLine || raw.closing || 'Komitmen terukur bagi transparansi dan kemaslahatan publik.'), COPY_LIMITS.closing),
     visualSubject:
       (raw.visualSubject || '').trim() ||
-      `everyday Indonesian civic life directly related to: ${topic}`,
+      (isInfographic
+        ? `authentic realistic documentary photograph of everyday Indonesian citizens, workers, and public environment directly related to: ${topic}`
+        : `everyday Indonesian civic life directly related to: ${topic}`),
   };
 }
 
@@ -546,7 +547,7 @@ STRUKTUR WAJIB INFOGRAFIS DATA KOMPREHENSIF (${specificGuide}):
    - text: Uraian substantif 2 kalimat padat informasi, memuat angka konkret dan rincian langkah kebijakan (maks ${COPY_LIMITS.pointText} karakter).
 6. closingLine: Rekomendasi aksi / penegasan transparansi tata kelola kebijakan (maks ${COPY_LIMITS.closing} karakter).
 7. PANTANGAN: DILARANG kata "nyata", DILARANG slogan motivasional kosong tanpa data, DILARANG butir yang tidak memuat angka atau rincian kebijakan.
-8. visualSubject: Deskripsi pemandangan latar belakang ilustrasi tanpa teks dalam Bahasa Inggris (maks 35 kata), gambarkan aktivitas nyata warga dan fasilitas kota/desa di Indonesia. DILARANG menyebut kotak, card, kartu, bagan, atau pilar.
+8. visualSubject: Deskripsi adegan FOTOGRAFI DOKUMENTER REALISTIS (authentic documentary photojournalism) dalam Bahasa Inggris (maks 35 kata). Gambarkan realitas fotografi konkret di Indonesia yang SANGAT RELEVAN dengan topik: misal jalan raya rusak berlubang dengan lalu lintas warga nyata, gedung parlemen/kantor pemerintahan nyata, permukiman padat perkotaan nyata, petani di sawah nyata, atau fasilitas publik nyata di Indonesia. PANTANGAN MUTLAK: DILARANG animasi, DILARANG kartun, DILARANG anime, DILARANG 3D render, DILARANG sketsa/gambar tangan, DILARANG jam/kompas antik, DILARANG menyebut kotak/card/bagan/teks.
 
 Format JSON Wajib:
 {"kicker":"","headline":"","deck":"","stats":[{"value":"","label":""}],"points":[{"label":"","text":""}],"closingLine":"","visualSubject":""}`;
@@ -608,7 +609,9 @@ Keluarkan JSON murni:
         stats: isInfographic ? fallbackStats : undefined,
         points: fallbackPoints,
         closingLine: 'Dibutuhkan komitmen konkret untuk perbaikan berkelanjutan.',
-        visualSubject: `everyday Indonesian civic life directly related to: ${topic}`,
+        visualSubject: isInfographic
+          ? `realistic photojournalistic documentary photograph of everyday Indonesian citizens, public facilities, and infrastructure related to: ${topic}`
+          : `everyday Indonesian civic life directly related to: ${topic}`,
       },
       topic,
       archetype
