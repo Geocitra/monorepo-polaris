@@ -1341,7 +1341,7 @@ export function CampaignPreview({
                   <div>
                     <h4 className="font-extrabold text-xs text-slate-900 dark:text-white flex items-center gap-2">
                       <span>Feed & Karusel Instagram</span>
-                      {socialFeatureFlags.AUTO_PUBLISH_INSTAGRAM ? (
+                      {socialFeatureFlags.AUTO_PUBLISH_INSTAGRAM && (
                         connectedAccount ? (
                           <span className="text-[10px] font-bold text-emerald-700 bg-emerald-100 dark:bg-emerald-950 px-2 py-0.5 rounded-full border border-emerald-300">
                             @{connectedAccount.accountHandle}
@@ -1351,14 +1351,12 @@ export function CampaignPreview({
                             Belum Terhubung
                           </span>
                         )
-                      ) : (
-                        <span className="text-[10px] font-bold text-purple-700 bg-purple-100 dark:bg-purple-950/80 dark:text-purple-300 px-2 py-0.5 rounded-full border border-purple-200 dark:border-purple-800">
-                          Mode Asisten Manual
-                        </span>
                       )}
                     </h4>
                     <p className="text-[11px] text-slate-500 dark:text-slate-400">
-                      Rasio murni 4:5 dengan Canva-style multi-slide filmstrip.
+                      {socialFeatureFlags.AUTO_PUBLISH_INSTAGRAM
+                        ? 'Rasio murni 4:5 dengan Canva-style multi-slide filmstrip untuk direct API publish.'
+                        : 'Unduh visual poster resolusi tinggi dan salin caption untuk diunggah ke Instagram.'}
                     </p>
                   </div>
                 </div>
@@ -1415,8 +1413,118 @@ export function CampaignPreview({
                 )}
               </div>
 
-              {/* GRID WORKSPACE: Kiri Mockup Instagram HP 4:5, Kanan Format di Atas, Canva Tray & Caption */}
-              <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 items-start">
+              {!socialFeatureFlags.AUTO_PUBLISH_INSTAGRAM ? (
+                /* ======================================================== */
+                /* MODE UNGGAH MANUAL: BEBAS DISTRAKSI, LEGA, FOKUS UNDUH & SALIN */
+                /* ======================================================== */
+                <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+                  {/* Kolom Kiri: Pratinjau Poster Bersih 4:5 */}
+                  <div className="lg:col-span-4 flex flex-col items-center">
+                    <div className="w-[260px] sm:w-[270px] rounded-2xl bg-white dark:bg-slate-900 border border-purple-200/80 dark:border-purple-900/60 shadow-md overflow-hidden">
+                      <div className="px-3 py-2 flex items-center justify-between border-b border-slate-100 dark:border-slate-800 text-xs">
+                        <div className="flex items-center gap-2">
+                          <div className="w-5 h-5 rounded-full bg-gradient-to-tr from-yellow-400 via-pink-500 to-purple-600 p-[1.5px]">
+                            <div className="w-full h-full rounded-full bg-white dark:bg-slate-900 flex items-center justify-center">
+                              <Instagram className="h-2.5 w-2.5 text-purple-600" />
+                            </div>
+                          </div>
+                          <span className="font-bold text-[11px] text-slate-800 dark:text-slate-200 truncate">
+                            Pratinjau Feed 4:5
+                          </span>
+                        </div>
+                        <span className="text-[10px] text-purple-600 dark:text-purple-400 font-bold">1080 × 1350</span>
+                      </div>
+
+                      <div
+                        className="relative w-full aspect-[4/5] bg-slate-950 overflow-hidden flex items-center justify-center cursor-pointer group"
+                        onClick={() => setIsPosterLightboxOpen(true)}
+                        title="Klik untuk melihat resolusi penuh"
+                      >
+                        {selectedPosterUrl || generatedResult?.posterUrl ? (
+                          <>
+                            <img
+                              src={selectedPosterUrl || generatedResult?.posterUrl}
+                              alt="Poster Visual Feed"
+                              className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-102"
+                            />
+                            <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2 text-white text-xs font-bold">
+                              <Eye className="h-4 w-4" />
+                              <span>Lihat Penuh</span>
+                            </div>
+                          </>
+                        ) : (
+                          <div className="flex flex-col items-center gap-2 text-slate-500">
+                            <ImageIcon className="h-8 w-8" />
+                            <span className="text-xs">Poster Belum Tersedia</span>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+
+                    <button
+                      type="button"
+                      onClick={() => handleDownloadPosterImage()}
+                      disabled={downloadingPoster}
+                      className="w-[260px] sm:w-[270px] mt-2.5 inline-flex items-center justify-center gap-2 py-2.5 px-4 rounded-xl bg-purple-600 hover:bg-purple-700 active:scale-[0.99] text-white font-extrabold text-xs shadow-xs transition-all cursor-pointer disabled:opacity-50"
+                    >
+                      {downloadingPoster ? <Loader2 className="h-4 w-4 animate-spin" /> : <Download className="h-4 w-4" />}
+                      <span>Unduh Poster HD (4:5)</span>
+                    </button>
+                  </div>
+
+                  {/* Kolom Kanan: Area Teks Caption Luas & Lega */}
+                  <div className="lg:col-span-8 space-y-3">
+                    <div className="p-4 rounded-2xl bg-white dark:bg-slate-900 border border-purple-200/80 dark:border-purple-900/60 shadow-xs space-y-3">
+                      <div className="flex items-center justify-between text-xs font-bold text-slate-800 dark:text-slate-200">
+                        <div className="flex items-center gap-2">
+                          <Edit3 className="h-4 w-4 text-purple-600" />
+                          <span>Naskah Caption Instagram</span>
+                          <span className="text-[10px] text-purple-600 dark:text-purple-400 font-normal">
+                            (Siap diposting langsung)
+                          </span>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            handleCopyCaptionWithPortalLink(customIgCaption || generatedResult?.socialPack?.instagramCaption || '', 'Instagram');
+                            setCopiedIg(true);
+                            setTimeout(() => setCopiedIg(false), 2000);
+                          }}
+                          className="inline-flex items-center gap-1.5 px-3 py-1 rounded-lg bg-purple-50 dark:bg-purple-950 text-purple-700 dark:text-purple-300 hover:bg-purple-100 transition-colors cursor-pointer text-xs font-bold border border-purple-200 dark:border-purple-800"
+                        >
+                          {copiedIg ? <CheckCheck className="h-3.5 w-3.5 text-emerald-600" /> : <Copy className="h-3.5 w-3.5" />}
+                          <span>{copiedIg ? 'Tersalin!' : 'Salin Caption'}</span>
+                        </button>
+                      </div>
+
+                      <textarea
+                        value={customIgCaption}
+                        onChange={(e) => setCustomIgCaption(e.target.value)}
+                        rows={11}
+                        placeholder="Tulis atau sesuaikan caption Instagram di sini..."
+                        className="w-full p-4 rounded-xl bg-purple-50/30 dark:bg-slate-950 border border-purple-200/80 dark:border-purple-800/80 focus:border-purple-500 focus:ring-1 focus:ring-purple-500 text-slate-800 dark:text-slate-200 text-xs leading-relaxed font-sans shadow-inner resize-y transition-colors outline-none"
+                      />
+
+                      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pt-1 border-t border-slate-100 dark:border-slate-800 text-[11px] text-slate-500 dark:text-slate-400">
+                        <span>💡 Tautan resmi portal berita & tagar telah otomatis tersemat rapi saat disalin.</span>
+                        <a
+                          href="https://www.instagram.com"
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="inline-flex items-center gap-1.5 font-bold text-purple-700 dark:text-purple-300 hover:underline"
+                        >
+                          <span>Buka Web Instagram</span>
+                          <ExternalLink className="h-3 w-3" />
+                        </a>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                /* ======================================================== */
+                /* MODE OTOMATIS: MULTI-SLIDE CANVA CAROUSEL UNTUK DIRECT API */
+                /* ======================================================== */
+                <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 items-start">
                 {/* KOLOM KIRI (LG: 5): Mockup Postingan Instagram Feed Nyata dengan Interactive Pan */}
                 <div className="lg:col-span-5 flex flex-col items-center">
                   <div className="w-[260px] sm:w-[270px] rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-md overflow-hidden">
@@ -1801,6 +1909,7 @@ export function CampaignPreview({
                   </div>
                 </div>
               </div>
+              )}
             </div>
           )}
 
@@ -1909,7 +2018,7 @@ export function CampaignPreview({
                       <h4 className="font-extrabold text-xs text-slate-900 dark:text-white">
                         Meta Threads • Cuitan Opini
                       </h4>
-                      {socialFeatureFlags.AUTO_PUBLISH_THREADS ? (
+                      {socialFeatureFlags.AUTO_PUBLISH_THREADS && (
                         connectedThreadsAccount ? (
                           <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-emerald-100 dark:bg-emerald-950/80 text-emerald-700 dark:text-emerald-300 text-[10px] font-black border border-emerald-200 dark:border-emerald-800">
                             <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
@@ -1923,10 +2032,6 @@ export function CampaignPreview({
                             <span>⚠️ Belum Terhubung (Klik untuk Sambungkan Akun)</span>
                           </Link>
                         )
-                      ) : (
-                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-slate-200 dark:bg-slate-800 text-slate-700 dark:text-slate-300 text-[10px] font-black border border-slate-300 dark:border-slate-700">
-                          Mode Asisten Manual
-                        </span>
                       )}
                     </div>
                     <p className="text-[11px] text-slate-500 dark:text-slate-400">
@@ -1936,6 +2041,18 @@ export function CampaignPreview({
                 </div>
 
                 <div className="flex items-center flex-wrap gap-2">
+                  {(selectedPosterUrl || generatedResult?.posterUrl) && (
+                    <button
+                      type="button"
+                      onClick={() => handleDownloadPosterImage()}
+                      disabled={downloadingPoster}
+                      className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 font-bold text-xs hover:bg-slate-50 transition-colors shadow-2xs cursor-pointer"
+                    >
+                      <Download className="h-3.5 w-3.5" />
+                      <span>Unduh Poster</span>
+                    </button>
+                  )}
+
                   <button
                     type="button"
                     onClick={() => handleCopyCaptionWithPortalLink(threadsCustomText, 'Threads')}
@@ -2076,58 +2193,73 @@ export function CampaignPreview({
                       </div>
                     </div>
                   </div>
+
+                  {(selectedPosterUrl || generatedResult?.posterUrl) && (
+                    <button
+                      type="button"
+                      onClick={() => handleDownloadPosterImage()}
+                      disabled={downloadingPoster}
+                      className="w-full inline-flex items-center justify-center gap-2 py-2.5 px-4 rounded-xl bg-slate-900 hover:bg-slate-800 dark:bg-white dark:hover:bg-slate-100 text-white dark:text-slate-900 font-extrabold text-xs shadow-xs transition-all cursor-pointer disabled:opacity-50"
+                    >
+                      {downloadingPoster ? <Loader2 className="h-4 w-4 animate-spin" /> : <Download className="h-4 w-4" />}
+                      <span>Unduh Poster Dokumen (HD)</span>
+                    </button>
+                  )}
                 </div>
 
                 {/* Kolom Kanan: Pengaturan & Editor Cuitan */}
                 <div className="lg:col-span-6 space-y-4">
-                  {/* Selector Mode Lampiran */}
-                  <div className="p-3.5 rounded-2xl bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-800 space-y-2">
-                    <span className="text-xs font-bold text-slate-900 dark:text-white block">
-                      Pilihan Lampiran Konten Threads:
-                    </span>
-                    <div className="grid grid-cols-2 gap-2">
-                      <button
-                        type="button"
-                        onClick={() => setThreadsAttachmentMode('link_card')}
-                        className={`p-2.5 rounded-xl text-left border transition-all cursor-pointer ${threadsAttachmentMode === 'link_card'
-                            ? 'bg-slate-900 text-white dark:bg-white dark:text-slate-900 border-transparent shadow-xs'
-                            : 'bg-slate-50 dark:bg-slate-900 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-800 hover:bg-slate-100'
-                          }`}
-                      >
-                        <div className="font-extrabold text-xs flex items-center gap-1.5">
-                          <Globe className="h-3.5 w-3.5" />
-                          <span>Rich Link Card</span>
-                        </div>
-                        <p className={`text-[10px] mt-0.5 leading-tight ${threadsAttachmentMode === 'link_card' ? 'opacity-80' : 'text-slate-400'}`}>
-                          Tautan hidup portal berita (warga membaca kajian penuh).
-                        </p>
-                      </button>
+                  {/* Selector Mode Lampiran hanya relevan di mode Direct API publish */}
+                  {socialFeatureFlags.AUTO_PUBLISH_THREADS && (
+                    <div className="p-3.5 rounded-2xl bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-800 space-y-2">
+                      <span className="text-xs font-bold text-slate-900 dark:text-white block">
+                        Pilihan Lampiran Konten Threads:
+                      </span>
+                      <div className="grid grid-cols-2 gap-2">
+                        <button
+                          type="button"
+                          onClick={() => setThreadsAttachmentMode('link_card')}
+                          className={`p-2.5 rounded-xl text-left border transition-all cursor-pointer ${threadsAttachmentMode === 'link_card'
+                              ? 'bg-slate-900 text-white dark:bg-white dark:text-slate-900 border-transparent shadow-xs'
+                              : 'bg-slate-50 dark:bg-slate-900 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-800 hover:bg-slate-100'
+                            }`}
+                        >
+                          <div className="font-extrabold text-xs flex items-center gap-1.5">
+                            <Globe className="h-3.5 w-3.5" />
+                            <span>Rich Link Card</span>
+                          </div>
+                          <p className={`text-[10px] mt-0.5 leading-tight ${threadsAttachmentMode === 'link_card' ? 'opacity-80' : 'text-slate-400'}`}>
+                            Tautan hidup portal berita (warga membaca kajian penuh).
+                          </p>
+                        </button>
 
-                      <button
-                        type="button"
-                        onClick={() => setThreadsAttachmentMode('poster')}
-                        className={`p-2.5 rounded-xl text-left border transition-all cursor-pointer ${threadsAttachmentMode === 'poster'
-                            ? 'bg-slate-900 text-white dark:bg-white dark:text-slate-900 border-transparent shadow-xs'
-                            : 'bg-slate-50 dark:bg-slate-900 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-800 hover:bg-slate-100'
-                          }`}
-                      >
-                        <div className="font-extrabold text-xs flex items-center gap-1.5">
-                          <ImageIcon className="h-3.5 w-3.5" />
-                          <span>Gambar Poster</span>
-                        </div>
-                        <p className={`text-[10px] mt-0.5 leading-tight ${threadsAttachmentMode === 'poster' ? 'opacity-80' : 'text-slate-400'}`}>
-                          Lampirkan gambar poster infografis tanpa terpotong.
-                        </p>
-                      </button>
+                        <button
+                          type="button"
+                          onClick={() => setThreadsAttachmentMode('poster')}
+                          className={`p-2.5 rounded-xl text-left border transition-all cursor-pointer ${threadsAttachmentMode === 'poster'
+                              ? 'bg-slate-900 text-white dark:bg-white dark:text-slate-900 border-transparent shadow-xs'
+                              : 'bg-slate-50 dark:bg-slate-900 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-800 hover:bg-slate-100'
+                            }`}
+                        >
+                          <div className="font-extrabold text-xs flex items-center gap-1.5">
+                            <ImageIcon className="h-3.5 w-3.5" />
+                            <span>Gambar Poster</span>
+                          </div>
+                          <p className={`text-[10px] mt-0.5 leading-tight ${threadsAttachmentMode === 'poster' ? 'opacity-80' : 'text-slate-400'}`}>
+                            Lampirkan gambar poster infografis tanpa terpotong.
+                          </p>
+                        </button>
+                      </div>
                     </div>
-                  </div>
+                  )}
 
                   {/* Textarea Editor & Live Character Counter */}
-                  <div className="p-3.5 rounded-2xl bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-800 space-y-2">
+                  <div className="p-4 rounded-2xl bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-800 space-y-3 shadow-xs">
                     <div className="flex items-center justify-between text-xs">
-                      <span className="font-bold text-slate-800 dark:text-slate-200">
-                        Edit Cuitan Opini:
-                      </span>
+                      <div className="flex items-center gap-1.5 font-bold text-slate-800 dark:text-slate-200">
+                        <Edit3 className="h-4 w-4 text-slate-700 dark:text-slate-300" />
+                        <span>Naskah Cuitan Opini Threads</span>
+                      </div>
                       <span
                         className={`text-[10px] font-mono px-2 py-0.5 rounded-full font-bold ${threadsCustomText.length <= 500
                             ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300'
@@ -2141,16 +2273,22 @@ export function CampaignPreview({
                     <textarea
                       value={threadsCustomText}
                       onChange={(e) => setThreadsCustomText(e.target.value)}
-                      rows={6}
+                      rows={socialFeatureFlags.AUTO_PUBLISH_THREADS ? 6 : 10}
                       placeholder="Tuliskan argumen opini atau kutipan pandangan Anda untuk Threads..."
-                      className="w-full p-3 text-xs rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 text-slate-900 dark:text-slate-100 focus:outline-hidden focus:ring-1 focus:ring-slate-400 font-sans leading-relaxed resize-none"
+                      className="w-full p-3.5 text-xs rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900 text-slate-900 dark:text-slate-100 focus:outline-hidden focus:ring-1 focus:ring-slate-400 font-sans leading-relaxed resize-y"
                     />
 
-                    <div className="flex items-center justify-between pt-1 text-[11px] text-slate-400">
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pt-1 border-t border-slate-100 dark:border-slate-800 text-[11px] text-slate-400">
                       <span>💡 Tips: Sertakan data kunci & ajakan dialog bagi warga.</span>
-                      {threadsAttachmentMode === 'link_card' && (
-                        <span className="text-blue-500 font-bold">Link terlampir otomatis</span>
-                      )}
+                      <a
+                        href="https://www.threads.net"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="inline-flex items-center gap-1 font-bold text-slate-900 dark:text-white hover:underline"
+                      >
+                        <span>Buka Web Threads</span>
+                        <ExternalLink className="h-3 w-3" />
+                      </a>
                     </div>
                   </div>
                 </div>
@@ -2174,11 +2312,17 @@ export function CampaignPreview({
                   <div>
                     <div className="flex items-center gap-2">
                       <h4 className="font-black text-slate-900 dark:text-white text-sm">
-                        X (Twitter) Publisher
+                        X (Twitter)
                       </h4>
-                      <Badge variant="slate" className="text-[10px] bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 font-bold border-slate-200 dark:border-slate-700">
-                        v2 API Official
-                      </Badge>
+                      {socialFeatureFlags.AUTO_PUBLISH_X_TWITTER ? (
+                        <Badge variant="slate" className="text-[10px] bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 font-bold border-slate-200 dark:border-slate-700">
+                          v2 API Official
+                        </Badge>
+                      ) : (
+                        <span className="text-[10px] text-slate-400 font-medium">
+                          (Utas &amp; Linimasa)
+                        </span>
+                      )}
                     </div>
                     <p className="text-[11px] text-slate-500 dark:text-slate-400">
                       Utas cuitan publikasi berita, rilis pers dewan, &amp; lampiran poster grafis.
@@ -2187,6 +2331,24 @@ export function CampaignPreview({
                 </div>
 
                 <div className="flex items-center flex-wrap gap-2">
+                  {(selectedPosterUrl || generatedResult?.posterUrl) && (
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={() => handleDownloadPosterImage()}
+                      disabled={downloadingPoster}
+                      className="h-8 text-xs font-bold gap-1 rounded-xl cursor-pointer"
+                    >
+                      {downloadingPoster ? (
+                        <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                      ) : (
+                        <Download className="h-3.5 w-3.5" />
+                      )}
+                      <span>Unduh Poster</span>
+                    </Button>
+                  )}
+
                   <Button
                     type="button"
                     variant="outline"
@@ -2229,8 +2391,8 @@ export function CampaignPreview({
                 </div>
               </div>
 
-              {/* Status Akun X */}
-              {socialFeatureFlags.AUTO_PUBLISH_X_TWITTER ? (
+              {/* Status Akun X (Khusus mode API) */}
+              {socialFeatureFlags.AUTO_PUBLISH_X_TWITTER && (
                 !connectedXAccount ? (
                   <div className="p-3 rounded-xl bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-900/60 flex items-center justify-between gap-3 text-xs">
                     <div className="flex items-center gap-2 text-amber-800 dark:text-amber-200">
@@ -2257,33 +2419,16 @@ export function CampaignPreview({
                     </span>
                   </div>
                 )
-              ) : (
-                <div className="p-3 rounded-xl bg-slate-100 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700/80 flex items-center justify-between gap-3 text-xs">
-                  <div className="flex items-center gap-2 text-slate-700 dark:text-slate-300">
-                    <Info className="h-4 w-4 shrink-0 text-blue-500" />
-                    <span>
-                      <strong>Mode Asisten Manual Aktif:</strong> Salin cuitan berisikan tautan resmi portal, lalu buka X untuk memposting langsung tanpa biaya API.
-                    </span>
-                  </div>
-                  <a
-                    href="https://x.com/compose/post"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="inline-flex items-center gap-1 px-3 py-1 bg-black hover:bg-slate-800 text-white font-bold text-[11px] rounded-lg shrink-0 transition-colors"
-                  >
-                    <span>Buka X</span>
-                    <ExternalLink className="h-3 w-3" />
-                  </a>
-                </div>
               )}
 
               {/* Grid Pratinjau & Kontrol */}
               <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 items-start">
                 {/* Kolom Kiri: Live Tweet Card Mockup */}
                 <div className="lg:col-span-5 space-y-2">
-                  <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">
-                    Pratinjau Tampilan Linimasa X:
-                  </span>
+                  <div className="flex items-center justify-between text-[11px] font-bold text-slate-500 uppercase tracking-wider">
+                    <span>Pratinjau Linimasa X</span>
+                    <span className="text-[10px] font-normal text-slate-400">Live Mockup</span>
+                  </div>
 
                   <div className="p-4 rounded-2xl bg-white dark:bg-black border border-slate-200 dark:border-slate-800 shadow-sm space-y-3 font-sans">
                     <div className="flex items-start gap-3">
@@ -2309,18 +2454,27 @@ export function CampaignPreview({
                           <span className="text-xs text-slate-400">• baru saja</span>
                         </div>
 
-                        <p className="text-xs text-slate-800 dark:text-slate-200 whitespace-pre-line leading-relaxed mt-2">
+                        {/* Cuitan text with max-height to avoid endless stretch */}
+                        <div className="mt-2 text-xs text-slate-800 dark:text-slate-200 whitespace-pre-line leading-relaxed max-h-48 overflow-y-auto pr-1">
                           {xCustomText || 'Belum ada naskah cuitan X.'}
-                        </p>
+                        </div>
 
-                        {/* Lampiran Gambar Poster jika aktif */}
-                        {xAttachPoster && (selectedPosterUrl || generatedResult?.posterUrl) && (
-                          <div className="mt-3 rounded-2xl overflow-hidden border border-slate-200 dark:border-slate-800 max-h-72 bg-slate-100 dark:bg-slate-900">
+                        {/* Lampiran Gambar Poster jika aktif / tersedia */}
+                        {(xAttachPoster || !socialFeatureFlags.AUTO_PUBLISH_X_TWITTER) && (selectedPosterUrl || generatedResult?.posterUrl) && (
+                          <div
+                            onClick={() => (selectedPosterUrl || generatedResult?.posterUrl) && setLightboxImage(selectedPosterUrl || generatedResult?.posterUrl || null)}
+                            className="mt-3 rounded-2xl overflow-hidden border border-slate-200 dark:border-slate-800 max-h-56 bg-slate-100 dark:bg-slate-900 cursor-pointer group relative"
+                            title="Klik untuk memperbesar gambar"
+                          >
                             <img
                               src={selectedPosterUrl || generatedResult?.posterUrl}
                               alt="Poster Attachment"
-                              className="w-full h-full object-cover"
+                              className="w-full h-48 object-cover group-hover:scale-102 transition-transform duration-200"
                             />
+                            <div className="absolute inset-0 bg-black/20 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center text-white text-xs font-bold gap-1">
+                              <Maximize2 className="h-4 w-4" />
+                              <span>Perbesar</span>
+                            </div>
                           </div>
                         )}
 
@@ -2334,64 +2488,95 @@ export function CampaignPreview({
                       </div>
                     </div>
                   </div>
+
+                  {/* Unduh Poster Button directly under the mockup */}
+                  {(selectedPosterUrl || generatedResult?.posterUrl) && (
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={() => handleDownloadPosterImage()}
+                      disabled={downloadingPoster}
+                      className="w-full h-8.5 text-xs font-bold gap-1.5 rounded-xl cursor-pointer bg-white dark:bg-slate-900 hover:bg-slate-100 dark:hover:bg-slate-800 border-slate-200 dark:border-slate-800"
+                    >
+                      {downloadingPoster ? (
+                        <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                      ) : (
+                        <Download className="h-3.5 w-3.5 text-slate-700 dark:text-slate-300" />
+                      )}
+                      <span>Unduh Poster HD untuk X</span>
+                    </Button>
+                  )}
                 </div>
 
-                {/* Kolom Kanan: Pengaturan Naskah & Media */}
+                {/* Kolom Kanan: Editor Naskah Cuitan */}
                 <div className="lg:col-span-7 space-y-4">
-                  {/* Opsi Lampirkan Poster */}
-                  <div className="p-3.5 rounded-2xl bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-800 space-y-2">
-                    <span className="text-xs font-bold text-slate-800 dark:text-slate-200">
-                      Lampiran Media Cuitan:
-                    </span>
-                    <button
-                      type="button"
-                      onClick={() => setXAttachPoster(!xAttachPoster)}
-                      className={`w-full p-3 rounded-xl border text-left transition-all cursor-pointer flex items-center justify-between gap-3 ${xAttachPoster
-                          ? 'bg-slate-900 text-white dark:bg-white dark:text-slate-900 border-transparent shadow-xs'
-                          : 'bg-slate-50 dark:bg-slate-900 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-800 hover:bg-slate-100'
-                        }`}
-                    >
-                      <div className="flex items-center gap-2">
-                        <ImageIcon className="h-4 w-4" />
-                        <div>
-                          <p className="font-extrabold text-xs">Lampirkan Poster Visual Resmi</p>
-                          <p className={`text-[10px] mt-0.5 leading-tight ${xAttachPoster ? 'opacity-80' : 'text-slate-400'}`}>
-                            Otomatis menyertakan poster grafis yang digenerate AI ke cuitan pertama.
-                          </p>
-                        </div>
-                      </div>
-                      <span className="text-xs font-bold font-mono">
-                        {xAttachPoster ? '✓ AKTIF' : 'NONAKTIF'}
+                  {/* Opsi Lampirkan Poster hanya muncul di Mode Otomatis (Direct API) */}
+                  {socialFeatureFlags.AUTO_PUBLISH_X_TWITTER && (
+                    <div className="p-3.5 rounded-2xl bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-800 space-y-2">
+                      <span className="text-xs font-bold text-slate-800 dark:text-slate-200">
+                        Lampiran Media Cuitan:
                       </span>
-                    </button>
-                  </div>
+                      <button
+                        type="button"
+                        onClick={() => setXAttachPoster(!xAttachPoster)}
+                        className={`w-full p-3 rounded-xl border text-left transition-all cursor-pointer flex items-center justify-between gap-3 ${xAttachPoster
+                            ? 'bg-slate-900 text-white dark:bg-white dark:text-slate-900 border-transparent shadow-xs'
+                            : 'bg-slate-50 dark:bg-slate-900 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-800 hover:bg-slate-100'
+                          }`}
+                      >
+                        <div className="flex items-center gap-2">
+                          <ImageIcon className="h-4 w-4" />
+                          <div>
+                            <p className="font-extrabold text-xs">Lampirkan Poster Visual Resmi</p>
+                            <p className={`text-[10px] mt-0.5 leading-tight ${xAttachPoster ? 'opacity-80' : 'text-slate-400'}`}>
+                              Otomatis menyertakan poster grafis yang digenerate AI ke cuitan pertama.
+                            </p>
+                          </div>
+                        </div>
+                        <span className="text-xs font-bold font-mono">
+                          {xAttachPoster ? '✓ AKTIF' : 'NONAKTIF'}
+                        </span>
+                      </button>
+                    </div>
+                  )}
 
                   {/* Textarea Editor Cuitan */}
-                  <div className="p-3.5 rounded-2xl bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-800 space-y-2">
+                  <div className="p-4 rounded-2xl bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-800 space-y-3 shadow-xs">
                     <div className="flex items-center justify-between text-xs">
-                      <span className="font-bold text-slate-800 dark:text-slate-200">
-                        Naskah Cuitan / Utas (Thread):
-                      </span>
+                      <div className="flex items-center gap-1.5 font-bold text-slate-800 dark:text-slate-200">
+                        <Edit3 className="h-4 w-4 text-slate-700 dark:text-slate-300" />
+                        <span>Naskah Cuitan / Utas (Thread)</span>
+                      </div>
                       <span
                         className={`text-[10px] font-mono px-2 py-0.5 rounded-full font-bold ${xCustomText.length <= 280
                             ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300'
                             : 'bg-blue-100 text-blue-700 dark:bg-blue-950 dark:text-blue-300'
                           }`}
                       >
-                        {xCustomText.length} Karakter {xCustomText.length <= 280 ? '(1 Tweet)' : `(Mode Thread: ${Math.ceil(xCustomText.length / 260)} Tweet)`}
+                        {xCustomText.length} Karakter {xCustomText.length <= 280 ? '(1 Tweet)' : `(Utas: ${Math.ceil(xCustomText.length / 260)} Tweet)`}
                       </span>
                     </div>
 
                     <textarea
                       value={xCustomText}
                       onChange={(e) => setXCustomText(e.target.value)}
-                      rows={6}
+                      rows={socialFeatureFlags.AUTO_PUBLISH_X_TWITTER ? 7 : 11}
                       placeholder="Tuliskan naskah cuitan untuk linimasa X..."
-                      className="w-full p-3 text-xs rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 text-slate-900 dark:text-slate-100 focus:outline-hidden focus:ring-1 focus:ring-slate-400 font-sans leading-relaxed resize-none"
+                      className="w-full p-3.5 text-xs rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900 text-slate-900 dark:text-slate-100 focus:outline-hidden focus:ring-1 focus:ring-slate-400 font-sans leading-relaxed resize-y"
                     />
 
-                    <div className="flex items-center justify-between pt-1 text-[11px] text-slate-400">
-                      <span>💡 Tips: Cuitan &gt; 280 karakter otomatis dirangkai menjadi Utas bersambung (Thread).</span>
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pt-1 border-t border-slate-100 dark:border-slate-800 text-[11px] text-slate-400">
+                      <span>💡 Cuitan &gt; 280 karakter otomatis dirangkai menjadi Utas bersambung (Thread).</span>
+                      <a
+                        href="https://x.com/compose/post"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="inline-flex items-center gap-1 font-bold text-slate-900 dark:text-white hover:underline"
+                      >
+                        <span>Buka Web X</span>
+                        <ExternalLink className="h-3 w-3" />
+                      </a>
                     </div>
                   </div>
                 </div>
@@ -2511,7 +2696,7 @@ export function CampaignPreview({
                   <div className="flex items-center gap-2 text-slate-700 dark:text-slate-300">
                     <Info className="h-4 w-4 shrink-0 text-[#fe2c55]" />
                     <span>
-                      <strong>Mode Asisten Manual Aktif:</strong> Unduh materi gambar/karusel dan salin caption dengan tautan portal berita, lalu unggah langsung di TikTok Studio Web.
+                      Unduh materi gambar poster dan salin naskah caption, lalu unggah melalui TikTok Studio Web.
                     </span>
                   </div>
                   <a
