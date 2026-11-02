@@ -167,6 +167,7 @@ export class TikTokPublishingProcessor {
 
       // 4. Publikasikan Konten ke TikTok
       await this.emitProgress(tenantId, publishingJobId, 60, 'Mengunggah dan memproses media di TikTok...');
+      console.log(`[TikTokWorker] Memulai publikasi media: format=${publishingJob.mediaFormat}, URL=${publishingJob.originalMediaUrl}`);
 
       const publishResult = await this.publisher.publish({
         accessToken: activeAccessToken,

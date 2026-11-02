@@ -186,6 +186,8 @@ export class TikTokPublisherAdapter {
       },
     };
 
+    console.log('[TikTokPublisher] Mengirim init payload foto ke TikTok:', JSON.stringify(payload));
+
     let res = await fetch(initUrl, {
       method: 'POST',
       headers: {
@@ -196,6 +198,7 @@ export class TikTokPublisherAdapter {
     });
 
     let data = (await res.json().catch(() => ({}))) as any;
+    console.log('[TikTokPublisher] Respon init TikTok foto:', JSON.stringify(data));
 
     // Jika ditolak karena app masih unaudited/development mode (memerlukan SELF_ONLY & akun privat)
     const isUnaudited =
