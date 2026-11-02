@@ -10,6 +10,7 @@ export interface StartTelemetryParams {
   model: string;
   tenantId?: string;
   metadata?: Record<string, any>;
+  inputPayload?: Record<string, any>;
 }
 
 export interface EndTelemetryParams {
@@ -18,6 +19,7 @@ export interface EndTelemetryParams {
   status: 'SUCCESS' | 'FAILED' | 'REFUSAL';
   errorMessage?: string;
   outputPreview?: any;
+  outputSummary?: any;
   actualModel?: string;
   imageCalls?: number;
 }
@@ -75,25 +77,38 @@ export class AiTelemetryService {
    */
   public static extractGeminiUsage(
     response: any,
-    promptFallbackText?: string,
-    outputFallbackText?: string
+    promptFallback?: string | number,
+    outputFallback?: string | number
   ): { inputTokens: number; outputTokens: number } {
     const meta = response?.usageMetadata;
     const promptCount = Number(meta?.promptTokenCount || 0);
     const candidatesCount = Number(meta?.candidatesTokenCount || 0);
 
+    const promptChars =
+      typeof promptFallback === 'number'
+        ? promptFallback
+        : typeof promptFallback === 'string'
+          ? promptFallback.length
+          : 0;
+    const outputChars =
+      typeof outputFallback === 'number'
+        ? outputFallback
+        : typeof outputFallback === 'string'
+          ? outputFallback.length
+          : 0;
+
     const inputTokens =
       promptCount > 0
         ? promptCount
-        : promptFallbackText
-          ? Math.max(1, Math.ceil(promptFallbackText.length / 4))
+        : promptChars > 0
+          ? Math.max(1, Math.ceil(promptChars / 4))
           : 0;
 
     const outputTokens =
       candidatesCount > 0
         ? candidatesCount
-        : outputFallbackText
-          ? Math.max(1, Math.ceil(outputFallbackText.length / 4))
+        : outputChars > 0
+          ? Math.max(1, Math.ceil(outputChars / 4))
           : 0;
 
     return { inputTokens, outputTokens };
@@ -156,6 +171,7 @@ export class AiTelemetryService {
           userId: rawTenantId || 'PUBLIC_VISITOR',
           metadata: {
             ...params.metadata,
+            ...params.inputPayload,
             canonicalTraceId,
             environment: process.env.NODE_ENV || 'production',
           },
@@ -164,7 +180,7 @@ export class AiTelemetryService {
         generationSpan = langfuseTrace.generation({
           name: `${params.model}-generation`,
           model: params.model,
-          input: params.metadata?.inputPrompt || params.metadata || 'Structured Prompt',
+          input: params.metadata?.inputPrompt || params.inputPayload || params.metadata || 'Structured Prompt',
         });
       } catch (lfErr: any) {
         console.warn(`[AiTelemetryWarning] Gagal inisialisasi Langfuse trace: ${lfErr?.message}`);
@@ -196,7 +212,7 @@ export class AiTelemetryService {
         if (generationSpan) {
           generationSpan.end({
             model: resolvedModel,
-            output: endParams.outputPreview,
+            output: endParams.outputPreview ?? endParams.outputSummary,
             usage: {
               input: safeInputTokens,
               output: safeOutputTokens,
