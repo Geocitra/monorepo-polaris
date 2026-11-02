@@ -31,3 +31,4 @@ describe('MediaProxyToken', () => {
     expect(() => MediaProxyToken.verifyToken(token)).toThrowError(/SSRF/);
   });
 });
+
