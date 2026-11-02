@@ -12,6 +12,7 @@ import { Card } from '@/components/ui/card';
 import { useToast } from '@/components/ui/toast';
 import {
   Sparkles,
+  Info,
   Image as ImageIcon,
   Globe,
   Copy,

@@ -117,7 +117,7 @@ export default function SuperadminPlatformSettingsPage() {
       toast({
         title: 'Gagal Memuat Pengaturan',
         description: err.message || 'Terjadi kesalahan koneksi saat memuat feature flags.',
-        variant: 'destructive',
+        type: 'error',
       });
     } finally {
       setLoading(false);
@@ -144,6 +144,7 @@ export default function SuperadminPlatformSettingsPage() {
       }));
 
       toast({
+        type: 'success',
         title: nextValue ? 'Mode Otomatis Diaktifkan' : 'Mode Manual (Default) Diaktifkan',
         description: `Sakelar untuk ${config?.name || flagKey} berhasil diubah menjadi ${
           nextValue ? 'AKTIF (Otomatis)' : 'NONAKTIF (Manual Asisten)'
@@ -153,7 +154,7 @@ export default function SuperadminPlatformSettingsPage() {
       toast({
         title: 'Gagal Mengubah Sakelar',
         description: err.message || 'Terjadi kesalahan sistem saat memperbarui flag.',
-        variant: 'destructive',
+        type: 'error',
       });
     } finally {
       setUpdatingKey(null);
@@ -255,7 +256,7 @@ export default function SuperadminPlatformSettingsPage() {
                   </div>
 
                   <Badge
-                    variant="outline"
+                    variant="slate"
                     className={`text-[10px] font-black uppercase tracking-wider px-2 py-0.5 rounded-full shrink-0 ${
                       isEnabled
                         ? 'border-emerald-300 dark:border-emerald-800 bg-emerald-50 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-400'

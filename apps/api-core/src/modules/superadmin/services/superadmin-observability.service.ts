@@ -1,5 +1,5 @@
 import { Injectable, BadRequestException, Optional, Logger } from '@nestjs/common';
-import { eq, desc, sql } from 'drizzle-orm';
+import { eq, desc, sql, and } from 'drizzle-orm';
 import {
   db,
   tenantMembers,
@@ -283,7 +283,7 @@ export class SuperadminObservabilityService {
   /**
    * Riwayat Trace AI Terkini (Langfuse Sync Logs)
    */
-  async getAiTraces(limit: number = 20) {
+  async getAiTraces(limit: number = 20, operation?: string, status?: string) {
     const rows = await db
       .select({
         id: aiTraceLogs.traceId,
@@ -310,5 +310,46 @@ export class SuperadminObservabilityService {
       party: r.party || 'Fraksi Parlemen',
       costUsd: Number(r.costUsd || 0),
     }));
+  }
+
+  /**
+   * Alias getObservabilityMetrics untuk memenuhi kontrak Facade
+   */
+  async getObservabilityMetrics(days: number = 7) {
+    return await this.getAiObservability();
+  }
+
+  /**
+   * Alias topupTokenPool untuk memenuhi kontrak Facade
+   */
+  async topupTokenPool(dto: TopupTokenPoolDto) {
+    return await this.topupMasterTokenPool(dto);
+  }
+
+  /**
+   * Ambil data saldo Platform Token Pool
+   */
+  async getTokenPool() {
+    const [pool] = await db.select().from(platformTokenPools).limit(1);
+    return pool || null;
+  }
+
+  /**
+   * Breakdown kuota AI per tenant
+   */
+  async getTenantQuotaBreakdown(month?: string) {
+    const stats = await this.getAiObservability();
+    return stats.tenantBreakdowns || [];
+  }
+
+  /**
+   * Riwayat transaksi topup deposit
+   */
+  async getHistoricalTopups() {
+    return await db
+      .select()
+      .from(platformTopupHistories)
+      .orderBy(desc(platformTopupHistories.createdAt))
+      .limit(50);
   }
 }
