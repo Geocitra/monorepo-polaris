@@ -116,6 +116,7 @@ export class ArtCollagePosterPipeline {
       mimeType: image.mimeType,
       anchor: mutation.anchor,
       paperTone: dna.paperTone,
+      isInfographic,
     });
 
     return {

@@ -284,12 +284,26 @@ export function compileArtCollageImagePrompt(params: {
   const isInfographic = isInfographicArchetype(params.archetype);
 
   if (isInfographic) {
+    let spatialInstruction = '';
+    if (params.mutation.anchor === 'TEXT_BOTTOM') {
+      spatialInstruction = `Spatial composition: Clear vertical split. All thematic illustrations, people, and scenery must be concentrated strictly within the UPPER 45% of the canvas. The entire LOWER 55% of the canvas must be a completely quiet, clean, empty, flat solid ${p.paperName} paper expanse reserved exclusively for typography and data cards.`;
+    } else if (params.mutation.anchor === 'TEXT_TOP') {
+      spatialInstruction = `Spatial composition: Clear vertical split. The entire UPPER 55% of the canvas must be a completely quiet, clean, empty, flat solid ${p.paperName} paper expanse reserved exclusively for typography and data cards. All thematic illustrations, people, and scenery must be concentrated strictly within the LOWER 45% of the canvas.`;
+    } else if (params.mutation.anchor === 'TEXT_RIGHT') {
+      spatialInstruction = `Spatial composition: Clear horizontal split. All thematic illustrations must be concentrated strictly within the LEFT 45% of the canvas. The entire RIGHT 55% of the canvas must be a completely quiet, clean, empty, flat solid ${p.paperName} paper expanse reserved exclusively for typography and data cards.`;
+    } else {
+      spatialInstruction = `Spatial composition: Clear horizontal split. The entire LEFT 55% of the canvas must be a completely quiet, clean, empty, flat solid ${p.paperName} paper expanse reserved exclusively for typography and data cards. All thematic illustrations must be concentrated strictly within the RIGHT 45% of the canvas.`;
+    }
+
     return [
-      `Create a finished, print-quality editorial data infographic illustration (vertical 4:5 ratio) specifically illustrating: ${params.visualSubject}.`,
+      `Create a finished, print-quality editorial data infographic illustration (vertical 4:5 ratio) specifically depicting: ${params.visualSubject}.`,
       `Aesthetic style: ${dna.style}.`,
       `Color scheme: ${p.accentName} accent with ${p.secondaryName} details, on clean ${p.paperName} background.`,
       `The illustrations and visual elements must represent ONLY ${params.visualSubject}. Authentic Indonesian everyday citizens, farmers, workers, infrastructure, or community setting relevant to this specific topic. No unrelated historical figures or unrelated objects.`,
-      `Spatial composition: Keep the top 40% of the canvas as quiet, clean, uncluttered open paper space reserved for typography. Place the detailed thematic illustrations in the lower 60% of the canvas.`,
+      spatialInstruction,
+      `STRICT NEGATIVE INSTRUCTIONS FOR INFOGRAPHIC ARTWORK:`,
+      `- DO NOT draw any dummy text boxes, DO NOT draw any empty pill shapes, DO NOT draw any blank capsule pillars, DO NOT draw any UI cards or frames, DO NOT draw any empty flowchart boxes, DO NOT draw any blank chalkboards or whiteboards, DO NOT draw any fake QR codes or barcodes, DO NOT draw any dummy data dials, gauges, or pie charts.`,
+      `- Only draw authentic scenery, people, and thematic background illustrations. The reserved typography space must remain 100% flat, clean, unadorned, and empty ${p.paperName} paper texture.`,
       `ABSOLUTELY ZERO TEXT: No words, no letters, no numbers, no fake writing, no labels, no headings, no logos, no watermarks anywhere on the image.`,
     ].join('\n');
   }
@@ -473,7 +487,7 @@ PANDUAN STRUKTUR INFOGRAFIS (${specificGuide}):
    - text: Penjelasan data konkret dan terukur (1-2 kalimat padat informasi substantif, maks ${COPY_LIMITS.pointText} karakter).
 7. closingLine: 1 kalimat sintesis arah tindak lanjut terukur (maks ${COPY_LIMITS.closing} karakter).
 8. PANTANGAN: DILARANG kata "nyata", DILARANG slogan motivasional klise, DILARANG kalimat kosong tanpa data.
-9. visualSubject: Deskripsi pemandangan visual tanpa teks dalam Bahasa Inggris (maks 40 kata) untuk latar belakang ilustrasi.
+9. visualSubject: Deskripsi pemandangan latar belakang ilustrasi tanpa teks dalam Bahasa Inggris (maks 35 kata), gambarkan suasana lingkungan, fasilitas, warga, atau aktivitas riil. DILARANG menyebut kotak, card, kartu, bagan, atau pilar (hanya pemandangan latar belakang).
 
 Keluarkan JSON murni:
 {"kicker":"","headline":"","deck":"","points":[{"label":"","text":""}],"closingLine":"","visualSubject":""}`;

@@ -126,16 +126,26 @@ export class ChromiumPosterCompositor {
     const ftWidth = Math.round(ft.w * 1080);
 
     // Unified Editorial Column bounds (mencegah collision antar elemen 100%):
-    const flowLeft = Math.max(40, Math.min(hlLeft, bdLeft));
-    const flowTop = Math.max(105, hlTop);
-    const rawFlowWidth = Math.round(Math.max(hlWidth, bdWidth));
+    let flowLeft = Math.max(40, Math.min(hlLeft, bdLeft));
+    let flowTop = isInfographic
+      ? (hl.y >= 0.35 ? Math.min(hlTop, 600) : Math.max(70, hlTop))
+      : Math.max(105, hlTop);
+
+    let rawFlowWidth = Math.round(Math.max(hlWidth, bdWidth));
+    if (isInfographic && rawFlowWidth > 700) {
+      // Infografis top/bottom: beri ruang lebar simetris dan lega
+      flowLeft = Math.min(flowLeft, 54);
+      rawFlowWidth = Math.max(rawFlowWidth, 972);
+    }
     const safeFlowWidth = Math.min(rawFlowWidth, 1040 - flowLeft);
-    const flowMaxHeight = Math.max(250, ftTop - flowTop - 20);
+    const flowMaxHeight = isInfographic
+      ? Math.max(620, ftTop - flowTop - 15)
+      : Math.max(250, ftTop - flowTop - 20);
 
     // Dynamic Font Sizing berdasarkan panjang judul
     const headlineText = (copy.headline || 'ADVOKASI PUBLIK').toUpperCase();
     const titleFontSize = isInfographic
-      ? (headlineText.length > 28 ? 44 : headlineText.length > 18 ? 52 : 62)
+      ? (headlineText.length > 28 ? 48 : headlineText.length > 18 ? 58 : 68)
       : (headlineText.length > 28 ? 64 : headlineText.length > 18 ? 76 : 90);
 
     const bgMime =
@@ -154,7 +164,7 @@ export class ChromiumPosterCompositor {
       const letterBadges = ['P', 'U', 'T', 'U', 'S'];
       pointsHtml = (copy.points || []).slice(0, 5).map((p, idx) => `
         <div class="pillar-col">
-          <div class="pillar-badge">${letterBadges[idx] || (idx + 1)}</div>
+          <div class="pillar-badge">${letterBadges[idx] || `0${idx + 1}`}</div>
           <div class="pillar-name">${esc(p.label)}</div>
           <div class="pillar-desc">${esc(p.text)}</div>
         </div>
@@ -164,48 +174,55 @@ export class ChromiumPosterCompositor {
         .points-container {
           display: grid;
           grid-template-columns: repeat(${pillarCount}, 1fr);
-          gap: 10px;
-          margin-bottom: 14px;
+          gap: 12px;
+          margin-bottom: 16px;
+          align-items: stretch;
         }
         .pillar-col {
-          background: ${isLightPaper ? 'rgba(255, 255, 255, 0.94)' : 'rgba(17, 24, 39, 0.92)'};
-          border: 1.5px solid ${accentColor}66;
-          border-radius: 12px;
-          padding: 12px 10px;
+          background: ${isLightPaper ? 'rgba(255, 255, 255, 0.96)' : 'rgba(17, 24, 39, 0.94)'};
+          border: 2px solid ${accentColor}77;
+          border-radius: 14px;
+          padding: 16px 12px 18px 12px;
           display: flex;
           flex-direction: column;
           align-items: center;
           text-align: center;
-          box-shadow: 0 4px 14px rgba(0, 0, 0, 0.12);
-          backdrop-filter: blur(8px);
+          box-shadow: 0 6px 20px rgba(0, 0, 0, 0.12);
+          backdrop-filter: blur(10px);
+          min-height: 240px;
         }
         .pillar-badge {
-          width: 36px;
-          height: 36px;
-          border-radius: 18px;
+          width: 44px;
+          height: 44px;
+          border-radius: 22px;
           background: ${accentColor};
           color: #FFFFFF;
           display: flex;
           align-items: center;
           justify-content: center;
           font-weight: 900;
-          font-size: 17px;
-          margin-bottom: 8px;
-          box-shadow: 0 2px 6px rgba(0,0,0,0.15);
+          font-size: 20px;
+          margin-bottom: 10px;
+          box-shadow: 0 3px 10px rgba(0,0,0,0.22);
+          flex-shrink: 0;
         }
         .pillar-name {
-          font-size: 13px;
+          font-size: 14px;
           font-weight: 800;
           color: ${primaryColor};
           text-transform: uppercase;
-          line-height: 1.2;
-          margin-bottom: 6px;
+          line-height: 1.25;
+          margin-bottom: 8px;
+          padding-bottom: 6px;
+          border-bottom: 2px solid ${accentColor}44;
+          width: 100%;
         }
         .pillar-desc {
-          font-size: 12px;
-          line-height: 1.35;
+          font-size: 13px;
+          line-height: 1.45;
           color: ${secondaryColor};
-          font-weight: 500;
+          font-weight: 600;
+          flex-grow: 1;
         }
       `;
     } else if (archetype === 'INFOGRAPHIC_VISIONARY_TIMELINE') {
@@ -226,68 +243,73 @@ export class ChromiumPosterCompositor {
           display: grid;
           grid-template-columns: repeat(${nodeCount}, 1fr);
           gap: 12px;
-          margin-bottom: 14px;
+          margin-bottom: 16px;
           position: relative;
+          align-items: stretch;
         }
         .timeline-step {
           display: flex;
           flex-direction: column;
           position: relative;
-          background: ${isLightPaper ? 'rgba(255, 255, 255, 0.94)' : 'rgba(17, 24, 39, 0.92)'};
-          border: 1.5px solid ${accentColor}55;
-          border-radius: 10px;
-          padding: 10px 12px;
-          box-shadow: 0 4px 14px rgba(0, 0, 0, 0.12);
-          backdrop-filter: blur(8px);
+          background: ${isLightPaper ? 'rgba(255, 255, 255, 0.96)' : 'rgba(17, 24, 39, 0.94)'};
+          border: 2px solid ${accentColor}77;
+          border-radius: 14px;
+          padding: 16px 14px 18px 14px;
+          box-shadow: 0 6px 20px rgba(0, 0, 0, 0.12);
+          backdrop-filter: blur(10px);
+          min-height: 230px;
         }
         .timeline-bullet {
           display: flex;
           align-items: center;
-          margin-bottom: 8px;
+          margin-bottom: 10px;
           position: relative;
         }
         .timeline-bullet::after {
           content: '';
           position: absolute;
-          left: 12px;
+          left: 14px;
           right: -14px;
           top: 50%;
           height: 2px;
-          background: ${accentColor}55;
+          background: ${accentColor}66;
           z-index: 1;
         }
         .timeline-step:last-child .timeline-bullet::after {
           display: none;
         }
         .timeline-dot {
-          width: 12px;
-          height: 12px;
-          border-radius: 6px;
+          width: 14px;
+          height: 14px;
+          border-radius: 7px;
           background: ${accentColor};
-          border: 2px solid #FFFFFF;
+          border: 2.5px solid #FFFFFF;
           z-index: 2;
           box-shadow: 0 0 0 2px ${accentColor};
         }
         .timeline-tag {
-          font-size: 11px;
-          font-weight: 800;
+          font-size: 12px;
+          font-weight: 900;
           color: ${accentColor};
-          letter-spacing: 1px;
-          margin-bottom: 3px;
+          letter-spacing: 1.2px;
+          margin-bottom: 4px;
         }
         .timeline-label {
-          font-size: 14px;
+          font-size: 14.5px;
           font-weight: 800;
           color: ${primaryColor};
           text-transform: uppercase;
           line-height: 1.25;
-          margin-bottom: 4px;
+          margin-bottom: 6px;
+          padding-bottom: 4px;
+          border-bottom: 2px solid ${accentColor}33;
         }
         .timeline-desc {
-          font-size: 12px;
-          line-height: 1.35;
+          font-size: 13px;
+          line-height: 1.45;
           color: ${secondaryColor};
-          font-weight: 500;
+          font-weight: 600;
+          flex-grow: 1;
         }
       `;
     } else if (archetype === 'INFOGRAPHIC_NARRATIVE_WAVE') {
@@ -304,46 +326,53 @@ export class ChromiumPosterCompositor {
       customPointsCss = `
         .points-container {
           display: grid;
-          grid-template-columns: 1fr 1fr;
-          gap: 12px;
-          margin-bottom: 14px;
+          grid-template-columns: ${(copy.points || []).length > 2 ? '1fr 1fr' : '1fr'};
+          gap: 14px;
+          margin-bottom: 16px;
         }
         .dimension-block {
-          background: ${isLightPaper ? 'rgba(255, 255, 255, 0.94)' : 'rgba(17, 24, 39, 0.92)'};
-          border-left: 4px solid ${accentColor};
-          border-top: 1px solid ${accentColor}44;
-          border-right: 1px solid ${accentColor}44;
-          border-bottom: 1px solid ${accentColor}44;
-          padding: 10px 14px;
-          border-radius: 0 10px 10px 0;
-          box-shadow: 0 4px 14px rgba(0, 0, 0, 0.12);
-          backdrop-filter: blur(8px);
+          background: ${isLightPaper ? 'rgba(255, 255, 255, 0.96)' : 'rgba(17, 24, 39, 0.94)'};
+          border-left: 5px solid ${accentColor};
+          border-top: 1.5px solid ${accentColor}55;
+          border-right: 1.5px solid ${accentColor}55;
+          border-bottom: 1.5px solid ${accentColor}55;
+          padding: 14px 16px;
+          border-radius: 0 12px 12px 0;
+          box-shadow: 0 6px 18px rgba(0, 0, 0, 0.12);
+          backdrop-filter: blur(10px);
+          min-height: 125px;
+          display: flex;
+          flex-direction: column;
         }
         .dimension-header {
           display: flex;
           align-items: center;
-          gap: 8px;
-          margin-bottom: 4px;
+          gap: 10px;
+          margin-bottom: 6px;
+          padding-bottom: 4px;
+          border-bottom: 1.5px solid ${accentColor}33;
         }
         .dimension-idx {
-          font-size: 14px;
+          font-size: 18px;
           font-weight: 900;
           color: ${accentColor};
         }
         .dimension-title {
-          font-size: 13.5px;
+          font-size: 15px;
           font-weight: 800;
           color: ${primaryColor};
           text-transform: uppercase;
         }
         .dimension-text {
-          font-size: 13px;
-          line-height: 1.35;
+          font-size: 13.5px;
+          line-height: 1.45;
           color: ${secondaryColor};
-          font-weight: 500;
+          font-weight: 600;
+          flex-grow: 1;
         }
       `;
     } else if (archetype === 'INFOGRAPHIC_CHRONICLE_GRID' || archetype === 'INFOGRAPHIC_RADIAL_CLOCK') {
+      const isSideLayout = safeFlowWidth < 650;
       pointsHtml = (copy.points || []).map((p, idx) => `
         <div class="chronicle-block">
           <div class="chronicle-badge">TONGGAK 0${idx + 1}</div>
@@ -355,42 +384,49 @@ export class ChromiumPosterCompositor {
       customPointsCss = `
         .points-container {
           display: grid;
-          grid-template-columns: ${(copy.points || []).length > 2 ? '1fr 1fr' : '1fr'};
-          gap: 12px;
+          grid-template-columns: ${!isSideLayout && (copy.points || []).length > 2 ? '1fr 1fr' : '1fr'};
+          gap: 14px;
           margin-bottom: 16px;
         }
         .chronicle-block {
-          background: ${isLightPaper ? 'rgba(255, 255, 255, 0.94)' : 'rgba(17, 24, 39, 0.92)'};
-          border: 1.5px solid ${accentColor}55;
-          padding: 10px 14px;
-          border-radius: 10px;
-          box-shadow: 0 4px 16px rgba(0, 0, 0, 0.12);
-          backdrop-filter: blur(8px);
+          background: ${isLightPaper ? 'rgba(255, 255, 255, 0.96)' : 'rgba(17, 24, 39, 0.94)'};
+          border: 2px solid ${accentColor}66;
+          padding: 14px 16px;
+          border-radius: 12px;
+          box-shadow: 0 6px 18px rgba(0, 0, 0, 0.12);
+          backdrop-filter: blur(10px);
+          min-height: 125px;
+          display: flex;
+          flex-direction: column;
         }
         .chronicle-badge {
           display: inline-block;
-          font-size: 10.5px;
-          font-weight: 800;
+          align-self: flex-start;
+          font-size: 11px;
+          font-weight: 900;
           background: ${accentColor};
           color: #FFFFFF;
-          padding: 2.5px 8px;
-          border-radius: 4px;
-          margin-bottom: 5px;
-          letter-spacing: 0.8px;
+          padding: 3px 10px;
+          border-radius: 5px;
+          margin-bottom: 6px;
+          letter-spacing: 1px;
         }
         .chronicle-title {
-          font-size: 14px;
+          font-size: 15px;
           font-weight: 800;
           color: ${primaryColor};
           text-transform: uppercase;
           line-height: 1.25;
-          margin-bottom: 4px;
+          margin-bottom: 6px;
+          padding-bottom: 4px;
+          border-bottom: 1.5px solid ${accentColor}33;
         }
         .chronicle-text {
-          font-size: 12.5px;
-          line-height: 1.38;
+          font-size: 13.5px;
+          line-height: 1.42;
           color: ${secondaryColor};
-          font-weight: 500;
+          font-weight: 600;
+          flex-grow: 1;
         }
       `;
     } else {
@@ -509,10 +545,10 @@ export class ChromiumPosterCompositor {
     }
 
     .kicker {
-      font-size: 15px;
-      font-weight: 800;
+      font-size: ${isInfographic ? '16px' : '15px'};
+      font-weight: 900;
       color: ${accentColor};
-      letter-spacing: 2.5px;
+      letter-spacing: 2px;
       text-transform: uppercase;
       margin-bottom: 6px;
     }
@@ -523,34 +559,34 @@ export class ChromiumPosterCompositor {
       line-height: 0.94;
       color: ${primaryColor};
       letter-spacing: 1.5px;
-      margin-bottom: 12px;
+      margin-bottom: 10px;
       word-break: break-word;
     }
 
     .deck {
       font-family: 'Playfair Display', serif;
-      font-size: ${isInfographic ? '17px' : '21px'};
-      line-height: 1.35;
+      font-size: ${isInfographic ? '18px' : '21px'};
+      line-height: 1.4;
       color: ${secondaryColor};
       font-style: italic;
-      font-weight: 500;
-      max-width: 96%;
-      margin-bottom: ${isInfographic ? '12px' : '16px'};
+      font-weight: 600;
+      max-width: 98%;
+      margin-bottom: ${isInfographic ? '16px' : '16px'};
     }
 
     ${customPointsCss}
 
     .closing-line {
-      font-size: 14.5px;
+      font-size: ${isInfographic ? '15px' : '14.5px'};
       font-weight: 700;
       color: ${primaryColor};
-      margin-top: 6px;
-      background: ${isLightPaper ? 'rgba(255, 255, 255, 0.92)' : 'rgba(15, 23, 42, 0.88)'};
-      border-left: 4px solid ${accentColor};
-      padding: 8px 14px;
-      border-radius: 6px;
-      line-height: 1.35;
-      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+      margin-top: 8px;
+      background: ${isLightPaper ? 'rgba(255, 255, 255, 0.95)' : 'rgba(15, 23, 42, 0.90)'};
+      border-left: 5px solid ${accentColor};
+      padding: 10px 16px;
+      border-radius: 8px;
+      line-height: 1.4;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
     }
 
     /* Footer Zone */
