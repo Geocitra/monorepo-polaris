@@ -32,7 +32,7 @@ export class TikTokPublisherAdapter {
     const initUrl = `${this.baseUrl}/post/publish/video/init/`;
     const initPayload = {
       post_info: {
-        title,
+        title: title.slice(0, 2200),
         privacy_level: privacyLevel,
         disable_duet: false,
         disable_stitch: false,
@@ -114,49 +114,101 @@ export class TikTokPublisherAdapter {
   }
 
   /**
-   * Mengunggah konten foto / poster ke TikTok via Direct Post API
+   * Mengunggah konten foto / poster ke TikTok via Direct Post API (Content Posting API v2)
    */
   public async publishPhotoDirect(params: {
     accessToken: string;
-    title: string;
+    caption: string;
+    title?: string;
     imageUrls: string[];
-    privacyLevel?: 'PUBLIC_TO_EVERYONE' | 'MUTUAL_FOLLOW_FRIENDS' | 'SELF_ONLY';
+    privacyLevel?: 'PUBLIC_TO_EVERYONE' | 'MUTUAL_FOLLOW_FRIENDS' | 'FOLLOWER_OF_CREATOR' | 'SELF_ONLY';
   }): Promise<TikTokPublishResult> {
-    const { accessToken, title, imageUrls, privacyLevel = 'PUBLIC_TO_EVERYONE' } = params;
+    const { accessToken, caption, title, imageUrls, privacyLevel = 'PUBLIC_TO_EVERYONE' } = params;
+
+    const sanitizedUrls = imageUrls.map((u) => u.trim()).filter(Boolean);
+    if (sanitizedUrls.length === 0) {
+      throw new Error('[TikTokPhotoPublishError] Daftar URL gambar tidak boleh kosong.');
+    }
+
+    // TikTok API v2:
+    // post_info.title: Headline singkat (Maks 90 UTF-16 karakter)
+    // post_info.description: Deskripsi lengkap / caption hingga 4.000 karakter
+    const cleanCaption = (caption || '').trim();
+    const shortTitle = (title || cleanCaption.split('\n')[0] || 'Konten Polaris')
+      .replace(/[\r\n]+/g, ' ')
+      .trim()
+      .slice(0, 85);
+
+    const fullDescription = cleanCaption.slice(0, 4000);
 
     const initUrl = `${this.baseUrl}/post/publish/content/init/`;
     const payload = {
+      post_mode: 'DIRECT_POST',
+      media_type: 'PHOTO',
       post_info: {
-        title,
+        title: shortTitle,
+        description: fullDescription,
         privacy_level: privacyLevel,
         disable_comment: false,
+        auto_add_music: true,
       },
       source_info: {
         source: 'PULL_FROM_URL',
-        photo_cover_index: 1,
-        photo_images: imageUrls,
+        photo_cover_index: 0,
+        photo_images: sanitizedUrls,
       },
-      post_mode: 'DIRECT_POST',
-      media_type: 'PHOTO',
     };
 
     const res = await fetch(initUrl, {
       method: 'POST',
       headers: {
         Authorization: `Bearer ${accessToken}`,
-        'Content-Type': 'application/json',
+        'Content-Type': 'application/json; charset=UTF-8',
       },
       body: JSON.stringify(payload),
     });
 
     const data = (await res.json().catch(() => ({}))) as any;
     if (!res.ok || data.error?.code !== 'ok' || !data.data?.publish_id) {
-      throw new Error(`[TikTokPhotoPublishError] ${data.error?.message || res.statusText}`);
+      const errMsg = data.error?.message || `HTTP ${res.status}: Gagal inisialisasi posting foto TikTok.`;
+      throw new Error(`[TikTokPhotoPublishError] ${errMsg}`);
+    }
+
+    const { publish_id } = data.data;
+
+    // Polling Status Pemrosesan Foto (Max 6x per 3 detik)
+    let finalPostId = publish_id;
+    for (let attempt = 0; attempt < 6; attempt++) {
+      await new Promise((r) => setTimeout(r, 3000));
+
+      const statusRes = await fetch(`${this.baseUrl}/post/publish/status/fetch/`, {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+          'Content-Type': 'application/json; charset=UTF-8',
+        },
+        body: JSON.stringify({ publish_id }),
+      });
+
+      const statusData = (await statusRes.json().catch(() => ({}))) as any;
+      const status = statusData.data?.status;
+
+      if (status === 'PUBLISH_COMPLETE') {
+        const publicIds = statusData.data?.publicly_available_post_id;
+        finalPostId = Array.isArray(publicIds) && publicIds.length > 0 ? publicIds[0] : publish_id;
+        break;
+      }
+
+      if (status === 'FAILED') {
+        throw new Error(
+          `[TikTokPhotoPublishError] Publikasi foto TikTok gagal: ${statusData.data?.fail_reason || 'Unknown'}`
+        );
+      }
     }
 
     return {
-      postId: String(data.data.publish_id),
-      permalink: `https://www.tiktok.com/@tiktok_creator/video/${data.data.publish_id}`,
+      postId: String(finalPostId),
+      permalink: `https://www.tiktok.com/@tiktok_creator/video/${finalPostId}`,
     };
   }
 
@@ -174,7 +226,7 @@ export class TikTokPublisherAdapter {
     if (mediaFormat === 'TIKTOK_PHOTO') {
       return await this.publishPhotoDirect({
         accessToken,
-        title: caption,
+        caption,
         imageUrls: [mediaUrl],
       });
     }
