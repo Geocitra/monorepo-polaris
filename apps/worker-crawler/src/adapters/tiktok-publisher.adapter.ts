@@ -50,13 +50,40 @@ export class TikTokPublisherAdapter {
       method: 'POST',
       headers: {
         Authorization: `Bearer ${accessToken}`,
-        'Content-Type': 'application/json',
+        'Content-Type': 'application/json; charset=UTF-8',
       },
       body: JSON.stringify(initPayload),
     });
 
-    const initData = (await initRes.json().catch(() => ({}))) as any;
+    let initData = (await initRes.json().catch(() => ({}))) as any;
+
+    // Jika ditolak karena app masih unaudited/development mode (memerlukan SELF_ONLY & akun privat)
+    const isUnauditedVideo =
+      initData.error?.code === 'unaudited_client_can_only_post_to_private_accounts' ||
+      initData.error?.message?.includes('content-sharing-guidelines');
+
+    if (isUnauditedVideo && privacyLevel !== 'SELF_ONLY') {
+      initPayload.post_info.privacy_level = 'SELF_ONLY';
+      const retryRes = await fetch(initUrl, {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+          'Content-Type': 'application/json; charset=UTF-8',
+        },
+        body: JSON.stringify(initPayload),
+      });
+      initData = (await retryRes.json().catch(() => ({}))) as any;
+    }
+
     if (!initRes.ok || initData.error?.code !== 'ok' || !initData.data?.publish_id) {
+      if (
+        initData.error?.code === 'unaudited_client_can_only_post_to_private_accounts' ||
+        initData.error?.message?.includes('content-sharing-guidelines')
+      ) {
+        throw new Error(
+          '[TikTokPublishError] Aplikasi TikTok Developer Anda masih berstatus Uji Coba (Unaudited). Sesuai aturan TikTok: 1) Di aplikasi TikTok HP Anda, ubah akun menjadi "Akun Privat" (Pengaturan -> Privasi -> Akun Privat ON), dan 2) Konten diunggah sebagai "Hanya Saya" (SELF_ONLY) hingga App diverifikasi publik oleh tim TikTok.'
+        );
+      }
       const errMsg = initData.error?.message || `HTTP ${initRes.status}: Gagal inisialisasi video TikTok.`;
       throw new Error(`[TikTokPublishError] ${errMsg}`);
     }
@@ -159,7 +186,7 @@ export class TikTokPublisherAdapter {
       },
     };
 
-    const res = await fetch(initUrl, {
+    let res = await fetch(initUrl, {
       method: 'POST',
       headers: {
         Authorization: `Bearer ${accessToken}`,
@@ -168,8 +195,38 @@ export class TikTokPublisherAdapter {
       body: JSON.stringify(payload),
     });
 
-    const data = (await res.json().catch(() => ({}))) as any;
+    let data = (await res.json().catch(() => ({}))) as any;
+
+    // Jika ditolak karena app masih unaudited/development mode (memerlukan SELF_ONLY & akun privat)
+    const isUnaudited =
+      data.error?.code === 'unaudited_client_can_only_post_to_private_accounts' ||
+      data.error?.message?.includes('content-sharing-guidelines');
+
+    if (isUnaudited && privacyLevel !== 'SELF_ONLY') {
+      console.log(
+        '[TikTokAdapter] App berstatus unaudited/development; mencoba posting foto otomatis dengan privacy_level SELF_ONLY...'
+      );
+      payload.post_info.privacy_level = 'SELF_ONLY';
+      res = await fetch(initUrl, {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+          'Content-Type': 'application/json; charset=UTF-8',
+        },
+        body: JSON.stringify(payload),
+      });
+      data = (await res.json().catch(() => ({}))) as any;
+    }
+
     if (!res.ok || data.error?.code !== 'ok' || !data.data?.publish_id) {
+      if (
+        data.error?.code === 'unaudited_client_can_only_post_to_private_accounts' ||
+        data.error?.message?.includes('content-sharing-guidelines')
+      ) {
+        throw new Error(
+          '[TikTokPhotoPublishError] Aplikasi TikTok Developer Anda masih berstatus Uji Coba (Unaudited). Sesuai aturan TikTok: 1) Di aplikasi TikTok HP Anda, ubah akun menjadi "Akun Privat" (Pengaturan -> Privasi -> Akun Privat ON), dan 2) Konten diunggah sebagai "Hanya Saya" (SELF_ONLY) hingga App diverifikasi publik oleh tim TikTok.'
+        );
+      }
       const errMsg = data.error?.message || `HTTP ${res.status}: Gagal inisialisasi posting foto TikTok.`;
       throw new Error(`[TikTokPhotoPublishError] ${errMsg}`);
     }

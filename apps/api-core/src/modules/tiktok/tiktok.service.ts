@@ -385,7 +385,7 @@ export class TikTokService implements OnModuleDestroy {
       title: dto.title,
       mediaUrl: dto.mediaUrl,
       mediaType: dto.mediaType || 'VIDEO',
-      privacyLevel: dto.privacyLevel || 'PUBLIC_TO_EVERYONE',
+      privacyLevel: dto.privacyLevel || 'SELF_ONLY',
       publicationId: dto.publicationId,
     });
 
