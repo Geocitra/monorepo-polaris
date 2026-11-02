@@ -79,7 +79,7 @@ export class MediaProxyToken {
       throw new Error('[MediaProxyError] Token tanda tangan media telah kedaluwarsa.');
     }
 
-    // SSRF Prevention: Hanya izinkan HTTPS/HTTP dan tolak IP privat / internal host
+    // SSRF Prevention: Hanya izinkan HTTPS/HTTP dan tolak IP privat / internal host / cloud metadata
     const parsedUrl = new URL(payload.u);
     if (parsedUrl.protocol !== 'https:' && parsedUrl.protocol !== 'http:') {
       throw new Error('[MediaProxyError] Protokol URL tidak diizinkan.');
@@ -89,15 +89,49 @@ export class MediaProxyToken {
     if (
       hostname === 'localhost' ||
       hostname === '127.0.0.1' ||
+      hostname === '0.0.0.0' ||
       hostname === '172.17.0.1' ||
+      hostname === '169.254.169.254' ||
       hostname.startsWith('192.168.') ||
       hostname.startsWith('10.') ||
+      hostname.startsWith('172.16.') ||
+      hostname.startsWith('172.17.') ||
+      hostname.startsWith('172.18.') ||
+      hostname.startsWith('172.19.') ||
+      hostname.startsWith('172.20.') ||
+      hostname.startsWith('172.21.') ||
+      hostname.startsWith('172.22.') ||
+      hostname.startsWith('172.23.') ||
+      hostname.startsWith('172.24.') ||
+      hostname.startsWith('172.25.') ||
+      hostname.startsWith('172.26.') ||
+      hostname.startsWith('172.27.') ||
+      hostname.startsWith('172.28.') ||
+      hostname.startsWith('172.29.') ||
+      hostname.startsWith('172.30.') ||
+      hostname.startsWith('172.31.') ||
       hostname.endsWith('.internal') ||
       hostname.endsWith('.local')
     ) {
       throw new Error('[MediaProxyError] Target URL berada di jaringan privat (SSRF dicegah).');
     }
 
+    // Whitelist domain penyimpanan aset media yang sah
+    const isAllowedOrigin =
+      hostname === 'res.cloudinary.com' ||
+      hostname.endsWith('.cloudinary.com') ||
+      hostname.endsWith('.r2.cloudflarestorage.com') ||
+      hostname.endsWith('.r2.dev') ||
+      hostname === 'assets.polaris.id' ||
+      hostname.endsWith('.polarismedia.id') ||
+      hostname === 'polarismedia.id' ||
+      hostname.endsWith('.blob.core.windows.net');
+
+    if (!isAllowedOrigin) {
+      throw new Error(`[MediaProxyError] Domain ${hostname} tidak masuk dalam daftar penyimpanan media terpercaya.`);
+    }
+
     return payload.u;
   }
 }
+

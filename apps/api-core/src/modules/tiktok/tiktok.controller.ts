@@ -152,7 +152,11 @@ export class TikTokController {
     try {
       const targetUrl = MediaProxyToken.verifyToken(token);
 
-      const upstream = await fetch(targetUrl);
+      // Timeout 15 detik untuk upstream fetch agar tidak menggantung resource koneksi
+      const upstream = await fetch(targetUrl, {
+        signal: AbortSignal.timeout(15000),
+      });
+
       if (!upstream.ok || !upstream.body) {
         this.logger.warn(`[TikTokMediaProxy] Gagal fetch upstream: HTTP ${upstream.status} dari ${targetUrl}`);
         res.status(upstream.status || HttpStatus.BAD_GATEWAY).send('Upstream media fetch failed');
@@ -160,7 +164,19 @@ export class TikTokController {
       }
 
       const contentType = upstream.headers.get('content-type') || 'image/webp';
+      // Hanya izinkan media gambar/video/audio (tolak jika upstream mengembalikan script/html)
+      if (!contentType.startsWith('image/') && !contentType.startsWith('video/') && !contentType.startsWith('audio/')) {
+        this.logger.warn(`[TikTokMediaProxy] Upstream content-type bukan media: ${contentType}`);
+        res.status(HttpStatus.BAD_GATEWAY).send('Invalid media format from upstream');
+        return;
+      }
+
       const contentLength = upstream.headers.get('content-length');
+      // Batasi ukuran maksimal 50 MB
+      if (contentLength && parseInt(contentLength, 10) > 50 * 1024 * 1024) {
+        res.status(HttpStatus.PAYLOAD_TOO_LARGE).send('Media payload exceeds 50MB limit');
+        return;
+      }
 
       res.setHeader('Content-Type', contentType);
       if (contentLength) {
