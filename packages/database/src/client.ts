@@ -13,6 +13,7 @@ import * as comments from './schema/comments.js';
 import * as socialDistribution from './schema/social-distribution.js';
 import * as pricingMatrix from './schema/pricing-matrix.js';
 import * as inquiry from './schema/inquiry.js';
+import * as platformSettings from './schema/platform-settings.js';
 import { tenantContextStorage } from './rls/tenant-context.js';
 
 if (!process.env.DATABASE_URL) {
@@ -34,6 +35,7 @@ export const schema = {
   ...socialDistribution,
   ...pricingMatrix,
   ...inquiry,
+  ...platformSettings,
 };
 
 export function cleanPostgresUrl(url: string): string {

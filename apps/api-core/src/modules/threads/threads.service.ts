@@ -13,7 +13,8 @@ import {
   socialPublishingJobs,
   withTenantContext,
 } from '@polaris/database';
-import { SocialPlatform, SocialAccountStatus, PublishingJobStatus } from '@polaris/shared-types';
+import { SocialPlatform, SocialAccountStatus, PublishingJobStatus, PlatformFeatureFlagKey } from '@polaris/shared-types';
+import { PlatformSettingsService } from '../platform-settings/platform-settings.service.js';
 import { SocialTokenCrypto } from '@polaris/core-domain';
 import { Queue } from 'bullmq';
 import { Redis } from 'ioredis';
@@ -52,7 +53,7 @@ export class ThreadsService {
   private readonly stateSecret = process.env.JWT_SECRET || 'polaris-secret-state-2026';
   private readonly publishingQueue: Queue;
 
-  constructor() {
+  constructor(private readonly platformSettingsService: PlatformSettingsService) {
     const redisUrl = process.env.REDIS_URL || 'redis://localhost:6379';
     const redisClient = new Redis(redisUrl, { maxRetriesPerRequest: null });
     this.publishingQueue = new Queue('social-content-publishing-queue', {
@@ -392,6 +393,14 @@ export class ThreadsService {
     tenantId: string,
     dto: PublishThreadsDto
   ): Promise<{ success: boolean; jobId: string; publishingJobId: string }> {
+    const isAutoPublishEnabled = await this.platformSettingsService.isFeatureEnabled(
+      PlatformFeatureFlagKey.AUTO_PUBLISH_THREADS
+    );
+    if (!isAutoPublishEnabled) {
+      throw new ForbiddenException(
+        'Publikasi otomatis ke Threads dinonaktifkan oleh administrator platform. Silakan gunakan mode manual asisten.'
+      );
+    }
     // 1. Simpan record pekerjaan di database
     const [createdJob] = await withTenantContext(tenantId, async (tx) => {
       return await tx

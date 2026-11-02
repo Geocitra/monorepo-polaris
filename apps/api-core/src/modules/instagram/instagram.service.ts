@@ -13,7 +13,8 @@ import {
   socialPublishingJobs,
   withTenantContext,
 } from '@polaris/database';
-import { SocialPlatform, SocialAccountStatus, PublishingJobStatus } from '@polaris/shared-types';
+import { SocialPlatform, SocialAccountStatus, PublishingJobStatus, PlatformFeatureFlagKey } from '@polaris/shared-types';
+import { PlatformSettingsService } from '../platform-settings/platform-settings.service.js';
 import { Queue } from 'bullmq';
 import { Redis } from 'ioredis';
 import { InstagramTokenCryptoService } from './instagram-crypto.service.js';
@@ -51,7 +52,10 @@ export class InstagramService {
   private readonly stateSecret = process.env.JWT_SECRET || 'polaris-secret-state-2026';
   private readonly publishingQueue: Queue;
 
-  constructor(private readonly cryptoService: InstagramTokenCryptoService) {
+  constructor(
+    private readonly cryptoService: InstagramTokenCryptoService,
+    private readonly platformSettingsService: PlatformSettingsService
+  ) {
     const redisUrl = process.env.REDIS_URL || 'redis://localhost:6379';
     const redisClient = new Redis(redisUrl, { maxRetriesPerRequest: null });
     this.publishingQueue = new Queue('social-content-publishing-queue', {
@@ -70,6 +74,15 @@ export class InstagramService {
       framingMode?: 'crop' | 'blur';
     }
   ): Promise<{ success: boolean; jobId: string; publishingJobId: string }> {
+    const isAutoPublishEnabled = await this.platformSettingsService.isFeatureEnabled(
+      PlatformFeatureFlagKey.AUTO_PUBLISH_INSTAGRAM
+    );
+    if (!isAutoPublishEnabled) {
+      throw new ForbiddenException(
+        'Publikasi otomatis ke Instagram dinonaktifkan oleh administrator platform. Silakan gunakan mode manual asisten.'
+      );
+    }
+
     const primaryMediaUrl =
       dto.mediaUrls && dto.mediaUrls.length > 0 ? dto.mediaUrls[0] : dto.mediaUrl || '';
 

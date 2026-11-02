@@ -397,3 +397,24 @@ export enum DatahubCategory {
 
 
 
+
+export enum PlatformFeatureFlagKey {
+  AUTO_PUBLISH_INSTAGRAM = 'AUTO_PUBLISH_INSTAGRAM',
+  AUTO_PUBLISH_THREADS = 'AUTO_PUBLISH_THREADS',
+  AUTO_PUBLISH_TIKTOK = 'AUTO_PUBLISH_TIKTOK',
+  AUTO_PUBLISH_X_TWITTER = 'AUTO_PUBLISH_X_TWITTER',
+}
+
+export interface PlatformFeatureFlagRecord {
+  flagKey: string;
+  enabled: boolean;
+  updatedBy?: string | null;
+  updatedAt: string;
+}
+
+export type SocialFeatureFlagsResponse = {
+  AUTO_PUBLISH_INSTAGRAM: boolean;
+  AUTO_PUBLISH_THREADS: boolean;
+  AUTO_PUBLISH_TIKTOK: boolean;
+  AUTO_PUBLISH_X_TWITTER: boolean;
+};

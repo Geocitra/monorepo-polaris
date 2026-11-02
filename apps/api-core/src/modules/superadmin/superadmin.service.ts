@@ -25,6 +25,7 @@ import {
   SuperadminAuditService,
   SuperadminDomainService,
 } from './services/index.js';
+import { PlatformSettingsService } from '../platform-settings/platform-settings.service.js';
 
 /**
  * SuperadminService (Facade Coordinator)
@@ -37,6 +38,7 @@ import {
  * - SuperadminObservabilityService (Langfuse AI Telemetri, Token Pool)
  * - SuperadminAuditService (Audit Log & Agregat Token Member)
  * - SuperadminDomainService (Manajemen Pengajuan Domain, Cek DNS, Approval)
+ * - PlatformSettingsService (Master Switch / Sakelar Fitur Global)
  */
 @Injectable()
 export class SuperadminService {
@@ -50,6 +52,7 @@ export class SuperadminService {
     private readonly observabilityService: SuperadminObservabilityService,
     private readonly auditService: SuperadminAuditService,
     private readonly domainService: SuperadminDomainService,
+    private readonly platformSettingsService: PlatformSettingsService,
   ) {}
 
   // --- Domain: Autentikasi Superadmin ---
@@ -103,7 +106,7 @@ export class SuperadminService {
     return await this.tenantService.resetTenantPassword(tenantId, dto);
   }
 
-  // --- Domain: Master Data (Partai, Dapil, Komisi, Tarif) ---
+  // --- Domain: Master Data Politik & Tarif ---
   async getParties() {
     return await this.masterDataService.getParties();
   }
@@ -112,43 +115,20 @@ export class SuperadminService {
     return await this.masterDataService.createParty(dto);
   }
 
-  async updateParty(partyId: string, dto: UpdatePartyDto) {
-    return await this.masterDataService.updateParty(partyId, dto);
+  async updateParty(id: string, dto: UpdatePartyDto) {
+    return await this.masterDataService.updateParty(id, dto);
   }
 
-  async getDapils() {
-    return await this.masterDataService.getDapils();
+  async getDapils(search?: string) {
+    return await this.masterDataService.getDapils(search);
   }
 
   async createDapil(dto: CreateDapilDto) {
     return await this.masterDataService.createDapil(dto);
   }
 
-  async getCommissions(level?: string) {
+  async getCommissions(level?: LegislativeLevel) {
     return await this.masterDataService.getCommissions(level);
-  }
-
-  async createCommission(dto: {
-    legislativeLevel: any;
-    code: string;
-    name: string;
-    focusAreas?: string[];
-    partnerMinistries?: string[];
-  }) {
-    return await this.masterDataService.createCommission(dto);
-  }
-
-  async updateCommission(
-    id: string,
-    dto: {
-      legislativeLevel?: any;
-      code?: string;
-      name?: string;
-      focusAreas?: string[];
-      partnerMinistries?: string[];
-    },
-  ) {
-    return await this.masterDataService.updateCommission(id, dto);
   }
 
   async getPricingMatrices(level?: LegislativeLevel) {
@@ -159,24 +139,48 @@ export class SuperadminService {
     return await this.masterDataService.updatePricingMatrix(id, dto);
   }
 
-  // --- Domain: AI Observability & Saldo Token Pool ---
-  async getAiObservability() {
-    return await this.observabilityService.getAiObservability();
+  // --- Domain: Observabilitas AI & Token Pool ---
+  async getObservabilityMetrics(days: number = 7) {
+    return await this.observabilityService.getObservabilityMetrics(days);
   }
 
-  async topupMasterTokenPool(dto: TopupTokenPoolDto) {
-    return await this.observabilityService.topupMasterTokenPool(dto);
+  async getAiTraces(limit: number = 50, operation?: string, status?: string) {
+    return await this.observabilityService.getAiTraces(limit, operation, status);
   }
 
-  async getAiTraces(limit: number = 20) {
-    return await this.observabilityService.getAiTraces(limit);
+  async getTokenPool() {
+    return await this.observabilityService.getTokenPool();
   }
 
-  // --- Domain: Audit Log & Aktivitas Anggota Dewan ---
+  async topupTokenPool(dto: TopupTokenPoolDto) {
+    return await this.observabilityService.topupTokenPool(dto);
+  }
+
+  async getTenantQuotaBreakdown(month?: string) {
+    return await this.observabilityService.getTenantQuotaBreakdown(month);
+  }
+
+  async getHistoricalTopups() {
+    return await this.observabilityService.getHistoricalTopups();
+  }
+
+  // --- Domain: Audit Log & Agregat Token Member ---
+  async getAuditLogs(query: {
+    tenantId?: string;
+    category?: string;
+    activityType?: string;
+    search?: string;
+    startDate?: string;
+    endDate?: string;
+    page?: number;
+    limit?: number;
+  }) {
+    return await this.auditService.getAuditLogs(query);
+  }
+
   async getMemberActivitySummary(query: {
     search?: string;
-    dapilId?: string;
-    party?: string;
+    legislativeLevel?: string;
     commissionId?: string;
     page?: number;
     limit?: number;
@@ -207,5 +211,13 @@ export class SuperadminService {
   async rejectDomainRequest(requestId: string, adminNotes: string, adminUserId: string) {
     return await this.domainService.rejectDomainRequest(requestId, adminNotes, adminUserId);
   }
-}
 
+  // --- Domain: Pengaturan Platform & Feature Flags ---
+  async getPlatformFeatureFlags() {
+    return await this.platformSettingsService.getAllFlags();
+  }
+
+  async updatePlatformFeatureFlag(flagKey: string, enabled: boolean, updatedBy?: string) {
+    return await this.platformSettingsService.updateFlag(flagKey, enabled, updatedBy);
+  }
+}

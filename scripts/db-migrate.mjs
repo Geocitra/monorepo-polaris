@@ -678,9 +678,25 @@ async function runMigration() {
       ALTER TABLE social_publishing_jobs ADD COLUMN IF NOT EXISTS meta_permalink TEXT;
       ALTER TABLE social_publishing_jobs ADD COLUMN IF NOT EXISTS max_retries INTEGER NOT NULL DEFAULT 3;
       ALTER TABLE social_publishing_jobs ADD COLUMN IF NOT EXISTS last_error_message TEXT;
+
+      -- 10. Platform Settings & Feature Flags (Fail-Closed)
+      CREATE TABLE IF NOT EXISTS platform_feature_flags (
+        flag_key VARCHAR(100) PRIMARY KEY,
+        enabled BOOLEAN NOT NULL DEFAULT false,
+        updated_by VARCHAR(255),
+        updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
+      );
+
+      INSERT INTO platform_feature_flags (flag_key, enabled)
+      VALUES
+        ('AUTO_PUBLISH_INSTAGRAM', false),
+        ('AUTO_PUBLISH_THREADS', false),
+        ('AUTO_PUBLISH_TIKTOK', false),
+        ('AUTO_PUBLISH_X_TWITTER', false)
+      ON CONFLICT (flag_key) DO NOTHING;
     `;
     await sql.unsafe(tablesSql);
-    console.log('  -> All 33 tables created/verified.');
+    console.log('  -> All 34 tables created/verified.');
 
     console.log('\n[4/6] Creating Indexes & Performance Optimizations...');
     const indexSql = `

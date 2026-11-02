@@ -16,6 +16,7 @@ import {
   Video,
   Files,
   UserCheck,
+  Sliders,
 } from 'lucide-react';
 import { AdminApiClient } from '@/lib/api-client';
 import { cn } from '@/lib/utils';
@@ -31,6 +32,7 @@ const adminNavItems = [
   { name: 'Audit & Log Aktivitas', href: '/superadmin/activity-logs', icon: ShieldCheck },
   { name: 'Observabilitas AI & Token', href: '/superadmin/ai-monitoring', icon: Cpu },
   { name: 'Master Data & Tarif', href: '/superadmin/master-data', icon: Database },
+  { name: 'Pengaturan & Sakelar Fitur', href: '/superadmin/settings', icon: Sliders },
 ];
 
 
@@ -102,33 +104,28 @@ export function SuperadminSidebar({ adminEmail }: { adminEmail?: string }) {
           )}
         </div>
 
-        {/* MENU NAVIGASI ADMIN */}
+        {/* NAVIGATION LIST */}
         <nav className="p-3 space-y-1">
           {adminNavItems.map((item) => {
             const Icon = item.icon;
-            const isActive = item.href === '/superadmin'
-              ? pathname === '/superadmin'
-              : pathname.startsWith(item.href);
+            const isActive =
+              item.href === '/superadmin'
+                ? pathname === '/superadmin'
+                : pathname.startsWith(item.href);
 
             return (
               <Link
                 key={item.href}
                 href={item.href}
-                title={collapsed ? item.name : undefined}
                 className={cn(
-                  'flex items-center rounded-xl text-sm font-bold transition-all',
-                  collapsed ? 'justify-center p-3' : 'space-x-3 px-3.5 py-2.5',
+                  'flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-semibold transition-all duration-150',
                   isActive
-                    ? 'bg-blue-50 text-blue-600 dark:bg-blue-950/60 dark:text-blue-400 shadow-2xs'
-                    : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800/60'
+                    ? 'bg-blue-50 text-blue-700 dark:bg-blue-950/60 dark:text-blue-400 font-bold shadow-xs'
+                    : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800/60 hover:text-slate-900 dark:hover:text-slate-200'
                 )}
+                title={collapsed ? item.name : undefined}
               >
-                <Icon
-                  className={cn(
-                    'h-5 w-5 shrink-0',
-                    isActive ? 'text-blue-600 dark:text-blue-400' : 'text-slate-400 dark:text-slate-500'
-                  )}
-                />
+                <Icon className={cn('h-5 w-5 shrink-0', isActive ? 'text-blue-600 dark:text-blue-400' : 'text-slate-400')} />
                 {!collapsed && <span className="truncate">{item.name}</span>}
               </Link>
             );
@@ -136,34 +133,18 @@ export function SuperadminSidebar({ adminEmail }: { adminEmail?: string }) {
         </nav>
       </div>
 
-      {/* FOOTER AKUN ADMIN & LOGOUT: SAMA PERSIS DENGAN MAIN DASHBOARD */}
-      <div className="p-3 space-y-2 shrink-0 border-t border-slate-200 dark:border-slate-800 bg-white dark:bg-[#0B0F17]">
-        {!collapsed && (
-          <div className="px-3 py-2 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-700/60 flex items-center gap-2.5">
-            <div className="h-8 w-8 rounded-lg bg-blue-600 text-white flex items-center justify-center font-bold text-xs shrink-0">
-              <ShieldCheck className="h-4 w-4" />
-            </div>
-            <div className="truncate flex-1">
-              <span className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase block leading-none">
-                Super Administrator
-              </span>
-              <span className="text-xs font-semibold text-slate-800 dark:text-slate-200 truncate block mt-0.5">
-                {adminEmail || 'smtpgeocitra@gmail.com'}
-              </span>
-            </div>
-          </div>
-        )}
-
+      {/* FOOTER USER / LOGOUT */}
+      <div className="p-3 border-t border-slate-200 dark:border-slate-800">
         <button
           onClick={handleLogout}
-          title={collapsed ? 'Keluar Console' : undefined}
           className={cn(
-            'w-full flex items-center rounded-xl text-xs font-bold text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/30 transition-all cursor-pointer',
-            collapsed ? 'justify-center p-3' : 'space-x-3 px-3.5 py-2.5'
+            'w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-semibold text-rose-600 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/30 transition-all duration-150 cursor-pointer',
+            collapsed && 'justify-center px-0'
           )}
+          title="Keluar dari Superadmin"
         >
-          <LogOut className="h-4 w-4 shrink-0" />
-          {!collapsed && <span>Keluar Console</span>}
+          <LogOut className="h-5 w-5 shrink-0" />
+          {!collapsed && <span>Keluar Panel</span>}
         </button>
       </div>
     </aside>

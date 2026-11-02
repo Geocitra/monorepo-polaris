@@ -253,3 +253,9 @@ export class RejectDomainRequestDto {
 }
 
 
+
+export class UpdatePlatformFeatureFlagDto {
+  @IsBoolean({ message: 'Status enabled harus bernilai boolean.' })
+  @IsNotEmpty({ message: 'Status enabled tidak boleh kosong.' })
+  enabled!: boolean;
+}

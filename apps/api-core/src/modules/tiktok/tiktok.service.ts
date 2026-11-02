@@ -14,7 +14,8 @@ import {
   socialPublishingJobs,
   withTenantContext,
 } from '@polaris/database';
-import { SocialPlatform, SocialAccountStatus, PublishingJobStatus } from '@polaris/shared-types';
+import { SocialPlatform, SocialAccountStatus, PublishingJobStatus, PlatformFeatureFlagKey } from '@polaris/shared-types';
+import { PlatformSettingsService } from '../platform-settings/platform-settings.service.js';
 import { SocialTokenCrypto } from '@polaris/core-domain';
 import { Queue } from 'bullmq';
 import { Redis } from 'ioredis';
@@ -66,7 +67,10 @@ export class TikTokService implements OnModuleDestroy {
   private readonly redisClient: Redis;
   private readonly publishingQueue: Queue;
 
-  constructor(private readonly redisService: RedisService) {
+  constructor(
+    private readonly redisService: RedisService,
+    private readonly platformSettingsService: PlatformSettingsService
+  ) {
     const redisUrl = process.env.REDIS_URL || 'redis://localhost:6379';
     this.redisClient = new Redis(redisUrl, { maxRetriesPerRequest: null });
     this.publishingQueue = new Queue('social-content-publishing-queue', {
@@ -340,6 +344,14 @@ export class TikTokService implements OnModuleDestroy {
   }
 
   public async enqueuePublishJob(tenantId: string, dto: PublishTikTokDto): Promise<{ jobId: string }> {
+    const isAutoPublishEnabled = await this.platformSettingsService.isFeatureEnabled(
+      PlatformFeatureFlagKey.AUTO_PUBLISH_TIKTOK
+    );
+    if (!isAutoPublishEnabled) {
+      throw new ForbiddenException(
+        'Publikasi otomatis ke TikTok dinonaktifkan oleh administrator platform. Silakan gunakan mode manual asisten.'
+      );
+    }
     const [account] = await withTenantContext(tenantId, (tx) =>
       tx
         .select()

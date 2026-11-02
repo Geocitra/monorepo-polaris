@@ -19,6 +19,7 @@ import { InstagramModule } from './modules/instagram/instagram.module.js';
 import { ThreadsModule } from './modules/threads/threads.module.js';
 import { XModule } from './modules/x/x.module.js';
 import { TikTokModule } from './modules/tiktok/tiktok.module.js';
+import { PlatformSettingsModule } from './modules/platform-settings/platform-settings.module.js';
 
 import { RedisModule } from './modules/redis/redis.module.js';
 import { RealtimeModule } from './modules/realtime/realtime.module.js';
@@ -38,6 +39,7 @@ import { AppController } from './app.controller.js';
       secret: process.env.JWT_SECRET || 'polaris-secret-super-secure-key-2026',
       signOptions: { expiresIn: '24h' },
     }),
+    PlatformSettingsModule, // Global Platform Governance & Fail-Closed Feature Flags
     RedisModule,       // Enterprise In-Memory Pub/Sub & Cache Engine
     RealtimeModule,    // Real-Time SSE Streams & Live Notifications
     IdentityModule,    // 4.2: Auth & Workspace

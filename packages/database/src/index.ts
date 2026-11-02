@@ -13,6 +13,7 @@ export * from './schema/social-distribution.js';
 export * from './schema/research.js';
 export * from './schema/datahub.js';
 export * from './schema/poster-blueprints.js';
+export * from './schema/platform-settings.js';
 export * from './rls/with-tenant.js';
 
 export * from './rls/tenant-context.js';

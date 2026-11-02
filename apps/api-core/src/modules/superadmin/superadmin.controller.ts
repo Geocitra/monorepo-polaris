@@ -29,6 +29,7 @@ import {
   AdminResetTenantPasswordDto,
   AdminUpdatePricingMatrixDto,
   RejectDomainRequestDto,
+  UpdatePlatformFeatureFlagDto,
 } from './dto/superadmin.dto.js';
 import { Public } from '../../common/decorators/public.decorator.js';
 import { SuperadminGuard } from '../../common/guards/superadmin.guard.js';
@@ -99,7 +100,7 @@ export class SuperadminController {
   }
 
   @UseGuards(SuperadminGuard)
-  @Post('tenants/:id/reset-password')
+  @Patch('tenants/:id/reset-password')
   @HttpCode(HttpStatus.OK)
   async resetTenantPassword(
     @Param('id') id: string,
@@ -109,40 +110,29 @@ export class SuperadminController {
   }
 
   @UseGuards(SuperadminGuard)
-  @Get('pricing-matrices')
-  @HttpCode(HttpStatus.OK)
-  async getPricingMatrices(@Query('level') level?: LegislativeLevel) {
-    return await this.superadminService.getPricingMatrices(level);
-  }
-
-  @UseGuards(SuperadminGuard)
-  @Patch('pricing-matrices/:id')
-  @HttpCode(HttpStatus.OK)
-  async updatePricingMatrix(
-    @Param('id') id: string,
-    @Body() dto: AdminUpdatePricingMatrixDto,
-  ) {
-    return await this.superadminService.updatePricingMatrix(id, dto);
-  }
-
-  @UseGuards(SuperadminGuard)
-  @Post('tenants/:id/verify')
+  @Patch('tenants/:id/verify')
   @HttpCode(HttpStatus.OK)
   async verifyTenant(@Param('id') id: string, @Body() dto: VerifyTenantDto) {
     return await this.superadminService.verifyTenant(id, dto);
   }
 
   @UseGuards(SuperadminGuard)
-  @Post('tenants/:id/status')
+  @Patch('tenants/:id/status')
   @HttpCode(HttpStatus.OK)
-  async updateTenantStatus(@Param('id') id: string, @Body() dto: UpdateTenantStatusDto) {
+  async updateTenantStatus(
+    @Param('id') id: string,
+    @Body() dto: UpdateTenantStatusDto,
+  ) {
     return await this.superadminService.updateTenantStatus(id, dto);
   }
 
   @UseGuards(SuperadminGuard)
   @Post('tenants/:id/license')
   @HttpCode(HttpStatus.OK)
-  async grantManualLicense(@Param('id') id: string, @Body() dto: ManualLicenseGrantDto) {
+  async grantManualLicense(
+    @Param('id') id: string,
+    @Body() dto: ManualLicenseGrantDto,
+  ) {
     return await this.superadminService.grantManualLicense(id, dto);
   }
 
@@ -168,14 +158,14 @@ export class SuperadminController {
   }
 
   @UseGuards(SuperadminGuard)
-  @Get('dapil')
+  @Get('dapils')
   @HttpCode(HttpStatus.OK)
-  async getDapils() {
-    return await this.superadminService.getDapils();
+  async getDapils(@Query('search') search?: string) {
+    return await this.superadminService.getDapils(search);
   }
 
   @UseGuards(SuperadminGuard)
-  @Post('dapil')
+  @Post('dapils')
   @HttpCode(HttpStatus.CREATED)
   async createDapil(@Body() dto: CreateDapilDto) {
     return await this.superadminService.createDapil(dto);
@@ -184,68 +174,123 @@ export class SuperadminController {
   @UseGuards(SuperadminGuard)
   @Get('commissions')
   @HttpCode(HttpStatus.OK)
-  async getCommissions(@Query('level') level?: string) {
+  async getCommissions(@Query('level') level?: LegislativeLevel) {
     return await this.superadminService.getCommissions(level);
   }
 
   @UseGuards(SuperadminGuard)
-  @Post('commissions')
-  @HttpCode(HttpStatus.CREATED)
-  async createCommission(@Body() dto: any) {
-    return await this.superadminService.createCommission(dto);
-  }
-
-  @UseGuards(SuperadminGuard)
-  @Put('commissions/:id')
+  @Get('pricing-matrices')
   @HttpCode(HttpStatus.OK)
-  async updateCommission(@Param('id') id: string, @Body() dto: any) {
-    return await this.superadminService.updateCommission(id, dto);
+  async getPricingMatrices(@Query('level') level?: LegislativeLevel) {
+    return await this.superadminService.getPricingMatrices(level);
   }
 
   @UseGuards(SuperadminGuard)
-  @Get('ai/observability')
+  @Patch('pricing-matrices/:id')
   @HttpCode(HttpStatus.OK)
-  async getAiObservability() {
-    return await this.superadminService.getAiObservability();
+  async updatePricingMatrix(
+    @Param('id') id: string,
+    @Body() dto: AdminUpdatePricingMatrixDto,
+  ) {
+    return await this.superadminService.updatePricingMatrix(id, dto);
   }
 
   @UseGuards(SuperadminGuard)
-  @Get('ai/traces')
+  @Get('ai-monitoring/metrics')
   @HttpCode(HttpStatus.OK)
-  async getAiTraces(@Query('limit') limit?: string) {
-    return await this.superadminService.getAiTraces(Number(limit) || 20);
+  async getObservabilityMetrics(@Query('days') days?: string) {
+    return await this.superadminService.getObservabilityMetrics(days ? Number(days) : 7);
   }
 
   @UseGuards(SuperadminGuard)
-  @Post('ai/topup')
-  @HttpCode(HttpStatus.CREATED)
+  @Get('ai-monitoring/traces')
+  @HttpCode(HttpStatus.OK)
+  async getAiTraces(
+    @Query('limit') limit?: string,
+    @Query('operation') operation?: string,
+    @Query('status') status?: string,
+  ) {
+    return await this.superadminService.getAiTraces(
+      limit ? Number(limit) : 50,
+      operation,
+      status,
+    );
+  }
+
+  @UseGuards(SuperadminGuard)
+  @Get('ai-monitoring/token-pool')
+  @HttpCode(HttpStatus.OK)
+  async getTokenPool() {
+    return await this.superadminService.getTokenPool();
+  }
+
+  @UseGuards(SuperadminGuard)
+  @Post('ai-monitoring/token-pool/topup')
+  @HttpCode(HttpStatus.OK)
   async topupTokenPool(@Body() dto: TopupTokenPoolDto) {
-    return await this.superadminService.topupMasterTokenPool(dto);
+    return await this.superadminService.topupTokenPool(dto);
   }
 
   @UseGuards(SuperadminGuard)
-  @Get('members/activity-summary')
+  @Get('ai-monitoring/tenants-breakdown')
+  @HttpCode(HttpStatus.OK)
+  async getTenantQuotaBreakdown(@Query('month') month?: string) {
+    return await this.superadminService.getTenantQuotaBreakdown(month);
+  }
+
+  @UseGuards(SuperadminGuard)
+  @Get('ai-monitoring/topup-history')
+  @HttpCode(HttpStatus.OK)
+  async getHistoricalTopups() {
+    return await this.superadminService.getHistoricalTopups();
+  }
+
+  @UseGuards(SuperadminGuard)
+  @Get('audit-logs')
+  @HttpCode(HttpStatus.OK)
+  async getAuditLogs(
+    @Query('tenantId') tenantId?: string,
+    @Query('category') category?: string,
+    @Query('activityType') activityType?: string,
+    @Query('search') search?: string,
+    @Query('startDate') startDate?: string,
+    @Query('endDate') endDate?: string,
+    @Query('page') page?: string,
+    @Query('limit') limit?: string,
+  ) {
+    return await this.superadminService.getAuditLogs({
+      tenantId,
+      category,
+      activityType,
+      search,
+      startDate,
+      endDate,
+      page: page ? Number(page) : 1,
+      limit: limit ? Number(limit) : 20,
+    });
+  }
+
+  @UseGuards(SuperadminGuard)
+  @Get('activity-summary')
   @HttpCode(HttpStatus.OK)
   async getMemberActivitySummary(
     @Query('search') search?: string,
-    @Query('dapilId') dapilId?: string,
-    @Query('party') party?: string,
+    @Query('legislativeLevel') legislativeLevel?: string,
     @Query('commissionId') commissionId?: string,
     @Query('page') page?: string,
     @Query('limit') limit?: string,
   ) {
     return await this.superadminService.getMemberActivitySummary({
       search,
-      dapilId,
-      party,
+      legislativeLevel,
       commissionId,
       page: page ? Number(page) : 1,
-      limit: limit ? Number(limit) : 10,
+      limit: limit ? Number(limit) : 15,
     });
   }
 
   @UseGuards(SuperadminGuard)
-  @Get('members/:id/activity-logs')
+  @Get('activity-summary/:id')
   @HttpCode(HttpStatus.OK)
   async getMemberActivityLogs(
     @Param('id') id: string,
@@ -294,5 +339,24 @@ export class SuperadminController {
     const adminUserId = req.user.tenantId;
     return await this.superadminService.rejectDomainRequest(id, dto.adminNotes, adminUserId);
   }
-}
 
+  // --- Domain: Pengaturan Platform & Feature Flags ---
+  @UseGuards(SuperadminGuard)
+  @Get('platform-settings/flags')
+  @HttpCode(HttpStatus.OK)
+  async getPlatformFeatureFlags() {
+    return await this.superadminService.getPlatformFeatureFlags();
+  }
+
+  @UseGuards(SuperadminGuard)
+  @Patch('platform-settings/flags/:flagKey')
+  @HttpCode(HttpStatus.OK)
+  async updatePlatformFeatureFlag(
+    @Param('flagKey') flagKey: string,
+    @Body() dto: UpdatePlatformFeatureFlagDto,
+    @Request() req: any,
+  ) {
+    const adminUser = req.user?.email || req.user?.fullName || 'SUPERADMIN';
+    return await this.superadminService.updatePlatformFeatureFlag(flagKey, dto.enabled, adminUser);
+  }
+}

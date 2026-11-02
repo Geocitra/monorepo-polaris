@@ -143,6 +143,17 @@ export function CampaignPreview({
   const [customIgCaption, setCustomIgCaption] = useState('');
   const [customWaText, setCustomWaText] = useState('');
   const [isPosterLightboxOpen, setIsPosterLightboxOpen] = useState(false);
+  const [socialFeatureFlags, setSocialFeatureFlags] = useState<{
+    AUTO_PUBLISH_INSTAGRAM: boolean;
+    AUTO_PUBLISH_THREADS: boolean;
+    AUTO_PUBLISH_TIKTOK: boolean;
+    AUTO_PUBLISH_X_TWITTER: boolean;
+  }>({
+    AUTO_PUBLISH_INSTAGRAM: false,
+    AUTO_PUBLISH_THREADS: false,
+    AUTO_PUBLISH_TIKTOK: false,
+    AUTO_PUBLISH_X_TWITTER: false,
+  });
 
   // Listener tombol Escape untuk menutup Fullscreen Poster Lightbox
   useEffect(() => {
@@ -239,6 +250,12 @@ export function CampaignPreview({
     ApiClient.request<any>('/social/tiktok/account')
       .then((acc) => setConnectedTikTokAccount(acc))
       .catch(() => setConnectedTikTokAccount(null));
+
+    ApiClient.request<any>('/social/feature-flags')
+      .then((flags) => {
+        if (flags) setSocialFeatureFlags(flags);
+      })
+      .catch(() => {});
   }, []);
 
   // Sinkronisasi teks sosial (Instagram, WhatsApp, Threads) saat konten baru dibuat
@@ -503,6 +520,21 @@ export function CampaignPreview({
 
   // Resolusi tautan artikel resmi yang mengarah ke portal pribadi klien (bukan domain induk)
   const articleSlug = generatedResult?.publication?.slug || '';
+  function handleCopyCaptionWithPortalLink(rawText: string, platformLabel: string) {
+    let textToCopy = (rawText || '').trim();
+    if (articleUrl && !textToCopy.includes(articleUrl)) {
+      textToCopy += `\n\nBaca artikel selengkapnya di portal resmi:\n${articleUrl}`;
+    }
+    navigator.clipboard.writeText(textToCopy);
+    toast({
+      type: 'success',
+      title: `Naskah ${platformLabel} Disalin!`,
+      description: articleUrl
+        ? 'Naskah beserta tautan portal resmi siap ditempel di sosmed.'
+        : 'Naskah berhasil disalin ke papan klip.',
+    });
+  }
+
   const basePortalUrl = getPortalUrl(userSubdomain, userCustomDomain);
   const articleUrl = publishedUrl || (articleSlug ? `${basePortalUrl}/artikel/${articleSlug}` : '');
   const articleDisplayUrl = articleUrl
@@ -1300,7 +1332,7 @@ export function CampaignPreview({
           {selectedSocialChannel === 'instagram' && (
             <div className="p-4 sm:p-5 rounded-2xl bg-purple-50/70 dark:bg-purple-950/30 border border-purple-200 dark:border-purple-900/50 space-y-4 shadow-2xs">
               {/* Header Instagram */}
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-purple-200/60 dark:border-purple-900/40 pb-3">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-purple-200/60 dark:border-purple-900/40 pb-3">
                 <div className="flex items-center gap-2.5">
                   <div className="p-2 rounded-xl bg-gradient-to-tr from-purple-600 to-rose-600 text-white shadow-xs">
                     <Instagram className="h-4.5 w-4.5" />
@@ -1308,13 +1340,19 @@ export function CampaignPreview({
                   <div>
                     <h4 className="font-extrabold text-xs text-slate-900 dark:text-white flex items-center gap-2">
                       <span>Feed & Karusel Instagram</span>
-                      {connectedAccount ? (
-                        <span className="text-[10px] font-bold text-emerald-700 bg-emerald-100 dark:bg-emerald-950 px-2 py-0.5 rounded-full border border-emerald-300">
-                          @{connectedAccount.accountHandle}
-                        </span>
+                      {socialFeatureFlags.AUTO_PUBLISH_INSTAGRAM ? (
+                        connectedAccount ? (
+                          <span className="text-[10px] font-bold text-emerald-700 bg-emerald-100 dark:bg-emerald-950 px-2 py-0.5 rounded-full border border-emerald-300">
+                            @{connectedAccount.accountHandle}
+                          </span>
+                        ) : (
+                          <span className="text-[10px] font-bold text-amber-700 bg-amber-100 dark:bg-amber-950 px-2 py-0.5 rounded-full border border-amber-300">
+                            Belum Terhubung
+                          </span>
+                        )
                       ) : (
-                        <span className="text-[10px] font-bold text-amber-700 bg-amber-100 dark:bg-amber-950 px-2 py-0.5 rounded-full border border-amber-300">
-                          Belum Terhubung
+                        <span className="text-[10px] font-bold text-purple-700 bg-purple-100 dark:bg-purple-950/80 dark:text-purple-300 px-2 py-0.5 rounded-full border border-purple-200 dark:border-purple-800">
+                          Mode Asisten Manual
                         </span>
                       )}
                     </h4>
@@ -1324,24 +1362,55 @@ export function CampaignPreview({
                   </div>
                 </div>
 
-                {connectedAccount && (
-                  <button
-                    type="button"
-                    disabled={publishingIg}
-                    onClick={handlePublishInstagramFromCampaign}
-                    className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-gradient-to-r from-purple-600 to-rose-600 hover:opacity-95 text-white font-black text-xs shadow-md shadow-pink-500/20 cursor-pointer disabled:opacity-50 transition-all hover:scale-[1.01]"
-                  >
-                    {publishingIg ? (
-                      <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                    ) : (
-                      <Send className="h-3.5 w-3.5" />
-                    )}
-                    <span>
-                      {carouselSlides.length > 1
-                        ? `Terbitkan Karusel (${carouselSlides.length} Slide)`
-                        : 'Terbitkan ke Instagram'}
-                    </span>
-                  </button>
+                {socialFeatureFlags.AUTO_PUBLISH_INSTAGRAM ? (
+                  connectedAccount && (
+                    <button
+                      type="button"
+                      disabled={publishingIg}
+                      onClick={handlePublishInstagramFromCampaign}
+                      className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-gradient-to-r from-purple-600 to-rose-600 hover:opacity-95 text-white font-black text-xs shadow-md shadow-pink-500/20 cursor-pointer disabled:opacity-50 transition-all hover:scale-[1.01]"
+                    >
+                      {publishingIg ? (
+                        <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                      ) : (
+                        <Send className="h-3.5 w-3.5" />
+                      )}
+                      <span>
+                        {carouselSlides.length > 1
+                          ? `Terbitkan Karusel (${carouselSlides.length} Slide)`
+                          : 'Terbitkan ke Instagram'}
+                      </span>
+                    </button>
+                  )
+                ) : (
+                  <div className="flex items-center flex-wrap gap-2">
+                    <button
+                      type="button"
+                      onClick={() => handleDownloadPosterImage()}
+                      disabled={downloadingPoster}
+                      className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-purple-200 dark:border-purple-800 bg-white dark:bg-purple-950/60 text-purple-700 dark:text-purple-300 font-bold text-xs hover:bg-purple-50 transition-all shadow-xs cursor-pointer"
+                    >
+                      <Download className="h-3.5 w-3.5" />
+                      <span>Unduh Poster</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handleCopyCaptionWithPortalLink(customIgCaption || generatedResult?.socialPack?.instagramCaption || '', 'Instagram')}
+                      className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-purple-200 dark:border-purple-800 bg-white dark:bg-purple-950/60 text-purple-700 dark:text-purple-300 font-bold text-xs hover:bg-purple-50 transition-all shadow-xs cursor-pointer"
+                    >
+                      <Copy className="h-3.5 w-3.5" />
+                      <span>Salin Caption & Tautan</span>
+                    </button>
+                    <a
+                      href="https://www.instagram.com"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-gradient-to-r from-purple-600 to-rose-600 hover:opacity-95 text-white font-black text-xs shadow-xs cursor-pointer transition-all hover:scale-[1.01]"
+                    >
+                      <ExternalLink className="h-3.5 w-3.5" />
+                      <span>Buka Instagram</span>
+                    </a>
+                  </div>
                 )}
               </div>
 
@@ -1839,18 +1908,24 @@ export function CampaignPreview({
                       <h4 className="font-extrabold text-xs text-slate-900 dark:text-white">
                         Meta Threads • Cuitan Opini
                       </h4>
-                      {connectedThreadsAccount ? (
-                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-emerald-100 dark:bg-emerald-950/80 text-emerald-700 dark:text-emerald-300 text-[10px] font-black border border-emerald-200 dark:border-emerald-800">
-                          <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
-                          <span>@{connectedThreadsAccount.accountHandle}</span>
-                        </span>
+                      {socialFeatureFlags.AUTO_PUBLISH_THREADS ? (
+                        connectedThreadsAccount ? (
+                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-emerald-100 dark:bg-emerald-950/80 text-emerald-700 dark:text-emerald-300 text-[10px] font-black border border-emerald-200 dark:border-emerald-800">
+                            <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                            <span>@{connectedThreadsAccount.accountHandle}</span>
+                          </span>
+                        ) : (
+                          <Link
+                            href="/profile"
+                            className="inline-flex items-center gap-1 text-[10px] text-amber-600 dark:text-amber-400 font-bold hover:underline"
+                          >
+                            <span>⚠️ Belum Terhubung (Klik untuk Sambungkan Akun)</span>
+                          </Link>
+                        )
                       ) : (
-                        <Link
-                          href="/profile"
-                          className="inline-flex items-center gap-1 text-[10px] text-amber-600 dark:text-amber-400 font-bold hover:underline"
-                        >
-                          <span>⚠️ Belum Terhubung (Klik untuk Sambungkan Akun)</span>
-                        </Link>
+                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-slate-200 dark:bg-slate-800 text-slate-700 dark:text-slate-300 text-[10px] font-black border border-slate-300 dark:border-slate-700">
+                          Mode Asisten Manual
+                        </span>
                       )}
                     </div>
                     <p className="text-[11px] text-slate-500 dark:text-slate-400">
@@ -1859,36 +1934,41 @@ export function CampaignPreview({
                   </div>
                 </div>
 
-                <div className="flex items-center gap-2">
+                <div className="flex items-center flex-wrap gap-2">
                   <button
                     type="button"
-                    onClick={() => {
-                      navigator.clipboard.writeText(threadsCustomText);
-                      toast({
-                        type: 'success',
-                        title: 'Teks Threads Disalin!',
-                        description: 'Siap diposting ke aplikasi Threads.',
-                      });
-                    }}
+                    onClick={() => handleCopyCaptionWithPortalLink(threadsCustomText, 'Threads')}
                     className="inline-flex items-center gap-1 px-3 py-1.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 font-bold text-xs hover:bg-slate-50 transition-colors shadow-2xs cursor-pointer"
                   >
                     <Copy className="h-3.5 w-3.5" />
-                    <span>Salin Cuitan</span>
+                    <span>Salin Cuitan & Tautan</span>
                   </button>
 
-                  <button
-                    type="button"
-                    onClick={handlePublishToThreads}
-                    disabled={publishingThreads || isUnpaid || !connectedThreadsAccount || threadsCustomText.length > 500}
-                    className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-slate-900 hover:bg-slate-800 dark:bg-white dark:hover:bg-slate-100 text-white dark:text-slate-900 font-extrabold text-xs shadow-md shadow-slate-900/10 transition-all hover:scale-[1.01] active:scale-[0.99] disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
-                  >
-                    {publishingThreads ? (
-                      <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                    ) : (
-                      <Send className="h-3.5 w-3.5" />
-                    )}
-                    <span>Publikasikan ke Threads Resmi</span>
-                  </button>
+                  {socialFeatureFlags.AUTO_PUBLISH_THREADS ? (
+                    <button
+                      type="button"
+                      onClick={handlePublishToThreads}
+                      disabled={publishingThreads || isUnpaid || !connectedThreadsAccount || threadsCustomText.length > 500}
+                      className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-slate-900 hover:bg-slate-800 dark:bg-white dark:hover:bg-slate-100 text-white dark:text-slate-900 font-extrabold text-xs shadow-md shadow-slate-900/10 transition-all hover:scale-[1.01] active:scale-[0.99] disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
+                    >
+                      {publishingThreads ? (
+                        <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                      ) : (
+                        <Send className="h-3.5 w-3.5" />
+                      )}
+                      <span>Publikasikan ke Threads Resmi</span>
+                    </button>
+                  ) : (
+                    <a
+                      href="https://www.threads.net"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-slate-900 hover:bg-slate-800 dark:bg-white dark:hover:bg-slate-100 text-white dark:text-slate-900 font-extrabold text-xs shadow-md shadow-slate-900/10 transition-all hover:scale-[1.01] active:scale-[0.99] cursor-pointer"
+                    >
+                      <ExternalLink className="h-3.5 w-3.5" />
+                      <span>Buka Threads</span>
+                    </a>
+                  )}
                 </div>
               </div>
 
@@ -2105,69 +2185,94 @@ export function CampaignPreview({
                   </div>
                 </div>
 
-                <div className="flex items-center gap-2">
+                <div className="flex items-center flex-wrap gap-2">
                   <Button
                     type="button"
                     variant="outline"
                     size="sm"
-                    onClick={() => {
-                      navigator.clipboard.writeText(xCustomText);
-                      toast({
-                        type: 'success',
-                        title: 'Disalin!',
-                        description: 'Naskah cuitan berhasil disalin ke papan klip.',
-                      });
-                    }}
+                    onClick={() => handleCopyCaptionWithPortalLink(xCustomText, 'X')}
                     className="h-8 text-xs font-bold gap-1 rounded-xl cursor-pointer"
                   >
                     <Copy className="h-3.5 w-3.5" />
-                    <span>Salin Cuitan</span>
+                    <span>Salin Cuitan & Tautan</span>
                   </Button>
 
-                  <Button
-                    type="button"
-                    size="sm"
-                    onClick={handlePublishX}
-                    disabled={publishingX || isUnpaid || !connectedXAccount || !xCustomText.trim()}
-                    className="h-8 bg-black hover:bg-slate-800 text-white font-extrabold text-xs gap-1.5 rounded-xl shadow-xs transition-all cursor-pointer"
-                  >
-                    {publishingX ? (
-                      <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                    ) : (
-                      <svg viewBox="0 0 24 24" aria-hidden="true" className="w-3.5 h-3.5 fill-current">
-                        <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"></path>
-                      </svg>
-                    )}
-                    <span>Publikasikan ke X</span>
-                  </Button>
+                  {socialFeatureFlags.AUTO_PUBLISH_X_TWITTER ? (
+                    <Button
+                      type="button"
+                      size="sm"
+                      onClick={handlePublishX}
+                      disabled={publishingX || isUnpaid || !connectedXAccount || !xCustomText.trim()}
+                      className="h-8 bg-black hover:bg-slate-800 text-white font-extrabold text-xs gap-1.5 rounded-xl shadow-xs transition-all cursor-pointer"
+                    >
+                      {publishingX ? (
+                        <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                      ) : (
+                        <svg viewBox="0 0 24 24" aria-hidden="true" className="w-3.5 h-3.5 fill-current">
+                          <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"></path>
+                        </svg>
+                      )}
+                      <span>Publikasikan ke X</span>
+                    </Button>
+                  ) : (
+                    <a
+                      href="https://x.com/compose/post"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="h-8 inline-flex items-center gap-1.5 px-3 rounded-xl bg-black hover:bg-slate-800 text-white font-extrabold text-xs shadow-xs transition-all cursor-pointer"
+                    >
+                      <ExternalLink className="h-3.5 w-3.5" />
+                      <span>Buka X</span>
+                    </a>
+                  )}
                 </div>
               </div>
 
               {/* Status Akun X */}
-              {!connectedXAccount ? (
-                <div className="p-3 rounded-xl bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-900/60 flex items-center justify-between gap-3 text-xs">
-                  <div className="flex items-center gap-2 text-amber-800 dark:text-amber-200">
-                    <AlertTriangle className="h-4 w-4 shrink-0 text-amber-600" />
-                    <span>Akun X belum terhubung. Tautkan akun di halaman Profil Parlemen untuk mengaktifkan direct publish.</span>
+              {socialFeatureFlags.AUTO_PUBLISH_X_TWITTER ? (
+                !connectedXAccount ? (
+                  <div className="p-3 rounded-xl bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-900/60 flex items-center justify-between gap-3 text-xs">
+                    <div className="flex items-center gap-2 text-amber-800 dark:text-amber-200">
+                      <AlertTriangle className="h-4 w-4 shrink-0 text-amber-600" />
+                      <span>Akun X belum terhubung. Tautkan akun di halaman Profil Parlemen untuk mengaktifkan direct publish.</span>
+                    </div>
+                    <Link
+                      href="/profile"
+                      className="px-3 py-1 bg-amber-600 hover:bg-amber-700 text-white font-bold text-[11px] rounded-lg shrink-0 transition-colors"
+                    >
+                      Tautkan Akun
+                    </Link>
                   </div>
-                  <Link
-                    href="/profile"
-                    className="px-3 py-1 bg-amber-600 hover:bg-amber-700 text-white font-bold text-[11px] rounded-lg shrink-0 transition-colors"
-                  >
-                    Tautkan Akun
-                  </Link>
-                </div>
-              ) : (
-                <div className="px-3 py-2 rounded-xl bg-emerald-50/80 dark:bg-emerald-950/30 border border-emerald-200/80 dark:border-emerald-800/50 flex items-center justify-between text-xs">
-                  <div className="flex items-center gap-2">
-                    <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-                    <span className="text-emerald-800 dark:text-emerald-300 font-medium">
-                      Terhubung sebagai <strong className="font-bold">@{connectedXAccount.accountHandle?.replace(/^@/, '')}</strong> ({connectedXAccount.accountName || 'Resmi'})
+                ) : (
+                  <div className="px-3 py-2 rounded-xl bg-emerald-50/80 dark:bg-emerald-950/30 border border-emerald-200/80 dark:border-emerald-800/50 flex items-center justify-between text-xs">
+                    <div className="flex items-center gap-2">
+                      <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+                      <span className="text-emerald-800 dark:text-emerald-300 font-medium">
+                        Terhubung sebagai <strong className="font-bold">@{connectedXAccount.accountHandle?.replace(/^@/, '')}</strong> ({connectedXAccount.accountName || 'Resmi'})
+                      </span>
+                    </div>
+                    <span className="text-[11px] text-emerald-700 dark:text-emerald-400 font-mono">
+                      Token aktif {connectedXAccount.daysRemaining} hari
                     </span>
                   </div>
-                  <span className="text-[11px] text-emerald-700 dark:text-emerald-400 font-mono">
-                    Token aktif {connectedXAccount.daysRemaining} hari
-                  </span>
+                )
+              ) : (
+                <div className="p-3 rounded-xl bg-slate-100 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700/80 flex items-center justify-between gap-3 text-xs">
+                  <div className="flex items-center gap-2 text-slate-700 dark:text-slate-300">
+                    <Info className="h-4 w-4 shrink-0 text-blue-500" />
+                    <span>
+                      <strong>Mode Asisten Manual Aktif:</strong> Salin cuitan berisikan tautan resmi portal, lalu buka X untuk memposting langsung tanpa biaya API.
+                    </span>
+                  </div>
+                  <a
+                    href="https://x.com/compose/post"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center gap-1 px-3 py-1 bg-black hover:bg-slate-800 text-white font-bold text-[11px] rounded-lg shrink-0 transition-colors"
+                  >
+                    <span>Buka X</span>
+                    <ExternalLink className="h-3 w-3" />
+                  </a>
                 </div>
               )}
 
@@ -2319,67 +2424,104 @@ export function CampaignPreview({
                   </div>
                 </div>
 
-                <div className="flex items-center gap-2">
+                <div className="flex items-center flex-wrap gap-2">
                   <Button
                     type="button"
                     variant="outline"
                     size="sm"
-                    onClick={() => {
-                      navigator.clipboard.writeText(tiktokCustomCaption);
-                      toast({
-                        type: 'success',
-                        title: 'Disalin!',
-                        description: 'Caption TikTok berhasil disalin.',
-                      });
-                    }}
+                    onClick={() => handleDownloadPosterImage()}
+                    disabled={downloadingPoster}
                     className="h-8 text-xs font-bold gap-1 rounded-xl cursor-pointer"
                   >
-                    <Copy className="h-3.5 w-3.5" />
-                    <span>Salin Caption</span>
+                    <Download className="h-3.5 w-3.5" />
+                    <span>Unduh Poster</span>
                   </Button>
 
                   <Button
                     type="button"
+                    variant="outline"
                     size="sm"
-                    onClick={handlePublishTikTok}
-                    disabled={publishingTikTok || isUnpaid || !connectedTikTokAccount || !tiktokCustomCaption.trim()}
-                    className="h-8 bg-gradient-to-r from-black via-slate-900 to-black hover:from-slate-900 hover:to-slate-800 text-white font-extrabold text-xs gap-1.5 rounded-xl shadow-xs transition-all border border-slate-800 cursor-pointer"
+                    onClick={() => handleCopyCaptionWithPortalLink(tiktokCustomCaption, 'TikTok')}
+                    className="h-8 text-xs font-bold gap-1 rounded-xl cursor-pointer"
                   >
-                    {publishingTikTok ? (
-                      <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                    ) : (
-                      <Video className="h-3.5 w-3.5 text-[#fe2c55]" />
-                    )}
-                    <span>Terbitkan ke TikTok</span>
+                    <Copy className="h-3.5 w-3.5" />
+                    <span>Salin Caption & Tautan</span>
                   </Button>
+
+                  {socialFeatureFlags.AUTO_PUBLISH_TIKTOK ? (
+                    <Button
+                      type="button"
+                      size="sm"
+                      onClick={handlePublishTikTok}
+                      disabled={publishingTikTok || isUnpaid || !connectedTikTokAccount || !tiktokCustomCaption.trim()}
+                      className="h-8 bg-gradient-to-r from-black via-slate-900 to-black hover:from-slate-900 hover:to-slate-800 text-white font-extrabold text-xs gap-1.5 rounded-xl shadow-xs transition-all border border-slate-800 cursor-pointer"
+                    >
+                      {publishingTikTok ? (
+                        <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                      ) : (
+                        <Video className="h-3.5 w-3.5 text-[#fe2c55]" />
+                      )}
+                      <span>Terbitkan ke TikTok</span>
+                    </Button>
+                  ) : (
+                    <a
+                      href="https://www.tiktok.com/upload"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="h-8 inline-flex items-center gap-1.5 px-3 rounded-xl bg-gradient-to-r from-black via-slate-900 to-black hover:from-slate-900 hover:to-slate-800 text-white font-extrabold text-xs shadow-xs transition-all border border-slate-800 cursor-pointer"
+                    >
+                      <ExternalLink className="h-3.5 w-3.5 text-[#fe2c55]" />
+                      <span>Buka TikTok Studio</span>
+                    </a>
+                  )}
                 </div>
               </div>
 
               {/* Status Akun TikTok */}
-              {!connectedTikTokAccount ? (
-                <div className="p-3 rounded-xl bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-900/60 flex items-center justify-between gap-3 text-xs">
-                  <div className="flex items-center gap-2 text-amber-800 dark:text-amber-200">
-                    <AlertTriangle className="h-4 w-4 shrink-0 text-amber-600" />
-                    <span>Akun TikTok belum terhubung. Tautkan akun di halaman Profil Parlemen untuk mengaktifkan direct posting.</span>
+              {socialFeatureFlags.AUTO_PUBLISH_TIKTOK ? (
+                !connectedTikTokAccount ? (
+                  <div className="p-3 rounded-xl bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-900/60 flex items-center justify-between gap-3 text-xs">
+                    <div className="flex items-center gap-2 text-amber-800 dark:text-amber-200">
+                      <AlertTriangle className="h-4 w-4 shrink-0 text-amber-600" />
+                      <span>Akun TikTok belum terhubung. Tautkan akun di halaman Profil Parlemen untuk mengaktifkan direct posting.</span>
+                    </div>
+                    <Link
+                      href="/profile"
+                      className="px-3 py-1 bg-amber-600 hover:bg-amber-700 text-white font-bold text-[11px] rounded-lg shrink-0 transition-colors"
+                    >
+                      Tautkan Akun
+                    </Link>
                   </div>
-                  <Link
-                    href="/profile"
-                    className="px-3 py-1 bg-amber-600 hover:bg-amber-700 text-white font-bold text-[11px] rounded-lg shrink-0 transition-colors"
-                  >
-                    Tautkan Akun
-                  </Link>
-                </div>
-              ) : (
-                <div className="px-3 py-2 rounded-xl bg-emerald-50/80 dark:bg-emerald-950/30 border border-emerald-200/80 dark:border-emerald-800/50 flex items-center justify-between text-xs">
-                  <div className="flex items-center gap-2">
-                    <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-                    <span className="text-emerald-800 dark:text-emerald-300 font-medium">
-                      Terhubung sebagai <strong className="font-bold">@{connectedTikTokAccount.accountHandle?.replace(/^@/, '')}</strong> ({connectedTikTokAccount.accountName || 'Kreator'})
+                ) : (
+                  <div className="px-3 py-2 rounded-xl bg-emerald-50/80 dark:bg-emerald-950/30 border border-emerald-200/80 dark:border-emerald-800/50 flex items-center justify-between text-xs">
+                    <div className="flex items-center gap-2">
+                      <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+                      <span className="text-emerald-800 dark:text-emerald-300 font-medium">
+                        Terhubung sebagai <strong className="font-bold">@{connectedTikTokAccount.accountHandle?.replace(/^@/, '')}</strong> ({connectedTikTokAccount.accountName || 'Kreator'})
+                      </span>
+                    </div>
+                    <span className="text-[11px] text-emerald-700 dark:text-emerald-400 font-mono">
+                      Token aktif {connectedTikTokAccount.daysRemaining} hari
                     </span>
                   </div>
-                  <span className="text-[11px] text-emerald-700 dark:text-emerald-400 font-mono">
-                    Token aktif {connectedTikTokAccount.daysRemaining} hari
-                  </span>
+                )
+              ) : (
+                <div className="p-3 rounded-xl bg-slate-100 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700/80 flex items-center justify-between gap-3 text-xs">
+                  <div className="flex items-center gap-2 text-slate-700 dark:text-slate-300">
+                    <Info className="h-4 w-4 shrink-0 text-[#fe2c55]" />
+                    <span>
+                      <strong>Mode Asisten Manual Aktif:</strong> Unduh materi gambar/karusel dan salin caption dengan tautan portal berita, lalu unggah langsung di TikTok Studio Web.
+                    </span>
+                  </div>
+                  <a
+                    href="https://www.tiktok.com/upload"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center gap-1 px-3 py-1 bg-black hover:bg-slate-800 text-white font-bold text-[11px] rounded-lg shrink-0 transition-colors"
+                  >
+                    <span>Buka Upload</span>
+                    <ExternalLink className="h-3 w-3" />
+                  </a>
                 </div>
               )}
 
