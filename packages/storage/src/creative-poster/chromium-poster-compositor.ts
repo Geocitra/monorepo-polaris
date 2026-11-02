@@ -79,6 +79,7 @@ export class ChromiumPosterCompositor {
       headerTag,
       badgeTag,
       textToneHint,
+      archetype,
     } = params;
 
     // 1. Deteksi Luminansi Rata-rata Kanvas menggunakan Sharp
@@ -136,21 +137,282 @@ export class ChromiumPosterCompositor {
     const currentYear = new Date().getFullYear();
     const resolvedBadgeTag = badgeTag || `TELAAH PUBLIK // ${currentYear}`;
 
-    // Bangun poin-poin HTML dinamis (semua teks di-escape)
-    const pointsHtml = (copy.points || [])
-      .map(
-        (p: ChromiumPosterPoint) => `
-        <div class="point-item">
-          <div class="point-label">
-            ✦ ${esc(p.label)}
-          </div>
-          <div class="point-text">
-            ${esc(p.text)}
-          </div>
+    // Bangun poin-poin HTML dan CSS dinamis adaptif terhadap arketipe
+    let pointsHtml = '';
+    let customPointsCss = '';
+
+    if (archetype === 'INFOGRAPHIC_ADVOCACY_PILLARS') {
+      const pillarCount = Math.min(5, (copy.points || []).length);
+      const letterBadges = ['P', 'U', 'T', 'U', 'S'];
+      pointsHtml = (copy.points || []).slice(0, 5).map((p, idx) => `
+        <div class="pillar-col">
+          <div class="pillar-badge">${letterBadges[idx] || (idx + 1)}</div>
+          <div class="pillar-name">${esc(p.label)}</div>
+          <div class="pillar-desc">${esc(p.text)}</div>
         </div>
-      `
-      )
-      .join('');
+      `).join('');
+
+      customPointsCss = `
+        .points-container {
+          display: grid;
+          grid-template-columns: repeat(${pillarCount}, 1fr);
+          gap: 12px;
+          margin-bottom: 16px;
+        }
+        .pillar-col {
+          background: ${isLightPaper ? 'rgba(255, 255, 255, 0.75)' : 'rgba(17, 24, 39, 0.6)'};
+          border: 1.5px solid ${accentColor}66;
+          border-radius: 12px;
+          padding: 12px 10px;
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          text-align: center;
+          backdrop-filter: blur(4px);
+        }
+        .pillar-badge {
+          width: 36px;
+          height: 36px;
+          border-radius: 18px;
+          background: ${accentColor};
+          color: #FFFFFF;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          font-weight: 900;
+          font-size: 17px;
+          margin-bottom: 8px;
+          box-shadow: 0 2px 6px rgba(0,0,0,0.15);
+        }
+        .pillar-name {
+          font-size: 13px;
+          font-weight: 800;
+          color: ${primaryColor};
+          text-transform: uppercase;
+          line-height: 1.2;
+          margin-bottom: 6px;
+        }
+        .pillar-desc {
+          font-size: 12px;
+          line-height: 1.35;
+          color: ${secondaryColor};
+          font-weight: 500;
+        }
+      `;
+    } else if (archetype === 'INFOGRAPHIC_VISIONARY_TIMELINE') {
+      const nodeCount = Math.min(5, (copy.points || []).length);
+      pointsHtml = (copy.points || []).map((p, idx) => `
+        <div class="timeline-step">
+          <div class="timeline-bullet">
+            <span class="timeline-dot"></span>
+          </div>
+          <div class="timeline-tag">FASE 0${idx + 1}</div>
+          <div class="timeline-label">${esc(p.label)}</div>
+          <div class="timeline-desc">${esc(p.text)}</div>
+        </div>
+      `).join('');
+
+      customPointsCss = `
+        .points-container {
+          display: grid;
+          grid-template-columns: repeat(${nodeCount}, 1fr);
+          gap: 14px;
+          margin-bottom: 16px;
+          position: relative;
+        }
+        .timeline-step {
+          display: flex;
+          flex-direction: column;
+          position: relative;
+        }
+        .timeline-bullet {
+          display: flex;
+          align-items: center;
+          margin-bottom: 8px;
+          position: relative;
+        }
+        .timeline-bullet::after {
+          content: '';
+          position: absolute;
+          left: 12px;
+          right: -14px;
+          top: 50%;
+          height: 2px;
+          background: ${accentColor}55;
+          z-index: 1;
+        }
+        .timeline-step:last-child .timeline-bullet::after {
+          display: none;
+        }
+        .timeline-dot {
+          width: 12px;
+          height: 12px;
+          border-radius: 6px;
+          background: ${accentColor};
+          border: 2px solid #FFFFFF;
+          z-index: 2;
+          box-shadow: 0 0 0 2px ${accentColor};
+        }
+        .timeline-tag {
+          font-size: 11px;
+          font-weight: 800;
+          color: ${accentColor};
+          letter-spacing: 1px;
+          margin-bottom: 3px;
+        }
+        .timeline-label {
+          font-size: 14px;
+          font-weight: 800;
+          color: ${primaryColor};
+          text-transform: uppercase;
+          line-height: 1.25;
+          margin-bottom: 4px;
+        }
+        .timeline-desc {
+          font-size: 12px;
+          line-height: 1.35;
+          color: ${secondaryColor};
+          font-weight: 500;
+        }
+      `;
+    } else if (archetype === 'INFOGRAPHIC_NARRATIVE_WAVE') {
+      pointsHtml = (copy.points || []).map((p, idx) => `
+        <div class="dimension-block">
+          <div class="dimension-header">
+            <span class="dimension-idx">0${idx + 1}</span>
+            <span class="dimension-title">${esc(p.label)}</span>
+          </div>
+          <div class="dimension-text">${esc(p.text)}</div>
+        </div>
+      `).join('');
+
+      customPointsCss = `
+        .points-container {
+          display: grid;
+          grid-template-columns: 1fr 1fr;
+          gap: 14px;
+          margin-bottom: 16px;
+        }
+        .dimension-block {
+          background: ${isLightPaper ? 'rgba(255, 255, 255, 0.7)' : 'rgba(17, 24, 39, 0.55)'};
+          border-left: 3px solid ${accentColor};
+          padding: 10px 14px;
+          border-radius: 0 8px 8px 0;
+          backdrop-filter: blur(4px);
+        }
+        .dimension-header {
+          display: flex;
+          align-items: center;
+          gap: 8px;
+          margin-bottom: 4px;
+        }
+        .dimension-idx {
+          font-size: 14px;
+          font-weight: 900;
+          color: ${accentColor};
+        }
+        .dimension-title {
+          font-size: 13.5px;
+          font-weight: 800;
+          color: ${primaryColor};
+          text-transform: uppercase;
+        }
+        .dimension-text {
+          font-size: 13px;
+          line-height: 1.35;
+          color: ${secondaryColor};
+          font-weight: 500;
+        }
+      `;
+    } else if (archetype === 'INFOGRAPHIC_CHRONICLE_GRID' || archetype === 'INFOGRAPHIC_RADIAL_CLOCK') {
+      pointsHtml = (copy.points || []).map((p, idx) => `
+        <div class="chronicle-block">
+          <div class="chronicle-badge">TONGGAK 0${idx + 1}</div>
+          <div class="chronicle-title">${esc(p.label)}</div>
+          <div class="chronicle-text">${esc(p.text)}</div>
+        </div>
+      `).join('');
+
+      customPointsCss = `
+        .points-container {
+          display: grid;
+          grid-template-columns: ${(copy.points || []).length > 2 ? '1fr 1fr' : '1fr'};
+          gap: 12px;
+          margin-bottom: 16px;
+        }
+        .chronicle-block {
+          background: ${isLightPaper ? 'rgba(255, 255, 255, 0.7)' : 'rgba(17, 24, 39, 0.55)'};
+          border: 1px solid ${accentColor}44;
+          padding: 10px 12px;
+          border-radius: 8px;
+        }
+        .chronicle-badge {
+          display: inline-block;
+          font-size: 10px;
+          font-weight: 800;
+          background: ${accentColor};
+          color: #FFFFFF;
+          padding: 2px 6px;
+          border-radius: 4px;
+          margin-bottom: 4px;
+          letter-spacing: 0.5px;
+        }
+        .chronicle-title {
+          font-size: 13.5px;
+          font-weight: 800;
+          color: ${primaryColor};
+          text-transform: uppercase;
+          margin-bottom: 3px;
+        }
+        .chronicle-text {
+          font-size: 12.5px;
+          line-height: 1.35;
+          color: ${secondaryColor};
+        }
+      `;
+    } else {
+      pointsHtml = (copy.points || [])
+        .map(
+          (p: ChromiumPosterPoint) => `
+          <div class="point-item">
+            <div class="point-label">
+              ✦ ${esc(p.label)}
+            </div>
+            <div class="point-text">
+              ${esc(p.text)}
+            </div>
+          </div>
+        `
+        )
+        .join('');
+
+      customPointsCss = `
+        .points-container {
+          display: flex;
+          flex-direction: column;
+          gap: 12px;
+          margin-bottom: 12px;
+        }
+        .point-item {
+          display: flex;
+          flex-direction: column;
+        }
+        .point-label {
+          font-size: 14px;
+          font-weight: 800;
+          color: ${accentColor};
+          letter-spacing: 1.5px;
+          text-transform: uppercase;
+          margin-bottom: 2px;
+        }
+        .point-text {
+          font-size: 17px;
+          line-height: 1.35;
+          color: ${secondaryColor};
+          font-weight: 500;
+        }
+      `;
+    }
 
     const html = `<!DOCTYPE html>
 <html lang="id">
@@ -250,33 +512,7 @@ export class ChromiumPosterCompositor {
       margin-bottom: 16px;
     }
 
-    .points-container {
-      display: flex;
-      flex-direction: column;
-      gap: 12px;
-      margin-bottom: 12px;
-    }
-
-    .point-item {
-      display: flex;
-      flex-direction: column;
-    }
-
-    .point-label {
-      font-size: 14px;
-      font-weight: 800;
-      color: ${accentColor};
-      letter-spacing: 1.5px;
-      text-transform: uppercase;
-      margin-bottom: 2px;
-    }
-
-    .point-text {
-      font-size: 17px;
-      line-height: 1.35;
-      color: ${secondaryColor};
-      font-weight: 500;
-    }
+    ${customPointsCss}
 
     .closing-line {
       font-size: 16px;

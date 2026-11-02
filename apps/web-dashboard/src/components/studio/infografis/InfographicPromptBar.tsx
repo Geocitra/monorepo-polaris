@@ -14,7 +14,7 @@ import {
   Check,
   User,
 } from 'lucide-react';
-import { VisualStyle, AspectRatio, INFOGRAPHIC_TEMPLATES } from './InfographicTypes';
+import { VisualStyle, AspectRatio } from './InfographicTypes';
 import { Button } from '@/components/ui/button';
 
 interface InfographicPromptBarProps {
@@ -32,8 +32,6 @@ interface InfographicPromptBarProps {
   onIncludeUserPhotoChange?: (val: boolean) => void;
   onRefinePrompt?: () => void;
   refiningPrompt?: boolean;
-  selectedTemplate?: string;
-  onTemplateChange?: (templateId: string) => void;
 }
 
 const STYLE_OPTIONS = [
@@ -89,8 +87,6 @@ export function InfographicPromptBar({
   onIncludeUserPhotoChange,
   onRefinePrompt,
   refiningPrompt = false,
-  selectedTemplate = 'auto',
-  onTemplateChange,
 }: InfographicPromptBarProps) {
   const handleSelectStyle = (opt: (typeof STYLE_OPTIONS)[number]) => {
     onStyleChange(opt.id);
@@ -168,72 +164,6 @@ export function InfographicPromptBar({
           </div>
         </div>
       </div>
-
-            {/* 5 TEMPLATE INFOGRAFIS REFERENSI TERKURASI */}
-      {selectedStyle === 'infographic' && (
-        <div className="space-y-2 pt-1 border-b border-slate-100 dark:border-slate-800 pb-3">
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-black uppercase tracking-wider text-slate-800 dark:text-slate-200 flex items-center gap-1.5">
-              <span className="w-2 h-2 rounded-full bg-amber-500 animate-pulse" />
-              <span>5 Template Desain Infografis Terkurasi:</span>
-            </span>
-            <span className="text-[11px] font-semibold text-slate-400 dark:text-slate-500">
-              Format Standar: 4:5 Portrait Editorial
-            </span>
-          </div>
-
-          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2.5">
-            {INFOGRAPHIC_TEMPLATES.map((tpl) => {
-              const isSelected = selectedTemplate === tpl.id;
-              return (
-                <button
-                  key={tpl.id}
-                  type="button"
-                  onClick={() => {
-                    onTemplateChange?.(tpl.id);
-                    if (selectedAspectRatio !== '4:5') {
-                      onAspectRatioChange('4:5');
-                    }
-                  }}
-                  className={`group relative text-left p-2 rounded-2xl border transition-all cursor-pointer flex flex-col justify-between overflow-hidden ${
-                    isSelected
-                      ? 'border-blue-600 bg-blue-50/80 dark:bg-blue-950/40 ring-2 ring-blue-600/30 shadow-sm'
-                      : 'border-slate-200 dark:border-slate-800 bg-slate-50/60 dark:bg-slate-800/40 hover:border-slate-300 dark:hover:border-slate-700'
-                  }`}
-                >
-                  <div className="aspect-[4/5] w-full rounded-xl overflow-hidden bg-slate-200 dark:bg-slate-800 relative mb-2 flex items-center justify-center">
-                    {tpl.previewImage ? (
-                      <img
-                        src={tpl.previewImage}
-                        alt={tpl.name}
-                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-                      />
-                    ) : (
-                      <div className="flex flex-col items-center justify-center p-2 text-center bg-gradient-to-b from-blue-500/10 to-indigo-500/10 w-full h-full">
-                        <Sparkles className="w-7 h-7 text-blue-600 dark:text-blue-400 mb-1.5 animate-pulse" />
-                        <span className="text-[10.5px] font-black text-blue-700 dark:text-blue-300">AUTO AI</span>
-                      </div>
-                    )}
-                    {isSelected && (
-                      <div className="absolute top-1.5 right-1.5 bg-blue-600 text-white rounded-full p-0.5 shadow-md">
-                        <Check className="w-3.5 h-3.5 stroke-[3]" />
-                      </div>
-                    )}
-                  </div>
-                  <div>
-                    <div className="text-[11.5px] font-black text-slate-900 dark:text-slate-100 truncate">
-                      {tpl.name}
-                    </div>
-                    <div className="text-[10px] text-slate-500 dark:text-slate-400 line-clamp-1 leading-tight mt-0.5">
-                      {tpl.subtitle}
-                    </div>
-                  </div>
-                </button>
-              );
-            })}
-          </div>
-        </div>
-      )}
 
       {/* CHECKBOX SEDERHANA & INTUITIF: PASANG FOTO SAYA DI POSTER */}
       {isPoster && onIncludeUserPhotoChange && (

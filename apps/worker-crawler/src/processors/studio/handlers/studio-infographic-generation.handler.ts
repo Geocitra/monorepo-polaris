@@ -1,5 +1,3 @@
-import fs from 'fs';
-import path from 'path';
 import { Job } from 'bullmq';
 import { and, eq, sql } from 'drizzle-orm';
 import {
@@ -13,36 +11,15 @@ import {
   findSimilarKnowledgeChunks,
   withTenantContext,
 } from '@polaris/database';
-import {
-  OpenAIAIEngineAdapter,
-  synthesizeArtCollageCopy,
-} from '@polaris/ai-engine';
+import { OpenAIAIEngineAdapter } from '@polaris/ai-engine';
 import {
   CloudflareR2StorageAdapter,
-  CreativePosterCompositor,
+  ChromiumPosterCompositor,
 } from '@polaris/storage';
 import { ContentStatus, AssetType } from '@polaris/shared-types';
 import { AiCostCalculator } from '@polaris/core-domain';
 import { StudioGenerationJobPayload } from '../../../queues/studio.queue.js';
 import { StudioContextHelper } from '../studio-context.helper.js';
-
-/**
- * Mencari path file gambar template infografis secara absolut
- * terlepas dari process.cwd() saat worker dieksekusi
- */
-function resolveInfographicTemplatePath(fileName: string): string {
-  const possibleRoots = [
-    process.cwd(),
-    path.resolve(process.cwd(), '../..'),
-    path.resolve(process.cwd(), '..'),
-    'C:/Users/Geocitra1/Documents/dev/monorepo-polaris',
-  ];
-  for (const root of possibleRoots) {
-    const candidate = path.resolve(root, 'uploads/references/infografis', fileName);
-    if (fs.existsSync(candidate)) return candidate;
-  }
-  return path.resolve(process.cwd(), 'uploads/references/infografis', fileName);
-}
 
 export class StudioInfographicGenerationHandler {
   public static async execute(
@@ -128,33 +105,6 @@ export class StudioInfographicGenerationHandler {
       // Resolusi identitas representasi resmi (Dewan/Tokoh Publik)
       const roleIdentity = StudioContextHelper.resolveSignatureAndHeader(member, dapilName);
 
-      // Ambil foto tokoh bila ada
-      let subjectPhotoBuffer: Buffer | undefined = undefined;
-      const candidatePhotoUrl =
-        (data as any).customPhotoUrl ||
-        member?.photoUrl ||
-        (Array.isArray(member?.photoGallery) && member.photoGallery[0]);
-
-      if (candidatePhotoUrl && typeof candidatePhotoUrl === 'string') {
-        try {
-          if (candidatePhotoUrl.startsWith('data:')) {
-            const base64Part = candidatePhotoUrl.split(',')[1] || candidatePhotoUrl;
-            subjectPhotoBuffer = Buffer.from(base64Part, 'base64');
-          } else if (candidatePhotoUrl.startsWith('http://') || candidatePhotoUrl.startsWith('https://')) {
-            const resp = await fetch(candidatePhotoUrl, { signal: AbortSignal.timeout(6000) });
-            if (resp.ok) {
-              subjectPhotoBuffer = Buffer.from(await resp.arrayBuffer());
-            }
-          }
-        } catch (photoErr: any) {
-          console.warn(`[StudioInfographic] Gagal mengambil foto tokoh: ${photoErr.message}`);
-        }
-      }
-
-      const galleryPhotos: string[] = (Array.isArray(member?.photoGallery) ? member.photoGallery : []).filter(
-        (url): url is string => typeof url === 'string' && url.length > 0
-      );
-
       const tenantBrandHex = await StudioContextHelper.resolveTenantBrandColor(
         tenantId,
         member?.partyAffiliation
@@ -225,11 +175,11 @@ export class StudioInfographicGenerationHandler {
       await StudioContextHelper.emitProgress(
         tenantId,
         jobId,
-        25,
-        'Memilih template infografis terkurasi...'
+        35,
+        'Memilih gaya infografis & mengenerate kanvas AI...'
       );
 
-      // 2. Pilih salah satu dari 5 template infografis resmi
+      // Pemilihan gaya infografis otomatis secara acak (random) dari 5 template terkurasi
       const infographicArchetypeList = [
         'INFOGRAPHIC_NARRATIVE_WAVE',
         'INFOGRAPHIC_CHRONICLE_GRID',
@@ -238,97 +188,75 @@ export class StudioInfographicGenerationHandler {
         'INFOGRAPHIC_VISIONARY_TIMELINE',
       ] as const;
 
-      let chosenArchetype = data.forcedArchetype as string | undefined;
-      if (!chosenArchetype || chosenArchetype === 'auto' || !infographicArchetypeList.includes(chosenArchetype as any)) {
-        chosenArchetype = infographicArchetypeList[Math.floor(Math.random() * infographicArchetypeList.length)];
-      }
+      // Selalu pilih acak (random) setiap kali generate
+      const chosenArchetype =
+        infographicArchetypeList[Math.floor(Math.random() * infographicArchetypeList.length)];
 
-      // Map archetype ke nama file template resmi
-      let templateRefFileName = 'template-03-radial-clock-chronicle.jpg';
-      if (chosenArchetype === 'INFOGRAPHIC_NARRATIVE_WAVE') {
-        templateRefFileName = 'template-01-red-wave-narrative.jpg';
-      } else if (chosenArchetype === 'INFOGRAPHIC_CHRONICLE_GRID') {
-        templateRefFileName = 'template-02-biography-timeline-grid.jpg';
-      } else if (chosenArchetype === 'INFOGRAPHIC_ADVOCACY_PILLARS') {
-        templateRefFileName = 'template-04-advocacy-data-pillars.jpg';
-      } else if (chosenArchetype === 'INFOGRAPHIC_VISIONARY_TIMELINE') {
-        templateRefFileName = 'template-05-visionary-milestone-timeline.jpg';
-      }
+      console.log(`[StudioInfographic] Menjalankan Art-Collage Pipeline Infografis (${chosenArchetype})...`);
 
-      console.log(`[StudioInfographic] Menggunakan template infografis: ${chosenArchetype} (${templateRefFileName})`);
-
-      // Muat background buffer dari file template
-      const templateFullPath = resolveInfographicTemplatePath(templateRefFileName);
-      let backgroundBuffer: Buffer;
-      if (fs.existsSync(templateFullPath)) {
-        backgroundBuffer = fs.readFileSync(templateFullPath);
-      } else {
-        console.warn(`[StudioInfographic] File template ${templateFullPath} tidak ditemukan, menggunakan kanvas fallback.`);
-        backgroundBuffer = Buffer.alloc(0);
-      }
-
-      // 3. AI Menghasilkan Teks Editorial yang Relevan Khusus Sesuai Template
-      await StudioContextHelper.emitProgress(
-        tenantId,
-        jobId,
-        45,
-        'Merumuskan struktur konten dan data infografis...'
-      );
-
-      const synthesizedCopy = await synthesizeArtCollageCopy({
+      // =========================================================================
+      // ALUR INFOGRAFIS MURNI SEPERTI POSTER (ZERO-SKELETON / FULL AI VISION)
+      // 1. Selector memilih template referensi dari uploads/references/infografis/
+      // 2. AI Generator menghasilkan kanvas visual utuh dari nol (tanpa teks)
+      // 3. Gemini Vision mendeteksi zona kertas kosong (Negative Space)
+      // =========================================================================
+      const artCollage = await aiEngine.generateArtCollagePoster({
         topic: cleanPrompt,
-        groundedContext: groundedContextSummary,
-        archetype: chosenArchetype as any,
+        groundedContextSummary,
+        forcedArchetype: (chosenArchetype as any) || undefined,
+        isInfographic: true,
+        tenantBrandHex,
+        tenantId,
+        variationKey: `${publicationId}:${jobId}`,
       });
 
-      // 4. Komposisi Tata Letak Presisi Mengikuti Template Asli (1:1 Layout)
+      // 4. Chromium merender tipografi infografis langsung di atas kanvas dengan tata letak adaptif
       await StudioContextHelper.emitProgress(
         tenantId,
         jobId,
         70,
-        `Merender infografis presisi sesuai template (${chosenArchetype})...`
+        `Merender tipografi grafis Chromium (${artCollage.archetype})...`
       );
 
-      const composed = await CreativePosterCompositor.composePoster({
-        backgroundBuffer,
-        subjectPhotoBuffer,
-        galleryPhotos,
-        headline: synthesizedCopy.headline || headlineText,
-        quote: synthesizedCopy.closingLine || `Aspirasi & Kebijakan Terukur // ${dapilName.toUpperCase()}`,
-        memberName: member?.fullName || roleIdentity.signature,
-        memberTitle: roleIdentity.headerTag || `${member?.commissionName || 'KOMISI DPR RI'} // ${dapilName}`,
-        archetype: chosenArchetype as any,
-        compositionMode: 'PUBLIC_ADVOCACY',
-        synthesizedCopy: {
-          ...synthesizedCopy,
-          primaryAccent: tenantBrandHex,
-        } as any,
-        primaryAccentColor: tenantBrandHex,
-        canvasWidth: 1080,
-        canvasHeight: 1350,
-        editionTag: roleIdentity.editionTag || `POLARIS // ${dapilName.toUpperCase()}`,
-        outputFormat: 'webp',
-        enableVisualQA: false,
+      const composed = await ChromiumPosterCompositor.compose({
+        canvasBuffer: artCollage.imageBuffer,
+        copy: artCollage.copy,
+        zones: artCollage.layout,
+        palette: {
+          accentHex: artCollage.mutation.palette.accentHex,
+          secondaryHex: artCollage.mutation.palette.secondaryHex,
+        },
+        signature: roleIdentity.signature,
+        headerTag: roleIdentity.headerTag,
+        editionTag: roleIdentity.editionTag,
+        textToneHint: artCollage.layout.textTone,
+        archetype: artCollage.archetype,
       });
 
       const posterBuffer: Buffer = composed.buffer;
       const posterSizeBytes: number = composed.sizeBytes;
       const promptUsedJson = JSON.stringify({
-        engine: 'INFOGRAPHIC_TEMPLATE_COMPOSITOR_V2',
-        archetype: chosenArchetype,
-        templateReference: templateRefFileName,
-        headline: synthesizedCopy.headline,
-        kicker: synthesizedCopy.kicker,
-        pointsCount: synthesizedCopy.points?.length || 0,
+        engine: 'ART_COLLAGE_INFOGRAPHIC_CHROMIUM',
+        renderer: 'chromium',
+        blueprintId: artCollage.blueprintId,
+        archetype: artCollage.archetype,
+        referenceFile: artCollage.referenceFile,
+        usedStyleReference: artCollage.usedStyleReference,
+        mutation: artCollage.mutation,
+        layout: artCollage.layout,
+        imagePrompt: artCollage.imagePrompt,
+        imageProvider: artCollage.imageProvider,
+        detectedLuminance: composed.detectedLuminance,
+        blendModeUsed: composed.blendModeUsed,
       });
 
       console.log(
-        `[StudioInfographic] Sukses merender infografis dengan layout template ${chosenArchetype} (${posterSizeBytes} bytes)`
+        `[StudioInfographic] Sukses membuat infografis otonom tanpa kerangka statis (${posterSizeBytes} bytes)`
       );
 
       await StudioContextHelper.emitProgress(tenantId, jobId, 85, 'Menyimpan aset infografis HD...');
 
-      // 5. Multi-tier upload
+      // 5. Multi-tier upload ke storage
       let finalPublicUrl = '';
       let finalSizeBytes = posterSizeBytes;
       const destPath = `posters/${tenantId}/${Date.now()}-${publicationId}.webp`;
@@ -369,9 +297,9 @@ export class StudioInfographicGenerationHandler {
         await tx
           .update(contentPublications)
           .set({
-            title: synthesizedCopy.headline || headlineText,
-            excerpt: `Infografik Publik: ${synthesizedCopy.headline || headlineText}`,
-            bodyContentMarkdown: `# ${synthesizedCopy.headline || headlineText}\n\n![${synthesizedCopy.headline || headlineText}](${finalPublicUrl})\n\n*Dipublikasikan melalui Studio Infografis Polaris Gov.*`,
+            title: artCollage.copy.headline || headlineText,
+            excerpt: `Infografik Publik: ${artCollage.copy.headline || headlineText}`,
+            bodyContentMarkdown: `# ${artCollage.copy.headline || headlineText}\n\n![${artCollage.copy.headline || headlineText}](${finalPublicUrl})\n\n*Dipublikasikan melalui Studio Infografis Polaris Gov.*`,
             wordCount: 0,
             status: ContentStatus.DRAFT,
             updatedAt: new Date(),
@@ -417,7 +345,7 @@ export class StudioInfographicGenerationHandler {
       await StudioContextHelper.emitNotification(
         tenantId,
         'Infografis Selesai!',
-        `Infografis visual "${synthesizedCopy.headline || headlineText}" berhasil dibuat.`,
+        `Infografis visual "${artCollage.copy.headline || headlineText}" berhasil dibuat.`,
         '/studio/infografis'
       );
 
