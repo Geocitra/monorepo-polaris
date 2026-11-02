@@ -103,16 +103,17 @@ function renderInfographicArchetypeLayout(params: {
   const points = copy.points || [];
 
   // Solid, 100% Opaque High-Contrast Editorial Surfaces (NO INVALID HEX, NO MUDDY BLUR)
-  const cardBgSolid = isLightPaper ? '#FFFFFF' : '#0F172A';
-  const headerBgSolid = isLightPaper ? '#FFFFFF' : '#0F172A';
-  const pillBgSolid = isLightPaper ? '#F8FAFC' : '#1E293B';
-  const borderRuleColor = isLightPaper ? `${accentColor}44` : `${accentColor}66`;
+  // Seluruh Infografis wajib selalu menggunakan kartu putih solid #FFFFFF agar 100% terbaca tajam dan tidak gelap-di-atas-gelap
+  const cardBgSolid = '#FFFFFF';
+  const headerBgSolid = '#FFFFFF';
+  const pillBgSolid = '#F8FAFC';
+  const borderRuleColor = `${accentColor}33`;
 
   // 100% Guaranteed High-Contrast Typography (Crisp and legible on any screen)
-  const titleColor = isLightPaper ? '#0F172A' : '#FFFFFF';
-  const bodyTextColor = isLightPaper ? '#1E293B' : '#F1F5F9';
-  const deckTextColor = isLightPaper ? '#334155' : '#E2E8F0';
-  const mutedTextColor = isLightPaper ? '#64748B' : '#94A3B8';
+  const titleColor = '#0F172A';
+  const bodyTextColor = '#1E293B';
+  const deckTextColor = '#334155';
+  const mutedTextColor = '#64748B';
 
   // Helper KPI Stats Primer (4 Metrik Angka Kunci Kredibel)
   const defaultStatValues = ['15,2%', 'RP 1,2 T', '5 KOTA', '100%'];
@@ -237,12 +238,12 @@ function renderInfographicArchetypeLayout(params: {
       }
       .wave-stagger-card {
         position: absolute;
-        width: 470px;
+        width: 440px;
         background: ${cardBgSolid};
         border: 1.5px solid ${borderRuleColor};
         border-radius: 4px;
-        padding: 16px 18px;
-        box-shadow: 0 4px 18px rgba(0, 0, 0, 0.06);
+        padding: 14px 18px;
+        box-shadow: 0 4px 18px rgba(0, 0, 0, 0.08);
         display: flex;
         flex-direction: column;
       }
@@ -1710,14 +1711,14 @@ export class ChromiumPosterCompositor {
       font-size: 13px;
       font-weight: 800;
       letter-spacing: 2px;
-      color: ${accentColor};
-      background: ${isLightPaper ? 'rgba(255, 255, 255, 0.88)' : 'rgba(15, 23, 42, 0.85)'};
-      border: 1px solid ${accentColor}44;
+      color: ${isInfographic ? '#0F172A' : accentColor};
+      background: ${isInfographic ? '#FFFFFF' : (isLightPaper ? 'rgba(255, 255, 255, 0.88)' : 'rgba(15, 23, 42, 0.85)')};
+      border: 1px solid ${isInfographic ? `${accentColor}33` : `${accentColor}44`};
       border-radius: 6px;
       padding: 6px 14px;
       text-transform: uppercase;
       box-shadow: 0 2px 8px rgba(0,0,0,0.06);
-      text-shadow: ${textShadow};
+      text-shadow: ${isInfographic ? 'none' : textShadow};
     }
 
     ${customLayoutCss}
@@ -1731,20 +1732,20 @@ export class ChromiumPosterCompositor {
       display: flex;
       align-items: center;
       justify-content: space-between;
-      background: ${isLightPaper ? 'rgba(255, 255, 255, 0.90)' : 'rgba(15, 23, 42, 0.88)'};
-      border: 1px solid ${isLightPaper ? 'rgba(0,0,0,0.1)' : 'rgba(255,255,255,0.12)'};
+      background: ${isInfographic ? '#FFFFFF' : (isLightPaper ? 'rgba(255, 255, 255, 0.90)' : 'rgba(15, 23, 42, 0.88)')};
+      border: 1px solid ${isInfographic ? `${accentColor}33` : (isLightPaper ? 'rgba(0,0,0,0.1)' : 'rgba(255,255,255,0.12)')};
       border-radius: 8px;
       padding: 8px 18px;
       box-shadow: 0 3px 12px rgba(0, 0, 0, 0.12);
       backdrop-filter: blur(8px);
-      text-shadow: ${textShadow};
+      text-shadow: ${isInfographic ? 'none' : textShadow};
     }
 
     .signature-title {
       font-family: 'Bebas Neue', sans-serif;
       font-size: 24px;
       letter-spacing: 2px;
-      color: ${primaryColor};
+      color: ${isInfographic ? '#0F172A' : primaryColor};
     }
 
     .footer-year {
@@ -1758,8 +1759,8 @@ export class ChromiumPosterCompositor {
 <body>
   <div class="ink-layer">
     <div class="edition-tag">
-      <span>${esc(editionTag)}</span>
-      <span>${esc(headerTag || 'DOKUMEN ANALISIS PUBLIK')}</span>
+      <span style="color: ${accentColor}; font-weight: 900;">${esc(editionTag)}</span>
+      <span style="color: ${isInfographic ? '#475569' : accentColor}; font-weight: 800;">${esc(headerTag || 'DOKUMEN ANALISIS PUBLIK')}</span>
     </div>
 
     ${mainContentHtml}

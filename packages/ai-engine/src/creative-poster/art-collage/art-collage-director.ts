@@ -162,31 +162,31 @@ export const ART_COLLAGE_DNA: Record<CreativePosterArchetype, ArtCollageDna> = {
   },
   INFOGRAPHIC_NARRATIVE_WAVE: {
     style:
-      'authentic editorial documentary photography and photojournalism capturing Indonesian community reality and public works, natural daylight, professional 35mm lens, sharp photographic detail, realistic newsprint tones',
+      'editorial photojournalism multi-image documentary montage featuring 2 to 3 distinct realistic photographs (wide environment angle, close-up hands-on action, and real Indonesian citizens/workers), natural daylight, 35mm lens, realistic newsprint documentary tones with clean photo divisions',
     anchors: ['TEXT_TOP', 'TEXT_BOTTOM'],
     paperTone: 'LIGHT',
   },
   INFOGRAPHIC_CHRONICLE_GRID: {
     style:
-      'genuine press documentary photography and photojournalism of Indonesian public infrastructure, government facilities, and community environments, natural editorial lighting, realistic textures, Reuters / Kompas documentary photo quality',
+      'genuine press documentary multi-photo montage featuring 2 to 3 distinct realistic photographs of Indonesian public infrastructure, community life, and active field operations, natural editorial lighting, Reuters / Kompas photojournalism triptych quality',
     anchors: ['TEXT_RIGHT', 'TEXT_TOP'],
     paperTone: 'LIGHT',
   },
   INFOGRAPHIC_RADIAL_CLOCK: {
     style:
-      'high-impact documentary photojournalism documenting Indonesian community reality, public works, and local development, authentic documentary photography with natural sunlight, genuine Indonesian people and locations',
+      'high-impact documentary photojournalism montage featuring 2 to 3 related real-world photographs showing progressive phases of the community issue, authentic Indonesian people and genuine field locations under natural daylight',
     anchors: ['TEXT_RIGHT', 'TEXT_TOP'],
     paperTone: 'LIGHT',
   },
   INFOGRAPHIC_ADVOCACY_PILLARS: {
     style:
-      'realistic documentary photography capturing Indonesian public services, schools, healthcare, or agricultural activities in real-world settings, genuine everyday citizens and workers, authentic documentary camera shot',
+      'multi-angle documentary photography montage capturing Indonesian public services, schools, healthcare, or community programs from multiple perspectives (wide-angle facility view + close-up citizen interaction + frontline worker detail)',
     anchors: ['TEXT_TOP', 'TEXT_BOTTOM'],
     paperTone: 'LIGHT',
   },
   INFOGRAPHIC_VISIONARY_TIMELINE: {
     style:
-      'contemporary high-resolution photojournalism of Indonesian modern infrastructure, regional development, transportation, and public facilities, crisp realistic photography with natural atmospheric lighting',
+      'contemporary editorial photojournalism montage featuring 2 to 3 realistic photographs depicting regional development, public infrastructure, and civic life from both panoramic and ground-level angles',
     anchors: ['TEXT_TOP', 'TEXT_BOTTOM'],
     paperTone: 'LIGHT',
   },
@@ -286,25 +286,29 @@ export function compileArtCollageImagePrompt(params: {
   if (isInfographic) {
     let archetypeSpatialGuide = '';
     if (params.archetype === 'INFOGRAPHIC_NARRATIVE_WAVE') {
-      archetypeSpatialGuide = `Composition: Full-canvas dynamic editorial photojournalism capturing ${params.visualSubject}. Authentic Indonesian citizens, workers, or landscape in real life. Realistic natural depth of field and environmental context. Pure photographic scene with zero diagram boxes.`;
+      archetypeSpatialGuide = `Multi-Photo Composition: Multi-image editorial photojournalism documentary montage comprising 2 to 3 distinct realistic photographs about ${params.visualSubject}. Include a wide environmental context shot of the facility/location, paired with close-up shots of hands-on technical action, equipment, or Indonesian workers. Seamlessly integrated with clean editorial photo borders, natural daylight, zero drawings, zero text.`;
     } else if (params.archetype === 'INFOGRAPHIC_CHRONICLE_GRID') {
-      archetypeSpatialGuide = `Composition & Framing: Full-canvas editorial press photography and authentic photojournalism capturing ${params.visualSubject}. The primary focal subject (real Indonesian infrastructure, damaged roads, public facilities, or community action) is prominently framed on the left-hand side and lower-left area, creating a compelling visual anchor with sharp realistic depth. Genuine real-life documentary photography with zero empty rectangles or boxes.`;
+      archetypeSpatialGuide = `Multi-Photo Composition: Multi-image editorial press photography and authentic photojournalism montage featuring 2 to 3 distinct realistic photographs about ${params.visualSubject}. The primary wide-angle documentary shot and close-up action vignettes are prominently framed on the left-hand side and lower-left area, creating a rich multi-angle visual anchor. Genuine real-life documentary photography with zero empty rectangles or boxes.`;
     } else if (params.archetype === 'INFOGRAPHIC_RADIAL_CLOCK') {
-      archetypeSpatialGuide = `Composition & Framing: Full-canvas realistic documentary photography capturing ${params.visualSubject}. The key subject, citizens, workers, and physical environment are prominently framed on the left half of the canvas under natural daylight, leaving the right side open for analytical graphics. Pure realistic photography with zero clock illustrations, zero drawings, and zero diagram cards.`;
+      archetypeSpatialGuide = `Multi-Photo Composition: Multi-image realistic documentary photography montage featuring 2 to 3 related real-world photographs showing progressive phases of ${params.visualSubject}. Prominently framed on the left half of the canvas under natural daylight, leaving the right side open for analytical graphics. Pure realistic photography with zero clock illustrations, zero drawings, and zero diagram cards.`;
     } else if (params.archetype === 'INFOGRAPHIC_ADVOCACY_PILLARS') {
-      archetypeSpatialGuide = `Composition & Framing: Full-canvas authentic documentary photojournalism capturing real Indonesian citizens, students, workers, or public facilities related to ${params.visualSubject}. The central horizontal band of the image is wide open and clearly showcases the environment and people. Pure real-world photography with people and environment, zero pillar containers, zero cartoon drawings, zero card outlines.`;
+      archetypeSpatialGuide = `Multi-Photo Composition: Multi-image authentic documentary photojournalism montage capturing real Indonesian citizens, students, workers, or public facilities related to ${params.visualSubject} across 2 to 3 photographic panels, with the central horizontal band open and clearly visible.`;
     } else {
       // INFOGRAPHIC_VISIONARY_TIMELINE
-      archetypeSpatialGuide = `Composition & Framing: Full-canvas contemporary editorial photojournalism depicting ${params.visualSubject}, featuring real Indonesian modern civic architecture, public infrastructure, and genuine community life. The central horizontal band prominently showcases the physical setting and activity. Natural realistic photography, zero timeline bars, zero illustrations, zero frosted panels.`;
+      archetypeSpatialGuide = `Multi-Photo Composition: Multi-image contemporary editorial photojournalism montage depicting ${params.visualSubject}, featuring 2 to 3 realistic photographs showing public infrastructure and genuine community life from both panoramic and ground-level angles.`;
     }
 
     return [
-      `Create a high-resolution, print-quality realistic documentary photograph (vertical 4:5 ratio) specifically capturing: ${params.visualSubject}.`,
+      `Create a high-resolution, print-quality realistic editorial documentary photojournalism MULTI-IMAGE MONTAGE (vertical 4:5 ratio) specifically capturing: ${params.visualSubject}.`,
       `Photographic Style: ${dna.style}. Shot on professional 35mm / 50mm camera lens with natural daylight and authentic colors.`,
-      `Subject Relevance: The photograph MUST specifically and accurately depict ${params.visualSubject}. Real Indonesian people, genuine Indonesian urban or rural settings, real public facilities or infrastructure relevant to the issue.`,
+      `Multi-Image Requirement: The background canvas MUST feature MORE THAN 1 PHOTOGRAPH — compose 2 to 3 distinct, realistic documentary photographs seamlessly arranged as a journalistic press photo montage or triptych (like in National Geographic, Reuters, or Kompas):`,
+      `- Panel 1 (Wide Context): Wide-angle view showing the broader facility, environment, public infrastructure, or setting.`,
+      `- Panel 2 (Action / Technical Detail): Close-up documentary shot focusing on active hands, tools, machinery, or physical action.`,
+      `- Panel 3 (Human Context): Candid documentary shot of everyday Indonesian citizens, students, or workers engaged in the activity.`,
+      `All photographic panels must have consistent natural lighting, authentic Indonesian people and real-world locations, genuine documentary photojournalism quality.`,
       archetypeSpatialGuide,
       `STRICT REALISM & ANTI-CARTOON MANDATES:`,
-      `- 100% REALISTIC PHOTOGRAPHY ONLY. Must look like an authentic documentary press photograph from Reuters, Kompas, or National Geographic.`,
+      `- 100% REALISTIC PHOTOGRAPHY ONLY. Must look like authentic documentary press photographs from Reuters, Kompas, or National Geographic.`,
       `- ABSOLUTELY NO ANIMATION, NO ANIME, NO CARTOON, NO 3D RENDER, NO ISOMETRIC VECTOR ART, NO SKETCHES, NO COMICS, NO LINE ART, NO CLIPART, NO VINTAGE ENGRAVINGS, NO PAINTING.`,
       `- ABSOLUTELY NO FAKE HISTORICAL DRAWINGS, NO CLOCKS, NO COMPASSES, NO RETRO ETCHINGS.`,
       `- DO NOT DRAW ANY UI CARDS, FROSTED GLASS RECTANGLES, WHITE BOXES, OR BLUR PANELS.`,
@@ -547,7 +551,7 @@ STRUKTUR WAJIB INFOGRAFIS DATA KOMPREHENSIF (${specificGuide}):
    - text: Uraian substantif 2 kalimat padat informasi, memuat angka konkret dan rincian langkah kebijakan (maks ${COPY_LIMITS.pointText} karakter).
 6. closingLine: Rekomendasi aksi / penegasan transparansi tata kelola kebijakan (maks ${COPY_LIMITS.closing} karakter).
 7. PANTANGAN: DILARANG kata "nyata", DILARANG slogan motivasional kosong tanpa data, DILARANG butir yang tidak memuat angka atau rincian kebijakan.
-8. visualSubject: Deskripsi adegan FOTOGRAFI DOKUMENTER REALISTIS (authentic documentary photojournalism) dalam Bahasa Inggris (maks 35 kata). Gambarkan realitas fotografi konkret di Indonesia yang SANGAT RELEVAN dengan topik: misal jalan raya rusak berlubang dengan lalu lintas warga nyata, gedung parlemen/kantor pemerintahan nyata, permukiman padat perkotaan nyata, petani di sawah nyata, atau fasilitas publik nyata di Indonesia. PANTANGAN MUTLAK: DILARANG animasi, DILARANG kartun, DILARANG anime, DILARANG 3D render, DILARANG sketsa/gambar tangan, DILARANG jam/kompas antik, DILARANG menyebut kotak/card/bagan/teks.
+8. visualSubject: Deskripsi adegan FOTOGRAFI DOKUMENTER MULTI-FOTO (editorial multi-photo documentary montage) dalam Bahasa Inggris (maks 45 kata). Rancang komposisi yang memuat 2 sampai 3 sudut foto nyata yang saling melengkapi di Indonesia terkait topik: misalnya panel 1 (lingkungan/fasilitas umum luas), panel 2 (aksi teknis/tangan pekerja/alat kerja konkret), dan panel 3 (warga/interaksi komunitas nyata). PANTANGAN MUTLAK: DILARANG animasi, DILARANG kartun, DILARANG anime, DILARANG 3D render, DILARANG sketsa/gambar tangan, DILARANG jam/kompas antik, DILARANG menyebut kotak/card/bagan/teks.
 
 Format JSON Wajib:
 {"kicker":"","headline":"","deck":"","stats":[{"value":"","label":""}],"points":[{"label":"","text":""}],"closingLine":"","visualSubject":""}`;
