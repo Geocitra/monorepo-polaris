@@ -392,7 +392,13 @@ Keluarkan hasil HANYA dalam format JSON valid berikut:
     articleTitle: string,
     params: GenerateArticleParams,
     previousChapterSummary?: string
-  ): Promise<{ chapterMarkdown: string; chapterSummary: string; tokensUsed: number }> {
+  ): Promise<{
+    chapterMarkdown: string;
+    chapterSummary: string;
+    tokensUsed: number;
+    inputTokens: number;
+    outputTokens: number;
+  }> {
     const profile = EditorialStyleProfileResolver.resolve(params.writingStyle, params.framingStance);
 
     let structuralMandate = '';
