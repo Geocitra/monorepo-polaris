@@ -304,11 +304,11 @@ export function compileArtCollageImagePrompt(params: {
 // =============================================================================
 const COPY_LIMITS = {
   kicker: 48,
-  headline: 30,
-  deck: 140,
-  pointLabel: 22,
-  pointText: 120,
-  closing: 90,
+  headline: 42,
+  deck: 180,
+  pointLabel: 32,
+  pointText: 160,
+  closing: 120,
 };
 
 function clampWords(text: string, max: number): string {
@@ -350,8 +350,13 @@ function finalizeCopy(
     ? Object.values(rawPointsCandidate)
     : [];
 
+  const isInfographic = isInfographicArchetype(archetype);
   const maxPoints =
-    archetype === 'INFOGRAPHIC_ADVOCACY_PILLARS' ? 5 : isInfographicArchetype(archetype) ? 4 : 3;
+    archetype === 'INFOGRAPHIC_ADVOCACY_PILLARS' || archetype === 'INFOGRAPHIC_VISIONARY_TIMELINE'
+      ? 5
+      : isInfographic
+      ? 4
+      : 3;
 
   const points = pointsArray
     .map((pt: any, idx: number) => {
@@ -427,40 +432,57 @@ export async function synthesizeArtCollageCopy(params: {
   archetype?: CreativePosterArchetype;
 }): Promise<ArtCollageCopy> {
   const { topic, groundedContext, archetype } = params;
+  const isInfographic = isInfographicArchetype(archetype);
 
-  let infographicGuide = '';
-  if (archetype === 'INFOGRAPHIC_ADVOCACY_PILLARS') {
-    infographicGuide = '\nSTRUKTUR INFOGRAFIS PILAR AKSI:\nTulis points TEPAT 5 item langkah aksi solutif (misal pilar tindakan atau akronim kata kerja), label kata singkat maks 18 karakter.\n';
-  } else if (archetype === 'INFOGRAPHIC_NARRATIVE_WAVE') {
-    infographicGuide = '\nSTRUKTUR INFOGRAFIS GELOMBANG NARATIF:\nTulis points TEPAT 4 item mewakili 4 sudut pandang atau dimensi isu (misal: Dimensi Regulasi, Dimensi Sosial, Tantangan Lapangan, Solusi Terarah).\n';
-  } else if (
-    archetype === 'INFOGRAPHIC_CHRONICLE_GRID' ||
-    archetype === 'INFOGRAPHIC_RADIAL_CLOCK' ||
-    archetype === 'INFOGRAPHIC_VISIONARY_TIMELINE'
-  ) {
-    infographicGuide = '\nSTRUKTUR INFOGRAFIS KRONIK / LINTASAN WAKTU:\nTulis points 3 atau 4 item berupa urutan tonggak peristiwa, rekam jejak atau fase kronologi waktu strategis.\n';
-  }
+  let systemPrompt = '';
 
-  const systemPrompt = `Anda adalah copywriter editorial kebijakan publik profesional berstandar tinggi (mengikuti Master Editorial Rules).
-Tulis teks poster ringkas bertopik: "${topic}".
-${infographicGuide}${groundedContext ? `\nFAKTA RISET (gunakan angka HANYA jika ada di sini, jangan mengarang angka):\n${groundedContext.slice(0, 1800)}\n` : ''}
-PEDOMAN MASTER EDITORIAL RULES (WAJIB DIPATUHI):
-- Bahasa Indonesia baku, modern, matang, berbobot substantif, bukan gaya birokrasi kaku atau brosur jualan.
-- headline: 2 sampai 4 kata spesifik dan kontemporer, maks ${COPY_LIMITS.headline} karakter.
-- kicker: label rubrik ringkas di atas judul (misal: "TELAAH ISU", "KEBIJAKAN KESEHATAN", "INFRASTRUKTUR WILAYAH"), maks ${COPY_LIMITS.kicker} karakter. Jangan mencantumkan "PARLEMEN" atau "LEGISLATIF" jika bukan akun parlemen.
-- deck: 1 kalimat pengantar tuntas yang memperjelas tesis persoalan (bukan mengulang judul), maks ${COPY_LIMITS.deck} karakter.
-- points: TEPAT 2 atau 3 butir analisis konkret (kecuali instruksi infografis di atas menentukan lain). label maks ${COPY_LIMITS.pointLabel} karakter (misal: "AKSES LAYANAN", "KENDALA ANGGARAN", "SOLUSI TEKNIS"), text 1 kalimat analitis tuntas maks ${COPY_LIMITS.pointText} karakter.
-- closingLine: 1 kalimat sintesis arah tindak lanjut terukur, maks ${COPY_LIMITS.closing} karakter. DILARANG membuat slogan motivasional generik seperti "Bersama kita wujudkan...".
-- PANTANGAN MUTLAK:
-  * DILARANG kata "nyata" (ganti dengan "konkret", "terukur", atau data riil).
-  * DILARANG kata "sekadar".
-  * DILARANG tanda baca em dash (—). Gunakan koma, titik, atau tanda kurung.
-  * DILARANG metafora klise AI ("angin segar", "garda terdepan", "tonggak bersejarah", "merajut asa", "sinergi komprehensif").
-  * DILARANG Oxford comma.
-- visualSubject: deskripsi adegan visual dalam BAHASA INGGRIS (maks 40 kata) yang menggambarkan topik yang sama secara konkret di Indonesia (orang anonim, tempat, benda). Tanpa nama tokoh, tanpa teks/papan nama.
+  if (isInfographic) {
+    let specificGuide = '';
+    if (archetype === 'INFOGRAPHIC_ADVOCACY_PILLARS') {
+      specificGuide = 'Tulis TEPAT 5 pilar aksi terencana. Setiap pilar memiliki target angka/metrik konkret.';
+    } else if (archetype === 'INFOGRAPHIC_NARRATIVE_WAVE') {
+      specificGuide = 'Tulis TEPAT 4 dimensi isu kebijakan (misal: Sisi Anggaran, Titik Kritis Lapangan, Standar Teknis, Kanal Aduan/Akses).';
+    } else {
+      specificGuide = 'Tulis TEPAT 4 tonggak capaian atau tahapan kronologis terukur dengan besaran angka, target hari/bulan, atau volume output riil.';
+    }
+
+    systemPrompt = `Anda adalah visual data journalist dan analis kebijakan publik senior.
+Tulis naskah INFOGRAFIS DATA EDUKATIF yang KAYA ANGKA, KREDIBEL, dan PADAT DATA TERUKUR bertopik: "${topic}".
+${groundedContext ? `\nFAKTA RISET & KONTEKS DAERAH:\n${groundedContext.slice(0, 1800)}\n` : ''}
+
+PANDUAN STRUKTUR INFOGRAFIS (${specificGuide}):
+1. Tulis 4 sampai 5 butir data konkret (points).
+2. SETIAP BUTIR WAJIB MEMUAT ANGKA, METRIK, ATAU INDIKATOR TERUKUR yang realistis dan sangat relevan dengan isu (misalnya: besaran alokasi anggaran dalam Rp/Miliar, jumlah kilometer atau titik ruas, target durasi hari/bulan pengerjaan, persentase peningkatan, indeks capaian, atau nama kecamatan/wilayah spesifik).
+3. headline: Judul infografis yang lugas, padat, dan berbobot (maks ${COPY_LIMITS.headline} karakter).
+4. kicker: Rubrik kebijakan spesifik (misal: "INFRASTRUKTUR DAERAH", "DATA ANGGARAN APBD", "INDIKATOR KESEHATAN").
+5. deck: 1-2 kalimat ringkasan data inti dan urgensi masalah (maks ${COPY_LIMITS.deck} karakter).
+6. points: Daftar 4 atau 5 butir data terstruktur:
+   - label: Frasa metrik ringkas bertuliskan angka/indikator (maks ${COPY_LIMITS.pointLabel} karakter, misal: "42 TITIK KRITIS", "ALOKASI RP 48,5 M", "TARGET 90 HARI", "STANDAR HOTMIX 6 CM", "3 KECAMATAN PRIORITAS").
+   - text: Penjelasan data konkret dan terukur (1-2 kalimat padat informasi substantif, maks ${COPY_LIMITS.pointText} karakter).
+7. closingLine: 1 kalimat sintesis arah tindak lanjut terukur (maks ${COPY_LIMITS.closing} karakter).
+8. PANTANGAN: DILARANG kata "nyata", DILARANG slogan motivasional klise, DILARANG kalimat kosong tanpa data.
+9. visualSubject: Deskripsi pemandangan visual tanpa teks dalam Bahasa Inggris (maks 40 kata) untuk latar belakang ilustrasi.
 
 Keluarkan JSON murni:
 {"kicker":"","headline":"","deck":"","points":[{"label":"","text":""}],"closingLine":"","visualSubject":""}`;
+  } else {
+    const posterGuide = archetype === 'RETRO_CAMPAIGN' ? '\nTeks poster kampanye persuasif lugas.\n' : '';
+
+    systemPrompt = `Anda adalah copywriter editorial kebijakan publik profesional berstandar tinggi (mengikuti Master Editorial Rules).
+Tulis teks poster ringkas bertopik: "${topic}".
+${posterGuide}${groundedContext ? `\nFAKTA RISET:\n${groundedContext.slice(0, 1800)}\n` : ''}
+PEDOMAN MASTER EDITORIAL RULES (WAJIB DIPATUHI):
+- Bahasa Indonesia baku, modern, matang, berbobot substantif, bukan gaya birokrasi kaku atau brosur jualan.
+- headline: 2 sampai 4 kata spesifik dan kontemporer, maks ${COPY_LIMITS.headline} karakter.
+- kicker: label rubrik ringkas di atas judul (misal: "TELAAH ISU", "KEBIJAKAN KESEHATAN", "INFRASTRUKTUR WILAYAH"), maks ${COPY_LIMITS.kicker} karakter.
+- deck: 1 kalimat pengantar tuntas yang memperjelas tesis persoalan (bukan mengulang judul), maks ${COPY_LIMITS.deck} karakter.
+- points: TEPAT 2 atau 3 butir analisis konkret. label maks ${COPY_LIMITS.pointLabel} karakter, text 1 kalimat analitis tuntas maks ${COPY_LIMITS.pointText} karakter.
+- closingLine: 1 kalimat sintesis arah tindak lanjut terukur, maks ${COPY_LIMITS.closing} karakter.
+- visualSubject: deskripsi adegan visual dalam BAHASA INGGRIS (maks 40 kata) yang menggambarkan topik yang sama secara konkret di Indonesia.
+
+Keluarkan JSON murni:
+{"kicker":"","headline":"","deck":"","points":[{"label":"","text":""}],"closingLine":"","visualSubject":""}`;
+  }
 
   try {
     const response = await openaiClient.chat.completions.create({
@@ -473,15 +495,24 @@ Keluarkan JSON murni:
     return finalizeCopy(parsed, topic, archetype);
   } catch (err: any) {
     console.warn(`[ArtCollageDirector] Copy AI gagal, memakai fallback deterministik: ${err?.message}`);
-    return finalizeCopy(
-      {
-        kicker: 'Telaah Isu Kebijakan',
-        headline: clampWords(topic, COPY_LIMITS.headline),
-        deck: `Evaluasi terukur atas tata kelola ${topic} demi kepentingan masyarakat luas.`,
-        points: [
+    const fallbackPoints = isInfographic
+      ? [
+          { label: '38 TITIK PRIORITAS', text: `Pemetaan ruas jalan rusak kritis di wilayah ${topic} untuk penanganan segera.` },
+          { label: 'ALOKASI RP 45 M', text: 'Dukungan anggaran pemeliharaan berkala infrastruktur melalui APBD terpadu.' },
+          { label: 'TARGET 90 HARI', text: 'Penyelesaian perbaikan aspal hotmix terstandar dengan pengawasan berkala.' },
+          { label: 'KANAL ADUAN 24/7', text: 'Aktivasi sistem monitoring dan penerimaan aspirasi warga berbasis digital.' },
+        ]
+      : [
           { label: 'Urgensi Isu', text: `Persoalan ${topic} memerlukan perbaikan tata kelola dan pengawasan terintegrasi.` },
           { label: 'Arah Solusi', text: 'Penyusunan regulasi komprehensif dan alokasi sumber daya berbasis data lapangan.' },
-        ],
+        ];
+
+    return finalizeCopy(
+      {
+        kicker: isInfographic ? 'Data Kebijakan Daerah' : 'Telaah Isu Kebijakan',
+        headline: clampWords(topic, COPY_LIMITS.headline),
+        deck: `Evaluasi terukur atas tata kelola ${topic} demi kepentingan masyarakat luas.`,
+        points: fallbackPoints,
         closingLine: 'Dibutuhkan komitmen konkret untuk perbaikan berkelanjutan.',
         visualSubject: `everyday Indonesian civic life directly related to: ${topic}`,
       },

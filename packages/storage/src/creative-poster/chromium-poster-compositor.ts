@@ -1,4 +1,5 @@
 import sharp from 'sharp';
+import { isInfographicArchetype } from '@polaris/shared-types';
 import { BrowserSingleton } from './browser-singleton.js';
 import { ChromiumFontFace } from './chromium-font-face.js';
 
@@ -94,11 +95,16 @@ export class ChromiumPosterCompositor {
       ? textToneHint === 'DARK'
       : luminance > 135;
 
-    const blendModeUsed: 'multiply' | 'normal' = isLightPaper ? 'multiply' : 'normal';
+    const isInfographic = isInfographicArchetype(archetype);
+    const blendModeUsed: 'multiply' | 'normal' = isInfographic
+      ? 'normal'
+      : isLightPaper
+      ? 'multiply'
+      : 'normal';
 
     const primaryColor = isLightPaper ? '#111827' : '#FFFFFF';
     const accentColor = safeHex(palette.accentHex, isLightPaper ? '#DC2626' : '#FBBF24');
-    const secondaryColor = safeHex(palette.secondaryHex, isLightPaper ? '#4B5563' : '#E2E8F0');
+    const secondaryColor = safeHex(palette.secondaryHex, isLightPaper ? '#334155' : '#E2E8F0');
     const textShadow = isLightPaper
       ? 'none'
       : '0 2px 14px rgba(0, 0, 0, 0.85), 0 1px 3px rgba(0, 0, 0, 0.9)';
@@ -121,14 +127,16 @@ export class ChromiumPosterCompositor {
 
     // Unified Editorial Column bounds (mencegah collision antar elemen 100%):
     const flowLeft = Math.max(40, Math.min(hlLeft, bdLeft));
-    const flowTop = hlTop;
+    const flowTop = Math.max(105, hlTop);
     const rawFlowWidth = Math.round(Math.max(hlWidth, bdWidth));
     const safeFlowWidth = Math.min(rawFlowWidth, 1040 - flowLeft);
     const flowMaxHeight = Math.max(250, ftTop - flowTop - 20);
 
     // Dynamic Font Sizing berdasarkan panjang judul
     const headlineText = (copy.headline || 'ADVOKASI PUBLIK').toUpperCase();
-    const titleFontSize = headlineText.length > 28 ? 64 : headlineText.length > 18 ? 76 : 90;
+    const titleFontSize = isInfographic
+      ? (headlineText.length > 28 ? 44 : headlineText.length > 18 ? 52 : 62)
+      : (headlineText.length > 28 ? 64 : headlineText.length > 18 ? 76 : 90);
 
     const bgMime =
       meta.format === 'png' ? 'image/png' : meta.format === 'jpeg' ? 'image/jpeg' : 'image/webp';
@@ -156,11 +164,11 @@ export class ChromiumPosterCompositor {
         .points-container {
           display: grid;
           grid-template-columns: repeat(${pillarCount}, 1fr);
-          gap: 12px;
-          margin-bottom: 16px;
+          gap: 10px;
+          margin-bottom: 14px;
         }
         .pillar-col {
-          background: ${isLightPaper ? 'rgba(255, 255, 255, 0.75)' : 'rgba(17, 24, 39, 0.6)'};
+          background: ${isLightPaper ? 'rgba(255, 255, 255, 0.94)' : 'rgba(17, 24, 39, 0.92)'};
           border: 1.5px solid ${accentColor}66;
           border-radius: 12px;
           padding: 12px 10px;
@@ -168,7 +176,8 @@ export class ChromiumPosterCompositor {
           flex-direction: column;
           align-items: center;
           text-align: center;
-          backdrop-filter: blur(4px);
+          box-shadow: 0 4px 14px rgba(0, 0, 0, 0.12);
+          backdrop-filter: blur(8px);
         }
         .pillar-badge {
           width: 36px;
@@ -216,14 +225,20 @@ export class ChromiumPosterCompositor {
         .points-container {
           display: grid;
           grid-template-columns: repeat(${nodeCount}, 1fr);
-          gap: 14px;
-          margin-bottom: 16px;
+          gap: 12px;
+          margin-bottom: 14px;
           position: relative;
         }
         .timeline-step {
           display: flex;
           flex-direction: column;
           position: relative;
+          background: ${isLightPaper ? 'rgba(255, 255, 255, 0.94)' : 'rgba(17, 24, 39, 0.92)'};
+          border: 1.5px solid ${accentColor}55;
+          border-radius: 10px;
+          padding: 10px 12px;
+          box-shadow: 0 4px 14px rgba(0, 0, 0, 0.12);
+          backdrop-filter: blur(8px);
         }
         .timeline-bullet {
           display: flex;
@@ -290,15 +305,19 @@ export class ChromiumPosterCompositor {
         .points-container {
           display: grid;
           grid-template-columns: 1fr 1fr;
-          gap: 14px;
-          margin-bottom: 16px;
+          gap: 12px;
+          margin-bottom: 14px;
         }
         .dimension-block {
-          background: ${isLightPaper ? 'rgba(255, 255, 255, 0.7)' : 'rgba(17, 24, 39, 0.55)'};
-          border-left: 3px solid ${accentColor};
+          background: ${isLightPaper ? 'rgba(255, 255, 255, 0.94)' : 'rgba(17, 24, 39, 0.92)'};
+          border-left: 4px solid ${accentColor};
+          border-top: 1px solid ${accentColor}44;
+          border-right: 1px solid ${accentColor}44;
+          border-bottom: 1px solid ${accentColor}44;
           padding: 10px 14px;
-          border-radius: 0 8px 8px 0;
-          backdrop-filter: blur(4px);
+          border-radius: 0 10px 10px 0;
+          box-shadow: 0 4px 14px rgba(0, 0, 0, 0.12);
+          backdrop-filter: blur(8px);
         }
         .dimension-header {
           display: flex;
@@ -341,33 +360,37 @@ export class ChromiumPosterCompositor {
           margin-bottom: 16px;
         }
         .chronicle-block {
-          background: ${isLightPaper ? 'rgba(255, 255, 255, 0.7)' : 'rgba(17, 24, 39, 0.55)'};
-          border: 1px solid ${accentColor}44;
-          padding: 10px 12px;
-          border-radius: 8px;
+          background: ${isLightPaper ? 'rgba(255, 255, 255, 0.94)' : 'rgba(17, 24, 39, 0.92)'};
+          border: 1.5px solid ${accentColor}55;
+          padding: 10px 14px;
+          border-radius: 10px;
+          box-shadow: 0 4px 16px rgba(0, 0, 0, 0.12);
+          backdrop-filter: blur(8px);
         }
         .chronicle-badge {
           display: inline-block;
-          font-size: 10px;
+          font-size: 10.5px;
           font-weight: 800;
           background: ${accentColor};
           color: #FFFFFF;
-          padding: 2px 6px;
+          padding: 2.5px 8px;
           border-radius: 4px;
-          margin-bottom: 4px;
-          letter-spacing: 0.5px;
+          margin-bottom: 5px;
+          letter-spacing: 0.8px;
         }
         .chronicle-title {
-          font-size: 13.5px;
+          font-size: 14px;
           font-weight: 800;
           color: ${primaryColor};
           text-transform: uppercase;
-          margin-bottom: 3px;
+          line-height: 1.25;
+          margin-bottom: 4px;
         }
         .chronicle-text {
           font-size: 12.5px;
-          line-height: 1.35;
+          line-height: 1.38;
           color: ${secondaryColor};
+          font-weight: 500;
         }
       `;
     } else {
@@ -459,13 +482,16 @@ export class ChromiumPosterCompositor {
       display: flex;
       justify-content: space-between;
       align-items: center;
-      font-size: 14px;
+      font-size: 13px;
       font-weight: 800;
-      letter-spacing: 2.5px;
+      letter-spacing: 2px;
       color: ${accentColor};
-      border-bottom: 2px solid ${accentColor}44;
-      padding-bottom: 8px;
+      background: ${isLightPaper ? 'rgba(255, 255, 255, 0.88)' : 'rgba(15, 23, 42, 0.85)'};
+      border: 1px solid ${accentColor}44;
+      border-radius: 6px;
+      padding: 6px 14px;
       text-transform: uppercase;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.06);
       text-shadow: ${textShadow};
     }
 
@@ -503,25 +529,28 @@ export class ChromiumPosterCompositor {
 
     .deck {
       font-family: 'Playfair Display', serif;
-      font-size: 21px;
+      font-size: ${isInfographic ? '17px' : '21px'};
       line-height: 1.35;
       color: ${secondaryColor};
       font-style: italic;
       font-weight: 500;
       max-width: 96%;
-      margin-bottom: 16px;
+      margin-bottom: ${isInfographic ? '12px' : '16px'};
     }
 
     ${customPointsCss}
 
     .closing-line {
-      font-size: 16px;
+      font-size: 14.5px;
       font-weight: 700;
-      color: ${accentColor};
-      margin-top: 4px;
-      border-left: 3px solid ${accentColor};
-      padding-left: 12px;
+      color: ${primaryColor};
+      margin-top: 6px;
+      background: ${isLightPaper ? 'rgba(255, 255, 255, 0.92)' : 'rgba(15, 23, 42, 0.88)'};
+      border-left: 4px solid ${accentColor};
+      padding: 8px 14px;
+      border-radius: 6px;
       line-height: 1.35;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
     }
 
     /* Footer Zone */
@@ -533,8 +562,12 @@ export class ChromiumPosterCompositor {
       display: flex;
       align-items: center;
       justify-content: space-between;
-      border-top: 1.5px solid ${primaryColor}33;
-      padding-top: 12px;
+      background: ${isLightPaper ? 'rgba(255, 255, 255, 0.90)' : 'rgba(15, 23, 42, 0.88)'};
+      border: 1px solid ${isLightPaper ? 'rgba(0,0,0,0.1)' : 'rgba(255,255,255,0.12)'};
+      border-radius: 8px;
+      padding: 8px 18px;
+      box-shadow: 0 3px 12px rgba(0, 0, 0, 0.12);
+      backdrop-filter: blur(8px);
       text-shadow: ${textShadow};
     }
 
