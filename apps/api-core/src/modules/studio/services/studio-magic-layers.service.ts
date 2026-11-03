@@ -440,7 +440,7 @@ export class StudioMagicLayersService {
           }
         }
 
-        if (rawCanvasUrl) {
+        if (rawCanvasUrl && rawCanvasUrl !== params.imageUrl) {
           this.logger.log(`[MagicLayers] Mengembalikan Master Raw Canvas Asli untuk publication ${effectivePubId}: ${rawCanvasUrl}`);
           return {
             success: true,

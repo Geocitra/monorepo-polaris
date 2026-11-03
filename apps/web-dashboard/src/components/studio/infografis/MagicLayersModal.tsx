@@ -52,6 +52,7 @@ import {
   ensurePosterFontsLoaded,
   fetchPosterLayerData,
   rehydrateMlObjects,
+  type PosterLayerManifest,
 } from './poster-layer-builder';
 
 interface MagicLayersModalProps {
@@ -504,6 +505,14 @@ function smartTextureInpainting(
   ctx.globalAlpha = 1.0; // 100% Solid Opaque (tidak pernah tembus pandang container)
 
   // ─── REKONSTRUKSI KERTAS/KARTU BERSIH SOLID (#FFFFFF / #FAF8F5) ───
+  const isColoredCard = def?.cardBg && def.cardBg !== '#FFFFFF' && def.cardBg !== 'transparent' && !def.cardBg.startsWith('#FA');
+  if (isColoredCard && def?.cardBg) {
+    ctx.fillStyle = def.cardBg;
+    ctx.fillRect(rx, ry, rw, rh);
+    ctx.restore();
+    return;
+  }
+
   let pR = 252, pG = 250, pB = 247;
   const rgbMatch = paperColor.match(/\d+/g);
   if (rgbMatch && rgbMatch.length >= 3) {
@@ -1478,6 +1487,72 @@ async function createCroppedComponentSlice(
 }
 
 /**
+ * Mengekstrak area bounding box komponen dari Layer Manifest untuk inpainting latar belakang.
+ * Memastikan semua area teks (header, statistik, kolom kartu, closing, footer) dibersihkan dari background
+ * sehingga saat komponen teks/kartu digeser, area di belakangnya 100% bersih tanpa teks lama/duplikat.
+ */
+export function extractInpaintBoundsFromManifest(
+  manifest: PosterLayerManifest,
+  naturalW: number,
+  naturalH: number,
+  fallbackArchetype?: string
+): ComponentSliceDef[] {
+  const defs: ComponentSliceDef[] = [];
+  const mw = manifest.width || 1080;
+  const mh = manifest.height || 1350;
+
+  for (const layer of manifest.layers) {
+    if (layer.kind === 'frame') {
+      // Abaikan garis konektor tipis (h <= 4) atau divider tipis (w <= 4) atau titik bullet kecil (w <= 16)
+      if (layer.w <= 16 || layer.h <= 4) continue;
+
+      const pad = 3;
+      const left = Math.max(0, layer.x - pad);
+      const top = Math.max(0, layer.y - pad);
+      const w = Math.min(mw - left, layer.w + pad * 2);
+      const h = Math.min(mh - top, layer.h + pad * 2);
+
+      defs.push({
+        id: `inpaint_frame_${layer.id}`,
+        name: layer.role,
+        text: '',
+        x: left / mw,
+        y: top / mh,
+        w: w / mw,
+        h: h / mh,
+        cardBg: layer.fill || '#FFFFFF',
+      });
+    } else if (layer.kind === 'text' && layer.box?.fill) {
+      const p = layer.box.padding || { t: 0, r: 0, b: 0, l: 0 };
+      const left = Math.max(0, layer.x - p.l - 2);
+      const top = Math.max(0, layer.y - p.t - 2);
+      const w = Math.min(mw - left, layer.w + p.l + p.r + 4);
+      const h = Math.min(mh - top, layer.h + p.t + p.b + 4);
+
+      defs.push({
+        id: `inpaint_box_${layer.id}`,
+        name: layer.role,
+        text: layer.text,
+        x: left / mw,
+        y: top / mh,
+        w: w / mw,
+        h: h / mh,
+        cardBg: layer.box.fill,
+      });
+    }
+  }
+
+  // Jika defs dari manifest kurang dari 3, lengkapi dengan archetype defs
+  const archToUse = (fallbackArchetype || 'INFOGRAPHIC_VISIONARY_TIMELINE') as PosterArchetype;
+  const fallbackDefs = getArchetypeComponentDefs(archToUse, naturalW, naturalH);
+  if (defs.length < 3) {
+    return fallbackDefs;
+  }
+
+  return defs;
+}
+
+/**
  * Menghasilkan gambar latar belakang yang BERSIH dari kartu & teks berdasarkan tata letak komponen.
  * - Foto kolase warga, foto dokumentasi, dan ornamen penting dipertahankan 100% utuh.
  * - Area kartu dan teks dibersihkan dengan warna kertas asli poster (inpainting) sehingga saat kartu digeser, tidak ada duplikat kartu lama.
@@ -1494,7 +1569,7 @@ async function createCleanPosterBackground(
   // ════════════════════════════════════════════════════════════════════════
   // 1. JIKA MASTER RAW CANVAS ASLI TERSEDIA, GUNAKAN LANGSUNG 100%!
   // ════════════════════════════════════════════════════════════════════════
-  if (rawCanvasUrl && rawCanvasUrl.trim().length > 0) {
+  if (rawCanvasUrl && rawCanvasUrl.trim().length > 0 && rawCanvasUrl !== rawImageUrl) {
     console.log('[MagicLayers] Menggunakan Master Raw Canvas Asli:', rawCanvasUrl);
     return resolveSafeImageUrl(rawCanvasUrl);
   }
@@ -2133,7 +2208,12 @@ export function MagicLayersModal({
       setPipelineStep(1);
       setPipelineStatusText('1/4 Menganalisis elemen visual & OCR teks asli dari poster...');
       const layerData = await fetchPosterLayerData(imageUrl, publicationId, naturalW, naturalH, isForce);
-      const effectiveRawCanvasUrl = rawCanvasUrl || layerData.rawCanvasUrl;
+      const effectiveRawCanvasUrl =
+        rawCanvasUrl && rawCanvasUrl !== imageUrl
+          ? rawCanvasUrl
+          : layerData.rawCanvasUrl && layerData.rawCanvasUrl !== imageUrl
+            ? layerData.rawCanvasUrl
+            : undefined;
 
       if (layerData.manifest) {
         const manifest = layerData.manifest;
@@ -2147,16 +2227,25 @@ export function MagicLayersModal({
         const objects = buildObjectsFromManifest(manifest, naturalW, naturalH);
 
         setPipelineStep(4);
-        setPipelineStatusText('4/4 Memasang latar belakang bersih...');
-        const cleanBgToUse = effectiveRawCanvasUrl || await createCleanPosterBackground(
-          imageUrl,
+        setPipelineStatusText('4/4 Inpainting cerdas latar belakang bersih (menghapus teks lama)...');
+        const inpaintDefs = extractInpaintBoundsFromManifest(
+          manifest,
           naturalW,
           naturalH,
-          [],
-          layerData.detectedArchetype || archetype,
-          publicationId,
-          effectiveRawCanvasUrl
+          layerData.detectedArchetype || archetype
         );
+
+        const cleanBgToUse =
+          effectiveRawCanvasUrl ||
+          (await createCleanPosterBackground(
+            imageUrl,
+            naturalW,
+            naturalH,
+            inpaintDefs,
+            layerData.detectedArchetype || archetype,
+            publicationId,
+            effectiveRawCanvasUrl
+          ));
 
         const rawImg = await loadResilientFabricImage(resolveSafeImageUrl(cleanBgToUse));
         placeImageCover(rawImg, naturalW, naturalH);
