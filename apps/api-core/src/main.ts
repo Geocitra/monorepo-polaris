@@ -12,20 +12,28 @@ import { AppModule } from './app.module.js';
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
 
+  // 1. Aktifkan CORS untuk seluruh request (dashboard, portal publik, multi-subdomain, dan static files)
+  app.enableCors({
+    origin: true,
+    methods: 'GET,HEAD,PUT,PATCH,POST,DELETE,OPTIONS',
+    credentials: true,
+  });
+
   // Izinkan payload hingga 50mb untuk menangani gambar base64 & media beresolusi tinggi
   app.use(express.json({ limit: '50mb' }));
   app.use(express.urlencoded({ limit: '50mb', extended: true }));
 
-  // Sajikan folder uploads statis
-  app.use('/uploads', express.static(path.resolve(process.cwd(), 'uploads')));
-  app.use('/uploads', express.static(path.resolve(process.cwd(), '../../uploads')));
-
-  // Aktifkan CORS untuk dashboard dan portal publik (dinamis untuk multi-subdomain)
-  app.enableCors({
-    origin: true,
-    methods: 'GET,HEAD,PUT,PATCH,POST,DELETE',
-    credentials: true,
-  });
+  // Sajikan folder uploads statis dengan CORS headers eksplisit
+  const staticUploadsOptions = {
+    setHeaders: (res: express.Response) => {
+      res.removeHeader('Access-Control-Allow-Credentials');
+      res.setHeader('Access-Control-Allow-Origin', '*');
+      res.setHeader('Access-Control-Allow-Methods', 'GET, HEAD, OPTIONS');
+      res.setHeader('Cross-Origin-Resource-Policy', 'cross-origin');
+    },
+  };
+  app.use('/uploads', express.static(path.resolve(process.cwd(), 'uploads'), staticUploadsOptions));
+  app.use('/uploads', express.static(path.resolve(process.cwd(), '../../uploads'), staticUploadsOptions));
 
   // Global Prefix API v1
   app.setGlobalPrefix('api/v1');

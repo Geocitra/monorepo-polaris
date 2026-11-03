@@ -78,6 +78,59 @@ const PRESET_FONTS = [
   { label: 'Monospace', value: 'monospace' },
 ];
 
+/**
+ * Normalisasi URL untuk mengatasi batasan CORS antarlocalhost (3000 vs 4000).
+ * Jika URL mengarah ke /uploads/ di server backend, kita alihkan ke same-origin /uploads/... via Next.js rewrite.
+ */
+function resolveSafeImageUrl(url: string): string {
+  if (!url) return '';
+  const uploadsIdx = url.indexOf('/uploads/');
+  if (uploadsIdx !== -1 && (url.startsWith('http://') || url.startsWith('https://'))) {
+    return url.substring(uploadsIdx);
+  }
+  return url;
+}
+
+/**
+ * Pemuat gambar Fabric.js yang kebal terhadap error CORS.
+ * Menggunakan strategi bertingkat: blob lokal -> same-origin rewrite -> anonymous -> fallback.
+ */
+async function loadResilientFabricImage(url: string): Promise<FabricImage> {
+  const safeUrl = resolveSafeImageUrl(url);
+
+  // Strategi 1: Jika sudah berupa blob lokal atau data URI
+  if (safeUrl.startsWith('blob:') || safeUrl.startsWith('data:')) {
+    return await FabricImage.fromURL(safeUrl);
+  }
+
+  // Strategi 2: Fetch sebagai blob lokal (100% same-origin, mencegah error CORS)
+  try {
+    const res = await fetch(safeUrl);
+    if (res.ok) {
+      const blob = await res.blob();
+      const localBlobUrl = URL.createObjectURL(blob);
+      return await FabricImage.fromURL(localBlobUrl);
+    }
+  } catch (err) {
+    console.warn('[MagicLayers] Fetch blob lokal gagal, mencoba direct loader:', err);
+  }
+
+  // Strategi 3: Coba muat dengan same-origin rewrite / direct dengan crossOrigin
+  try {
+    return await FabricImage.fromURL(safeUrl, { crossOrigin: 'anonymous' });
+  } catch (err) {
+    console.warn('[MagicLayers] crossOrigin anonymous gagal, mencoba fallback standar:', err);
+  }
+
+  // Strategi 4: Tanpa crossOrigin
+  try {
+    return await FabricImage.fromURL(safeUrl);
+  } catch {
+    // Strategi 5: Menggunakan URL asli
+    return await FabricImage.fromURL(url);
+  }
+}
+
 export function MagicLayersModal({
   isOpen,
   onClose,
@@ -216,18 +269,23 @@ export function MagicLayersModal({
     const initCanvasContent = async () => {
       try {
         if (savedLayersJson) {
-          // Restore saved session
-          await canvas.loadFromJSON(savedLayersJson);
-          canvas.renderAll();
-          if (isMounted) {
-            refreshLayersList(canvas);
-            setIsLoading(false);
+          try {
+            // Bersihkan URL backend di JSON menjadi relative same-origin agar tidak memicu error CORS saat deserialisasi
+            const sanitizedJson = savedLayersJson.replace(/https?:\/\/[^\/]+(?::\d+)?\/uploads\//g, '/uploads/');
+            await canvas.loadFromJSON(sanitizedJson);
+            canvas.renderAll();
+            if (isMounted) {
+              refreshLayersList(canvas);
+              setIsLoading(false);
+            }
+            return;
+          } catch (jsonErr) {
+            console.warn('[MagicLayers] Sesi JSON tersimpan tidak dapat dimuat, inisialisasi ulang kanvas:', jsonErr);
           }
-          return;
         }
 
-        // Fresh initialization: Load base background image
-        const bgImg = await FabricImage.fromURL(imageUrl, { crossOrigin: 'anonymous' });
+        // Fresh initialization: Load base background image with resilient loader
+        const bgImg = await loadResilientFabricImage(imageUrl);
         
         // Scale background image to fit canvas exactly
         const scaleX = nativeWidth / (bgImg.width || 1);
@@ -493,12 +551,12 @@ export function MagicLayersModal({
         description: 'Mengekstrak subjek objek menjadi layer terpisah. Harap tunggu sebentar.',
       });
 
-      // Dynamic import
+      const safeUrl = resolveSafeImageUrl(imageUrl);
       const { removeBackground } = await import('@imgly/background-removal');
-      const blob = await removeBackground(imageUrl);
+      const blob = await removeBackground(safeUrl);
       const cutoutUrl = URL.createObjectURL(blob);
 
-      const cutoutImg = await FabricImage.fromURL(cutoutUrl, { crossOrigin: 'anonymous' });
+      const cutoutImg = await loadResilientFabricImage(cutoutUrl);
 
       const scaleX = nativeWidth / (cutoutImg.width || 1);
       const scaleY = nativeHeight / (cutoutImg.height || 1);
