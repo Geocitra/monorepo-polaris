@@ -333,16 +333,785 @@ async function loadResilientFabricImage(url: string): Promise<FabricImage> {
   }
 }
 
+export interface ComponentSliceDef {
+  id: string;
+  name: string;
+  text: string;
+  x: number;
+  y: number;
+  w: number;
+  h: number;
+  textColor?: string;
+  cardBg?: string;
+  fontSize?: number;
+  fontWeight?: string | number;
+  fontStyle?: '' | 'normal' | 'italic';
+  fontFamily?: string;
+  textAlign?: 'left' | 'center' | 'right';
+  padding?: number;
+}
+
 /**
- * Menghasilkan gambar latar belakang yang BERSIH dari kartu & teks berdasarkan tata letak archetype.
+ * Peta komponen per archetype untuk pemotongan irisan pixel-perfect dari poster asli.
+ * Memastikan posisi, dimensi, dan isi teks 100% konsisten dengan desain poster.
+ */
+export function getArchetypeComponentDefs(
+  archetype: PosterArchetype,
+  naturalW: number,
+  naturalH: number,
+  title?: string,
+  subtitle?: string,
+  author?: string
+): ComponentSliceDef[] {
+  if (archetype === 'INFOGRAPHIC_ADVOCACY_PILLARS') {
+    const headlineText = (title || 'KEMISKINAN DI KOTA BANDUNG DEMI TANTANGAN KITA').toUpperCase();
+    const deckText = subtitle || 'Infografik Publik: KEMISKINAN DI KOTA BANDUNG DEMI TANTANGAN KITA';
+    const authorText = author || 'DR. JONANDA P. A. B // DPRD PROVINSI • DAPIL JABAR';
+
+    return [
+      // 1. Top Bar Tag Header
+      {
+        id: `slice_toptag_${Date.now()}`,
+        name: 'Top Tag: POLARIS // DAPIL JABAR',
+        text: 'POLARIS // DAPIL JABAR                       DOKUMEN ADVOKASI PUBLIK',
+        x: 0.045,
+        y: 0.016,
+        w: 0.910,
+        h: 0.026,
+        textColor: '#64748B',
+        fontWeight: 'bold',
+        fontSize: Math.round(naturalW * 0.012),
+        cardBg: 'transparent',
+      },
+      // 2. Masthead Header Card (Kicker + Judul + Narasi Ringkas)
+      {
+        id: `slice_masthead_${Date.now()}`,
+        name: 'Judul Utama: Kemiskinan Kota Bandung',
+        text: `DATA KEMISKINAN DI JABAR // ANALISIS STRATEGIS\n${headlineText}\n${deckText}`,
+        x: 0.045,
+        y: 0.046,
+        w: 0.910,
+        h: 0.125,
+        textColor: '#0F172A',
+        fontWeight: 'bold',
+        fontFamily: "'Bebas Neue', 'Inter', sans-serif",
+        fontSize: Math.round(naturalW * 0.032),
+        cardBg: '#FFFFFF',
+      },
+      // 3. 4 Kotak Metrik KPI Kemiskinan
+      {
+        id: `slice_stat_0_${Date.now()}`,
+        name: 'Metrik 01: 9,3%',
+        text: '9,3%\nPERSENTASE PENDUDUK MISKIN',
+        x: 0.045,
+        y: 0.174,
+        w: 0.220,
+        h: 0.082,
+        textColor: '#B91C1C',
+        fontWeight: 'bold',
+        textAlign: 'center',
+        fontSize: Math.round(naturalW * 0.018),
+        cardBg: '#FFFFFF',
+      },
+      {
+        id: `slice_stat_1_${Date.now()}`,
+        name: 'Metrik 02: RP 1 TRILIUN',
+        text: 'RP 1 TRILIUN\nTOTAL ANGGARAN PENGENTASAN',
+        x: 0.275,
+        y: 0.174,
+        w: 0.220,
+        h: 0.082,
+        textColor: '#B91C1C',
+        fontWeight: 'bold',
+        textAlign: 'center',
+        fontSize: Math.round(naturalW * 0.018),
+        cardBg: '#FFFFFF',
+      },
+      {
+        id: `slice_stat_2_${Date.now()}`,
+        name: 'Metrik 03: 15 KELURAHAN',
+        text: '15 KELURAHAN\nKONSENTRASI WILAYAH TERBANYAK',
+        x: 0.505,
+        y: 0.174,
+        w: 0.220,
+        h: 0.082,
+        textColor: '#B91C1C',
+        fontWeight: 'bold',
+        textAlign: 'center',
+        fontSize: Math.round(naturalW * 0.018),
+        cardBg: '#FFFFFF',
+      },
+      {
+        id: `slice_stat_3_${Date.now()}`,
+        name: 'Metrik 04: 50%',
+        text: '50%\nTARGET PENGURANGAN KEMISKINAN',
+        x: 0.735,
+        y: 0.174,
+        w: 0.220,
+        h: 0.082,
+        textColor: '#B91C1C',
+        fontWeight: 'bold',
+        textAlign: 'center',
+        fontSize: Math.round(naturalW * 0.018),
+        cardBg: '#FFFFFF',
+      },
+      // 4. Banner Section Tag
+      {
+        id: `slice_section_tag_${Date.now()}`,
+        name: 'Banner: PILAR AKSI & ADVOKASI',
+        text: 'PILAR AKSI & ADVOKASI BERKELANJUTAN',
+        x: 0.045,
+        y: 0.450,
+        w: 0.315,
+        h: 0.026,
+        textColor: '#FFFFFF',
+        fontWeight: 'bold',
+        textAlign: 'center',
+        fontSize: Math.round(naturalW * 0.011),
+        cardBg: '#DC2626',
+      },
+      // 5. 5 Kartu Pilar Aksi Utuh (Tinggi ~500px: badge ◈ 01..05 + judul + isi + tag ✦ INDIKATOR)
+      {
+        id: `slice_pillar_0_${Date.now()}`,
+        name: 'Pilar 01: 3 KEBIJAKAN STRATEGIS',
+        text: '◈ 01\n3 KEBIJAKAN STRATEGIS\n\nPemerintah Kota Bandung meluncurkan 3 kebijakan strategis untuk mengurangi kemiskinan; pendidikan, kesehatan dan pemberdayaan ekonomi dengan alokasi Rp 500 miliar.\n\n✦ INDIKATOR 01',
+        x: 0.045,
+        y: 0.480,
+        w: 0.176,
+        h: 0.380,
+        textColor: '#1E293B',
+        fontSize: Math.round(naturalW * 0.010),
+        cardBg: '#FFFFFF',
+      },
+      {
+        id: `slice_pillar_1_${Date.now()}`,
+        name: 'Pilar 02: 5.000 KELUARGA BANTUAN',
+        text: '◈ 02\n5.000 KELUARGA BANTUAN\n\nSebanyak 5.000 keluarga miskin menerima bantuan langsung tunai sebesar Rp 1 juta per tahun untuk meningkatkan daya beli dan akses terhadap kebutuhan dasar.\n\n✦ INDIKATOR 02',
+        x: 0.2285,
+        y: 0.480,
+        w: 0.176,
+        h: 0.380,
+        textColor: '#1E293B',
+        fontSize: Math.round(naturalW * 0.010),
+        cardBg: '#FFFFFF',
+      },
+      {
+        id: `slice_pillar_2_${Date.now()}`,
+        name: 'Pilar 03: TARGET PENDIDIKAN 2024',
+        text: '◈ 03\nTARGET PENDIDIKAN 2024\n\nMeningkatkan anggaran pendidikan hingga 20% dari APBD untuk memastikan anak-anak usia sekolah mendapatkan akses pendidikan yang layak.\n\n✦ INDIKATOR 03',
+        x: 0.412,
+        y: 0.480,
+        w: 0.176,
+        h: 0.380,
+        textColor: '#1E293B',
+        fontSize: Math.round(naturalW * 0.010),
+        cardBg: '#FFFFFF',
+      },
+      {
+        id: `slice_pillar_3_${Date.now()}`,
+        name: 'Pilar 04: PROGRAM KEWIRAUSAHAAN',
+        text: '◈ 04\nPROGRAM KEWIRAUSAHAAN\n\nMeluncurkan program pelatihan wirausaha dengan target 2.000 UMKM baru yang didukung dengan pelatihan dan akses modal.\n\n✦ INDIKATOR 04',
+        x: 0.5955,
+        y: 0.480,
+        w: 0.176,
+        h: 0.380,
+        textColor: '#1E293B',
+        fontSize: Math.round(naturalW * 0.010),
+        cardBg: '#FFFFFF',
+      },
+      {
+        id: `slice_pillar_4_${Date.now()}`,
+        name: 'Pilar 05: AUDIT KEBIJAKAN TAHUNAN',
+        text: '◈ 05\nAUDIT KEBIJAKAN TAHUNAN\n\nMelakukan audit tahunan terhadap semua program pengentasan kemiskinan guna memastikan transparansi dan akuntabilitas penggunaan anggaran.\n\n✦ INDIKATOR 05',
+        x: 0.779,
+        y: 0.480,
+        w: 0.176,
+        h: 0.380,
+        textColor: '#1E293B',
+        fontSize: Math.round(naturalW * 0.010),
+        cardBg: '#FFFFFF',
+      },
+      // 6. Closing Takeaway Banner
+      {
+        id: `slice_closing_${Date.now()}`,
+        name: 'Sintesis Penutup Kebijakan',
+        text: 'Transparansi dan kolaborasi antara pemerintah dan masyarakat kunci dalam mengatasi kemiskinan di Kota Bandung.',
+        x: 0.045,
+        y: 0.865,
+        w: 0.910,
+        h: 0.040,
+        textColor: '#0F172A',
+        fontWeight: 'bold',
+        textAlign: 'center',
+        fontSize: Math.round(naturalW * 0.012),
+        cardBg: '#FFFFFF',
+      },
+      // 7. Footer Bar
+      {
+        id: `slice_footer_${Date.now()}`,
+        name: 'Identitas Dewan (Footer)',
+        text: `${authorText}                      2026`,
+        x: 0.045,
+        y: 0.915,
+        w: 0.910,
+        h: 0.040,
+        textColor: '#0F172A',
+        fontWeight: 'bold',
+        fontSize: Math.round(naturalW * 0.012),
+        cardBg: '#FFFFFF',
+      },
+    ];
+  }
+
+  if (archetype === 'INFOGRAPHIC_CHRONICLE_GRID') {
+    return [
+      // 1. Masthead Kiri Oranye
+      {
+        id: `slice_soedirman_masthead_${Date.now()}`,
+        name: 'Banner Masthead Tokoh',
+        text: 'SOEDIRMAN\n\nSANG GURU TELADAN YANG MENJADI JENDERAL BESAR BANGSA INDONESIA',
+        x: 0.045,
+        y: 0.035,
+        w: 0.315,
+        h: 0.450,
+        textColor: '#FFFFFF',
+        fontWeight: 'bold',
+        fontFamily: "'Bebas Neue', 'Inter', sans-serif",
+        fontSize: Math.round(naturalW * 0.024),
+        cardBg: '#EA580C',
+      },
+      // 2. Biodata Bawah Kiri
+      {
+        id: `slice_soedirman_bio_${Date.now()}`,
+        name: 'Biodata Raden Soedirman',
+        text: 'Raden Soedirman\nLahir 24 Januari 1916 di Purbalingga.',
+        x: 0.045,
+        y: 0.590,
+        w: 0.315,
+        h: 0.360,
+        textColor: '#1E293B',
+        fontSize: Math.round(naturalW * 0.012),
+        cardBg: '#FFFFFF',
+      },
+      // 3. 6 Kartu Rekam Jejak Kolom Kanan
+      {
+        id: `slice_chronicle_0_${Date.now()}`,
+        name: 'Rekam Jejak 01: RIWAYAT PENDIDIKAN',
+        text: 'RIWAYAT PENDIDIKAN\n\nRiwayat pendidikan yang tidak berjalan dengan lancar karena kendala ekonomi.',
+        x: 0.380,
+        y: 0.035,
+        w: 0.575,
+        h: 0.135,
+        textColor: '#1E293B',
+        fontSize: Math.round(naturalW * 0.012),
+        cardBg: '#FFFFFF',
+      },
+      {
+        id: `slice_chronicle_1_${Date.now()}`,
+        name: 'Rekam Jejak 02: GURU TELADAN (1936)',
+        text: 'GURU TELADAN (1936)\n\nMenjadi seorang guru di H.I.S Muhammadiyah Cilacap pada tahun 1936.',
+        x: 0.380,
+        y: 0.185,
+        w: 0.575,
+        h: 0.135,
+        textColor: '#1E293B',
+        fontSize: Math.round(naturalW * 0.012),
+        cardBg: '#FFFFFF',
+      },
+      {
+        id: `slice_chronicle_2_${Date.now()}`,
+        name: 'Rekam Jejak 03: MILITER PETA',
+        text: 'MILITER PETA\n\nMasuk ke militer di PETA dan membuktikan kepemimpinan hingga menjadi seorang Jenderal Besar.',
+        x: 0.380,
+        y: 0.335,
+        w: 0.575,
+        h: 0.135,
+        textColor: '#1E293B',
+        fontSize: Math.round(naturalW * 0.012),
+        cardBg: '#FFFFFF',
+      },
+      {
+        id: `slice_chronicle_3_${Date.now()}`,
+        name: 'Rekam Jejak 04: PERANG GERILYA',
+        text: 'PERANG GERILYA\n\nMenjadi pemimpin perang Gerilya yang tangguh dalam mempertahankan kemerdekaan Indonesia.',
+        x: 0.380,
+        y: 0.485,
+        w: 0.575,
+        h: 0.145,
+        textColor: '#1E293B',
+        fontSize: Math.round(naturalW * 0.012),
+        cardBg: '#FFFFFF',
+      },
+      {
+        id: `slice_chronicle_4_${Date.now()}`,
+        name: 'Rekam Jejak 05: DITENGAH SAKIT',
+        text: 'DITENGAH SAKIT\n\nDidiagnosa menderita tuberkulosis namun tetap memimpin pasukan dengan ditandu masuk keluar hutan.',
+        x: 0.380,
+        y: 0.645,
+        w: 0.575,
+        h: 0.145,
+        textColor: '#1E293B',
+        fontSize: Math.round(naturalW * 0.012),
+        cardBg: '#FFFFFF',
+      },
+      {
+        id: `slice_chronicle_5_${Date.now()}`,
+        name: 'Rekam Jejak 06: AKHIR HAYAT',
+        text: 'AKHIR HAYAT\n\nWafat setelah Belanda resmi mengakui kedaulatan penuh Republik Indonesia.',
+        x: 0.380,
+        y: 0.805,
+        w: 0.575,
+        h: 0.145,
+        textColor: '#1E293B',
+        fontSize: Math.round(naturalW * 0.012),
+        cardBg: '#FFFFFF',
+      },
+    ];
+  }
+
+  if (archetype === 'INFOGRAPHIC_RADIAL_CLOCK') {
+    const titleText = (title || 'PENURUNAN PENGANGGURAN MELALUI PELATIHAN').toUpperCase();
+    const authorText = author || 'DR. JONANDA P. A. B // DPRD PROVINSI • DAPIL JABAR';
+
+    return [
+      // 1. Header Card
+      {
+        id: `slice_radial_header_${Date.now()}`,
+        name: 'Judul Utama (Masthead)',
+        text: `DATA PELATIHAN KERJA // ANALISIS KEBIJAKAN\n${titleText}`,
+        x: 0.045,
+        y: 0.045,
+        w: 0.910,
+        h: 0.125,
+        textColor: '#0F172A',
+        fontWeight: 'bold',
+        fontSize: Math.round(naturalW * 0.032),
+        cardBg: '#FFFFFF',
+      },
+      // 2. 3 KPIs di Atas Sayap Kanan
+      {
+        id: `slice_radial_stat_0_${Date.now()}`,
+        name: 'Metrik 10%',
+        text: '10%\nPENURUNAN PENGANGGURAN',
+        x: 0.470,
+        y: 0.180,
+        w: 0.155,
+        h: 0.075,
+        textColor: '#EA580C',
+        fontWeight: 'bold',
+        textAlign: 'center',
+        fontSize: Math.round(naturalW * 0.013),
+        cardBg: '#FFFFFF',
+      },
+      {
+        id: `slice_radial_stat_1_${Date.now()}`,
+        name: 'Metrik Rp 200 Miliar',
+        text: 'RP 200 MILIAR\nTOTAL ANGGARAN',
+        x: 0.635,
+        y: 0.180,
+        w: 0.165,
+        h: 0.075,
+        textColor: '#EA580C',
+        fontWeight: 'bold',
+        textAlign: 'center',
+        fontSize: Math.round(naturalW * 0.013),
+        cardBg: '#FFFFFF',
+      },
+      {
+        id: `slice_radial_stat_2_${Date.now()}`,
+        name: 'Metrik 8 Kota',
+        text: '8 KOTA\nKONSENTRASI DI JABAR',
+        x: 0.810,
+        y: 0.180,
+        w: 0.145,
+        h: 0.075,
+        textColor: '#EA580C',
+        fontWeight: 'bold',
+        textAlign: 'center',
+        fontSize: Math.round(naturalW * 0.013),
+        cardBg: '#FFFFFF',
+      },
+      // 3. 5 Tonggak Sayap Kanan
+      {
+        id: `slice_milestone_0_${Date.now()}`,
+        name: 'Tonggak 01: 15.000 PESERTA',
+        text: 'TONGGAK 01: 15.000 PESERTA PELATIHAN\n\nBalai Latihan Kerja telah melatih 15.000 peserta dengan kurikulum industri.',
+        x: 0.470,
+        y: 0.265,
+        w: 0.485,
+        h: 0.115,
+        textColor: '#1E293B',
+        fontSize: Math.round(naturalW * 0.012),
+        cardBg: '#FFFFFF',
+      },
+      {
+        id: `slice_milestone_1_${Date.now()}`,
+        name: 'Tonggak 02: RP 200 MILIAR',
+        text: 'TONGGAK 02: RP 200 MILIAR DIANGGARKAN\n\nPemerintah Provinsi mengalokasikan anggaran untuk peningkatan fasilitas BLK.',
+        x: 0.470,
+        y: 0.390,
+        w: 0.485,
+        h: 0.115,
+        textColor: '#1E293B',
+        fontSize: Math.round(naturalW * 0.012),
+        cardBg: '#FFFFFF',
+      },
+      {
+        id: `slice_milestone_2_${Date.now()}`,
+        name: 'Tonggak 03: 8 KOTA PRIORITAS',
+        text: 'TONGGAK 03: 8 KOTA PRIORITAS\n\nPelatihan diprioritaskan di daerah dengan tingkat pengangguran terbuka tinggi.',
+        x: 0.470,
+        y: 0.515,
+        w: 0.485,
+        h: 0.115,
+        textColor: '#1E293B',
+        fontSize: Math.round(naturalW * 0.012),
+        cardBg: '#FFFFFF',
+      },
+      {
+        id: `slice_milestone_3_${Date.now()}`,
+        name: 'Tonggak 04: 95% PENYERAPAN',
+        text: 'TONGGAK 04: 95% PENYERAPAN TENAGA KERJA\n\nLulusan bersertifikasi berhasil diserap langsung ke sektor industri terkemuka.',
+        x: 0.470,
+        y: 0.640,
+        w: 0.485,
+        h: 0.115,
+        textColor: '#1E293B',
+        fontSize: Math.round(naturalW * 0.012),
+        cardBg: '#FFFFFF',
+      },
+      {
+        id: `slice_milestone_4_${Date.now()}`,
+        name: 'Tonggak 05: KERJA SAMA INDUSTRI',
+        text: 'TONGGAK 05: PROGRAM KERJA SAMA INDUSTRI\n\nMembangun kemitraan dengan 50 perusahaan manufaktur dan digital terkemuka.',
+        x: 0.470,
+        y: 0.765,
+        w: 0.485,
+        h: 0.115,
+        textColor: '#1E293B',
+        fontSize: Math.round(naturalW * 0.012),
+        cardBg: '#FFFFFF',
+      },
+      // 4. Sintesis Kebijakan
+      {
+        id: `slice_radial_synth_${Date.now()}`,
+        name: 'Sintesis Kebijakan',
+        text: 'SINTESIS KEBIJAKAN\nPenting untuk terus mengevaluasi efektivitas program guna memastikan akuntabilitas anggaran.',
+        x: 0.470,
+        y: 0.890,
+        w: 0.485,
+        h: 0.045,
+        textColor: '#0F172A',
+        fontWeight: 'bold',
+        fontSize: Math.round(naturalW * 0.011),
+        cardBg: '#FFFFFF',
+      },
+      // 5. Footer
+      {
+        id: `slice_radial_footer_${Date.now()}`,
+        name: 'Identitas Dewan (Footer)',
+        text: `${authorText}                      2026`,
+        x: 0.045,
+        y: 0.945,
+        w: 0.910,
+        h: 0.040,
+        textColor: '#0F172A',
+        fontWeight: 'bold',
+        fontSize: Math.round(naturalW * 0.012),
+        cardBg: '#FFFFFF',
+      },
+    ];
+  }
+
+  // DEFAULT & NARRATIVE WAVE (Pelatihan Balai Kerja 4 Dimensi Zigzag)
+  const titleText = (title || 'PENURUNAN PENGANGGURAN MELALUI PELATIHAN').toUpperCase();
+  const subtitleText = subtitle || 'Program pelatihan di Balai Latihan Kerja Jawa Barat berhasil menurunkan angka pengangguran terbuka sebesar 12,5% di Kota Bandung. Dengan alokasi anggaran Rp 300 miliar, program ini mendukung 10.000 peserta pelatihan setiap tahun.';
+  const authorText = author || 'DR. JONANDA P. A. B // DPRD PROVINSI • DAPIL JABAR';
+
+  return [
+    // 1. Top Bar Tag Header
+    {
+      id: `slice_toptag_${Date.now()}`,
+      name: 'Top Tag: POLARIS // DAPIL JABAR',
+      text: 'POLARIS // DAPIL JABAR                       DOKUMEN ADVOKASI PUBLIK',
+      x: 0.082,
+      y: 0.018,
+      w: 0.836,
+      h: 0.024,
+      textColor: '#64748B',
+      fontWeight: 'bold',
+      fontSize: Math.round(naturalW * 0.012),
+      cardBg: 'transparent',
+    },
+    // 2. Header Masthead (Title + Subtitle)
+    {
+      id: `slice_headline_${Date.now()}`,
+      name: 'Judul Utama (Headline & Narasi)',
+      text: `DATA PELATIHAN KERJA // STRATEGI EKONOMI\n${titleText}\n\n${subtitleText}`,
+      x: 0.082,
+      y: 0.045,
+      w: 0.836,
+      h: 0.175,
+      textColor: '#0F172A',
+      fontWeight: 'bold',
+      fontSize: Math.round(naturalW * 0.032),
+      cardBg: '#FFFFFF',
+    },
+    // 3. 4 KPIs
+    {
+      id: `slice_kpi_0_${Date.now()}`,
+      name: 'Metrik 12,5%',
+      text: '12,5%\nPENURUNAN PENGANGGURAN',
+      x: 0.095,
+      y: 0.225,
+      w: 0.190,
+      h: 0.075,
+      textColor: '#065F46',
+      fontWeight: 'bold',
+      textAlign: 'center',
+      fontSize: Math.round(naturalW * 0.011),
+      cardBg: '#FFFFFF',
+    },
+    {
+      id: `slice_kpi_1_${Date.now()}`,
+      name: 'Metrik Rp 300 Miliar',
+      text: 'RP 300 MILIAR\nTOTAL ANGGARAN',
+      x: 0.300,
+      y: 0.225,
+      w: 0.190,
+      h: 0.075,
+      textColor: '#065F46',
+      fontWeight: 'bold',
+      textAlign: 'center',
+      fontSize: Math.round(naturalW * 0.011),
+      cardBg: '#FFFFFF',
+    },
+    {
+      id: `slice_kpi_2_${Date.now()}`,
+      name: 'Metrik 10.000 Peserta',
+      text: '10.000 PESERTA\nKONSENTRASI PELATIHAN',
+      x: 0.505,
+      y: 0.225,
+      w: 0.190,
+      h: 0.075,
+      textColor: '#065F46',
+      fontWeight: 'bold',
+      textAlign: 'center',
+      fontSize: Math.round(naturalW * 0.011),
+      cardBg: '#FFFFFF',
+    },
+    {
+      id: `slice_kpi_3_${Date.now()}`,
+      name: 'Metrik 95%',
+      text: '95%\nTINGKAT PENYERAPAN',
+      x: 0.710,
+      y: 0.225,
+      w: 0.190,
+      h: 0.075,
+      textColor: '#065F46',
+      fontWeight: 'bold',
+      textAlign: 'center',
+      fontSize: Math.round(naturalW * 0.011),
+      cardBg: '#FFFFFF',
+    },
+    // 4. 4 Dimensi Zigzag Cards
+    {
+      id: `slice_dimensi_0_${Date.now()}`,
+      name: 'Kartu Dimensi 01: 5 BLK',
+      text: 'DIMENSI 01: 5 BALAI LATIHAN KERJA\n\nTerdapat 5 Balai Latihan Kerja di Kota Bandung yang menyediakan berbagai program pelatihan sesuai kebutuhan industri lokal.',
+      x: 0.505,
+      y: 0.315,
+      w: 0.413,
+      h: 0.125,
+      textColor: '#1E293B',
+      fontSize: Math.round(naturalW * 0.012),
+      cardBg: '#FFFFFF',
+    },
+    {
+      id: `slice_dimensi_1_${Date.now()}`,
+      name: 'Kartu Dimensi 02: 60% BERSERTIFIKAT',
+      text: 'DIMENSI 02: 60% PESERTA BERSERTIFIKAT\n\nDari total peserta, 60% berhasil mendapatkan sertifikat kompetensi yang diakui industri, meningkatkan daya saing di pasar kerja.',
+      x: 0.082,
+      y: 0.450,
+      w: 0.413,
+      h: 0.125,
+      textColor: '#1E293B',
+      fontSize: Math.round(naturalW * 0.012),
+      cardBg: '#FFFFFF',
+    },
+    {
+      id: `slice_dimensi_2_${Date.now()}`,
+      name: 'Kartu Dimensi 03: 3 SEKTOR PRIORITAS',
+      text: 'DIMENSI 03: 3 SEKTOR PRIORITAS\n\nPelatihan difokuskan pada 3 sektor prioritas: teknologi informasi, industri kreatif dan manufaktur untuk mendukung pertumbuhan ekonomi.',
+      x: 0.505,
+      y: 0.585,
+      w: 0.413,
+      h: 0.125,
+      textColor: '#1E293B',
+      fontSize: Math.round(naturalW * 0.012),
+      cardBg: '#FFFFFF',
+    },
+    {
+      id: `slice_dimensi_3_${Date.now()}`,
+      name: 'Kartu Dimensi 04: 30% PENINGKATAN',
+      text: 'DIMENSI 04: 30% PENINGKATAN KETERAMPILAN\n\nPeserta pelatihan menunjukkan peningkatan keterampilan sebesar 30% setelah mengikuti program, berdasarkan evaluasi pasca-pelatihan.',
+      x: 0.082,
+      y: 0.720,
+      w: 0.413,
+      h: 0.125,
+      textColor: '#1E293B',
+      fontSize: Math.round(naturalW * 0.012),
+      cardBg: '#FFFFFF',
+    },
+    // 5. Closing Takeaway Banner
+    {
+      id: `slice_closing_${Date.now()}`,
+      name: 'Sintesis Penutup',
+      text: 'Penting untuk terus memantau dan mengevaluasi efektivitas program pelatihan guna memastikan transparansi dan akuntabilitas dalam pengelolaan anggaran.',
+      x: 0.082,
+      y: 0.855,
+      w: 0.836,
+      h: 0.045,
+      textColor: '#0F172A',
+      fontWeight: 'bold',
+      textAlign: 'center',
+      fontSize: Math.round(naturalW * 0.011),
+      cardBg: '#FFFFFF',
+    },
+    // 6. Footer
+    {
+      id: `slice_footer_${Date.now()}`,
+      name: 'Identitas Dewan (Footer)',
+      text: `${authorText}                      2026`,
+      x: 0.082,
+      y: 0.910,
+      w: 0.836,
+      h: 0.045,
+      textColor: '#0F172A',
+      fontWeight: 'bold',
+      fontSize: Math.round(naturalW * 0.012),
+      cardBg: '#FFFFFF',
+    },
+  ];
+}
+
+/**
+ * Pemuat HTMLImageElement tangguh yang mengatasi kendala CORS lintas port/origin.
+ */
+async function loadResilientHTMLImage(url: string): Promise<HTMLImageElement> {
+  const safeUrl = resolveSafeImageUrl(url);
+
+  // Strategi 1: Fetch sebagai Blob lokal (100% same-origin)
+  try {
+    const res = await fetch(safeUrl);
+    if (res.ok) {
+      const blob = await res.blob();
+      const blobUrl = URL.createObjectURL(blob);
+      return new Promise((resolve, reject) => {
+        const img = new Image();
+        img.onload = () => resolve(img);
+        img.onerror = reject;
+        img.src = blobUrl;
+      });
+    }
+  } catch (err) {
+    console.warn('[MagicLayers] fetch blob untuk HTMLImage gagal, fallback direct img:', err);
+  }
+
+  // Strategi 2: Direct image anonymous
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    img.crossOrigin = 'anonymous';
+    img.onload = () => resolve(img);
+    img.onerror = reject;
+    img.src = safeUrl;
+  });
+}
+
+/**
+ * Memotong irisan elemen asli poster secara pixel-perfect menjadi FabricImage independen.
+ * Mempertahankan 100% estetika, font asli, ornamen, badge diamond, dan tombol indikator.
+ */
+async function createCroppedComponentSlice(
+  sourceImg: HTMLImageElement,
+  crop: { x: number; y: number; w: number; h: number },
+  options: {
+    id: string;
+    name: string;
+    text: string;
+    naturalW: number;
+    naturalH: number;
+    def?: ComponentSliceDef;
+  }
+): Promise<FabricImage> {
+  const cropW = Math.max(1, Math.round(crop.w));
+  const cropH = Math.max(1, Math.round(crop.h));
+
+  const offCanvas = document.createElement('canvas');
+  offCanvas.width = cropW;
+  offCanvas.height = cropH;
+  const ctx = offCanvas.getContext('2d');
+  if (ctx) {
+    const scaleX = (sourceImg.naturalWidth || sourceImg.width || options.naturalW) / options.naturalW;
+    const scaleY = (sourceImg.naturalHeight || sourceImg.height || options.naturalH) / options.naturalH;
+
+    const sx = Math.round(crop.x * scaleX);
+    const sy = Math.round(crop.y * scaleY);
+    const sw = Math.round(crop.w * scaleX);
+    const sh = Math.round(crop.h * scaleY);
+
+    ctx.drawImage(sourceImg, sx, sy, sw, sh, 0, 0, cropW, cropH);
+  }
+
+  const sliceDataUrl = offCanvas.toDataURL('image/png');
+  const sliceImg = await FabricImage.fromURL(sliceDataUrl);
+
+  sliceImg.set({
+    originX: 'left',
+    originY: 'top',
+    left: Math.round(crop.x),
+    top: Math.round(crop.y),
+    stroke: '#7D2AE8', // Canva Purple outline
+    strokeWidth: 2,
+    strokeUniform: true,
+    cornerColor: '#FFFFFF',
+    cornerStrokeColor: '#7D2AE8',
+    borderColor: '#7D2AE8',
+    cornerSize: 8,
+    cornerStyle: 'circle',
+    transparentCorners: false,
+    borderScaleFactor: 2,
+    selectable: true,
+    hasControls: true,
+    hasBorders: true,
+    shadow: new Shadow({ color: 'rgba(0,0,0,0.06)', blur: 4, offsetX: 0, offsetY: 2 }),
+  });
+
+  (sliceImg as any).customId = options.id;
+  (sliceImg as any).customData = {
+    name: options.name,
+    text: options.text,
+    isComponentSlice: true,
+    cropRect: crop,
+    originalX: crop.x,
+    originalY: crop.y,
+    def: options.def,
+  };
+
+  sliceImg.setCoords();
+  return sliceImg;
+}
+
+/**
+ * Menghasilkan gambar latar belakang yang BERSIH dari kartu & teks berdasarkan tata letak komponen.
  * - Foto kolase warga, foto dokumentasi, dan ornamen penting dipertahankan 100% utuh.
- * - Area kartu dan teks dibersihkan dengan warna kertas asli poster sehingga saat kartu digeser, tidak ada bayangan/duplikat kartu lama.
+ * - Area kartu dan teks dibersihkan dengan warna kertas asli poster (inpainting) sehingga saat kartu digeser, tidak ada duplikat kartu lama.
  */
 async function createCleanPosterBackground(
   rawImageUrl: string,
   naturalW: number,
   naturalH: number,
-  archetype: PosterArchetype
+  componentDefs: ComponentSliceDef[]
 ): Promise<string> {
   const safeUrl = resolveSafeImageUrl(rawImageUrl);
 
@@ -393,48 +1162,14 @@ async function createCleanPosterBackground(
             }
           } catch {}
 
-          // 3. Bersihkan area kartu & teks berdasarkan archetype yang terdeteksi
-          if (archetype === 'INFOGRAPHIC_ADVOCACY_PILLARS') {
-            // Header box: 4.5% s/d 95.5%, y: 5.0% s/d 17.5%
-            ctx.fillStyle = paperColor;
-            ctx.fillRect(naturalW * 0.045, naturalH * 0.050, naturalW * 0.910, naturalH * 0.125);
-            // 4 Baris KPI: y: 17.5% s/d 26.2%
-            ctx.fillRect(naturalW * 0.045, naturalH * 0.175, naturalW * 0.910, naturalH * 0.088);
-            // CATATAN: SISI TENGAH (FOTO WARGA BANDUNG) 100% UTUH! (y: 26.5% s/d 48.0%)
-            // 5 Kartu Pilar Aksi: y: 48.0% s/d 86.5%
-            ctx.fillRect(naturalW * 0.045, naturalH * 0.480, naturalW * 0.910, naturalH * 0.385);
-            // Closing banner & footer: y: 86.5% s/d 96.5%
-            ctx.fillRect(naturalW * 0.045, naturalH * 0.865, naturalW * 0.910, naturalH * 0.100);
-          } else if (archetype === 'INFOGRAPHIC_CHRONICLE_GRID') {
-            // Kolom kanan berisi grid 6 kartu rekam jejak
-            ctx.fillStyle = paperColor;
-            ctx.fillRect(naturalW * 0.370, naturalH * 0.030, naturalW * 0.590, naturalH * 0.935);
-          } else if (archetype === 'INFOGRAPHIC_RADIAL_CLOCK') {
-            // Header Box atas
-            ctx.fillStyle = paperColor;
-            ctx.fillRect(naturalW * 0.045, naturalH * 0.052, naturalW * 0.910, naturalH * 0.128);
-            // Kolom kartu kanan (3 KPI + 5 Tonggak + Sintesis)
-            ctx.fillRect(naturalW * 0.470, naturalH * 0.182, naturalW * 0.490, naturalH * 0.755);
-            // Footer
-            ctx.fillRect(naturalW * 0.045, naturalH * 0.940, naturalW * 0.910, naturalH * 0.045);
-          } else if (archetype === 'INFOGRAPHIC_NARRATIVE_WAVE') {
-            // Header box
-            ctx.fillStyle = paperColor;
-            ctx.fillRect(naturalW * 0.075, naturalH * 0.050, naturalW * 0.850, naturalH * 0.180);
-            // 4 Baris KPI
-            ctx.fillRect(naturalW * 0.090, naturalH * 0.230, naturalW * 0.820, naturalH * 0.080);
-            // 4 Slot kartu Dimensi zigzag
-            ctx.fillRect(naturalW * 0.495, naturalH * 0.315, naturalW * 0.430, naturalH * 0.130);
-            ctx.fillRect(naturalW * 0.075, naturalH * 0.450, naturalW * 0.430, naturalH * 0.130);
-            ctx.fillRect(naturalW * 0.495, naturalH * 0.585, naturalW * 0.430, naturalH * 0.130);
-            ctx.fillRect(naturalW * 0.075, naturalH * 0.720, naturalW * 0.430, naturalH * 0.130);
-            // Penutup & Footer
-            ctx.fillRect(naturalW * 0.075, naturalH * 0.855, naturalW * 0.850, naturalH * 0.115);
-          } else {
-            // Generic Fallback
-            ctx.fillStyle = paperColor;
-            ctx.fillRect(naturalW * 0.050, naturalH * 0.050, naturalW * 0.900, naturalH * 0.180);
-            ctx.fillRect(naturalW * 0.050, naturalH * 0.850, naturalW * 0.900, naturalH * 0.110);
+          // 3. Bersihkan area setiap komponen yang dipisahkan dengan warna kertas inpainting
+          ctx.fillStyle = paperColor;
+          for (const def of componentDefs) {
+            const cropX = Math.round(def.x * naturalW);
+            const cropY = Math.round(def.y * naturalH);
+            const cropW = Math.round(def.w * naturalW);
+            const cropH = Math.round(def.h * naturalH);
+            ctx.fillRect(cropX, cropY, cropW, cropH);
           }
 
           const cleanDataUrl = offCanvas.toDataURL('image/png');
@@ -564,6 +1299,19 @@ export function MagicLayersModal({
       setIsBold(obj.fontWeight === 'bold' || (typeof obj.fontWeight === 'number' && obj.fontWeight >= 700));
       setIsItalic(obj.fontStyle === 'italic');
       setTextAlign((obj.textAlign as any) || 'left');
+    } else if (obj && (obj as any).customData?.isComponentSlice) {
+      const customData = (obj as any).customData;
+      setCurrentTextContent(customData.text || '');
+      const def = customData.def;
+      if (def) {
+        if (def.fontFamily) setFontFamily(def.fontFamily);
+        if (def.fontSize) setFontSize(def.fontSize);
+        if (def.textColor) setFillColor(def.textColor);
+        if (def.cardBg) setBgColor(def.cardBg);
+        if (def.fontWeight) setIsBold(def.fontWeight === 'bold' || (typeof def.fontWeight === 'number' && def.fontWeight >= 700));
+        if (def.fontStyle) setIsItalic(def.fontStyle === 'italic');
+        if (def.textAlign) setTextAlign(def.textAlign);
+      }
     }
   };
 
@@ -789,6 +1537,14 @@ export function MagicLayersModal({
       setPipelineStep(1);
       setPipelineStatusText('Mendeteksi objek visual, batas kartu, dan zona subjek...');
       const layoutArchetype = detectPosterLayout(archetype, initialTitle, initialSubtitle);
+      const componentDefs = getArchetypeComponentDefs(
+        layoutArchetype,
+        naturalW,
+        naturalH,
+        initialTitle,
+        initialSubtitle,
+        initialAuthor
+      );
       await new Promise((resolve) => setTimeout(resolve, 600));
 
       // ════════════════════════════════════════════════════════════════════════
@@ -807,7 +1563,7 @@ export function MagicLayersModal({
         imageUrl,
         naturalW,
         naturalH,
-        layoutArchetype
+        componentDefs
       );
       await new Promise((resolve) => setTimeout(resolve, 600));
 
@@ -840,494 +1596,29 @@ export function MagicLayersModal({
       canvas.add(cleanImg);
       canvas.sendObjectToBack(cleanImg);
 
-      // 5. URAI KOMPONEN SESUAI TATA LETAK & KONTEN POSTER ASLI
-      if (layoutArchetype === 'INFOGRAPHIC_ADVOCACY_PILLARS') {
-        // ─── POSTER 5 PILAR ADVOKASI (KEMISKINAN KOTA BANDUNG) ───
-        
-        // 1. Top Bar Tag Header
-        const topTag = createCanvaComponent({
-          id: `box_toptag_${Date.now()}`,
-          name: 'Top Tag: POLARIS // DAPIL JABAR',
-          left: Math.round(naturalW * 0.045),
-          top: Math.round(naturalH * 0.020),
-          width: Math.round(naturalW * 0.910),
-          text: 'POLARIS // DAPIL JABAR                       DOKUMEN ADVOKASI PUBLIK',
-          fontSize: Math.round(naturalW * 0.012),
-          textColor: '#64748B',
-          fontWeight: 'bold',
-          cardBg: 'transparent',
-          padding: 4,
-        });
-        canvas.add(topTag);
+      // Muat gambar sumber HTMLImageElement untuk pemotongan irisan komponen secara pixel-perfect
+      const sourceImg = await loadResilientHTMLImage(imageUrl);
 
-        // 2. Masthead Box (Kicker + Judul Utama)
-        const headlineText = (initialTitle || 'KEMISKINAN DI KOTA BANDUNG DEMI TANTANGAN KITA').toUpperCase();
-        const masthead = createCanvaComponent({
-          id: `box_masthead_${Date.now()}`,
-          name: 'Judul Utama: Kemiskinan Kota Bandung',
-          left: Math.round(naturalW * 0.045),
-          top: Math.round(naturalH * 0.052),
-          width: Math.round(naturalW * 0.910),
-          text: `DATA KEMISKINAN DI JABAR // ANALISIS STRATEGIS\n${headlineText}`,
-          fontSize: Math.round(naturalW * 0.034),
-          fontFamily: "'Bebas Neue', 'Inter', sans-serif",
-          fontWeight: 'bold',
-          textColor: '#0F172A',
-          cardBg: '#FFFFFF',
-          lineHeight: 1.15,
-          padding: 10,
-        });
-        canvas.add(masthead);
+      // Ekstrak dan tambahkan setiap irisan komponen (pixel-perfect slice) ke kanvas
+      for (const def of componentDefs) {
+        const cropX = Math.round(def.x * naturalW);
+        const cropY = Math.round(def.y * naturalH);
+        const cropW = Math.round(def.w * naturalW);
+        const cropH = Math.round(def.h * naturalH);
 
-        // 3. Subjudul & Narasi Ringkasan
-        const deckText = initialSubtitle || 'Infografik Publik: KEMISKINAN DI KOTA BANDUNG DEMI TANTANGAN KITA';
-        const deck = createCanvaComponent({
-          id: `box_deck_${Date.now()}`,
-          name: 'Subjudul & Narasi Isu',
-          left: Math.round(naturalW * 0.045),
-          top: Math.round(naturalH * 0.138),
-          width: Math.round(naturalW * 0.910),
-          text: deckText,
-          fontSize: Math.round(naturalW * 0.013),
-          fontFamily: "'Playfair Display', serif",
-          fontStyle: 'italic',
-          textColor: '#475569',
-          cardBg: 'transparent',
-          padding: 6,
-        });
-        canvas.add(deck);
-
-        // 4. 4 Kotak Metrik KPI Kemiskinan
-        const statsPoverty = [
-          { val: '9,3%', lbl: 'PERSENTASE PENDUDUK MISKIN', left: 0.045 },
-          { val: 'RP 1 TRILIUN', lbl: 'TOTAL ANGGARAN PENGENTASAN', left: 0.278 },
-          { val: '15 KELURAHAN', lbl: 'KONSENTRASI WILAYAH TERBANYAK', left: 0.511 },
-          { val: '50%', lbl: 'TARGET PENGURANGAN KEMISKINAN', left: 0.744 },
-        ];
-        statsPoverty.forEach((st, idx) => {
-          const statBox = createCanvaComponent({
-            id: `box_stat_${idx}_${Date.now()}`,
-            name: `Metrik 0${idx + 1}: ${st.val}`,
-            left: Math.round(naturalW * st.left),
-            top: Math.round(naturalH * 0.178),
-            width: Math.round(naturalW * 0.211),
-            text: `${st.val}\n${st.lbl}`,
-            fontSize: Math.round(naturalW * 0.018),
-            fontWeight: 'bold',
-            textAlign: 'center',
-            textColor: '#B91C1C',
-            cardBg: '#FFFFFF',
-            padding: 8,
-            lineHeight: 1.25,
-          });
-          canvas.add(statBox);
-        });
-
-        // 5. Banner Section Tag
-        const sectionTag = createCanvaComponent({
-          id: `box_section_tag_${Date.now()}`,
-          name: 'Banner: PILAR AKSI & ADVOKASI',
-          left: Math.round(naturalW * 0.045),
-          top: Math.round(naturalH * 0.485),
-          width: Math.round(naturalW * 0.320),
-          text: 'PILAR AKSI & ADVOKASI BERKELANJUTAN',
-          fontSize: Math.round(naturalW * 0.011),
-          fontWeight: 'bold',
-          textAlign: 'center',
-          textColor: '#FFFFFF',
-          cardBg: '#DC2626',
-          padding: 6,
-        });
-        canvas.add(sectionTag);
-
-        // 6. 5 Kartu Kolom Pilar Aksi
-        const pillars = [
+        const sliceImg = await createCroppedComponentSlice(
+          sourceImg,
+          { x: cropX, y: cropY, w: cropW, h: cropH },
           {
-            badge: '◈ 01',
-            title: '3 KEBIJAKAN STRATEGIS',
-            desc: 'Pemerintah Kota Bandung meluncurkan 3 kebijakan strategis untuk mengurangi kemiskinan; pendidikan, kesehatan dan pemberdayaan ekonomi dengan alokasi Rp 500 miliar.',
-            tag: '✦ INDIKATOR 01',
-            left: 0.045,
-          },
-          {
-            badge: '◈ 02',
-            title: '5.000 KELUARGA BANTUAN',
-            desc: 'Sebanyak 5.000 keluarga miskin menerima bantuan langsung tunai sebesar Rp 1 juta per tahun untuk meningkatkan daya beli dan akses terhadap kebutuhan dasar.',
-            tag: '✦ INDIKATOR 02',
-            left: 0.228,
-          },
-          {
-            badge: '◈ 03',
-            title: 'TARGET PENDIDIKAN 2024',
-            desc: 'Meningkatkan anggaran pendidikan hingga 20% dari APBD untuk memastikan anak-anak usia sekolah mendapatkan akses pendidikan yang layak.',
-            tag: '✦ INDIKATOR 03',
-            left: 0.411,
-          },
-          {
-            badge: '◈ 04',
-            title: 'PROGRAM KEWIRAUSAHAAN',
-            desc: 'Meluncurkan program pelatihan wirausaha dengan target 2.000 UMKM baru yang didukung dengan pelatihan dan akses modal.',
-            tag: '✦ INDIKATOR 04',
-            left: 0.594,
-          },
-          {
-            badge: '◈ 05',
-            title: 'AUDIT KEBIJAKAN TAHUNAN',
-            desc: 'Melakukan audit tahunan terhadap semua program pengentasan kemiskinan guna memastikan transparansi dan akuntabilitas penggunaan anggaran.',
-            tag: '✦ INDIKATOR 05',
-            left: 0.777,
-          },
-        ];
-        pillars.forEach((p, idx) => {
-          const card = createCanvaComponent({
-            id: `box_pillar_${idx}_${Date.now()}`,
-            name: `Pilar 0${idx + 1}: ${p.title}`,
-            left: Math.round(naturalW * p.left),
-            top: Math.round(naturalH * 0.520),
-            width: Math.round(naturalW * 0.178),
-            text: `${p.badge}\n${p.title}\n\n${p.desc}\n\n${p.tag}`,
-            fontSize: Math.round(naturalW * 0.010),
-            fontFamily: "'Inter', sans-serif",
-            textColor: '#1E293B',
-            cardBg: '#FFFFFF',
-            padding: 8,
-            lineHeight: 1.3,
-          });
-          canvas.add(card);
-        });
-
-        // 7. Closing Takeaway Banner
-        const closingBanner = createCanvaComponent({
-          id: `box_closing_${Date.now()}`,
-          name: 'Sintesis Penutup Kebijakan',
-          left: Math.round(naturalW * 0.045),
-          top: Math.round(naturalH * 0.868),
-          width: Math.round(naturalW * 0.910),
-          text: 'Transparansi dan kolaborasi antara pemerintah dan masyarakat kunci dalam mengatasi kemiskinan di Kota Bandung.',
-          fontSize: Math.round(naturalW * 0.012),
-          fontWeight: 'bold',
-          textAlign: 'center',
-          textColor: '#0F172A',
-          cardBg: 'rgba(255, 255, 255, 0.95)',
-          padding: 8,
-        });
-        canvas.add(closingBanner);
-
-        // 8. Footer Bar
-        const footerBar = createCanvaComponent({
-          id: `box_footer_${Date.now()}`,
-          name: 'Identitas Dewan (Footer)',
-          left: Math.round(naturalW * 0.045),
-          top: Math.round(naturalH * 0.925),
-          width: Math.round(naturalW * 0.910),
-          text: initialAuthor || 'DR. JONANDA P. A. B • Golkar // DPRD PROVINSI • DAPIL JABAR                      2026',
-          fontSize: Math.round(naturalW * 0.012),
-          fontWeight: 'bold',
-          textColor: '#0F172A',
-          cardBg: 'rgba(255, 255, 255, 0.95)',
-          padding: 6,
-        });
-        canvas.add(footerBar);
-
-      } else if (layoutArchetype === 'INFOGRAPHIC_CHRONICLE_GRID') {
-        // ─── POSTER KRONIK & REKAM JEJAK (SOEDIRMAN) ───
-
-        // 1. Masthead Kiri Oranye
-        const leftMasthead = createCanvaComponent({
-          id: `box_soedirman_masthead_${Date.now()}`,
-          name: 'Banner Masthead Tokoh',
-          left: Math.round(naturalW * 0.045),
-          top: Math.round(naturalH * 0.035),
-          width: Math.round(naturalW * 0.315),
-          text: 'SOEDIRMAN\n\nSANG GURU TELADAN YANG MENJADI JENDERAL BESAR BANGSA INDONESIA\n\nRaden Soedirman\nLahir 24 Januari 1916 di Purbalingga.',
-          fontSize: Math.round(naturalW * 0.018),
-          fontFamily: "'Bebas Neue', 'Inter', sans-serif",
-          fontWeight: 'bold',
-          textColor: '#FFFFFF',
-          cardBg: 'rgba(234, 88, 12, 0.92)',
-          padding: 12,
-          lineHeight: 1.3,
-        });
-        canvas.add(leftMasthead);
-
-        // 2. 6 Kartu Rekam Jejak Kolom Kanan
-        const chronicleCards = [
-          { title: 'RIWAYAT PENDIDIKAN', text: 'Riwayat pendidikan yang tidak berjalan dengan lancar karena kendala ekonomi.', top: 0.035 },
-          { title: 'GURU TELADAN (1936)', text: 'Menjadi seorang guru di H.I.S Muhammadiyah Cilacap pada tahun 1936.', top: 0.185 },
-          { title: 'MILITER PETA', text: 'Masuk ke militer di PETA dan membuktikan kepemimpinan hingga menjadi seorang Jenderal Besar.', top: 0.335 },
-          { title: 'PERANG GERILYA', text: 'Menjadi pemimpin perang Gerilya yang tangguh dalam mempertahankan kemerdekaan Indonesia.', top: 0.485 },
-          { title: 'DITENGAH SAKIT', text: 'Didiagnosa menderita tuberkulosis namun tetap memimpin pasukan dengan ditandu masuk keluar hutan.', top: 0.650 },
-          { title: 'AKHIR HAYAT', text: 'Wafat setelah Belanda resmi mengakui kedaulatan penuh Republik Indonesia.', top: 0.800 },
-        ];
-
-        chronicleCards.forEach((c, idx) => {
-          const card = createCanvaComponent({
-            id: `box_chronicle_${idx}_${Date.now()}`,
-            name: `Rekam Jejak 0${idx + 1}: ${c.title}`,
-            left: Math.round(naturalW * 0.380),
-            top: Math.round(naturalH * c.top),
-            width: Math.round(naturalW * 0.575),
-            text: `${c.title}\n\n${c.text}`,
-            fontSize: Math.round(naturalW * 0.012),
-            textColor: '#1E293B',
-            cardBg: '#FFFFFF',
-            padding: 10,
-            lineHeight: 1.35,
-          });
-          canvas.add(card);
-        });
-
-      } else if (layoutArchetype === 'INFOGRAPHIC_RADIAL_CLOCK') {
-        // ─── POSTER JAM MELINGKAR / TONGGAK TIER (RADIAL CLOCK) ───
-
-        // 1. Header Box Atas
-        const titleText = (initialTitle || 'PENURUNAN PENGANGGURAN MELALUI PELATIHAN').toUpperCase();
-        const headerCard = createCanvaComponent({
-          id: `box_radial_header_${Date.now()}`,
-          name: 'Judul Utama (Masthead)',
-          left: Math.round(naturalW * 0.045),
-          top: Math.round(naturalH * 0.052),
-          width: Math.round(naturalW * 0.910),
-          text: `DATA PELATIHAN KERJA // ANALISIS KEBIJAKAN\n${titleText}`,
-          fontSize: Math.round(naturalW * 0.034),
-          fontWeight: 'bold',
-          textColor: '#0F172A',
-          cardBg: '#FFFFFF',
-          padding: 10,
-        });
-        canvas.add(headerCard);
-
-        // 2. 3 KPI Stats di Atas Sayap Kanan
-        const statsRadial = [
-          { val: '10%', lbl: 'PENURUNAN PENGANGGURAN', left: 0.470, w: 0.155 },
-          { val: 'RP 200 MILIAR', lbl: 'TOTAL ANGGARAN PELATIHAN', left: 0.635, w: 0.165 },
-          { val: '8 KOTA', lbl: 'KONSENTRASI DI JABAR', left: 0.810, w: 0.145 },
-        ];
-        statsRadial.forEach((st, idx) => {
-          const sBox = createCanvaComponent({
-            id: `box_radial_stat_${idx}_${Date.now()}`,
-            name: `Stat ${st.val}`,
-            left: Math.round(naturalW * st.left),
-            top: Math.round(naturalH * 0.185),
-            width: Math.round(naturalW * st.w),
-            text: `${st.val}\n${st.lbl}`,
-            fontSize: Math.round(naturalW * 0.014),
-            fontWeight: 'bold',
-            textAlign: 'center',
-            textColor: '#EA580C',
-            cardBg: '#FFFFFF',
-            padding: 6,
-          });
-          canvas.add(sBox);
-        });
-
-        // 3. 5 Kartu Tonggak Sayap Kanan
-        const milestones = [
-          { title: 'TONGGAK 01: 15.000 PESERTA PELATIHAN', desc: 'Balai Latihan Kerja telah melatih 15.000 peserta dengan kurikulum industri.', top: 0.265 },
-          { title: 'TONGGAK 02: RP 200 MILIAR DIANGGARKAN', desc: 'Pemerintah Provinsi mengalokasikan anggaran untuk peningkatan fasilitas BLK.', top: 0.390 },
-          { title: 'TONGGAK 03: 8 KOTA PRIORITAS', desc: 'Pelatihan diprioritaskan di daerah dengan tingkat pengangguran terbuka tinggi.', top: 0.515 },
-          { title: 'TONGGAK 04: 95% PENYERAPAN TENAGA KERJA', desc: 'Lulusan bersertifikasi berhasil diserap langsung ke sektor industri terkemuka.', top: 0.640 },
-          { title: 'TONGGAK 05: PROGRAM KERJA SAMA INDUSTRI', desc: 'Membangun kemitraan dengan 50 perusahaan manufaktur dan digital terkemuka.', top: 0.765 },
-        ];
-        milestones.forEach((m, idx) => {
-          const mCard = createCanvaComponent({
-            id: `box_milestone_${idx}_${Date.now()}`,
-            name: `Tonggak 0${idx + 1}`,
-            left: Math.round(naturalW * 0.470),
-            top: Math.round(naturalH * m.top),
-            width: Math.round(naturalW * 0.490),
-            text: `${m.title}\n${m.desc}`,
-            fontSize: Math.round(naturalW * 0.012),
-            textColor: '#1E293B',
-            cardBg: '#FFFFFF',
-            padding: 8,
-          });
-          canvas.add(mCard);
-        });
-
-        // 4. Sintesis Kebijakan
-        const synthCard = createCanvaComponent({
-          id: `box_radial_synth_${Date.now()}`,
-          name: 'Sintesis Kebijakan',
-          left: Math.round(naturalW * 0.470),
-          top: Math.round(naturalH * 0.890),
-          width: Math.round(naturalW * 0.490),
-          text: 'SINTESIS KEBIJAKAN\nPenting untuk terus mengevaluasi efektivitas program guna memastikan akuntabilitas anggaran.',
-          fontSize: Math.round(naturalW * 0.010),
-          textColor: '#0F172A',
-          cardBg: '#FFFFFF',
-          padding: 6,
-        });
-        canvas.add(synthCard);
-
-        // 5. Footer
-        const footerCard = createCanvaComponent({
-          id: `box_radial_footer_${Date.now()}`,
-          name: 'Footer',
-          left: Math.round(naturalW * 0.045),
-          top: Math.round(naturalH * 0.945),
-          width: Math.round(naturalW * 0.910),
-          text: initialAuthor || 'DR. JONANDA P. A. B // DPRD PROVINSI • DAPIL JABAR                      2026',
-          fontSize: Math.round(naturalW * 0.012),
-          fontWeight: 'bold',
-          textColor: '#0F172A',
-          cardBg: 'rgba(255, 255, 255, 0.95)',
-          padding: 4,
-        });
-        canvas.add(footerCard);
-
-      } else {
-        // ─── POSTER GELOMBANG NARATIF 4 DIMENSI (NARRATIVE WAVE & DEFAULT) ───
-
-        // 1. Top Bar Tag Header
-        const topTag = createCanvaComponent({
-          id: `box_toptag_${Date.now()}`,
-          name: 'Top Tag: POLARIS // DAPIL JABAR',
-          left: Math.round(naturalW * 0.082),
-          top: Math.round(naturalH * 0.022),
-          width: Math.round(naturalW * 0.836),
-          text: 'POLARIS // DAPIL JABAR                       DOKUMEN ADVOKASI PUBLIK',
-          fontSize: Math.round(naturalW * 0.012),
-          textColor: '#64748B',
-          fontWeight: 'bold',
-          cardBg: 'transparent',
-          padding: 4,
-        });
-        canvas.add(topTag);
-
-        // 2. Headline Masthead
-        const titleText = (initialTitle || 'PENURUNAN PENGANGGURAN MELALUI PELATIHAN').toUpperCase();
-        const headlineBox = createCanvaComponent({
-          id: `box_headline_${Date.now()}`,
-          name: 'Judul Utama (Headline)',
-          left: Math.round(naturalW * 0.082),
-          top: Math.round(naturalH * 0.068),
-          width: Math.round(naturalW * 0.836),
-          text: `DATA PELATIHAN KERJA // STRATEGI EKONOMI\n${titleText}`,
-          fontSize: Math.round(naturalW * 0.034),
-          fontWeight: 'bold',
-          textColor: '#0F172A',
-          cardBg: '#FFFFFF',
-          padding: 10,
-        });
-        canvas.add(headlineBox);
-
-        // 3. Subjudul / Deck
-        const deckText = initialSubtitle || 'Program pelatihan di Balai Latihan Kerja Jawa Barat berhasil menurunkan angka pengangguran terbuka sebesar 12,5% di Kota Bandung. Dengan alokasi anggaran Rp 300 miliar, program ini mendukung 10.000 peserta pelatihan setiap tahun.';
-        const deckBox = createCanvaComponent({
-          id: `box_deck_${Date.now()}`,
-          name: 'Subjudul & Narasi',
-          left: Math.round(naturalW * 0.082),
-          top: Math.round(naturalH * 0.156),
-          width: Math.round(naturalW * 0.836),
-          text: deckText,
-          fontSize: Math.round(naturalW * 0.013),
-          textColor: '#334155',
-          cardBg: 'rgba(255, 255, 255, 0.90)',
-          padding: 8,
-          lineHeight: 1.35,
-        });
-        canvas.add(deckBox);
-
-        // 4. 4 Kotak Metrik KPI
-        const kpis = [
-          { left: 0.100, text: '12,5%\nPENURUNAN PENGANGGURAN', name: 'Metrik 12,5%' },
-          { left: 0.305, text: 'RP 300 MILIAR\nTOTAL ANGGARAN', name: 'Metrik Rp 300 Miliar' },
-          { left: 0.510, text: '10.000 PESERTA\nKONSENTRASI PELATIHAN', name: 'Metrik 10.000 Peserta' },
-          { left: 0.715, text: '95%\nTINGKAT PENYERAPAN', name: 'Metrik 95%' },
-        ];
-        kpis.forEach((k, idx) => {
-          const kBox = createCanvaComponent({
-            id: `box_kpi_${idx}_${Date.now()}`,
-            name: k.name,
-            left: Math.round(naturalW * k.left),
-            top: Math.round(naturalH * 0.244),
-            width: Math.round(naturalW * 0.185),
-            text: k.text,
-            fontSize: Math.round(naturalW * 0.011),
-            fontWeight: 'bold',
-            textAlign: 'center',
-            textColor: '#065F46',
-            cardBg: '#FFFFFF',
-            padding: 6,
-          });
-          canvas.add(kBox);
-        });
-
-        // 5. 4 Kartu Dimensi (Pola Zig-zag Alternating)
-        const dimensiCards = [
-          {
-            left: 0.505,
-            top: 0.325,
-            text: 'DIMENSI 01: 5 BALAI LATIHAN KERJA\n\nTerdapat 5 Balai Latihan Kerja di Kota Bandung yang menyediakan berbagai program pelatihan sesuai kebutuhan industri lokal.',
-            name: 'Kartu Dimensi 01',
-          },
-          {
-            left: 0.082,
-            top: 0.460,
-            text: 'DIMENSI 02: 60% PESERTA BERSERTIFIKAT\n\nDari total peserta, 60% berhasil mendapatkan sertifikat kompetensi yang diakui industri, meningkatkan daya saing di pasar kerja.',
-            name: 'Kartu Dimensi 02',
-          },
-          {
-            left: 0.505,
-            top: 0.595,
-            text: 'DIMENSI 03: 3 SEKTOR PRIORITAS\n\nPelatihan difokuskan pada 3 sektor prioritas: teknologi informasi, industri kreatif dan manufaktur untuk mendukung pertumbuhan ekonomi.',
-            name: 'Kartu Dimensi 03',
-          },
-          {
-            left: 0.082,
-            top: 0.730,
-            text: 'DIMENSI 04: 30% PENINGKATAN KETERAMPILAN\n\nPeserta pelatihan menunjukkan peningkatan keterampilan sebesar 30% setelah mengikuti program, berdasarkan evaluasi pasca-pelatihan.',
-            name: 'Kartu Dimensi 04',
-          },
-        ];
-        dimensiCards.forEach((c, idx) => {
-          const cBox = createCanvaComponent({
-            id: `box_dimensi_${idx}_${Date.now()}`,
-            name: c.name,
-            left: Math.round(naturalW * c.left),
-            top: Math.round(naturalH * c.top),
-            width: Math.round(naturalW * 0.413),
-            text: c.text,
-            fontSize: Math.round(naturalW * 0.012),
-            textColor: '#1E293B',
-            cardBg: '#FFFFFF',
-            padding: 8,
-            lineHeight: 1.35,
-          });
-          canvas.add(cBox);
-        });
-
-        // 6. Sintesis Kebijakan
-        const policyBox = createCanvaComponent({
-          id: `box_policy_${Date.now()}`,
-          name: 'Sintesis Kebijakan',
-          left: Math.round(naturalW * 0.082),
-          top: Math.round(naturalH * 0.865),
-          width: Math.round(naturalW * 0.836),
-          text: 'Penting untuk terus memantau dan mengevaluasi efektivitas program pelatihan guna memastikan transparansi dan akuntabilitas dalam pengelolaan anggaran.',
-          fontSize: Math.round(naturalW * 0.011),
-          textColor: '#0F172A',
-          cardBg: 'rgba(255, 255, 255, 0.95)',
-          padding: 6,
-        });
-        canvas.add(policyBox);
-
-        // 7. Footer
-        const footerBox = createCanvaComponent({
-          id: `box_footer_${Date.now()}`,
-          name: 'Identitas Dewan (Footer)',
-          left: Math.round(naturalW * 0.082),
-          top: Math.round(naturalH * 0.925),
-          width: Math.round(naturalW * 0.836),
-          text: initialAuthor || 'DR. JONANDA P. A. B // DPRD PROVINSI • DAPIL JABAR                      2026',
-          fontSize: Math.round(naturalW * 0.012),
-          fontWeight: 'bold',
-          textColor: '#0F172A',
-          cardBg: 'rgba(255, 255, 255, 0.95)',
-          padding: 6,
-        });
-        canvas.add(footerBox);
+            id: def.id,
+            name: def.name,
+            text: def.text,
+            naturalW,
+            naturalH,
+            def,
+          }
+        );
+        canvas.add(sliceImg);
       }
 
       canvas.renderAll();
@@ -1489,11 +1780,51 @@ export function MagicLayersModal({
   // ─── LIVE SENTENCE / TEXT EDITING HANDLER ───
   const handleLiveTextChange = (newText: string) => {
     setCurrentTextContent(newText);
-    if (!fabricRef.current || !selectedObject || !(selectedObject instanceof Textbox)) return;
-    selectedObject.set('text', newText);
-    selectedObject.initDimensions();
-    fabricRef.current.renderAll();
-    refreshLayersList(fabricRef.current);
+    if (!fabricRef.current || !selectedObject) return;
+
+    if (selectedObject instanceof Textbox) {
+      selectedObject.set('text', newText);
+      selectedObject.initDimensions();
+      fabricRef.current.renderAll();
+      refreshLayersList(fabricRef.current);
+      return;
+    }
+
+    if ((selectedObject as any).customData?.isComponentSlice) {
+      const canvas = fabricRef.current;
+      const sliceObj = selectedObject as FabricImage;
+      const customData = (sliceObj as any).customData || {};
+      const def: ComponentSliceDef | undefined = customData.def;
+
+      const left = sliceObj.left ?? (def ? Math.round(def.x * canvasNaturalSizeRef.current.width) : 0);
+      const top = sliceObj.top ?? (def ? Math.round(def.y * canvasNaturalSizeRef.current.height) : 0);
+      const width = (sliceObj.width || 100) * (sliceObj.scaleX || 1);
+      const naturalW = canvasNaturalSizeRef.current.width || 1080;
+
+      const newTextbox = createCanvaComponent({
+        id: (sliceObj as any).customId || `box_${Date.now()}`,
+        name: customData.name || 'Komponen Teks',
+        left,
+        top,
+        width,
+        text: newText,
+        fontSize: def?.fontSize || Math.round(naturalW * 0.012),
+        fontFamily: def?.fontFamily || "'Inter', sans-serif",
+        fontWeight: def?.fontWeight || 'normal',
+        fontStyle: def?.fontStyle || 'normal',
+        textAlign: def?.textAlign || 'left',
+        textColor: def?.textColor || '#0F172A',
+        cardBg: def?.cardBg || '#FFFFFF',
+        padding: def?.padding || 8,
+      });
+
+      canvas.remove(sliceObj);
+      canvas.add(newTextbox);
+      canvas.setActiveObject(newTextbox);
+      setSelectedObject(newTextbox);
+      canvas.renderAll();
+      refreshLayersList(canvas);
+    }
   };
 
   // Apply Text Styling Changes
@@ -1814,12 +2145,19 @@ export function MagicLayersModal({
   const handleSaveAndApply = () => {
     if (!fabricRef.current) return;
     try {
-      fabricRef.current.discardActiveObject();
+      const canvas = fabricRef.current;
+      const sliceObjects = canvas.getObjects().filter((o) => (o as any).customData?.isComponentSlice);
+      sliceObjects.forEach((o) => o.set('stroke', undefined));
+      canvas.discardActiveObject();
+      canvas.renderAll();
 
-      const renderedUrl = fabricRef.current.toDataURL({
+      const renderedUrl = canvas.toDataURL({
         format: 'png',
         multiplier: 1.0,
       });
+
+      sliceObjects.forEach((o) => o.set('stroke', '#7D2AE8'));
+      canvas.renderAll();
 
       const layersJson = JSON.stringify(fabricRef.current.toJSON());
 
@@ -1845,12 +2183,19 @@ export function MagicLayersModal({
   const handleDownload = () => {
     if (!fabricRef.current) return;
     try {
-      fabricRef.current.discardActiveObject();
+      const canvas = fabricRef.current;
+      const sliceObjects = canvas.getObjects().filter((o) => (o as any).customData?.isComponentSlice);
+      sliceObjects.forEach((o) => o.set('stroke', undefined));
+      canvas.discardActiveObject();
+      canvas.renderAll();
 
-      const renderedUrl = fabricRef.current.toDataURL({
+      const renderedUrl = canvas.toDataURL({
         format: 'png',
         multiplier: 1.5,
       });
+
+      sliceObjects.forEach((o) => o.set('stroke', '#7D2AE8'));
+      canvas.renderAll();
 
       const link = document.createElement('a');
       link.download = `polaris-magic-layers-${Date.now()}.png`;
@@ -1999,7 +2344,7 @@ export function MagicLayersModal({
 
       {/* ─── 2. CONTEXTUAL FORMATTING BAR (CANVA WHITE SUBHEADER) ─── */}
       <div className="h-12 bg-white border-b border-slate-200 flex items-center justify-between px-4 sm:px-6 shrink-0 z-20 gap-3 overflow-x-auto shadow-2xs">
-        {selectedObject && selectedObject instanceof Textbox ? (
+        {selectedObject && (selectedObject instanceof Textbox || (selectedObject as any).customData?.isComponentSlice) ? (
           <div className="flex items-center gap-2.5 shrink-0 w-full animate-in fade-in duration-150">
             
             {/* INPUT LANGSUNG UBAH KALIMAT */}
@@ -2359,7 +2704,7 @@ export function MagicLayersModal({
               </div>
 
               {/* LIVE SENTENCE EDITOR UNTUK LAYER TERPILIH */}
-              {selectedObject && selectedObject instanceof Textbox && (
+              {selectedObject && (selectedObject instanceof Textbox || (selectedObject as any).customData?.isComponentSlice) && (
                 <div className="p-3 bg-purple-50/70 border-t border-purple-200 mt-auto shrink-0 space-y-2">
                   <div className="flex items-center justify-between">
                     <span className="text-[11px] font-bold text-purple-950 flex items-center gap-1.5">
