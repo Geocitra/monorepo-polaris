@@ -348,6 +348,7 @@ export default function InfografisStudioPage() {
       let newImageUrl = res?.dalleImageUrl || res?.imageUrl;
       let newTitle = promptText.slice(0, 50);
       let detectedArchetype: string | undefined = undefined;
+      let rawCanvasUrl: string | undefined = undefined;
 
       if (jobId && publicationId) {
         let completed = false;
@@ -375,6 +376,9 @@ export default function InfografisStudioPage() {
 
         const detail = await ApiClient.request<any>(`/studio/articles/${publicationId}`);
         newImageUrl = detail?.asset?.cdnPublicUrl || detail?.asset?.r2StorageUrl || newImageUrl;
+        if (detail?.rawCanvasUrl) {
+          rawCanvasUrl = detail.rawCanvasUrl;
+        }
         if (detail?.article?.title) {
           newTitle = detail.article.title;
         }
@@ -382,6 +386,7 @@ export default function InfografisStudioPage() {
           try {
             const parsed = JSON.parse(detail.asset.promptUsed);
             if (parsed?.archetype) detectedArchetype = parsed.archetype;
+            if (!rawCanvasUrl && parsed?.rawCanvasUrl) rawCanvasUrl = parsed.rawCanvasUrl;
           } catch {}
         }
       }
@@ -411,6 +416,7 @@ export default function InfografisStudioPage() {
         archetype: detectedArchetype,
         source: latestTargetSession.iterations.length === 0 ? 'INITIAL' : 'REFINE',
         publicationId: publicationId || undefined,
+        rawCanvasUrl,
       };
 
       const updated = sessionsRef.current.map((s) => {

@@ -1333,35 +1333,7 @@ async function createCleanPosterBackground(
         });
 
         if (backendRes?.cleanBackgroundUrl) {
-          console.log('[MagicLayers] Inpainted via Backend:', backendRes.strategyUsed);
-          resolve(backendRes.cleanBackgroundUrl);
-          return;
-        }
-      } catch (backendErr) {
-        console.warn('[MagicLayers] Backend inpainting fallback ke client-side synthesis:', backendErr);
-      }
-      // ════════════════════════════════════════════════════════════════════════
-      // OPSI C: Panggil Backend Inpainting Engine terlebih dahulu (Best Practice)
-      // ════════════════════════════════════════════════════════════════════════
-      try {
-        const backendRes = await ApiClient.request<{
-          success: boolean;
-          cleanBackgroundUrl: string;
-          strategyUsed?: string;
-        }>('/studio/magic-layers/inpaint', {
-          method: 'POST',
-          body: JSON.stringify({
-            imageUrl: safeUrl,
-            naturalW,
-            naturalH,
-            componentBounds: componentDefs,
-            archetype,
-            publicationId,
-          }),
-        });
-
-        if (backendRes?.cleanBackgroundUrl && backendRes.cleanBackgroundUrl.startsWith('data:')) {
-          console.log('[MagicLayers] Inpainted via Backend Option C:', backendRes.strategyUsed);
+          console.log('[MagicLayers] Inpainted via Backend:', backendRes.strategyUsed, backendRes.cleanBackgroundUrl);
           resolve(backendRes.cleanBackgroundUrl);
           return;
         }
@@ -1823,7 +1795,10 @@ export function MagicLayersModal({
         imageUrl,
         naturalW,
         naturalH,
-        componentDefs
+        componentDefs,
+        layoutArchetype,
+        publicationId,
+        rawCanvasUrl
       );
       await new Promise((resolve) => setTimeout(resolve, 500));
 

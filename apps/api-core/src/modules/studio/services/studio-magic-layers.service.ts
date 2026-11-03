@@ -388,15 +388,39 @@ export class StudioMagicLayersService {
       foregroundComponents: Array<{ id: string; name: string; bounds: any }>;
     };
   }> {
-    this.logger.log(`Executing backend inpainting for ${params.componentBounds.length} components (PubID: ${params.publicationId || 'N/A'})`);
+    this.logger.log(`Executing backend inpainting for ${params.componentBounds.length} components (PubID: ${params.publicationId || 'N/A'}, ImageUrl: ${params.imageUrl?.slice(0, 50)})`);
 
-    // 1. Cek apakah Master Raw Canvas Asli tersedia di database untuk publicationId ini
-    if (params.publicationId) {
+    // 1. Cek apakah Master Raw Canvas Asli tersedia di database untuk publicationId / imageUrl ini
+    let effectivePubId = params.publicationId;
+    if (!effectivePubId && params.imageUrl) {
+      try {
+        const [assetMatch] = await db
+          .select({ publicationId: mediaAssets.publicationId })
+          .from(mediaAssets)
+          .where(eq(mediaAssets.cdnPublicUrl, params.imageUrl))
+          .limit(1);
+
+        if (assetMatch?.publicationId) {
+          effectivePubId = assetMatch.publicationId;
+          this.logger.log(`[MagicLayers] Resolusi publicationId ${effectivePubId} berhasil dari cdnPublicUrl`);
+        } else {
+          const uuidMatches = params.imageUrl.match(/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/gi);
+          if (uuidMatches && uuidMatches.length > 0) {
+            effectivePubId = uuidMatches[uuidMatches.length - 1];
+            this.logger.log(`[MagicLayers] Resolusi publicationId ${effectivePubId} dari regex filename URL`);
+          }
+        }
+      } catch (err) {
+        this.logger.warn(`[MagicLayers] Resolusi publicationId dari imageUrl gagal: ${err}`);
+      }
+    }
+
+    if (effectivePubId) {
       try {
         const assets = await db
           .select()
           .from(mediaAssets)
-          .where(eq(mediaAssets.publicationId, params.publicationId));
+          .where(eq(mediaAssets.publicationId, effectivePubId));
 
         const rawAsset = assets.find((a) => a.assetType === AssetType.HEADER_IMAGE);
         let rawCanvasUrl = rawAsset?.cdnPublicUrl || '';
@@ -412,7 +436,7 @@ export class StudioMagicLayersService {
         }
 
         if (rawCanvasUrl) {
-          this.logger.log(`[MagicLayers] Mengembalikan Master Raw Canvas Asli untuk publication ${params.publicationId}`);
+          this.logger.log(`[MagicLayers] Mengembalikan Master Raw Canvas Asli untuk publication ${effectivePubId}: ${rawCanvasUrl}`);
           return {
             success: true,
             cleanBackgroundUrl: rawCanvasUrl,
