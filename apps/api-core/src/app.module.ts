@@ -25,6 +25,7 @@ import { RedisModule } from './modules/redis/redis.module.js';
 import { RealtimeModule } from './modules/realtime/realtime.module.js';
 import { DatahubModule } from './modules/datahub/datahub.module.js';
 import { OperatorModule } from './modules/operator/operator.module.js';
+import { WhatsAppModule } from './modules/whatsapp/whatsapp.module.js';
 import { AppController } from './app.controller.js';
 
 @Module({
@@ -57,6 +58,7 @@ import { AppController } from './app.controller.js';
     XModule,           // Integrasi X (Twitter) Developer API v2
     TikTokModule,      // Integrasi TikTok Content Posting API
     DatahubModule,     // Modul DataHub & Blind Ingestion Engine (Deduplikasi & RAG)
+    WhatsAppModule,    // Zero-Login WhatsApp Cloud API Topic Intake & Operator Broker
   ],
   providers: [
     {

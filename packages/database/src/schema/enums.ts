@@ -192,3 +192,38 @@ export const supportTypeEnum = pgEnum('support_type_enum', [
   'NEUTRAL_CONTEXT',
 ]);
 
+export const contentBriefStatusEnum = pgEnum('content_brief_status_enum', [
+  'DRAFT',
+  'SUBMITTED',
+  'ACCEPTED',
+  'QUEUED_NEXT_WEEK',
+  'IN_PROGRESS',
+  'NEED_CLARIFICATION',
+  'READY_FOR_REVIEW',
+  'REVISION_REQUESTED',
+  'APPROVED',
+  'PUBLISHED',
+  'REJECTED',
+  'CANCELLED',
+  'CLOSED_UNPUBLISHED',
+]);
+
+export const briefUrgencyLevelEnum = pgEnum('brief_urgency_level_enum', [
+  'NORMAL',
+  'URGENT',
+]);
+
+export const briefMessageDirectionEnum = pgEnum('brief_message_direction_enum', [
+  'INBOUND',
+  'OUTBOUND',
+]);
+
+export const briefMessageTypeEnum = pgEnum('brief_message_type_enum', [
+  'TEXT',
+  'IMAGE',
+  'DOCUMENT',
+  'INTERACTIVE',
+  'SYSTEM',
+]);
+
+

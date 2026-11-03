@@ -41,6 +41,7 @@ import {
   TenantContextData,
   AttachedFileItem,
   GeneratedFullResult,
+  ContentBriefItem,
 } from './types';
 import { OperatorSocialDistributionTab } from './OperatorSocialDistributionTab';
 
@@ -99,6 +100,10 @@ interface OperatorContentTabProps {
   totalAssigned: number;
   selectedTenantId: string | null;
   onSelectTenant: (tenantId: string) => void;
+  activeBrief?: ContentBriefItem | null;
+  onClearActiveBrief?: () => void;
+  submittingBriefReview?: boolean;
+  onSubmitBriefForWhatsAppReview?: () => void;
 }
 
 export function OperatorContentTab({
@@ -156,11 +161,71 @@ export function OperatorContentTab({
   totalAssigned,
   selectedTenantId,
   onSelectTenant,
+  activeBrief,
+  onClearActiveBrief,
+  submittingBriefReview,
+  onSubmitBriefForWhatsAppReview,
 }: OperatorContentTabProps) {
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   return (
     <div className="space-y-6 animate-in fade-in duration-150">
+      {/* BANNER TIKET WHATSAPP BRIEF AKTIF */}
+      {activeBrief && (
+        <div className="p-4 rounded-2xl bg-gradient-to-r from-emerald-500/15 via-indigo-500/10 to-transparent border border-emerald-500/40 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <div className="flex items-start gap-3">
+            <div className="w-9 h-9 rounded-xl bg-emerald-600 text-white flex items-center justify-center shrink-0 mt-0.5">
+              <MessageCircle className="w-4 h-4" />
+            </div>
+            <div>
+              <div className="flex items-center gap-2 flex-wrap">
+                <span className="text-xs font-black text-emerald-800 dark:text-emerald-300">
+                  Mengerjakan Tiket Request WhatsApp #{activeBrief.briefCode}
+                </span>
+                <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-white/80 dark:bg-slate-900 text-slate-700 dark:text-slate-300 border border-emerald-300 dark:border-emerald-800">
+                  Revisi: {activeBrief.revisionUsed}/{activeBrief.revisionLimit}
+                </span>
+              </div>
+              <p className="text-xs text-slate-600 dark:text-slate-300 mt-0.5 line-clamp-1">
+                {activeBrief.topicSummary}
+              </p>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-2 shrink-0 self-end sm:self-center">
+            {generatedResult?.publication?.id && onSubmitBriefForWhatsAppReview && (
+              <button
+                type="button"
+                disabled={submittingBriefReview}
+                onClick={onSubmitBriefForWhatsAppReview}
+                className="px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-black shadow-sm flex items-center gap-1.5 transition cursor-pointer disabled:opacity-50"
+              >
+                {submittingBriefReview ? (
+                  <>
+                    <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+                    <span>Mengirim ke WA...</span>
+                  </>
+                ) : (
+                  <>
+                    <Send className="w-3.5 h-3.5" />
+                    <span>Kirim Pratinjau Hasil ke WA Klien</span>
+                  </>
+                )}
+              </button>
+            )}
+            {onClearActiveBrief && (
+              <button
+                type="button"
+                onClick={onClearActiveBrief}
+                className="p-1.5 rounded-lg text-slate-500 hover:text-slate-800 dark:hover:text-white transition cursor-pointer"
+                title="Lepaskan kaitan tiket brief"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            )}
+          </div>
+        </div>
+      )}
       {/* JIKA BELUM ADA HASIL: TAMPILKAN FORM PERACIK LENGKAP */}
       {!generatedResult ? (
         <div className="bg-white dark:bg-[#0B0F19] rounded-2xl p-6 border border-slate-200 dark:border-slate-800 shadow-sm space-y-6">
@@ -779,7 +844,22 @@ export function OperatorContentTab({
                 </p>
               </div>
 
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2 flex-wrap">
+                {activeBrief && onSubmitBriefForWhatsAppReview && (
+                  <button
+                    type="button"
+                    disabled={submittingBriefReview}
+                    onClick={onSubmitBriefForWhatsAppReview}
+                    className="px-5 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-black transition flex items-center gap-2 cursor-pointer shadow-sm disabled:opacity-50"
+                  >
+                    {submittingBriefReview ? (
+                      <RefreshCw className="w-4 h-4 animate-spin" />
+                    ) : (
+                      <MessageCircle className="w-4 h-4" />
+                    )}
+                    <span>Kirim Pratinjau Hasil ke WA Klien (#{activeBrief.briefCode})</span>
+                  </button>
+                )}
                 {selectedDewan.canDirectPublish ? (
                   generatedResult.publication.status !== 'PUBLISHED' ? (
                     <button

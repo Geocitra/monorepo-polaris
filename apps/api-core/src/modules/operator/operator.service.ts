@@ -13,6 +13,7 @@ import {
   operatorTenantAssignments,
   operatorAuditLogs,
   contentPublications,
+  contentBriefs,
   tenantQuotaLedgers,
   subscriptions,
   eq,
@@ -85,6 +86,31 @@ export class OperatorService {
             )
           );
 
+        let briefStats = {
+          pendingBriefs: 0,
+          inProgressBriefs: 0,
+          revisionRequestedBriefs: 0,
+        };
+        try {
+          const [briefAgg] = await db
+            .select({
+              pendingBriefs: sql<number>`count(*) filter (where ${contentBriefs.status} = 'SUBMITTED')::int`,
+              inProgressBriefs: sql<number>`count(*) filter (where ${contentBriefs.status} in ('ACCEPTED', 'IN_PROGRESS', 'NEED_CLARIFICATION'))::int`,
+              revisionRequestedBriefs: sql<number>`count(*) filter (where ${contentBriefs.status} = 'REVISION_REQUESTED')::int`,
+            })
+            .from(contentBriefs)
+            .where(eq(contentBriefs.tenantId, item.tenantId));
+          if (briefAgg) {
+            briefStats = {
+              pendingBriefs: briefAgg.pendingBriefs ?? 0,
+              inProgressBriefs: briefAgg.inProgressBriefs ?? 0,
+              revisionRequestedBriefs: briefAgg.revisionRequestedBriefs ?? 0,
+            };
+          }
+        } catch {
+          // Abaikan jika tabel baru sedang diinisialisasi
+        }
+
         return {
           ...item,
           todayStats: {
@@ -93,6 +119,7 @@ export class OperatorService {
             draftToday: todayPubs?.draftToday ?? 0,
             hasPublishedToday: (todayPubs?.publishedToday ?? 0) > 0,
           },
+          briefStats,
         };
       })
     );

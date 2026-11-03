@@ -17,11 +17,12 @@ export const config = {
 export default function middleware(req: NextRequest) {
   const { pathname } = req.nextUrl;
 
-  // Lewati static assets dan image optimization secara absolut
+  // Lewati static assets, image optimization, dan halaman publik tanpa login (Magic Link Review Brief)
   if (
     pathname.startsWith('/_next') ||
     pathname.startsWith('/images') ||
     pathname.startsWith('/api') ||
+    pathname.startsWith('/review-brief/') ||
     pathname.match(/\.(?:jpg|jpeg|gif|png|svg|ico|webp|avif)$/i)
   ) {
     return NextResponse.next();

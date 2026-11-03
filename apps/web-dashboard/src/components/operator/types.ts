@@ -43,6 +43,78 @@ export interface AssignedTenant {
     draftToday: number;
     hasPublishedToday: boolean;
   };
+  briefStats?: {
+    pendingBriefs: number;
+    inProgressBriefs: number;
+    revisionRequestedBriefs: number;
+  };
+}
+
+export interface BriefMessageItem {
+  id: string;
+  briefId: string;
+  tenantId: string;
+  direction: 'INBOUND' | 'OUTBOUND';
+  messageType: 'TEXT' | 'IMAGE' | 'DOCUMENT' | 'INTERACTIVE' | 'SYSTEM';
+  waMessageId: string | null;
+  textBody: string | null;
+  mediaCdnUrl: string | null;
+  mediaMimeType: string | null;
+  mediaFileName: string | null;
+  mediaFileSizeBytes: number | null;
+  revisionRound: number;
+  targetComponents: ('ARTICLE' | 'IMAGE' | 'CAPTION')[];
+  isInternalFault: boolean;
+  createdAt: string;
+}
+
+export interface ContentBriefItem {
+  id: string;
+  briefCode: string;
+  tenantId: string;
+  tenantFullName: string;
+  tenantMaskedPhone: string;
+  assignedOperatorId: string | null;
+  status:
+    | 'DRAFT_COLLECTING'
+    | 'SUBMITTED'
+    | 'QUEUED_NEXT_WEEK'
+    | 'ACCEPTED'
+    | 'NEED_CLARIFICATION'
+    | 'IN_PROGRESS'
+    | 'READY_FOR_REVIEW'
+    | 'REVISION_REQUESTED'
+    | 'APPROVED'
+    | 'PUBLISHED'
+    | 'REJECTED';
+  clientUrgency: 'URGENT' | 'NORMAL';
+  operatorPriority: 'URGENT' | 'NORMAL';
+  topicSummary: string;
+  weeklyQuotaPeriod: string;
+  weeklyRequestLimit: number;
+  revisionUsed: number;
+  revisionLimit: number;
+  articleStatus: string;
+  imageStatus: string;
+  captionStatus: string;
+  linkedPublicationId: string | null;
+  acceptedAt: string | null;
+  submittedForReviewAt: string | null;
+  approvedAt: string | null;
+  publishedAt: string | null;
+  operatorNotes: string | null;
+  createdAt: string;
+  updatedAt: string;
+  messages: BriefMessageItem[];
+}
+
+export interface TenantWeeklyBriefQuota {
+  tenantId: string;
+  weeklyQuotaPeriod: string;
+  weeklyLimit: number;
+  weeklyUsed: number;
+  weeklyRemaining: number;
+  queuedNextWeekCount: number;
 }
 
 export interface TenantContextData {
@@ -70,6 +142,7 @@ export interface TenantContextData {
 
 export type OperatorTabType =
   | 'CONTENT'
+  | 'BRIEFS'
   | 'ARTICLES'
   | 'KNOWLEDGE'
   | 'PROFILE'

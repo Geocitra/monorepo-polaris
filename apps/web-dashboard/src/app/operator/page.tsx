@@ -19,6 +19,7 @@ import {
   TenantContextData,
   AttachedFileItem,
   GeneratedFullResult,
+  ContentBriefItem,
   OperatorTabType,
   OperatorViewMode,
   DEFAULT_TOPICS,
@@ -26,6 +27,7 @@ import {
   OperatorWorkspaceHeader,
   OperatorWorkspaceNav,
   OperatorContentTab,
+  OperatorWhatsAppBriefsTab,
   OperatorArticlesTab,
   OperatorKnowledgeTab,
   OperatorProfileTab,
@@ -83,6 +85,8 @@ export default function OperatorCockpitPage() {
   const [copiedArticle, setCopiedArticle] = useState(false);
   const [copiedIg, setCopiedIg] = useState(false);
   const [, setStatusNotice] = useState<string | null>(null);
+  const [activeBrief, setActiveBrief] = useState<ContentBriefItem | null>(null);
+  const [submittingBriefReview, setSubmittingBriefReview] = useState(false);
 
   // Form Edit Profil Publik Tokoh
   const [profileForm, setProfileForm] = useState({
@@ -120,6 +124,7 @@ export default function OperatorCockpitPage() {
     setSelectedTenantId(tenantId);
     AdminApiClient.setActingTenant(tenantId);
     setGeneratedResult(null);
+    setActiveBrief(null);
     setStatusNotice(null);
     setProfileSaveSuccess(null);
     setPublishedUrl(null);
@@ -296,6 +301,7 @@ export default function OperatorCockpitPage() {
         method: 'POST',
         body: JSON.stringify({
           topic: topicInput.trim(),
+          briefId: activeBrief?.id,
           generateDallePoster: true,
           writingStyle: selectedStyle,
           targetAudience: styleCfg.audience,
@@ -461,6 +467,35 @@ export default function OperatorCockpitPage() {
       alert(`Gagal menerbitkan: ${err.message}`);
     } finally {
       setPublishingArticle(false);
+    }
+  };
+
+  const handleSubmitBriefForWhatsAppReview = async () => {
+    if (!activeBrief || !generatedResult?.publication?.id || submittingBriefReview) return;
+    setSubmittingBriefReview(true);
+    try {
+      const res = await AdminApiClient.request<{
+        brief: ContentBriefItem;
+        reviewUrl: string;
+      }>(`/whatsapp/briefs/${activeBrief.id}/submit-review`, {
+        method: 'POST',
+        body: JSON.stringify({
+          publicationId: generatedResult.publication.id,
+          directPublishImmediately: false,
+        }),
+      });
+
+      if (res?.brief) {
+        setActiveBrief(res.brief);
+      }
+      loadAssignments();
+      alert(
+        `Paket konten berhasil dikirim ke WhatsApp ${selectedDewan?.fullName} untuk ditinjau & disetujui!`
+      );
+    } catch (err: any) {
+      alert(`Gagal mengirim pratinjau ke WhatsApp: ${err.message}`);
+    } finally {
+      setSubmittingBriefReview(false);
     }
   };
 
@@ -672,6 +707,11 @@ export default function OperatorCockpitPage() {
             activeTab={activeTab}
             setActiveTab={setActiveTab}
             articlesCount={dewanArticles.length}
+            activeBriefsCount={
+              (selectedDewan.briefStats?.pendingBriefs || 0) +
+              (selectedDewan.briefStats?.inProgressBriefs || 0) +
+              (selectedDewan.briefStats?.revisionRequestedBriefs || 0)
+            }
           />
 
           {/* TAB 1: PABRIK KONTEN & VISUAL AI */}
@@ -731,6 +771,29 @@ export default function OperatorCockpitPage() {
               totalAssigned={totalAssigned}
               selectedTenantId={selectedTenantId}
               onSelectTenant={(tenantId) => selectTenant(tenantId)}
+              activeBrief={activeBrief}
+              onClearActiveBrief={() => setActiveBrief(null)}
+              submittingBriefReview={submittingBriefReview}
+              onSubmitBriefForWhatsAppReview={handleSubmitBriefForWhatsAppReview}
+            />
+          )}
+
+          {/* TAB 1B: KOTAK MASUK & DISKUSI WHATSAPP (BLIND BROKER) */}
+          {activeTab === 'BRIEFS' && (
+            <OperatorWhatsAppBriefsTab
+              selectedDewan={selectedDewan}
+              onHydrateBriefToStudio={({ brief, topicPrompt, attachments }) => {
+                setActiveBrief(brief);
+                setGeneratedResult(null);
+                setTopicInput(topicPrompt);
+                setAttachedFiles(attachments);
+                setActiveTab('CONTENT');
+              }}
+              onOpenLinkedArticle={(publicationId, brief) => {
+                setActiveBrief(brief);
+                loadArticleToCanvas(publicationId);
+              }}
+              onBriefStatsChanged={() => loadAssignments()}
             />
           )}
 

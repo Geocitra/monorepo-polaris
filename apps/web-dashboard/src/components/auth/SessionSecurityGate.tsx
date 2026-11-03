@@ -56,6 +56,7 @@ export function SessionSecurityGate({ children }: { children: React.ReactNode })
       const isPublicAuthPage =
         pathname.startsWith('/login') ||
         pathname.startsWith('/register') ||
+        pathname.startsWith('/review-brief/') ||
         pathname === '/superadmin/login';
 
       if (isPublicAuthPage) return;
@@ -109,6 +110,7 @@ export function SessionSecurityGate({ children }: { children: React.ReactNode })
       !pathname ||
       pathname.startsWith('/login') ||
       pathname.startsWith('/register') ||
+      pathname.startsWith('/review-brief/') ||
       pathname.startsWith('/auth') ||
       pathname.startsWith('/superadmin') ||
       pathname.startsWith('/operator')

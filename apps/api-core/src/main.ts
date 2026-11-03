@@ -13,7 +13,15 @@ async function bootstrap() {
   const app = await NestFactory.create(AppModule);
 
   // Izinkan payload hingga 50mb untuk menangani gambar base64 & media beresolusi tinggi
-  app.use(express.json({ limit: '50mb' }));
+  // Simpan juga rawBody untuk verifikasi HMAC-SHA256 webhook Meta Cloud API
+  app.use(
+    express.json({
+      limit: '50mb',
+      verify: (req: any, _res, buf) => {
+        req.rawBody = buf.toString('utf8');
+      },
+    })
+  );
   app.use(express.urlencoded({ limit: '50mb', extended: true }));
 
   // Sajikan folder uploads statis

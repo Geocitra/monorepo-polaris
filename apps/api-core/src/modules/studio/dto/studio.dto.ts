@@ -66,6 +66,10 @@ export class GenerateArticleRequestDto {
   @IsOptional()
   @IsString()
   taskType?: 'FULL_CAMPAIGN' | 'INFOGRAPHIC_ONLY' | 'ARTICLE_ONLY' | 'REGENERATE_POSTER';
+
+  @IsOptional()
+  @IsString()
+  briefId?: string;
 }
 
 export class UpdateDraftArticleDto {

@@ -546,3 +546,63 @@ export interface AdminCreatedTenantResponseDto {
 }
 
 export * from './social-distribution.dto.js';
+
+// ==========================================
+// 11. WHATSAPP ZERO-LOGIN BRIEF & OPERATOR INBOX DTOs
+// ==========================================
+export interface ContentBriefMessageDto {
+  id: string;
+  briefId: string;
+  tenantId: string;
+  direction: 'INBOUND' | 'OUTBOUND';
+  messageType: 'TEXT' | 'IMAGE' | 'DOCUMENT' | 'INTERACTIVE' | 'SYSTEM';
+  waMessageId?: string | null;
+  textBody?: string | null;
+  mediaCdnUrl?: string | null;
+  mediaMimeType?: string | null;
+  mediaFileName?: string | null;
+  mediaFileSizeBytes?: number | null;
+  revisionRound: number;
+  targetComponents: string[];
+  isInternalFault: boolean;
+  createdAt: string;
+}
+
+export interface ContentBriefDto {
+  id: string;
+  briefCode: string;
+  tenantId: string;
+  tenantFullName?: string;
+  tenantMaskedPhone?: string;
+  assignedOperatorId?: string | null;
+  status: string;
+  clientUrgency: 'NORMAL' | 'URGENT';
+  operatorPriority: 'NORMAL' | 'URGENT';
+  topicSummary: string;
+  weeklyQuotaPeriod: string;
+  weeklyRequestLimit: number;
+  revisionUsed: number;
+  revisionLimit: number;
+  articleStatus: string;
+  imageStatus: string;
+  captionStatus: string;
+  linkedPublicationId?: string | null;
+  acceptedAt?: string | null;
+  submittedForReviewAt?: string | null;
+  approvedAt?: string | null;
+  publishedAt?: string | null;
+  operatorNotes?: string | null;
+  createdAt: string;
+  updatedAt: string;
+  messages?: ContentBriefMessageDto[];
+}
+
+export interface TenantWeeklyBriefQuotaDto {
+  tenantId: string;
+  weeklyQuotaPeriod: string;
+  weeklyLimit: number;
+  weeklyUsed: number;
+  weeklyRemaining: number;
+  queuedNextWeekCount: number;
+}
+

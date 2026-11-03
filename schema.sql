@@ -540,3 +540,94 @@ CREATE TABLE IF NOT EXISTS subdomain_aliases (
 
 CREATE INDEX IF NOT EXISTS idx_subdomain_aliases_tenant ON subdomain_aliases(tenant_id);
 
+-- 13. BOUNDED CONTEXT: WHATSAPP ZERO-LOGIN BRIEF & OPERATOR BROKER INBOX
+DO $$ BEGIN
+  CREATE TYPE content_brief_status_enum AS ENUM (
+    'DRAFT',
+    'SUBMITTED',
+    'ACCEPTED',
+    'QUEUED_NEXT_WEEK',
+    'IN_PROGRESS',
+    'NEED_CLARIFICATION',
+    'READY_FOR_REVIEW',
+    'REVISION_REQUESTED',
+    'APPROVED',
+    'PUBLISHED',
+    'REJECTED',
+    'CANCELLED',
+    'CLOSED_UNPUBLISHED'
+  );
+EXCEPTION WHEN duplicate_object THEN NULL;
+END $$;
+
+DO $$ BEGIN
+  CREATE TYPE brief_urgency_level_enum AS ENUM ('NORMAL', 'URGENT');
+EXCEPTION WHEN duplicate_object THEN NULL;
+END $$;
+
+DO $$ BEGIN
+  CREATE TYPE brief_message_direction_enum AS ENUM ('INBOUND', 'OUTBOUND');
+EXCEPTION WHEN duplicate_object THEN NULL;
+END $$;
+
+DO $$ BEGIN
+  CREATE TYPE brief_message_type_enum AS ENUM ('TEXT', 'IMAGE', 'DOCUMENT', 'INTERACTIVE', 'SYSTEM');
+EXCEPTION WHEN duplicate_object THEN NULL;
+END $$;
+
+CREATE TABLE IF NOT EXISTS content_briefs (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  brief_code VARCHAR(30) NOT NULL UNIQUE,
+  tenant_id UUID NOT NULL REFERENCES tenant_members(id) ON DELETE CASCADE,
+  assigned_operator_id UUID REFERENCES system_admins(id) ON DELETE SET NULL,
+  status content_brief_status_enum NOT NULL DEFAULT 'SUBMITTED',
+  client_urgency brief_urgency_level_enum NOT NULL DEFAULT 'NORMAL',
+  operator_priority brief_urgency_level_enum NOT NULL DEFAULT 'NORMAL',
+  topic_summary TEXT NOT NULL,
+  weekly_quota_period VARCHAR(15) NOT NULL,
+  weekly_request_limit INT NOT NULL DEFAULT 3,
+  revision_used INT NOT NULL DEFAULT 0,
+  revision_limit INT NOT NULL DEFAULT 3,
+  article_status VARCHAR(20) NOT NULL DEFAULT 'PENDING',
+  image_status VARCHAR(20) NOT NULL DEFAULT 'PENDING',
+  caption_status VARCHAR(20) NOT NULL DEFAULT 'PENDING',
+  linked_publication_id UUID REFERENCES content_publications(id) ON DELETE SET NULL,
+  review_token_hash VARCHAR(128) UNIQUE,
+  review_token_expires_at TIMESTAMPTZ,
+  accepted_at TIMESTAMPTZ,
+  submitted_for_review_at TIMESTAMPTZ,
+  approved_at TIMESTAMPTZ,
+  published_at TIMESTAMPTZ,
+  operator_notes TEXT,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+CREATE INDEX IF NOT EXISTS idx_content_briefs_tenant_status ON content_briefs(tenant_id, status, created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_content_briefs_operator_status ON content_briefs(assigned_operator_id, status, created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_content_briefs_weekly_quota ON content_briefs(tenant_id, weekly_quota_period);
+
+CREATE TABLE IF NOT EXISTS content_brief_messages (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  brief_id UUID NOT NULL REFERENCES content_briefs(id) ON DELETE CASCADE,
+  tenant_id UUID NOT NULL REFERENCES tenant_members(id) ON DELETE CASCADE,
+  sender_operator_id UUID REFERENCES system_admins(id) ON DELETE SET NULL,
+  direction brief_message_direction_enum NOT NULL,
+  message_type brief_message_type_enum NOT NULL,
+  wa_message_id VARCHAR(128) UNIQUE,
+  text_body TEXT,
+  media_r2_url TEXT,
+  media_cdn_url TEXT,
+  media_mime_type VARCHAR(100),
+  media_file_name VARCHAR(255),
+  media_file_size_bytes BIGINT,
+  revision_round INT NOT NULL DEFAULT 0,
+  target_components TEXT[] NOT NULL DEFAULT ARRAY[]::TEXT[],
+  is_internal_fault BOOLEAN NOT NULL DEFAULT false,
+  metadata JSONB,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+CREATE INDEX IF NOT EXISTS idx_content_brief_messages_brief ON content_brief_messages(brief_id, created_at ASC);
+
+

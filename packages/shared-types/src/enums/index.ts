@@ -418,3 +418,44 @@ export type SocialFeatureFlagsResponse = {
   AUTO_PUBLISH_TIKTOK: boolean;
   AUTO_PUBLISH_X_TWITTER: boolean;
 };
+
+export enum ContentBriefStatus {
+  DRAFT = 'DRAFT',
+  SUBMITTED = 'SUBMITTED',
+  ACCEPTED = 'ACCEPTED',
+  QUEUED_NEXT_WEEK = 'QUEUED_NEXT_WEEK',
+  IN_PROGRESS = 'IN_PROGRESS',
+  NEED_CLARIFICATION = 'NEED_CLARIFICATION',
+  READY_FOR_REVIEW = 'READY_FOR_REVIEW',
+  REVISION_REQUESTED = 'REVISION_REQUESTED',
+  APPROVED = 'APPROVED',
+  PUBLISHED = 'PUBLISHED',
+  REJECTED = 'REJECTED',
+  CANCELLED = 'CANCELLED',
+  CLOSED_UNPUBLISHED = 'CLOSED_UNPUBLISHED',
+}
+
+export enum BriefUrgencyLevel {
+  NORMAL = 'NORMAL',
+  URGENT = 'URGENT',
+}
+
+export enum BriefMessageDirection {
+  INBOUND = 'INBOUND',
+  OUTBOUND = 'OUTBOUND',
+}
+
+export enum BriefMessageType {
+  TEXT = 'TEXT',
+  IMAGE = 'IMAGE',
+  DOCUMENT = 'DOCUMENT',
+  INTERACTIVE = 'INTERACTIVE',
+  SYSTEM = 'SYSTEM',
+}
+
+export enum BriefTargetComponent {
+  ARTICLE = 'ARTICLE',
+  IMAGE = 'IMAGE',
+  CAPTION = 'CAPTION',
+}
+

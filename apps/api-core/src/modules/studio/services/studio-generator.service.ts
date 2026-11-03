@@ -13,13 +13,14 @@ import { Redis } from 'ioredis';
 import {
   db,
   contentPublications,
+  contentBriefs,
   subscriptions,
   portalConfigs,
   portalThemeSettings,
   tenantMembers,
   withTenantContext,
 } from '@polaris/database';
-import { ContentPublication, SubdomainSlug, CanonicalUrl } from '@polaris/core-domain';
+import { ContentPublication } from '@polaris/core-domain';
 import { ContentStatus, SubscriptionStatus, ContentCreationContext } from '@polaris/shared-types';
 import { GenerateArticleRequestDto } from '../dto/studio.dto.js';
 import { RedisService } from '../../redis/redis.service.js';
@@ -33,7 +34,7 @@ export class StudioGeneratorService implements OnModuleDestroy {
 
   constructor(
     private readonly redisService?: RedisService,
-    private readonly urlScraperService?: UrlScraperService,
+    private readonly urlScraperService?: UrlScraperService
   ) {
     const redisUrl = process.env.REDIS_URL || 'redis://localhost:6379';
     this.redisClient = new Redis(redisUrl, { maxRetriesPerRequest: null });
@@ -123,10 +124,15 @@ export class StudioGeneratorService implements OnModuleDestroy {
 
       const baseSlug = ContentPublication.generateSlug(dto.topic.slice(0, 50));
       const finalSlug = `${baseSlug}-${randomUUID().slice(0, 8)}`;
-      const rootDomain = process.env.APP_ROOT_DOMAIN || process.env.NEXT_PUBLIC_ROOT_DOMAIN || 'polarismedia.id';
+      const rootDomain =
+        process.env.APP_ROOT_DOMAIN || process.env.NEXT_PUBLIC_ROOT_DOMAIN || 'polarismedia.id';
       let canonicalUrlStr = `https://${subdomainSlug}.${rootDomain}/artikel/${finalSlug}`;
       if (portal?.customDomain && portal.customDomain.trim()) {
-        const cleanDomain = portal.customDomain.trim().toLowerCase().replace(/^https?:\/\//, '').replace(/\/$/, '');
+        const cleanDomain = portal.customDomain
+          .trim()
+          .toLowerCase()
+          .replace(/^https?:\/\//, '')
+          .replace(/\/$/, '');
         canonicalUrlStr = `https://${cleanDomain}/artikel/${finalSlug}`;
       }
       const topicCharacters = Array.from(dto.topic.trim());
@@ -147,9 +153,31 @@ export class StudioGeneratorService implements OnModuleDestroy {
           status: ContentStatus.GENERATING,
           canonicalUrl: canonicalUrlStr,
           createdByOperatorId: caller?.isOperator && caller.operatorId ? caller.operatorId : null,
-          createdContext: caller?.isOperator ? ContentCreationContext.OPERATOR : ContentCreationContext.MEMBER,
+          createdContext: caller?.isOperator
+            ? ContentCreationContext.OPERATOR
+            : ContentCreationContext.MEMBER,
         })
         .returning();
+
+      // Jika generasi konten ini berasal dari Tiket Request WA (Content Brief),
+      // ikat langsung linked_publication_id di dalam transaksi yang sama agar relasi DB konsisten.
+      if (dto.briefId && dto.briefId.trim()) {
+        await tx
+          .update(contentBriefs)
+          .set({
+            linkedPublicationId: created.id,
+            ...(caller?.isOperator && caller.operatorId
+              ? { assignedOperatorId: caller.operatorId }
+              : {}),
+            updatedAt: new Date(),
+          })
+          .where(
+            and(
+              eq(contentBriefs.id, dto.briefId.trim()),
+              eq(contentBriefs.tenantId, tenantId)
+            )
+          );
+      }
 
       return created;
     });
@@ -165,7 +193,7 @@ export class StudioGeneratorService implements OnModuleDestroy {
     if (dto.style === 'infographic') {
       forcedArchetype = 'MODULAR_GRID_CARDS';
     } else if (dto.style === 'poster') {
-      forcedArchetype = undefined; // Otomatis dipilihkan arketipe poster terbaik dari katalog blueprint
+      forcedArchetype = undefined;
     } else if (dto.style === 'photo') {
       forcedArchetype = 'POP_OUT_HERO';
     } else if (dto.style === 'illustration') {

@@ -9,3 +9,4 @@ export * from './OperatorContentTab';
 export * from './OperatorAspirasiTab';
 export * from './OperatorCommentsTab';
 export * from './OperatorSocialDistributionTab';
+export * from './OperatorWhatsAppBriefsTab';
