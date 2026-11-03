@@ -490,6 +490,8 @@ export function MagicLayersModal({
         canvas.on('object:removed', () => refreshLayersList(canvas));
         canvas.on('text:changed', (e) => {
           if (e.target instanceof Textbox) {
+            e.target.set('fill', '#FFFFFF');
+            e.target.set('backgroundColor', '#0F172A');
             setCurrentTextContent(e.target.text || '');
             refreshLayersList(canvas);
           }
@@ -586,186 +588,276 @@ export function MagicLayersModal({
       // Durasi animasi scanning laser menyapu kanvas (1.8 detik)
       await new Promise((resolve) => setTimeout(resolve, 1800));
 
-      // 1. Bersihkan background image pada kanvas agar "background ya background saja" (Bebas Duplikat / Ghosting)
-      const cleanBgUrl = await createCleanPosterBackground(imageUrl, naturalW, naturalH);
-      const cleanBgImg = await loadResilientFabricImage(cleanBgUrl);
+      // ─── GAYA BOUNDING BOX UNGU KHAS CANVA MAGIC LAYERS (PERSIS GAMBAR 1) ───
+      // Poster asli tetap 100% utuh tanpa diubah atau dirusak oleh fillRect putih!
+      const purpleStroke = '#7D2AE8';
+      const purpleBgTint = 'rgba(125, 42, 232, 0.04)';
 
-      // Cari layer background lama dan ganti dengan background bersih
-      const existingBg = canvas.getObjects().find((o) => (o as any).customData?.isBackground);
-      if (existingBg) {
-        canvas.remove(existingBg);
-      }
-
-      cleanBgImg.set({
+      // 1. Kotak Top Tag Header (POLARIS // DAPIL JABAR ... DOKUMEN ADVOKASI PUBLIK)
+      const topBarBox = new Textbox('POLARIS // DAPIL JABAR                       DOKUMEN ADVOKASI PUBLIK', {
         originX: 'left',
         originY: 'top',
-        left: 0,
-        top: 0,
-        scaleX: naturalW / (cleanBgImg.width || naturalW),
-        scaleY: naturalH / (cleanBgImg.height || naturalH),
-        selectable: false,
-        evented: false,
-      });
-      cleanBgImg.setCoords();
-      (cleanBgImg as any).customId = 'layer_background';
-      (cleanBgImg as any).customData = { name: 'Latar Belakang & Foto Kolase', isBackground: true };
-      canvas.add(cleanBgImg);
-      canvas.sendObjectToBack(cleanBgImg);
-
-      // 2. KOMPONEN 1: HEADER BOX (KICKER + JUDUL UTAMA + RINGKASAN NARASI)
-      const kickerText = 'DATA PELATIHAN KERJA // ANALISIS KEBIJAKAN';
-      const titleText = (initialTitle || 'PENURUNAN PENGANGGURAN MELALUI PELATIHAN').toUpperCase();
-      const deckText = initialSubtitle || 'Program pelatihan di Balai Latihan Kerja Jawa Barat berhasil menurunkan pengangguran terbuka sebesar 10% dalam dua tahun terakhir. Dengan total peserta mencapai 15.000 orang, langkah ini menjadi kunci dalam meningkatkan daya saing tenaga kerja.';
-
-      const headerBox = new Textbox(`${kickerText}\n${titleText}\n${deckText}`, {
-        originX: 'left',
-        originY: 'top',
-        left: Math.round(naturalW * 0.048),
-        top: Math.round(naturalH * 0.056),
-        width: Math.round(naturalW * 0.904),
-        fontSize: Math.round(naturalW * 0.015),
+        left: Math.round(naturalW * 0.082),
+        top: Math.round(naturalH * 0.022),
+        width: Math.round(naturalW * 0.836),
+        fontSize: Math.round(naturalW * 0.012),
         fontFamily: "'Inter', sans-serif",
-        fill: '#0F172A',
-        backgroundColor: '#FFFFFF',
-        padding: 14,
-        stroke: '#E2E8F0',
-        strokeWidth: 1.5,
-        shadow: new Shadow({ color: 'rgba(0,0,0,0.06)', blur: 10, offsetX: 0, offsetY: 2 }),
+        fill: 'transparent',
+        backgroundColor: purpleBgTint,
+        stroke: purpleStroke,
+        strokeWidth: 2,
+        padding: 4,
+        cornerColor: '#FFFFFF',
+        cornerStrokeColor: purpleStroke,
+        borderColor: purpleStroke,
+        transparentCorners: false,
+        cornerSize: 8,
+        cornerStyle: 'circle',
+        editable: true,
+      });
+      topBarBox.setCoords();
+      (topBarBox as any).customId = `box_topbar_${Date.now()}`;
+      (topBarBox as any).customData = { name: 'Top Bar Header (Dapat Diedit)' };
+      canvas.add(topBarBox);
+
+      // 2. Kotak Judul Utama (Headline)
+      const titleText = (initialTitle || 'PENURUNAN PENGANGGURAN MELALUI PELATIHAN').toUpperCase();
+      const headlineBox = new Textbox(titleText, {
+        originX: 'left',
+        originY: 'top',
+        left: Math.round(naturalW * 0.082),
+        top: Math.round(naturalH * 0.068),
+        width: Math.round(naturalW * 0.836),
+        fontSize: Math.round(naturalW * 0.038),
+        fontFamily: "'Inter', sans-serif",
+        fontWeight: 'bold',
+        fill: 'transparent',
+        backgroundColor: purpleBgTint,
+        stroke: purpleStroke,
+        strokeWidth: 2.5,
+        padding: 6,
+        cornerColor: '#FFFFFF',
+        cornerStrokeColor: purpleStroke,
+        borderColor: purpleStroke,
+        transparentCorners: false,
+        cornerSize: 8,
+        cornerStyle: 'circle',
+        editable: true,
+      });
+      headlineBox.setCoords();
+      (headlineBox as any).customId = `box_headline_${Date.now()}`;
+      (headlineBox as any).customData = { name: 'Judul Utama (Dapat Diedit)' };
+      canvas.add(headlineBox);
+
+      // 3. Kotak Subjudul / Narasi Ringkasan
+      const deckText = initialSubtitle || 'Program pelatihan di Balai Latihan Kerja Jawa Barat berhasil menurunkan angka pengangguran terbuka sebesar 12,5% di Kota Bandung. Dengan alokasi anggaran Rp 300 miliar, program ini mendukung 10.000 peserta pelatihan setiap tahun.';
+      const deckBox = new Textbox(deckText, {
+        originX: 'left',
+        originY: 'top',
+        left: Math.round(naturalW * 0.082),
+        top: Math.round(naturalH * 0.156),
+        width: Math.round(naturalW * 0.836),
+        fontSize: Math.round(naturalW * 0.014),
+        fontFamily: "'Inter', sans-serif",
+        fill: 'transparent',
+        backgroundColor: purpleBgTint,
+        stroke: purpleStroke,
+        strokeWidth: 2,
+        padding: 6,
+        cornerColor: '#FFFFFF',
+        cornerStrokeColor: purpleStroke,
+        borderColor: purpleStroke,
+        transparentCorners: false,
+        cornerSize: 8,
+        cornerStyle: 'circle',
         editable: true,
         lineHeight: 1.35,
       });
-      headerBox.setCoords();
-      (headerBox as any).customId = `component_header_${Date.now()}`;
-      (headerBox as any).customData = { name: 'Judul Utama & Narasi' };
-      canvas.add(headerBox);
+      deckBox.setCoords();
+      (deckBox as any).customId = `box_deck_${Date.now()}`;
+      (deckBox as any).customData = { name: 'Subjudul & Narasi (Dapat Diedit)' };
+      canvas.add(deckBox);
 
-      // 3. KOMPONEN 2: 3 KARTU STATISTIK KPI (HORIZONTAL ROW)
-      const kpiWidth = Math.round((naturalW * 0.460) / 3 - 6);
-      const kpiTop = Math.round(naturalH * 0.188);
-      const kpiStartLeft = Math.round(naturalW * 0.490);
-
-      const kpiItems = [
-        { val: '10%', lbl: 'PENURUNAN PENGANGGURAN', name: 'Statistik 01: 10%' },
-        { val: 'RP 200 MILIAR', lbl: 'TOTAL ANGGARAN PROGRAM', name: 'Statistik 02: Rp 200 Miliar' },
-        { val: '8 KOTA', lbl: 'KONSENTRASI PELATIHAN', name: 'Statistik 03: 8 Kota' },
+      // 4. 4 Kotak Metrik Angka KPI (Persis Baris KPI Gambar 1)
+      const kpis = [
+        {
+          left: Math.round(naturalW * 0.115),
+          top: Math.round(naturalH * 0.244),
+          w: Math.round(naturalW * 0.165),
+          text: '12,5%\nPENURUNAN PENGANGGURAN TERBUKA',
+          name: 'Metrik 01: 12,5%',
+        },
+        {
+          left: Math.round(naturalW * 0.305),
+          top: Math.round(naturalH * 0.244),
+          w: Math.round(naturalW * 0.175),
+          text: 'RP 300 MILIAR\nTOTAL ANGGARAN PROGRAM',
+          name: 'Metrik 02: Rp 300 Miliar',
+        },
+        {
+          left: Math.round(naturalW * 0.505),
+          top: Math.round(naturalH * 0.244),
+          w: Math.round(naturalW * 0.170),
+          text: '10.000 PESERTA\nKONSENTRASI PELATIHAN',
+          name: 'Metrik 03: 10.000 Peserta',
+        },
+        {
+          left: Math.round(naturalW * 0.698),
+          top: Math.round(naturalH * 0.244),
+          w: Math.round(naturalW * 0.175),
+          text: '95%\nTINGKAT PENYERAPAN',
+          name: 'Metrik 04: 95%',
+        },
       ];
 
-      kpiItems.forEach((kpi, idx) => {
-        const kpiCard = new Textbox(`${kpi.val}\n${kpi.lbl}`, {
+      kpis.forEach((k, idx) => {
+        const kBox = new Textbox(k.text, {
           originX: 'left',
           originY: 'top',
-          left: kpiStartLeft + idx * (kpiWidth + 9),
-          top: kpiTop,
-          width: kpiWidth,
-          fontSize: Math.round(naturalW * 0.011),
+          left: k.left,
+          top: k.top,
+          width: k.w,
+          fontSize: Math.round(naturalW * 0.0105),
           fontFamily: "'Inter', sans-serif",
           fontWeight: 'bold',
           textAlign: 'center',
-          fill: '#E06D28',
-          backgroundColor: '#FFFFFF',
-          padding: 8,
-          stroke: '#E06D28',
-          strokeWidth: 1.5,
-          shadow: new Shadow({ color: 'rgba(0,0,0,0.04)', blur: 6, offsetX: 0, offsetY: 1 }),
+          fill: 'transparent',
+          backgroundColor: purpleBgTint,
+          stroke: purpleStroke,
+          strokeWidth: 2,
+          padding: 4,
+          cornerColor: '#FFFFFF',
+          cornerStrokeColor: purpleStroke,
+          borderColor: purpleStroke,
+          transparentCorners: false,
+          cornerSize: 8,
+          cornerStyle: 'circle',
           editable: true,
           lineHeight: 1.25,
         });
-        kpiCard.setCoords();
-        (kpiCard as any).customId = `component_kpi_${idx}_${Date.now()}`;
-        (kpiCard as any).customData = { name: kpi.name };
-        canvas.add(kpiCard);
+        kBox.setCoords();
+        (kBox as any).customId = `box_kpi_${idx}_${Date.now()}`;
+        (kBox as any).customData = { name: k.name };
+        canvas.add(kBox);
       });
 
-      // 4. KOMPONEN 3: 5 KARTU TONGGAK & 1 KARTU SINTESIS KEBIJAKAN
-      // (1 CARD + ISI = 1 KONTEN MANDIRI YANG DAPAT DIGESER & DIUBAH ISI KALIMATNYA)
-      const cardWidth = Math.round(naturalW * 0.460);
-      const cardStartLeft = Math.round(naturalW * 0.490);
-
-      const cardItems = [
+      // 5. 4 Kotak Kartu Dimensi (Pola Zig-zag Alternating Persis Gambar 1)
+      const dimensiCards = [
         {
-          title: 'TONGGAK 01: 15.000 PESERTA PELATIHAN',
-          body: 'Sejak 2021, Balai Latihan Kerja telah melatih 15.000 peserta, meningkatkan keterampilan di sektor industri dan jasa. Program ini berfokus pada kebutuhan pasar kerja yang terus berkembang.',
-          top: Math.round(naturalH * 0.254),
-          name: 'Kartu Tonggak 01 (Dapat Diedit)',
+          left: Math.round(naturalW * 0.505),
+          top: Math.round(naturalH * 0.325),
+          w: Math.round(naturalW * 0.413),
+          text: 'DIMENSI 01: 5 BALAI LATIHAN KERJA\nTerdapat 5 Balai Latihan Kerja di Kota Bandung yang menyediakan berbagai program pelatihan sesuai kebutuhan industri lokal.',
+          name: 'Kartu Dimensi 01 (Dapat Diedit)',
         },
         {
-          title: 'TONGGAK 02: RP 200 MILIAR DIANGGARKAN',
-          body: 'Pemerintah Provinsi Jawa Barat mengalokasikan anggaran sebesar Rp 200 miliar untuk program pelatihan, mencakup fasilitas, instruktur dan materi pelatihan yang relevan.',
-          top: Math.round(naturalH * 0.366),
-          name: 'Kartu Tonggak 02 (Dapat Diedit)',
+          left: Math.round(naturalW * 0.082),
+          top: Math.round(naturalH * 0.460),
+          w: Math.round(naturalW * 0.413),
+          text: 'DIMENSI 02: 60% PESERTA BERSERTIFIKAT\nDari total peserta, 60% berhasil mendapatkan sertifikat kompetensi yang diakui industri, meningkatkan daya saing di pasar kerja.',
+          name: 'Kartu Dimensi 02 (Dapat Diedit)',
         },
         {
-          title: 'TONGGAK 03: 8 KOTA PRIORITAS',
-          body: 'Pelatihan dilaksanakan di 8 kota prioritas, termasuk Kota Bandung, dengan tujuan menjangkau daerah dengan tingkat pengangguran tinggi dan meningkatkan kualitas tenaga kerja.',
-          top: Math.round(naturalH * 0.478),
-          name: 'Kartu Tonggak 03 (Dapat Diedit)',
+          left: Math.round(naturalW * 0.505),
+          top: Math.round(naturalH * 0.595),
+          w: Math.round(naturalW * 0.413),
+          text: 'DIMENSI 03: 3 SEKTOR PRIORITAS\nPelatihan difokuskan pada 3 sektor prioritas: teknologi informasi, industri kreatif dan manufaktur untuk mendukung pertumbuhan ekonomi.',
+          name: 'Kartu Dimensi 03 (Dapat Diedit)',
         },
         {
-          title: 'TONGGAK 04: 95% PENYERAPAN TENAGA KERJA',
-          body: 'Dari total peserta pelatihan, 95% berhasil terserap di dunia kerja, menunjukkan efektivitas program dalam meningkatkan employability dan daya saing.',
-          top: Math.round(naturalH * 0.590),
-          name: 'Kartu Tonggak 04 (Dapat Diedit)',
-        },
-        {
-          title: 'TONGGAK 05: PROGRAM KERJA SAMA INDUSTRI',
-          body: 'Program pelatihan juga melibatkan kerja sama dengan 50 perusahaan lokal, memastikan kurikulum sesuai dengan kebutuhan industri dan memfasilitasi penempatan kerja.',
-          top: Math.round(naturalH * 0.702),
-          name: 'Kartu Tonggak 05 (Dapat Diedit)',
-        },
-        {
-          title: 'SINTESIS KEBIJAKAN',
-          body: 'Penting untuk terus memantau dan mengevaluasi efektivitas program pelatihan guna memastikan transparansi dan akuntabilitas dalam pengelolaan anggaran.',
-          top: Math.round(naturalH * 0.814),
-          name: 'Kartu Sintesis Kebijakan (Dapat Diedit)',
+          left: Math.round(naturalW * 0.082),
+          top: Math.round(naturalH * 0.730),
+          w: Math.round(naturalW * 0.413),
+          text: 'DIMENSI 04: 30% PENINGKATAN KETERAMPILAN\nPeserta pelatihan menunjukkan peningkatan keterampilan sebesar 30% setelah mengikuti program, berdasarkan evaluasi pasca-pelatihan.',
+          name: 'Kartu Dimensi 04 (Dapat Diedit)',
         },
       ];
 
-      cardItems.forEach((cItem, cIdx) => {
-        const cardObj = new Textbox(`${cItem.title}\n${cItem.body}`, {
+      dimensiCards.forEach((c, idx) => {
+        const cBox = new Textbox(c.text, {
           originX: 'left',
           originY: 'top',
-          left: cardStartLeft,
-          top: cItem.top,
-          width: cardWidth,
-          fontSize: Math.round(naturalW * 0.0125),
+          left: c.left,
+          top: c.top,
+          width: c.w,
+          fontSize: Math.round(naturalW * 0.012),
           fontFamily: "'Inter', sans-serif",
-          fill: '#1E293B',
-          backgroundColor: '#FFFFFF',
-          padding: 12,
-          stroke: '#E2E8F0',
-          strokeWidth: 1.5,
-          shadow: new Shadow({ color: 'rgba(0,0,0,0.06)', blur: 8, offsetX: 0, offsetY: 2 }),
+          fill: 'transparent',
+          backgroundColor: purpleBgTint,
+          stroke: purpleStroke,
+          strokeWidth: 2,
+          padding: 6,
+          cornerColor: '#FFFFFF',
+          cornerStrokeColor: purpleStroke,
+          borderColor: purpleStroke,
+          transparentCorners: false,
+          cornerSize: 8,
+          cornerStyle: 'circle',
           editable: true,
           lineHeight: 1.35,
         });
-        cardObj.setCoords();
-        (cardObj as any).customId = `component_card_${cIdx}_${Date.now()}`;
-        (cardObj as any).customData = { name: cItem.name };
-        canvas.add(cardObj);
+        cBox.setCoords();
+        (cBox as any).customId = `box_dimensi_${idx}_${Date.now()}`;
+        (cBox as any).customData = { name: c.name };
+        canvas.add(cBox);
       });
 
-      // 5. KOMPONEN 4: FOOTER IDENTITAS DEWAN & TAHUN
-      const authorText = initialAuthor || 'DR. JONANDA P. A. B // DPRD PROVINSI • DAPIL JABAR';
-      const footerObj = new Textbox(`${authorText}                              2026`, {
+      // 6. Kotak Sintesis Kebijakan / Baris Bawah
+      const policyText = 'Penting untuk terus memantau dan mengevaluasi efektivitas program pelatihan guna memastikan transparansi dan akuntabilitas dalam pengelolaan anggaran.';
+      const policyBox = new Textbox(policyText, {
         originX: 'left',
         originY: 'top',
-        left: Math.round(naturalW * 0.048),
-        top: Math.round(naturalH * 0.942),
-        width: Math.round(naturalW * 0.904),
+        left: Math.round(naturalW * 0.082),
+        top: Math.round(naturalH * 0.865),
+        width: Math.round(naturalW * 0.836),
+        fontSize: Math.round(naturalW * 0.011),
+        fontFamily: "'Inter', sans-serif",
+        fill: 'transparent',
+        backgroundColor: purpleBgTint,
+        stroke: purpleStroke,
+        strokeWidth: 2,
+        padding: 4,
+        cornerColor: '#FFFFFF',
+        cornerStrokeColor: purpleStroke,
+        borderColor: purpleStroke,
+        transparentCorners: false,
+        cornerSize: 8,
+        cornerStyle: 'circle',
+        editable: true,
+      });
+      policyBox.setCoords();
+      (policyBox as any).customId = `box_policy_${Date.now()}`;
+      (policyBox as any).customData = { name: 'Sintesis Kebijakan (Dapat Diedit)' };
+      canvas.add(policyBox);
+
+      // 7. Kotak Footer Identitas Dewan & Tahun
+      const authorText = initialAuthor || 'DR. JONANDA P. A. B // DPRD PROVINSI • DAPIL JABAR                      2026';
+      const footerBox = new Textbox(authorText, {
+        originX: 'left',
+        originY: 'top',
+        left: Math.round(naturalW * 0.082),
+        top: Math.round(naturalH * 0.925),
+        width: Math.round(naturalW * 0.836),
         fontSize: Math.round(naturalW * 0.012),
         fontFamily: "'Inter', sans-serif",
         fontWeight: 'bold',
-        fill: '#0F172A',
-        backgroundColor: '#FFFFFF',
-        padding: 8,
-        stroke: '#E2E8F0',
-        strokeWidth: 1.0,
+        fill: 'transparent',
+        backgroundColor: purpleBgTint,
+        stroke: purpleStroke,
+        strokeWidth: 2,
+        padding: 4,
+        cornerColor: '#FFFFFF',
+        cornerStrokeColor: purpleStroke,
+        borderColor: purpleStroke,
+        transparentCorners: false,
+        cornerSize: 8,
+        cornerStyle: 'circle',
         editable: true,
       });
-      footerObj.setCoords();
-      (footerObj as any).customId = `component_footer_${Date.now()}`;
-      (footerObj as any).customData = { name: 'Identitas Anggota & Dapil (Footer)' };
-      canvas.add(footerObj);
+      footerBox.setCoords();
+      (footerBox as any).customId = `box_footer_${Date.now()}`;
+      (footerBox as any).customData = { name: 'Identitas Anggota & Dapil (Footer)' };
+      canvas.add(footerBox);
 
       canvas.renderAll();
       refreshLayersList(canvas);
@@ -890,6 +982,8 @@ export function MagicLayersModal({
     setCurrentTextContent(newText);
     if (!fabricRef.current || !selectedObject || !(selectedObject instanceof Textbox)) return;
     selectedObject.set('text', newText);
+    selectedObject.set('fill', '#FFFFFF');
+    selectedObject.set('backgroundColor', '#0F172A');
     selectedObject.initDimensions();
     fabricRef.current.renderAll();
     refreshLayersList(fabricRef.current);
@@ -1960,6 +2054,23 @@ export function MagicLayersModal({
                   <Sparkles className="h-4 w-4 text-cyan-400 animate-spin" strokeWidth={1.75} />
                   <span className="text-xs font-bold tracking-wide">Memindai & Mengurai Magic Layers...</span>
                 </div>
+              </div>
+            )}
+
+            {/* ─── BINGKAI SELEKSI UNGU KHAS CANVA (PERSIS GAMBAR 1) ─── */}
+            {isDecomposed && !isScanning && (
+              <div className="absolute inset-0 pointer-events-none border-2 border-dashed border-[#7D2AE8] z-20">
+                {/* 4 Handle Lingkaran di Sudut */}
+                <div className="absolute -top-2.5 -left-2.5 w-5 h-5 rounded-full bg-white border-2 border-[#7D2AE8] shadow-md pointer-events-auto cursor-nwse-resize" />
+                <div className="absolute -top-2.5 -right-2.5 w-5 h-5 rounded-full bg-white border-2 border-[#7D2AE8] shadow-md pointer-events-auto cursor-nesw-resize" />
+                <div className="absolute -bottom-2.5 -left-2.5 w-5 h-5 rounded-full bg-white border-2 border-[#7D2AE8] shadow-md pointer-events-auto cursor-nesw-resize" />
+                <div className="absolute -bottom-2.5 -right-2.5 w-5 h-5 rounded-full bg-white border-2 border-[#7D2AE8] shadow-md pointer-events-auto cursor-nwse-resize" />
+
+                {/* 4 Handle Pill di Sisi Tengah */}
+                <div className="absolute top-1/2 -left-2 -translate-y-1/2 w-3.5 h-6 rounded-full bg-white border-2 border-[#7D2AE8] shadow-md pointer-events-auto cursor-ew-resize" />
+                <div className="absolute top-1/2 -right-2 -translate-y-1/2 w-3.5 h-6 rounded-full bg-white border-2 border-[#7D2AE8] shadow-md pointer-events-auto cursor-ew-resize" />
+                <div className="absolute -top-2 left-1/2 -translate-x-1/2 w-6 h-3.5 rounded-full bg-white border-2 border-[#7D2AE8] shadow-md pointer-events-auto cursor-ns-resize" />
+                <div className="absolute -bottom-2 left-1/2 -translate-x-1/2 w-6 h-3.5 rounded-full bg-white border-2 border-[#7D2AE8] shadow-md pointer-events-auto cursor-ns-resize" />
               </div>
             )}
           </div>
