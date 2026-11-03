@@ -224,6 +224,7 @@ export default function ArticleEditorPage() {
                 title={title}
                 isRegenerating={regeneratingPoster}
                 onRegenerate={handleRegeneratePoster}
+                onPosterUpdated={(newUrl) => setPosterUrl(newUrl)}
               />
               <ArticleSocialSidebar
                 socialPack={socialPack}

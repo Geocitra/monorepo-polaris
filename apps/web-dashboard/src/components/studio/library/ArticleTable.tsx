@@ -39,6 +39,7 @@ interface ArticleTableProps {
   onTogglePublish: (id: string, currentStatus: string) => void;
   onDeleteArticle: (article: ArticleItem) => void;
   onViewVisual: (article: ArticleItem) => void;
+  onMagicLayers?: (article: ArticleItem) => void;
   totalArticlesCount: number;
   currentPage: number;
   totalPages: number;
@@ -54,6 +55,7 @@ export function ArticleTable({
   onTogglePublish,
   onDeleteArticle,
   onViewVisual,
+  onMagicLayers,
   totalArticlesCount,
   currentPage,
   totalPages,
@@ -277,6 +279,19 @@ export function ArticleTable({
                         <Edit3 className="h-3 w-3" />
                         <span>Edit</span>
                       </Link>
+                    )}
+
+                    {/* Tombol Magic Layers */}
+                    {item.thumbnailUrl && onMagicLayers && (
+                      <button
+                        type="button"
+                        onClick={() => onMagicLayers(item)}
+                        className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-purple-50 dark:bg-purple-950/40 border border-purple-200 dark:border-purple-800 text-xs font-bold text-purple-700 dark:text-purple-300 hover:bg-purple-100 dark:hover:bg-purple-900/60 transition-colors cursor-pointer"
+                        title="Buka Magic Layers Studio (Edit Teks & Objek AI)"
+                      >
+                        <Sparkles className="h-3 w-3 text-purple-600 dark:text-purple-400" />
+                        <span className="hidden sm:inline">Magic Layers</span>
+                      </button>
                     )}
 
                     {/* Tombol Toggle Terbitkan / Tarik */}
