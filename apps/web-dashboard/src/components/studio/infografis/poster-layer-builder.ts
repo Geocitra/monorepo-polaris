@@ -477,26 +477,62 @@ export function buildObjectsFromManifest(
 }
 
 /**
- * Overlay garis putus-putus ungu (gaya Canva) di sekeliling setiap komponen.
- * Hanya tampil di editor — dimatikan saat ekspor lewat `isExporting()`.
+ * Penanda komponen cerdas (gaya Canva / Figma):
+ * - Garis pembatas komponen TIDAK ditampilkan secara permanen pada seluruh elemen agar kanvas bersih murni.
+ * - Garis pembatas halus (dashed purple) HANYA muncul saat kursor mouse melayang (hover) di atas suatu komponen.
+ * - Saat komponen diklik/dipilih oleh user, Fabric.js otomatis menampilkan bounding box ungu Canva (#7D2AE8) beserta titik kontrol sudutnya.
+ * - Saat user mengklik komponen lain atau mengklik area kosong, garis pembatas komponen sebelumnya otomatis hilang secara bersih.
  */
 export function attachComponentOutlineOverlay(canvas: FabricCanvas, isExporting: () => boolean): void {
+  let hoveredObject: FabricObject | null = null;
+
+  canvas.on('mouse:over', (opt: any) => {
+    if (isExporting()) return;
+    const target = opt.target as FabricObject | undefined;
+    if (
+      target &&
+      (target as any).customData?.isMlComponent &&
+      !canvas.getActiveObjects().includes(target)
+    ) {
+      hoveredObject = target;
+      canvas.requestRenderAll();
+    }
+  });
+
+  canvas.on('mouse:out', (opt: any) => {
+    if (hoveredObject) {
+      hoveredObject = null;
+      canvas.requestRenderAll();
+    }
+  });
+
+  canvas.on('selection:created', () => {
+    hoveredObject = null;
+  });
+  canvas.on('selection:updated', () => {
+    hoveredObject = null;
+  });
+  canvas.on('selection:cleared', () => {
+    hoveredObject = null;
+  });
+
   canvas.on('after:render', (opt: any) => {
     if (isExporting()) return;
     const ctx: CanvasRenderingContext2D | undefined = opt?.ctx;
     if (!ctx) return;
-    const active = canvas.getActiveObjects();
-    const vpt = canvas.viewportTransform;
-    ctx.save();
-    ctx.transform(vpt[0], vpt[1], vpt[2], vpt[3], vpt[4], vpt[5]);
-    ctx.strokeStyle = '#7D2AE8';
-    ctx.lineWidth = 1.75;
-    for (const o of canvas.getObjects()) {
-      if (!(o as any).customData?.isMlComponent || !o.visible || active.includes(o)) continue;
-      const r = o.getBoundingRect();
+
+    // HANYA gambar outline putus-putus pada objek yang sedang di-hover dan BUKAN objek yang sedang aktif dipilih
+    if (hoveredObject && hoveredObject.visible && !canvas.getActiveObjects().includes(hoveredObject)) {
+      const vpt = canvas.viewportTransform;
+      ctx.save();
+      ctx.transform(vpt[0], vpt[1], vpt[2], vpt[3], vpt[4], vpt[5]);
+      ctx.strokeStyle = '#7D2AE8';
+      ctx.lineWidth = 1.5;
+      ctx.setLineDash([4, 4]); // Garis putus-putus halus pembeda status hover
+      const r = hoveredObject.getBoundingRect();
       ctx.strokeRect(r.left + 0.5, r.top + 0.5, Math.max(1, r.width - 1), Math.max(1, r.height - 1));
+      ctx.restore();
     }
-    ctx.restore();
   });
 }
 

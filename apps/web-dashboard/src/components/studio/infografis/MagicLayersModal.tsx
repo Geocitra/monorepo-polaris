@@ -2899,9 +2899,6 @@ export function MagicLayersModal({
         isExportingRef.current = false;
       }
 
-      sliceObjects.forEach((o) => o.set('stroke', '#7D2AE8'));
-      canvas.renderAll();
-
       // Sertakan customId/customData agar nama layer & dekorasi komponen bisa dipulihkan
       const layersJson = JSON.stringify(fabricRef.current.toObject(['customId', 'customData']));
 
@@ -2943,9 +2940,6 @@ export function MagicLayersModal({
       } finally {
         isExportingRef.current = false;
       }
-
-      sliceObjects.forEach((o) => o.set('stroke', '#7D2AE8'));
-      canvas.renderAll();
 
       const link = document.createElement('a');
       link.download = `polaris-magic-layers-${Date.now()}.png`;
@@ -2994,9 +2988,7 @@ export function MagicLayersModal({
             <div>
               <div className="flex items-center gap-2">
                 <span className="text-xs font-black text-slate-900 tracking-tight">Magic Layers Studio</span>
-                <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-purple-50 text-purple-700 border border-purple-200 font-bold">
-                  Canva AI
-                </span>
+          
                 <span className="text-[10px] font-mono px-1.5 py-0.5 rounded-md bg-slate-100 text-slate-600 font-bold">
                   {canvasNaturalSizeRef.current.width} × {canvasNaturalSizeRef.current.height} px
                 </span>
