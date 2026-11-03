@@ -2115,8 +2115,9 @@ export function MagicLayersModal({
   }, [isOpen, imageUrl, savedLayersJson]);
 
   // ─── 🪄 TRIGGER CANVA MAGIC LAYERS WITH 4-STAGE PIPELINE & LASER SCANNING ───
-  const handleTriggerMagicLayers = async () => {
-    if (!fabricRef.current || isScanning || isDecomposed) return;
+  const handleTriggerMagicLayers = async (forceReExtract: boolean | unknown = false) => {
+    const isForce = typeof forceReExtract === 'boolean' ? forceReExtract : false;
+    if (!fabricRef.current || isScanning || (isDecomposed && !isForce)) return;
     setIsScanning(true);
 
     try {
@@ -2131,7 +2132,7 @@ export function MagicLayersModal({
       // ════════════════════════════════════════════════════════════════════════
       setPipelineStep(1);
       setPipelineStatusText('1/4 Menganalisis elemen visual & OCR teks asli dari poster...');
-      const layerData = await fetchPosterLayerData(imageUrl, publicationId, naturalW, naturalH);
+      const layerData = await fetchPosterLayerData(imageUrl, publicationId, naturalW, naturalH, isForce);
       const effectiveRawCanvasUrl = rawCanvasUrl || layerData.rawCanvasUrl;
 
       if (layerData.manifest) {
@@ -2976,7 +2977,7 @@ export function MagicLayersModal({
           {!isDecomposed ? (
             <button
               type="button"
-              onClick={handleTriggerMagicLayers}
+              onClick={() => handleTriggerMagicLayers(false)}
               disabled={isScanning}
               className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all shadow-xs cursor-pointer bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white disabled:opacity-60"
               title="Pindai dan urai teks serta kartu menjadi komponen interaktif seperti di Canva"
@@ -2993,6 +2994,16 @@ export function MagicLayersModal({
                 <Sparkles className="h-3.5 w-3.5 text-purple-600" strokeWidth={1.75} />
                 <span>Komponen Terurai</span>
               </span>
+              <button
+                type="button"
+                onClick={() => handleTriggerMagicLayers(true)}
+                disabled={isScanning}
+                className="px-2.5 py-1.5 rounded-lg border border-purple-200 bg-purple-50 hover:bg-purple-100 text-xs font-bold text-purple-700 transition-colors cursor-pointer inline-flex items-center gap-1 disabled:opacity-60"
+                title="Ekstrak ulang teks dan elemen dari poster asli dengan AI Vision terbaru"
+              >
+                <Sparkles className="h-3 w-3 text-purple-600" />
+                <span>Pindai Ulang</span>
+              </button>
               <button
                 type="button"
                 onClick={handleResetToOriginal}

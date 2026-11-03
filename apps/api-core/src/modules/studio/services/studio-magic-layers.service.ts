@@ -539,6 +539,7 @@ export class StudioMagicLayersService {
     publicationId?: string;
     naturalW?: number;
     naturalH?: number;
+    forceReExtract?: boolean;
   }): Promise<{
     success: boolean;
     manifest: PosterLayerManifest | null;
@@ -580,14 +581,27 @@ export class StudioMagicLayersService {
           try {
             const parsed = JSON.parse(existingAsset.promptUsed);
             if (!rawCanvasUrl && parsed.rawCanvasUrl) rawCanvasUrl = parsed.rawCanvasUrl;
-            if (parsed.layoutManifest?.layers?.length > 0) {
-              this.logger.log(`[MagicLayers] Mengembalikan layoutManifest yang sudah tersimpan untuk publication ${effectivePubId}`);
+
+            const m = parsed.layoutManifest;
+            const statLayers = m?.layers?.filter((l: any) => l.role?.includes('stat-val') || l.role?.includes('stat'));
+            const hasBannerError = m?.layers?.some((l: any) =>
+              l.text && /RP\s*\d+/i.test(l.text) && (l.role?.includes('bar-tag') || l.role?.includes('section-tag') || l.role?.includes('banner'))
+            );
+            const isDefective = m?.layers && (
+              (statLayers && statLayers.length < 2) ||
+              hasBannerError
+            );
+
+            if (m?.layers?.length > 0 && !params.forceReExtract && !isDefective) {
+              this.logger.log(`[MagicLayers] Mengembalikan layoutManifest yang valid dari DB untuk publication ${effectivePubId}`);
               return {
                 success: true,
                 manifest: parsed.layoutManifest,
                 rawCanvasUrl,
                 detectedArchetype: parsed.archetype,
               };
+            } else if (isDefective || params.forceReExtract) {
+              this.logger.warn(`[MagicLayers] Manifest lama/cacat terdeteksi (force=${params.forceReExtract}, statCount=${statLayers?.length}, bannerErr=${hasBannerError}). Menjalankan Vision AI ulang...`);
             }
           } catch {}
         }

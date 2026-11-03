@@ -59,6 +59,7 @@ export class StudioController {
       publicationId?: string;
       naturalW?: number;
       naturalH?: number;
+      forceReExtract?: boolean;
     },
   ) {
     return await this.magicLayersService.getOrExtractPosterManifest(dto);

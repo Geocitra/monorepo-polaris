@@ -155,23 +155,41 @@ function paintBox(
   const b = box.borders;
   if (b && (b.top || b.right || b.bottom || b.left)) {
     ctx.save();
-    traceRoundRect(ctx, x, y, w, h, box.radius);
-    ctx.clip();
-    if (b.top) {
-      ctx.fillStyle = b.top.color;
-      ctx.fillRect(x, y, w, b.top.w);
-    }
-    if (b.bottom) {
-      ctx.fillStyle = b.bottom.color;
-      ctx.fillRect(x, y + h - b.bottom.w, w, b.bottom.w);
-    }
-    if (b.left) {
-      ctx.fillStyle = b.left.color;
-      ctx.fillRect(x, y, b.left.w, h);
-    }
-    if (b.right) {
-      ctx.fillStyle = b.right.color;
-      ctx.fillRect(x + w - b.right.w, y, b.right.w, h);
+    if (
+      b.top &&
+      b.right &&
+      b.bottom &&
+      b.left &&
+      b.top.w === b.bottom.w &&
+      b.top.w === b.left.w &&
+      b.top.w === b.right.w &&
+      b.top.color === b.bottom.color &&
+      b.top.color === b.left.color &&
+      b.top.color === b.right.color
+    ) {
+      ctx.lineWidth = b.top.w;
+      ctx.strokeStyle = b.top.color;
+      traceRoundRect(ctx, x + b.top.w / 2, y + b.top.w / 2, w - b.top.w, h - b.top.w, Math.max(0, box.radius - b.top.w / 2));
+      ctx.stroke();
+    } else {
+      traceRoundRect(ctx, x, y, w, h, box.radius);
+      ctx.clip();
+      if (b.top) {
+        ctx.fillStyle = b.top.color;
+        ctx.fillRect(x, y, w, b.top.w);
+      }
+      if (b.bottom) {
+        ctx.fillStyle = b.bottom.color;
+        ctx.fillRect(x, y + h - b.bottom.w, w, b.bottom.w);
+      }
+      if (b.left) {
+        ctx.fillStyle = b.left.color;
+        ctx.fillRect(x, y, b.left.w, h);
+      }
+      if (b.right) {
+        ctx.fillStyle = b.right.color;
+        ctx.fillRect(x + w - b.right.w, y, b.right.w, h);
+      }
     }
     ctx.restore();
   }
@@ -306,7 +324,8 @@ export async function fetchPosterLayerData(
   imageUrl: string,
   publicationId?: string,
   naturalW?: number,
-  naturalH?: number
+  naturalH?: number,
+  forceReExtract?: boolean
 ): Promise<{ manifest: PosterLayerManifest | null; rawCanvasUrl?: string; detectedArchetype?: string }> {
   // 1. Panggil backend AI Vision OCR Extractor & Manifest Provider
   try {
@@ -322,6 +341,7 @@ export async function fetchPosterLayerData(
         publicationId,
         naturalW,
         naturalH,
+        forceReExtract,
       }),
     });
 
