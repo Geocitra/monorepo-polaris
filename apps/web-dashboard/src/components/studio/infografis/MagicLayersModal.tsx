@@ -42,6 +42,7 @@ import {
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/components/ui/toast';
+import { ApiClient } from '@/lib/api-client';
 
 interface MagicLayersModalProps {
   isOpen: boolean;
@@ -488,7 +489,53 @@ function smartTextureInpainting(
   const rw = Math.max(1, Math.min(naturalW - rx, Math.round(rect.w)));
   const rh = Math.max(1, Math.min(naturalH - ry, Math.round(rect.h)));
 
-  // Parse paperColor menjadi RGB yang bersih (dibatasi minimal 240 agar tidak pernah terkontaminasi abu-abu)
+  const yFraction = ry / naturalH;
+  const isPhotoArea = (yFraction >= 0.14 && yFraction <= 0.48) || def?.name?.toLowerCase().includes('metrik');
+
+  ctx.save();
+  ctx.globalAlpha = 1.0; // 100% Solid Opaque (tidak pernah tembus pandang container)
+
+  if (isPhotoArea) {
+    // ─── REKONSTRUKSI TEKSTUR FOTO (Menyambungkan foto permukiman sekitar secara mulus) ───
+    try {
+      const sampleBelowY = Math.min(naturalH - 10, ry + rh);
+      const sampleH = Math.min(rh, naturalH - sampleBelowY);
+
+      if (sampleH > 4) {
+        // Ambil potongan foto asli langsung dari bawah kotak
+        const patchData = ctx.getImageData(rx, sampleBelowY, rw, sampleH);
+
+        // Buat kanvas sementara untuk membalik vertikal (mirror) agar batas potongan menyatu sempurna
+        const tempCanvas = document.createElement('canvas');
+        tempCanvas.width = rw;
+        tempCanvas.height = sampleH;
+        const tempCtx = tempCanvas.getContext('2d');
+        if (tempCtx) {
+          tempCtx.putImageData(patchData, 0, 0);
+
+          ctx.save();
+          ctx.translate(rx, ry + rh);
+          ctx.scale(1, -1);
+          ctx.drawImage(tempCanvas, 0, 0, rw, rh);
+          ctx.restore();
+        }
+
+        // Feathering halus pada batas tepi
+        ctx.save();
+        ctx.filter = 'blur(2px)';
+        ctx.strokeStyle = 'rgba(0,0,0,0.06)';
+        ctx.lineWidth = 2;
+        ctx.strokeRect(rx, ry, rw, rh);
+        ctx.restore();
+        ctx.restore();
+        return;
+      }
+    } catch (photoErr) {
+      console.warn('[MagicLayers] Fallback photo patch error:', photoErr);
+    }
+  }
+
+  // ─── REKONSTRUKSI KERTAS BERSIH (Untuk Header / Judul di atas kertas putih) ───
   let pR = 252, pG = 250, pB = 247;
   const rgbMatch = paperColor.match(/\d+/g);
   if (rgbMatch && rgbMatch.length >= 3) {
@@ -497,17 +544,12 @@ function smartTextureInpainting(
     pB = Math.max(236, parseInt(rgbMatch[2], 10));
   }
 
-  // Jika komponen aslinya berlatar putih (#FFFFFF) atau transparan, inpainting di bawahnya selalu kertas putih bersih solid
   if (def?.cardBg === '#FFFFFF' || !def?.cardBg || def.cardBg === 'transparent') {
     pR = 255;
     pG = 255;
     pB = 255;
   }
 
-  ctx.save();
-  ctx.globalAlpha = 1.0; // Wajib 100% Solid (Alpha 255) mencegah transparansi tembus container abu-abu
-
-  // 1. Inpainting Gradien Halus Kertas Bersih Poster
   const grad = ctx.createLinearGradient(rx, ry, rx, ry + rh);
   grad.addColorStop(0, '#FFFFFF');
   grad.addColorStop(0.5, `rgb(${pR}, ${pG}, ${pB})`);
@@ -515,7 +557,7 @@ function smartTextureInpainting(
   ctx.fillStyle = grad;
   ctx.fillRect(rx, ry, rw, rh);
 
-  // 2. Tambahkan mikro-tekstur serat kertas organik yang sangat halus (noise halus +/- 1.0)
+  // Mikro-tekstur serat kertas organik
   try {
     const patch = ctx.getImageData(rx, ry, rw, rh);
     const pData = patch.data;
@@ -524,12 +566,12 @@ function smartTextureInpainting(
       pData[p] = Math.min(255, Math.max(242, pData[p] + noise));
       pData[p + 1] = Math.min(255, Math.max(240, pData[p + 1] + noise));
       pData[p + 2] = Math.min(255, Math.max(236, pData[p + 2] + noise));
-      pData[p + 3] = 255; // Solid Alpha channel
+      pData[p + 3] = 255;
     }
     ctx.putImageData(patch, rx, ry);
   } catch {}
 
-  // 3. Edge softening (seam feathering) pada batas potongan agar menyatu mulus tanpa patahan
+  // Edge softening
   ctx.filter = 'blur(3px)';
   ctx.strokeStyle = `rgb(${pR}, ${pG}, ${pB})`;
   ctx.lineWidth = 4;
@@ -1293,12 +1335,42 @@ async function createCleanPosterBackground(
   rawImageUrl: string,
   naturalW: number,
   naturalH: number,
-  componentDefs: ComponentSliceDef[]
+  componentDefs: ComponentSliceDef[],
+  archetype?: string,
+  publicationId?: string
 ): Promise<string> {
   const safeUrl = resolveSafeImageUrl(rawImageUrl);
 
   return new Promise((resolve) => {
     (async () => {
+      // ════════════════════════════════════════════════════════════════════════
+      // OPSI C: Panggil Backend Inpainting Engine terlebih dahulu (Best Practice)
+      // ════════════════════════════════════════════════════════════════════════
+      try {
+        const backendRes = await ApiClient.request<{
+          success: boolean;
+          cleanBackgroundUrl: string;
+          strategyUsed?: string;
+        }>('/studio/magic-layers/inpaint', {
+          method: 'POST',
+          body: JSON.stringify({
+            imageUrl: safeUrl,
+            naturalW,
+            naturalH,
+            componentBounds: componentDefs,
+            archetype,
+            publicationId,
+          }),
+        });
+
+        if (backendRes?.cleanBackgroundUrl && backendRes.cleanBackgroundUrl.startsWith('data:')) {
+          console.log('[MagicLayers] Inpainted via Backend Option C:', backendRes.strategyUsed);
+          resolve(backendRes.cleanBackgroundUrl);
+          return;
+        }
+      } catch (backendErr) {
+        console.warn('[MagicLayers] Backend inpainting fallback ke client-side synthesis:', backendErr);
+      }
       let objectUrlToUse = safeUrl;
       let blobCreated = false;
 

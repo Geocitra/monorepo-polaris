@@ -1,4 +1,5 @@
 import { Injectable, Logger } from '@nestjs/common';
+import { PosterInpainter } from '@polaris/storage';
 
 export interface OCRBoundingBox {
   id: string;
@@ -364,41 +365,88 @@ export class StudioMagicLayersService {
   }
 
   /**
-   * SOLUSI 1 & 2: Backend Image Inpainting Algorithm
-   * Menambal area kosong pada gambar latar belakang menggunakan tekstur sekitar
-   * dengan penanganan alpha channel solid (mencegah lubang/kotak abu-abu).
+   * OPSI C: Backend Image Inpainting Engine (Generative / Context-Aware Texture Synthesis)
+   * Merekonstruksi latar belakang foto & kertas asli di balik komponen yang diangkat.
    */
   async inpaintPosterBackground(params: {
     imageUrl: string;
     naturalW?: number;
     naturalH?: number;
-    componentBounds: Array<{ x: number; y: number; w: number; h: number; cardBg?: string }>;
+    componentBounds: Array<{ x: number; y: number; w: number; h: number; cardBg?: string; name?: string; text?: string }>;
+    archetype?: string;
   }): Promise<{
     success: boolean;
     cleanBackgroundUrl: string;
     alphaChannelSolid: boolean;
+    strategyUsed: string;
     layers: {
       backgroundLayer: { id: string; name: string; isSolid: boolean };
       foregroundComponents: Array<{ id: string; name: string; bounds: any }>;
     };
   }> {
     this.logger.log(`Executing backend inpainting for ${params.componentBounds.length} components`);
-    return {
-      success: true,
-      cleanBackgroundUrl: params.imageUrl,
-      alphaChannelSolid: true,
-      layers: {
-        backgroundLayer: {
-          id: 'layer_background_inpainted',
-          name: 'Poster Bersih (Latar Belakang Inpainted Solid)',
-          isSolid: true,
+
+    try {
+      let inputBuffer: Buffer;
+
+      if (params.imageUrl.startsWith('data:')) {
+        const base64Data = params.imageUrl.split(',')[1] || '';
+        inputBuffer = Buffer.from(base64Data, 'base64');
+      } else {
+        const res = await fetch(params.imageUrl);
+        if (!res.ok) {
+          throw new Error(`Failed to fetch poster image: ${res.statusText}`);
+        }
+        const arrayBuf = await res.arrayBuffer();
+        inputBuffer = Buffer.from(arrayBuf);
+      }
+
+      const inpaintRes = await PosterInpainter.inpaintPoster({
+        inputBuffer,
+        naturalW: params.naturalW,
+        naturalH: params.naturalH,
+        componentBounds: params.componentBounds,
+        archetype: params.archetype,
+      });
+
+      return {
+        success: true,
+        cleanBackgroundUrl: inpaintRes.dataUrl,
+        alphaChannelSolid: true,
+        strategyUsed: inpaintRes.strategyUsed,
+        layers: {
+          backgroundLayer: {
+            id: 'layer_background_inpainted',
+            name: 'Poster Bersih (AI Inpainted Solid)',
+            isSolid: true,
+          },
+          foregroundComponents: params.componentBounds.map((b, idx) => ({
+            id: `fg_comp_${idx}`,
+            name: b.name || `Komponen ${idx + 1}`,
+            bounds: b,
+          })),
         },
-        foregroundComponents: params.componentBounds.map((b, idx) => ({
-          id: `fg_comp_${idx}`,
-          name: `Komponen ${idx + 1}`,
-          bounds: b,
-        })),
-      },
-    };
+      };
+    } catch (err: any) {
+      this.logger.error(`Backend inpainting error: ${err.message}`, err.stack);
+      return {
+        success: false,
+        cleanBackgroundUrl: params.imageUrl,
+        alphaChannelSolid: true,
+        strategyUsed: 'FALLBACK_RAW_IMAGE',
+        layers: {
+          backgroundLayer: {
+            id: 'layer_background_inpainted',
+            name: 'Poster Bersih (Fallback)',
+            isSolid: true,
+          },
+          foregroundComponents: params.componentBounds.map((b, idx) => ({
+            id: `fg_comp_${idx}`,
+            name: b.name || `Komponen ${idx + 1}`,
+            bounds: b,
+          })),
+        },
+      };
+    }
   }
 }
