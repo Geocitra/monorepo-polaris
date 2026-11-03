@@ -155,7 +155,6 @@ export function MagicLayersModal({
   initialTitle = '',
   initialAuthor = '',
   initialSubtitle = '',
-  aspectRatio = '4:5',
   savedLayersJson,
   onApplyChanges,
 }: MagicLayersModalProps) {
@@ -170,8 +169,8 @@ export function MagicLayersModal({
   const [selectedLayerId, setSelectedLayerId] = useState<string | null>(null);
   const [selectedObject, setSelectedObject] = useState<FabricObject | null>(null);
 
-  // Lembaran Canvas Native Dimensions (Disesuaikan 100% dari resolusi asli gambar)
-  const [canvasDimensions, setCanvasDimensions] = useState({ width: 1080, height: 1350 });
+  // Lembaran Canvas Native Dimensions (Disesuaikan 100% dari resolusi asli gambar via Ref)
+  const canvasNaturalSizeRef = useRef({ width: 1080, height: 1350 });
   const [displayDimensions, setDisplayDimensions] = useState({ width: 0, height: 0 });
 
   // Viewport Zoom State
@@ -195,33 +194,38 @@ export function MagicLayersModal({
 
   // Helper to refresh layer list from Fabric canvas
   const refreshLayersList = useCallback((canvas: FabricCanvas) => {
-    const objects = canvas.getObjects();
-    // Reverse objects so the topmost visual layer appears at the top of the UI list
-    const mapped: LayerItem[] = [...objects].reverse().map((obj, revIdx) => {
-      const idx = objects.indexOf(obj);
-      const customData = (obj as any).customData || {};
-      let name = customData.name;
-      if (!name) {
-        if (obj instanceof Textbox) {
-          name = `Teks: "${obj.text?.slice(0, 24) || 'Kosong'}..."`;
-        } else if (obj instanceof FabricImage) {
-          name = customData.isCutout ? '✨ Objek Depan (Cutout)' : '🖼️ Poster Asli (Latar Belakang)';
-        } else {
-          name = `Layer ${objects.length - idx}`;
+    if (!canvas || (canvas as any).isDisposed) return;
+    try {
+      const objects = canvas.getObjects();
+      // Reverse objects so the topmost visual layer appears at the top of the UI list
+      const mapped: LayerItem[] = [...objects].reverse().map((obj, revIdx) => {
+        const idx = objects.indexOf(obj);
+        const customData = (obj as any).customData || {};
+        let name = customData.name;
+        if (!name) {
+          if (obj instanceof Textbox) {
+            name = `Teks: "${obj.text?.slice(0, 24) || 'Kosong'}..."`;
+          } else if (obj instanceof FabricImage) {
+            name = customData.isCutout ? '✨ Objek Depan (Cutout)' : '🖼️ Poster Asli (Latar Belakang)';
+          } else {
+            name = `Layer ${objects.length - idx}`;
+          }
         }
-      }
 
-      return {
-        id: (obj as any).customId || `obj_${idx}`,
-        name,
-        type: obj.type || 'object',
-        visible: obj.visible !== false,
-        locked: !!obj.lockMovementX,
-        object: obj,
-      };
-    });
+        return {
+          id: (obj as any).customId || `obj_${idx}`,
+          name,
+          type: obj.type || 'object',
+          visible: obj.visible !== false,
+          locked: !!obj.lockMovementX,
+          object: obj,
+        };
+      });
 
-    setLayers(mapped);
+      setLayers(mapped);
+    } catch (err) {
+      console.warn('[MagicLayers] refreshLayersList error:', err);
+    }
   }, []);
 
   // Update styling panel and sentence edit input when active object changes
@@ -248,47 +252,58 @@ export function MagicLayersModal({
   };
 
   // ─── RESIZE & RESPONSIVE FIT ENGINE (100% RASIO PRESISI TANPA LEBIHAN PUTIH) ───
-  const handleUpdateDimensions = useCallback(() => {
-    if (!workspaceRef.current || !fabricRef.current) return;
-    const { clientWidth, clientHeight } = workspaceRef.current;
+  const updateResponsiveFit = useCallback(() => {
+    const canvas = fabricRef.current;
+    const container = workspaceRef.current;
+    if (!canvas || !container || (canvas as any).isDisposed) return;
+
+    const { clientWidth, clientHeight } = container;
     if (!clientWidth || !clientHeight) return;
 
-    // Spacing padding yang nyaman di sekeliling kanvas
+    const naturalW = canvasNaturalSizeRef.current.width;
+    const naturalH = canvasNaturalSizeRef.current.height;
+    if (!naturalW || !naturalH) return;
+
     const paddingX = 48;
     const paddingY = 48;
     const availW = Math.max(100, clientWidth - paddingX);
     const availH = Math.max(100, clientHeight - paddingY);
 
-    const calculatedFit = Math.min(availW / canvasDimensions.width, availH / canvasDimensions.height);
+    const calculatedFit = Math.min(availW / naturalW, availH / naturalH);
     setFitScale(calculatedFit);
 
     const effectiveZoom = calculatedFit * zoomLevel;
-    const displayW = Math.round(canvasDimensions.width * effectiveZoom);
-    const displayH = Math.round(canvasDimensions.height * effectiveZoom);
+    const displayW = Math.round(naturalW * effectiveZoom);
+    const displayH = Math.round(naturalH * effectiveZoom);
 
     setDisplayDimensions({ width: displayW, height: displayH });
 
-    fabricRef.current.setDimensions({ width: displayW, height: displayH });
-    fabricRef.current.setZoom(effectiveZoom);
-    fabricRef.current.renderAll();
-  }, [canvasDimensions.width, canvasDimensions.height, zoomLevel]);
+    try {
+      canvas.setDimensions({ width: displayW, height: displayH });
+      canvas.setZoom(effectiveZoom);
+      canvas.renderAll();
+    } catch (err) {
+      console.warn('[MagicLayers] setDimensions error suppressed:', err);
+    }
+  }, [zoomLevel]);
 
+  // Hook resize observer independently from canvas initialization
   useEffect(() => {
     if (!isOpen) return;
-    handleUpdateDimensions();
-    window.addEventListener('resize', handleUpdateDimensions);
+    updateResponsiveFit();
+    window.addEventListener('resize', updateResponsiveFit);
 
     let observer: ResizeObserver | null = null;
     if (workspaceRef.current) {
-      observer = new ResizeObserver(() => handleUpdateDimensions());
+      observer = new ResizeObserver(() => updateResponsiveFit());
       observer.observe(workspaceRef.current);
     }
 
     return () => {
-      window.removeEventListener('resize', handleUpdateDimensions);
+      window.removeEventListener('resize', updateResponsiveFit);
       observer?.disconnect();
     };
-  }, [isOpen, handleUpdateDimensions]);
+  }, [isOpen, updateResponsiveFit]);
 
   // Set default Canva-style selection styling
   useEffect(() => {
@@ -303,7 +318,7 @@ export function MagicLayersModal({
   }, []);
 
   // ─── MAGIC CUTOUT FUNCTION ───
-  const executeCutout = async (canvas: FabricCanvas, nativeW: number, nativeH: number) => {
+  const executeCutout = async (canvas: FabricCanvas) => {
     if (isCuttingOut) return;
     setIsCuttingOut(true);
     setCutoutSuccess(false);
@@ -315,6 +330,7 @@ export function MagicLayersModal({
       const cutoutUrl = URL.createObjectURL(blob);
 
       const cutoutImg = await loadResilientFabricImage(cutoutUrl);
+      if (!fabricRef.current || canvas !== fabricRef.current || (canvas as any).isDisposed) return;
 
       // Posisikan tepat 1:1 di atas gambar latar belakang sehingga menyatu 100% sempurna
       cutoutImg.set({
@@ -341,59 +357,64 @@ export function MagicLayersModal({
     }
   };
 
-  // Initialize Fabric Canvas
+  // ─── INITIALIZE FABRIC CANVAS (LIFECYCLE TERISOLASI TANPA RACE CONDITION) ───
   useEffect(() => {
     if (!isOpen || !canvasElRef.current) return;
 
     setIsLoading(true);
-    let isMounted = true;
+    let isDisposed = false;
 
+    // Dispose previous instance safely
     if (fabricRef.current) {
-      fabricRef.current.dispose();
+      try {
+        (fabricRef.current as any).isDisposed = true;
+        fabricRef.current.dispose();
+      } catch {}
       fabricRef.current = null;
     }
 
-    // Default temporary canvas
-    const canvas = new FabricCanvas(canvasElRef.current, {
-      width: 1080,
-      height: 1350,
-      backgroundColor: '#FAF8F5',
-      preserveObjectStacking: true,
-      selection: true,
-    });
-
-    fabricRef.current = canvas;
-
-    // Canvas Events
-    canvas.on('selection:created', (e) => updateStylePanelFromObject(e.selected?.[0] || null));
-    canvas.on('selection:updated', (e) => updateStylePanelFromObject(e.selected?.[0] || null));
-    canvas.on('selection:cleared', () => updateStylePanelFromObject(null));
-    canvas.on('object:modified', () => {
-      refreshLayersList(canvas);
-      if (canvas.getActiveObject() instanceof Textbox) {
-        updateStylePanelFromObject(canvas.getActiveObject() || null);
-      }
-    });
-    canvas.on('object:added', () => refreshLayersList(canvas));
-    canvas.on('object:removed', () => refreshLayersList(canvas));
-    canvas.on('text:changed', (e) => {
-      if (e.target instanceof Textbox) {
-        setCurrentTextContent(e.target.text || '');
-        refreshLayersList(canvas);
-      }
-    });
-
     const initCanvasContent = async () => {
       try {
-        // 1. Muat Poster Gambar Asli
+        // 1. Muat Poster Gambar Asli terlebih dahulu untuk mengetahui resolusi aslinya
         const bgImg = await loadResilientFabricImage(imageUrl);
+        if (isDisposed || !canvasElRef.current) return;
+
         const naturalW = bgImg.width || 1080;
         const naturalH = bgImg.height || 1350;
+        canvasNaturalSizeRef.current = { width: naturalW, height: naturalH };
 
-        // Set ukuran lembaran kanvas persis 100% sama dengan resolusi dan rasio gambar
-        setCanvasDimensions({ width: naturalW, height: naturalH });
-        canvas.setDimensions({ width: naturalW, height: naturalH });
+        // 2. Inisialisasi Fabric Canvas LANGSUNG dengan resolusi asli poster
+        // Ini mencegah pemanggilan setDimensions pada canvas yang belum stabil
+        const canvas = new FabricCanvas(canvasElRef.current, {
+          width: naturalW,
+          height: naturalH,
+          backgroundColor: '#FAF8F5',
+          preserveObjectStacking: true,
+          selection: true,
+        });
 
+        fabricRef.current = canvas;
+
+        // Canvas Event Listeners
+        canvas.on('selection:created', (e) => updateStylePanelFromObject(e.selected?.[0] || null));
+        canvas.on('selection:updated', (e) => updateStylePanelFromObject(e.selected?.[0] || null));
+        canvas.on('selection:cleared', () => updateStylePanelFromObject(null));
+        canvas.on('object:modified', () => {
+          refreshLayersList(canvas);
+          if (canvas.getActiveObject() instanceof Textbox) {
+            updateStylePanelFromObject(canvas.getActiveObject() || null);
+          }
+        });
+        canvas.on('object:added', () => refreshLayersList(canvas));
+        canvas.on('object:removed', () => refreshLayersList(canvas));
+        canvas.on('text:changed', (e) => {
+          if (e.target instanceof Textbox) {
+            setCurrentTextContent(e.target.text || '');
+            refreshLayersList(canvas);
+          }
+        });
+
+        // 3. Tambahkan Latar Belakang Poster 1:1 Tanpa Distorsi
         bgImg.set({
           left: 0,
           top: 0,
@@ -408,14 +429,15 @@ export function MagicLayersModal({
         canvas.add(bgImg);
         canvas.sendObjectToBack(bgImg);
 
+        // 4. Jika ada sesi tersimpan, muat kembali
         if (savedLayersJson) {
           try {
             const sanitizedJson = savedLayersJson.replace(/https?:\/\/[^\/]+(?::\d+)?\/uploads\//g, '/uploads/');
             await canvas.loadFromJSON(sanitizedJson);
             canvas.renderAll();
-            if (isMounted) {
+            if (!isDisposed) {
               refreshLayersList(canvas);
-              handleUpdateDimensions();
+              updateResponsiveFit();
               setIsLoading(false);
             }
             return;
@@ -424,21 +446,19 @@ export function MagicLayersModal({
           }
         }
 
-        // Tampilan pertama kali 100% bersih dan sempurna (Gambar 2).
-        // Tidak ada kotak teks dummy yang menutupi poster!
+        // Tampilan awal 100% bersih dan sempurna (identik dengan Gambar 2)
         canvas.renderAll();
-        if (isMounted) {
+        if (!isDisposed) {
           refreshLayersList(canvas);
-          handleUpdateDimensions();
+          updateResponsiveFit();
           setIsLoading(false);
         }
 
-        // Jalankan pemisahan objek depan AI secara otomatis di latar belakang
-        // Subjek akan terpotong dan menempel sempurna di atas poster tanpa mengubah tampilan sama sekali
-        executeCutout(canvas, naturalW, naturalH);
+        // Jalankan pemisahan subjek depan AI secara mulus
+        executeCutout(canvas);
       } catch (err: any) {
         console.error('Error initializing Magic Layers canvas:', err);
-        if (isMounted) {
+        if (!isDisposed) {
           toast({
             type: 'error',
             title: 'Gagal memuat kanvas',
@@ -452,11 +472,16 @@ export function MagicLayersModal({
     initCanvasContent();
 
     return () => {
-      isMounted = false;
-      canvas.dispose();
-      fabricRef.current = null;
+      isDisposed = true;
+      if (fabricRef.current) {
+        try {
+          (fabricRef.current as any).isDisposed = true;
+          fabricRef.current.dispose();
+        } catch {}
+        fabricRef.current = null;
+      }
     };
-  }, [isOpen, imageUrl, savedLayersJson, refreshLayersList, handleUpdateDimensions, toast]);
+  }, [isOpen, imageUrl, savedLayersJson]);
 
   // ─── LIVE SENTENCE / TEXT EDITING HANDLER ───
   const handleLiveTextChange = (newText: string) => {
@@ -532,11 +557,10 @@ export function MagicLayersModal({
   };
 
   // ─── 🪄 URAI TEKS MENJADI LAYER INTERAKTIF (CANVA GRAB TEXT) ───
-  // Mengubah judul dan kartu poster menjadi layer teks yang bisa digeser dan diedit
   const handleGrabText = () => {
     if (!fabricRef.current) return;
     const canvas = fabricRef.current;
-    const { width: w, height: h } = canvasDimensions;
+    const { width: w, height: h } = canvasNaturalSizeRef.current;
 
     const titleText = initialTitle || 'PENURUNAN PENGANGGURAN MELALUI PELATIHAN';
 
@@ -592,8 +616,8 @@ export function MagicLayersModal({
   const addTextHeading = () => {
     if (!fabricRef.current) return;
     const txt = new Textbox('JUDUL BARU POSTER', {
-      left: canvasDimensions.width / 2 - 200,
-      top: canvasDimensions.height / 2 - 40,
+      left: canvasNaturalSizeRef.current.width / 2 - 200,
+      top: canvasNaturalSizeRef.current.height / 2 - 40,
       width: 400,
       fontSize: 42,
       fontFamily: "'Inter', sans-serif",
@@ -614,8 +638,8 @@ export function MagicLayersModal({
   const addTextBody = () => {
     if (!fabricRef.current) return;
     const txt = new Textbox('Tuliskan poin narasi atau kalimat penjelasan kebijakan Anda di sini.', {
-      left: canvasDimensions.width / 2 - 220,
-      top: canvasDimensions.height / 2,
+      left: canvasNaturalSizeRef.current.width / 2 - 220,
+      top: canvasNaturalSizeRef.current.height / 2,
       width: 440,
       fontSize: 20,
       fontFamily: "'Inter', sans-serif",
@@ -634,8 +658,8 @@ export function MagicLayersModal({
   const addDimensiCard = () => {
     if (!fabricRef.current) return;
     const txt = new Textbox('TONGGAK BARU: NAMA AGENDA\nTuliskan uraian pencapaian atau kebijakan daerah di sini.', {
-      left: canvasDimensions.width / 2 - 220,
-      top: canvasDimensions.height / 2 - 50,
+      left: canvasNaturalSizeRef.current.width / 2 - 220,
+      top: canvasNaturalSizeRef.current.height / 2 - 50,
       width: 440,
       fontSize: 18,
       fontFamily: "'Inter', sans-serif",
@@ -654,8 +678,8 @@ export function MagicLayersModal({
   const addBadgeShape = () => {
     if (!fabricRef.current) return;
     const txt = new Textbox('★ TONGGAK 01: PRIORITAS DAERAH ★', {
-      left: canvasDimensions.width / 2 - 180,
-      top: canvasDimensions.height / 2 + 50,
+      left: canvasNaturalSizeRef.current.width / 2 - 180,
+      top: canvasNaturalSizeRef.current.height / 2 + 50,
       width: 360,
       fontSize: 16,
       fontFamily: "'Inter', sans-serif",
@@ -771,12 +795,13 @@ export function MagicLayersModal({
     try {
       fabricRef.current.discardActiveObject();
 
-      // Temporarily restore native resolution for ultra-sharp HD export
+      const naturalW = canvasNaturalSizeRef.current.width;
+      const naturalH = canvasNaturalSizeRef.current.height;
       const currentZoom = fabricRef.current.getZoom();
       const currentW = fabricRef.current.getWidth();
       const currentH = fabricRef.current.getHeight();
 
-      fabricRef.current.setDimensions({ width: canvasDimensions.width, height: canvasDimensions.height });
+      fabricRef.current.setDimensions({ width: naturalW, height: naturalH });
       fabricRef.current.setZoom(1.0);
       fabricRef.current.renderAll();
 
@@ -816,11 +841,13 @@ export function MagicLayersModal({
     try {
       fabricRef.current.discardActiveObject();
 
+      const naturalW = canvasNaturalSizeRef.current.width;
+      const naturalH = canvasNaturalSizeRef.current.height;
       const currentZoom = fabricRef.current.getZoom();
       const currentW = fabricRef.current.getWidth();
       const currentH = fabricRef.current.getHeight();
 
-      fabricRef.current.setDimensions({ width: canvasDimensions.width, height: canvasDimensions.height });
+      fabricRef.current.setDimensions({ width: naturalW, height: naturalH });
       fabricRef.current.setZoom(1.0);
       fabricRef.current.renderAll();
 
@@ -884,7 +911,7 @@ export function MagicLayersModal({
                   Canva AI
                 </span>
                 <span className="text-[10px] font-mono px-1.5 py-0.5 rounded-md bg-slate-100 text-slate-600 font-bold">
-                  {canvasDimensions.width} × {canvasDimensions.height} px
+                  {canvasNaturalSizeRef.current.width} × {canvasNaturalSizeRef.current.height} px
                 </span>
               </div>
             </div>
