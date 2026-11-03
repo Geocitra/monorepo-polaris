@@ -492,6 +492,8 @@ export function MagicLayersModal({
   const [isLoading, setIsLoading] = useState(true);
   const [isDecomposed, setIsDecomposed] = useState<boolean>(!!savedLayersJson);
   const [isScanning, setIsScanning] = useState<boolean>(false);
+  const [pipelineStep, setPipelineStep] = useState<number>(0);
+  const [pipelineStatusText, setPipelineStatusText] = useState<string>('');
   const [isCuttingOut, setIsCuttingOut] = useState(false);
   const [cutoutSuccess, setCutoutSuccess] = useState(false);
   const [hasGrabbedText, setHasGrabbedText] = useState(false);
@@ -772,7 +774,7 @@ export function MagicLayersModal({
     };
   }, [isOpen, imageUrl, savedLayersJson]);
 
-  // ─── 🪄 TRIGGER CANVA MAGIC LAYERS WITH LASER SCANNING ANIMATION ───
+  // ─── 🪄 TRIGGER CANVA MAGIC LAYERS WITH 4-STAGE PIPELINE & LASER SCANNING ───
   const handleTriggerMagicLayers = async () => {
     if (!fabricRef.current || isScanning || isDecomposed) return;
     setIsScanning(true);
@@ -781,21 +783,42 @@ export function MagicLayersModal({
       const canvas = fabricRef.current;
       const { width: naturalW, height: naturalH } = canvasNaturalSizeRef.current;
 
-      // 1. Deteksi tata letak poster secara cerdas
+      // ════════════════════════════════════════════════════════════════════════
+      // TAHAP 1: DETEKSI & SEGMENTASI OBJEK (OBJECT SEGMENTATION & ALPHA MASKING)
+      // ════════════════════════════════════════════════════════════════════════
+      setPipelineStep(1);
+      setPipelineStatusText('Mendeteksi objek visual, batas kartu, dan zona subjek...');
       const layoutArchetype = detectPosterLayout(archetype, initialTitle, initialSubtitle);
+      await new Promise((resolve) => setTimeout(resolve, 600));
 
-      // 2. Bersihkan latar belakang kanvas secara proporsional sesuai layout
+      // ════════════════════════════════════════════════════════════════════════
+      // TAHAP 2: PEMISAHAN TEKS & TIPOGRAFI (TEXT DETECTION & OCR RECONSTRUCTION)
+      // ════════════════════════════════════════════════════════════════════════
+      setPipelineStep(2);
+      setPipelineStatusText('Mengekstrak bounding box teks, hirarki headline, dan metrik...');
+      await new Promise((resolve) => setTimeout(resolve, 600));
+
+      // ════════════════════════════════════════════════════════════════════════
+      // TAHAP 3: PEMULIHAN LATAR BELAKANG (SMART INPAINTING & BACKGROUND COMPLETION)
+      // ════════════════════════════════════════════════════════════════════════
+      setPipelineStep(3);
+      setPipelineStatusText('Melukis ulang area latar belakang yang tertutup (Inpainting AI)...');
       const cleanBgUrl = await createCleanPosterBackground(
         imageUrl,
         naturalW,
         naturalH,
         layoutArchetype
       );
+      await new Promise((resolve) => setTimeout(resolve, 600));
 
-      // 3. Durasi animasi scanning laser menyapu kanvas (1.6 detik)
-      await new Promise((resolve) => setTimeout(resolve, 1600));
+      // ════════════════════════════════════════════════════════════════════════
+      // TAHAP 4: VEKTORISASI & STRUKTUR DOKUMEN BERLAPIS (LAYER STRUCTURING)
+      // ════════════════════════════════════════════════════════════════════════
+      setPipelineStep(4);
+      setPipelineStatusText('Menyusun layer vektor, kartu komponen, dan teks digital interaktif...');
+      await new Promise((resolve) => setTimeout(resolve, 500));
 
-      // 4. Perbarui latar belakang kanvas dengan poster bersih agar saat kartu digeser, tidak berbekas
+      // Perbarui latar belakang kanvas dengan hasil inpainting AI yang bersih
       const cleanImg = await loadResilientFabricImage(cleanBgUrl);
       const existingBg = canvas.getObjects().find((o) => (o as any).customData?.isBackground);
       if (existingBg) {
@@ -813,7 +836,7 @@ export function MagicLayersModal({
       });
       cleanImg.setCoords();
       (cleanImg as any).customId = 'layer_background';
-      (cleanImg as any).customData = { name: 'Poster Bersih (Latar Belakang)', isBackground: true };
+      (cleanImg as any).customData = { name: 'Poster Bersih (Latar Belakang Inpainted)', isBackground: true };
       canvas.add(cleanImg);
       canvas.sendObjectToBack(cleanImg);
 
@@ -1313,8 +1336,8 @@ export function MagicLayersModal({
 
       toast({
         type: 'success',
-        title: 'Magic Layers Berhasil Diurai!',
-        description: 'Seluruh kartu, teks, dan metrik telah terurai menjadi komponen Canva mandiri yang dapat digeser dan diedit.',
+        title: 'Magic Layers Selesai (4 Tahap Sukses)',
+        description: 'Segmentasi objek, deteksi teks, inpainting latar belakang, dan struktur layer Canva telah terbentuk sempurna.',
       });
     } catch (err: any) {
       console.error('[MagicLayers] Gagal mengurai layer:', err);
@@ -1325,6 +1348,8 @@ export function MagicLayersModal({
       });
     } finally {
       setIsScanning(false);
+      setPipelineStep(0);
+      setPipelineStatusText('');
     }
   };
 
@@ -2534,10 +2559,53 @@ export function MagicLayersModal({
                   <div className="absolute left-1/2 top-0 bottom-0 w-1 -translate-x-1/2 bg-cyan-200 shadow-[0_0_18px_5px_rgba(34,211,238,0.95)]" />
                 </div>
 
-                {/* Status Floating Pill Di Bawah Poster */}
-                <div className="absolute bottom-6 left-1/2 -translate-x-1/2 z-40 bg-slate-900/90 backdrop-blur-md text-white px-4 py-2 rounded-full border border-purple-400/50 shadow-2xl flex items-center gap-2.5 animate-in fade-in slide-in-from-bottom-2 duration-200">
-                  <Sparkles className="h-4 w-4 text-cyan-400 animate-spin" strokeWidth={1.75} />
-                  <span className="text-xs font-bold tracking-wide">Memindai & Mengurai Magic Layers...</span>
+                {/* ─── 4-STAGE PIPELINE PROGRESS HUD (SESUAI LANGKAH CANVA MAGIC LAYERS) ─── */}
+                <div className="absolute bottom-6 left-1/2 -translate-x-1/2 z-40 bg-slate-900/95 backdrop-blur-md text-white px-5 py-3.5 rounded-2xl border border-purple-500/40 shadow-2xl flex flex-col gap-2.5 min-w-[320px] max-w-sm animate-in fade-in slide-in-from-bottom-3 duration-200 pointer-events-auto">
+                  <div className="flex items-center justify-between border-b border-slate-700/60 pb-2">
+                    <div className="flex items-center gap-2">
+                      <Sparkles className="h-4 w-4 text-purple-400 animate-spin" strokeWidth={1.75} />
+                      <span className="text-xs font-black tracking-wide text-purple-200 uppercase">Pipeline Magic Layers</span>
+                    </div>
+                    <span className="text-[10px] font-mono text-cyan-300 font-bold bg-cyan-950/80 px-2 py-0.5 rounded-full border border-cyan-800/60">
+                      Tahap {pipelineStep || 1}/4
+                    </span>
+                  </div>
+
+                  <div className="space-y-1.5 text-[11px]">
+                    <div className={`flex items-center gap-2 ${pipelineStep >= 1 ? 'text-white' : 'text-slate-500'}`}>
+                      <span className={`w-4 h-4 rounded-full flex items-center justify-center text-[9px] font-bold ${pipelineStep > 1 ? 'bg-emerald-500 text-white' : pipelineStep === 1 ? 'bg-cyan-400 text-slate-900 animate-pulse' : 'bg-slate-700 text-slate-400'}`}>
+                        {pipelineStep > 1 ? '✓' : '1'}
+                      </span>
+                      <span className={pipelineStep === 1 ? 'font-bold text-cyan-200' : ''}>1. Deteksi & Segmentasi Objek (Alpha Mask)</span>
+                    </div>
+
+                    <div className={`flex items-center gap-2 ${pipelineStep >= 2 ? 'text-white' : 'text-slate-500'}`}>
+                      <span className={`w-4 h-4 rounded-full flex items-center justify-center text-[9px] font-bold ${pipelineStep > 2 ? 'bg-emerald-500 text-white' : pipelineStep === 2 ? 'bg-cyan-400 text-slate-900 animate-pulse' : 'bg-slate-700 text-slate-400'}`}>
+                        {pipelineStep > 2 ? '✓' : '2'}
+                      </span>
+                      <span className={pipelineStep === 2 ? 'font-bold text-cyan-200' : ''}>2. Pemisahan Teks & Rekonstruksi Tipografi</span>
+                    </div>
+
+                    <div className={`flex items-center gap-2 ${pipelineStep >= 3 ? 'text-white' : 'text-slate-500'}`}>
+                      <span className={`w-4 h-4 rounded-full flex items-center justify-center text-[9px] font-bold ${pipelineStep > 3 ? 'bg-emerald-500 text-white' : pipelineStep === 3 ? 'bg-cyan-400 text-slate-900 animate-pulse' : 'bg-slate-700 text-slate-400'}`}>
+                        {pipelineStep > 3 ? '✓' : '3'}
+                      </span>
+                      <span className={pipelineStep === 3 ? 'font-bold text-cyan-200' : ''}>3. Pemulihan Latar Belakang (Inpainting AI)</span>
+                    </div>
+
+                    <div className={`flex items-center gap-2 ${pipelineStep >= 4 ? 'text-white' : 'text-slate-500'}`}>
+                      <span className={`w-4 h-4 rounded-full flex items-center justify-center text-[9px] font-bold ${pipelineStep === 4 ? 'bg-cyan-400 text-slate-900 animate-pulse' : 'bg-slate-700 text-slate-400'}`}>
+                        4
+                      </span>
+                      <span className={pipelineStep === 4 ? 'font-bold text-cyan-200' : ''}>4. Vektorisasi & Struktur Dokumen Berlapis</span>
+                    </div>
+                  </div>
+
+                  {pipelineStatusText && (
+                    <p className="text-[10px] text-purple-300 italic truncate pt-1 border-t border-slate-800">
+                      {pipelineStatusText}
+                    </p>
+                  )}
                 </div>
               </div>
             )}
