@@ -10,7 +10,7 @@ import path from 'node:path';
 import { AppModule } from './app.module.js';
 
 async function bootstrap() {
-  const app = await NestFactory.create(AppModule);
+  const app = await NestFactory.create(AppModule, { bodyParser: false });
 
   // Izinkan payload hingga 50mb untuk menangani gambar base64 & media beresolusi tinggi
   // Simpan juga rawBody untuk verifikasi HMAC-SHA256 webhook Meta Cloud API

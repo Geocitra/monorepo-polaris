@@ -219,7 +219,6 @@ export class WhatsAppCloudClient {
 
     if (footerText && footerText.trim()) {
       interactiveObj.footer = {
-        type: 'text',
         text: footerText.trim().slice(0, 60),
       };
     }
