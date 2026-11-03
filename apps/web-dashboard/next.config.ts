@@ -2,7 +2,8 @@ import type { NextConfig } from 'next';
 
 const nextConfig: NextConfig = {
   devIndicators: false,
-  output: 'standalone', // Memangkas dependensi monorepo ke ukuran minimal
+  // output: 'standalone' hanya diaktifkan di Docker/Linux CI (di Windows symlink memicu EPERM tanpa izin admin/developer mode)
+  output: process.env.BUILD_STANDALONE === 'true' || process.platform !== 'win32' ? 'standalone' : undefined,
   reactStrictMode: true,
   images: {
     unoptimized: true,
