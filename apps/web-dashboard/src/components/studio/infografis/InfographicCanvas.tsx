@@ -248,6 +248,8 @@ export function InfographicCanvas({
         initialSubtitle={iteration.caption || iteration.prompt}
         initialAuthor={`${authorName} • ${partyAffiliation}`}
         aspectRatio={iteration.aspectRatio}
+        archetype={iteration.archetype}
+        publicationId={iteration.publicationId}
         savedLayersJson={iteration.layersData}
         onApplyChanges={handleApplyMagicLayers}
       />

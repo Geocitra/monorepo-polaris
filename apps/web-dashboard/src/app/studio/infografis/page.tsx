@@ -347,6 +347,7 @@ export default function InfografisStudioPage() {
 
       let newImageUrl = res?.dalleImageUrl || res?.imageUrl;
       let newTitle = promptText.slice(0, 50);
+      let detectedArchetype: string | undefined = undefined;
 
       if (jobId && publicationId) {
         let completed = false;
@@ -377,6 +378,12 @@ export default function InfografisStudioPage() {
         if (detail?.article?.title) {
           newTitle = detail.article.title;
         }
+        if (detail?.asset?.promptUsed) {
+          try {
+            const parsed = JSON.parse(detail.asset.promptUsed);
+            if (parsed?.archetype) detectedArchetype = parsed.archetype;
+          } catch {}
+        }
       }
 
       if (!newImageUrl) {
@@ -401,6 +408,7 @@ export default function InfografisStudioPage() {
         title: newTitle,
         style: submittedStyle,
         aspectRatio: submittedAspectRatio,
+        archetype: detectedArchetype,
         source: latestTargetSession.iterations.length === 0 ? 'INITIAL' : 'REFINE',
         publicationId: publicationId || undefined,
       };
