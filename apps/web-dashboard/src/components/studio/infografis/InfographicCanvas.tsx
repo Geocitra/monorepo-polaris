@@ -250,6 +250,7 @@ export function InfographicCanvas({
         aspectRatio={iteration.aspectRatio}
         archetype={iteration.archetype}
         publicationId={iteration.publicationId}
+        rawCanvasUrl={iteration.rawCanvasUrl}
         savedLayersJson={iteration.layersData}
         onApplyChanges={handleApplyMagicLayers}
       />

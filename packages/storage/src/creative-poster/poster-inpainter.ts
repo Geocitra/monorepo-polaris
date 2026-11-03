@@ -23,14 +23,14 @@ export interface PosterInpaintOptions {
 export interface PosterInpaintResult {
   outputBuffer: Buffer;
   dataUrl: string;
-  strategyUsed: 'CONTEXT_AWARE_TEXTURE_SYNTHESIS' | 'AI_GENERATIVE_INPAINTING';
+  strategyUsed: 'CONTEXT_AWARE_TEXTURE_SYNTHESIS' | 'AI_GENERATIVE_INPAINTING' | 'MASTER_RAW_CANVAS_RESTORE';
 }
 
 export class PosterInpainter {
   /**
    * Menambal area kosong pada gambar poster dengan merekonstruksi tekstur asli:
-   * - Untuk komponen di atas FOTO (misal: 4 kotak metrik KPI): menyambungkan foto pemandangan di atas & bawahnya (seamless patch).
-   * - Untuk komponen di atas KERTAS (misal: judul utama): menambal dengan warna kertas bersih (#FFFFFF / #FAF8F5).
+   * - Untuk komponen kartu / teks: menambal dengan warna kartu asli poster yang bersih (#FFFFFF / #FAF8F5).
+   * - Menghindari distorsi cermin / teks terbalik yang merusak visual.
    */
   public static async inpaintPoster(options: PosterInpaintOptions): Promise<PosterInpaintResult> {
     const { inputBuffer, componentBounds } = options;
@@ -54,65 +54,35 @@ export class PosterInpainter {
       const bw = Math.max(4, Math.min(naturalW - bx, Math.round(rawW)));
       const bh = Math.max(4, Math.min(naturalH - by, Math.round(rawH)));
 
-      // Deteksi apakah komponen ini berada di atas FOTO atau KERTAS
-      // Di arketipe Advocacy Pillars, y antara 0.14 dan 0.45 menimpa foto permukiman warga
-      const yFraction = by / naturalH;
-      const isPhotoArea = (yFraction >= 0.14 && yFraction <= 0.48) || comp.name?.toLowerCase().includes('metrik');
+      // Warna dasar inpainting bersih solid 100% opaque
+      const baseFill = comp.cardBg && comp.cardBg !== 'transparent' ? comp.cardBg : '#FFFFFF';
 
-      if (isPhotoArea) {
-        // ─── INPAINTING TEKSTUR FOTO (Menyambungkan foto sekitar secara mulus) ───
-        try {
-          const sampleBelowY = Math.min(naturalH - 10, by + bh);
-          const sampleH = Math.min(bh, naturalH - sampleBelowY);
+      try {
+        const patchSvg = Buffer.from(`
+          <svg width="${bw}" height="${bh}" xmlns="http://www.w3.org/2000/svg">
+            <defs>
+              <linearGradient id="cleanGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+                <stop offset="0%" stop-color="${baseFill}" />
+                <stop offset="100%" stop-color="${baseFill === '#FFFFFF' ? '#FAF8F5' : baseFill}" />
+              </linearGradient>
+            </defs>
+            <rect width="${bw}" height="${bh}" fill="url(#cleanGrad)" />
+          </svg>
+        `);
 
-          if (sampleH > 4) {
-            // Ambil potongan foto langsung dari bawah kotak
-            const belowPatch = await sharp(inputBuffer)
-              .extract({ left: bx, top: sampleBelowY, width: bw, height: sampleH })
-              .flip() // Balik vertikal agar batas foto menyambung sempurna
-              .resize(bw, bh, { fit: 'fill' })
-              .toBuffer();
+        const patchBuffer = await sharp(patchSvg)
+          .resize(bw, bh)
+          .png()
+          .toBuffer();
 
-            composites.push({
-              input: belowPatch,
-              left: bx,
-              top: by,
-              blend: 'over',
-            });
-          }
-        } catch (photoErr) {
-          console.warn('[PosterInpainter] Gagal mengekstrak patch foto:', photoErr);
-        }
-      } else {
-        // ─── INPAINTING KERTAS PUTIH BERSIH (Untuk Header / Judul di atas kertas) ───
-        try {
-          const paperSvg = Buffer.from(`
-            <svg width="${bw}" height="${bh}" xmlns="http://www.w3.org/2000/svg">
-              <defs>
-                <linearGradient id="paperGrad" x1="0%" y1="0%" x2="0%" y2="100%">
-                  <stop offset="0%" stop-color="#FFFFFF" />
-                  <stop offset="60%" stop-color="#FAF8F5" />
-                  <stop offset="100%" stop-color="#F5F3EF" />
-                </linearGradient>
-              </defs>
-              <rect width="${bw}" height="${bh}" fill="url(#paperGrad)" />
-            </svg>
-          `);
-
-          const paperPatch = await sharp(paperSvg)
-            .resize(bw, bh)
-            .png()
-            .toBuffer();
-
-          composites.push({
-            input: paperPatch,
-            left: bx,
-            top: by,
-            blend: 'over',
-          });
-        } catch (paperErr) {
-          console.warn('[PosterInpainter] Gagal membuat patch kertas:', paperErr);
-        }
+        composites.push({
+          input: patchBuffer,
+          left: bx,
+          top: by,
+          blend: 'over',
+        });
+      } catch (err) {
+        console.warn('[PosterInpainter] Gagal membuat patch:', err);
       }
     }
 

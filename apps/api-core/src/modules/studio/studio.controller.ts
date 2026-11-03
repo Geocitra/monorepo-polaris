@@ -58,7 +58,9 @@ export class StudioController {
       imageUrl: string;
       naturalW?: number;
       naturalH?: number;
-      componentBounds: Array<{ x: number; y: number; w: number; h: number; cardBg?: string }>;
+      componentBounds: Array<{ x: number; y: number; w: number; h: number; cardBg?: string; name?: string; text?: string }>;
+      archetype?: string;
+      publicationId?: string;
     },
   ) {
     return await this.magicLayersService.inpaintPosterBackground(dto);

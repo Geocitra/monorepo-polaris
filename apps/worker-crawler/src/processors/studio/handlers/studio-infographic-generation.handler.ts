@@ -235,9 +235,28 @@ export class StudioInfographicGenerationHandler {
 
       const posterBuffer: Buffer = composed.buffer;
       const posterSizeBytes: number = composed.sizeBytes;
+
+      // 5b. Upload Master Raw Canvas Latar Belakang Bersih (Tanpa Teks / Kartu) untuk Magic Layers Studio
+      let rawCanvasPublicUrl = '';
+      if (artCollage.imageBuffer && artCollage.imageBuffer.length > 0) {
+        const rawDestPath = `posters/${tenantId}/raw-canvas-${Date.now()}-${publicationId}.webp`;
+        try {
+          const rawUpload = await storageAdapter.uploadBuffer(artCollage.imageBuffer, {
+            destinationPath: rawDestPath,
+            contentType: 'image/webp',
+            contentLength: artCollage.imageBuffer.length,
+          });
+          rawCanvasPublicUrl = rawUpload.publicUrl;
+        } catch (rawErr) {
+          console.warn(`[StudioInfographic] Raw canvas upload fallback:`, rawErr);
+          rawCanvasPublicUrl = `data:image/webp;base64,${artCollage.imageBuffer.toString('base64')}`;
+        }
+      }
+
       const promptUsedJson = JSON.stringify({
         engine: 'ART_COLLAGE_INFOGRAPHIC_CHROMIUM',
         renderer: 'chromium',
+        rawCanvasUrl: rawCanvasPublicUrl,
         blueprintId: artCollage.blueprintId,
         archetype: artCollage.archetype,
         referenceFile: artCollage.referenceFile,
@@ -293,6 +312,27 @@ export class StudioInfographicGenerationHandler {
           mimeType: 'image/webp',
           fileSizeBytes: finalSizeBytes,
         });
+
+        if (rawCanvasPublicUrl) {
+          await tx
+            .delete(mediaAssets)
+            .where(
+              and(
+                eq(mediaAssets.publicationId, publicationId),
+                eq(mediaAssets.assetType, AssetType.HEADER_IMAGE)
+              )
+            );
+
+          await tx.insert(mediaAssets).values({
+            publicationId,
+            assetType: AssetType.HEADER_IMAGE,
+            r2StorageUrl: rawCanvasPublicUrl,
+            cdnPublicUrl: rawCanvasPublicUrl,
+            promptUsed: 'MASTER_CLEAN_BACKGROUND_CANVAS',
+            mimeType: 'image/webp',
+            fileSizeBytes: artCollage.imageBuffer.length,
+          });
+        }
 
         await tx
           .update(contentPublications)

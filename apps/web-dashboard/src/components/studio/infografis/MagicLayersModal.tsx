@@ -55,6 +55,7 @@ interface MagicLayersModalProps {
   archetype?: string;
   publicationId?: string;
   savedLayersJson?: string;
+  rawCanvasUrl?: string;
   onApplyChanges: (renderedImageUrl: string, layersJson: string) => void;
 }
 
@@ -489,53 +490,10 @@ function smartTextureInpainting(
   const rw = Math.max(1, Math.min(naturalW - rx, Math.round(rect.w)));
   const rh = Math.max(1, Math.min(naturalH - ry, Math.round(rect.h)));
 
-  const yFraction = ry / naturalH;
-  const isPhotoArea = (yFraction >= 0.14 && yFraction <= 0.48) || def?.name?.toLowerCase().includes('metrik');
-
   ctx.save();
   ctx.globalAlpha = 1.0; // 100% Solid Opaque (tidak pernah tembus pandang container)
 
-  if (isPhotoArea) {
-    // ─── REKONSTRUKSI TEKSTUR FOTO (Menyambungkan foto permukiman sekitar secara mulus) ───
-    try {
-      const sampleBelowY = Math.min(naturalH - 10, ry + rh);
-      const sampleH = Math.min(rh, naturalH - sampleBelowY);
-
-      if (sampleH > 4) {
-        // Ambil potongan foto asli langsung dari bawah kotak
-        const patchData = ctx.getImageData(rx, sampleBelowY, rw, sampleH);
-
-        // Buat kanvas sementara untuk membalik vertikal (mirror) agar batas potongan menyatu sempurna
-        const tempCanvas = document.createElement('canvas');
-        tempCanvas.width = rw;
-        tempCanvas.height = sampleH;
-        const tempCtx = tempCanvas.getContext('2d');
-        if (tempCtx) {
-          tempCtx.putImageData(patchData, 0, 0);
-
-          ctx.save();
-          ctx.translate(rx, ry + rh);
-          ctx.scale(1, -1);
-          ctx.drawImage(tempCanvas, 0, 0, rw, rh);
-          ctx.restore();
-        }
-
-        // Feathering halus pada batas tepi
-        ctx.save();
-        ctx.filter = 'blur(2px)';
-        ctx.strokeStyle = 'rgba(0,0,0,0.06)';
-        ctx.lineWidth = 2;
-        ctx.strokeRect(rx, ry, rw, rh);
-        ctx.restore();
-        ctx.restore();
-        return;
-      }
-    } catch (photoErr) {
-      console.warn('[MagicLayers] Fallback photo patch error:', photoErr);
-    }
-  }
-
-  // ─── REKONSTRUKSI KERTAS BERSIH (Untuk Header / Judul di atas kertas putih) ───
+  // ─── REKONSTRUKSI KERTAS/KARTU BERSIH SOLID (#FFFFFF / #FAF8F5) ───
   let pR = 252, pG = 250, pB = 247;
   const rgbMatch = paperColor.match(/\d+/g);
   if (rgbMatch && rgbMatch.length >= 3) {
@@ -578,6 +536,8 @@ function smartTextureInpainting(
   ctx.strokeRect(rx, ry, rw, rh);
   ctx.restore();
 }
+
+        
 
 export function getArchetypeComponentDefs(
   archetype: PosterArchetype,
@@ -1337,12 +1297,49 @@ async function createCleanPosterBackground(
   naturalH: number,
   componentDefs: ComponentSliceDef[],
   archetype?: string,
-  publicationId?: string
+  publicationId?: string,
+  rawCanvasUrl?: string
 ): Promise<string> {
+  // ════════════════════════════════════════════════════════════════════════
+  // 1. JIKA MASTER RAW CANVAS ASLI TERSEDIA, GUNAKAN LANGSUNG 100%!
+  // ════════════════════════════════════════════════════════════════════════
+  if (rawCanvasUrl && rawCanvasUrl.trim().length > 0) {
+    console.log('[MagicLayers] Menggunakan Master Raw Canvas Asli:', rawCanvasUrl);
+    return resolveSafeImageUrl(rawCanvasUrl);
+  }
+
   const safeUrl = resolveSafeImageUrl(rawImageUrl);
 
   return new Promise((resolve) => {
     (async () => {
+      // ════════════════════════════════════════════════════════════════════════
+      // 2. Panggil Backend Inpainting Engine (Mengecek DB / R2 untuk Raw Canvas)
+      // ════════════════════════════════════════════════════════════════════════
+      try {
+        const backendRes = await ApiClient.request<{
+          success: boolean;
+          cleanBackgroundUrl: string;
+          strategyUsed?: string;
+        }>('/studio/magic-layers/inpaint', {
+          method: 'POST',
+          body: JSON.stringify({
+            imageUrl: safeUrl,
+            naturalW,
+            naturalH,
+            componentBounds: componentDefs,
+            archetype,
+            publicationId,
+          }),
+        });
+
+        if (backendRes?.cleanBackgroundUrl) {
+          console.log('[MagicLayers] Inpainted via Backend:', backendRes.strategyUsed);
+          resolve(backendRes.cleanBackgroundUrl);
+          return;
+        }
+      } catch (backendErr) {
+        console.warn('[MagicLayers] Backend inpainting fallback ke client-side synthesis:', backendErr);
+      }
       // ════════════════════════════════════════════════════════════════════════
       // OPSI C: Panggil Backend Inpainting Engine terlebih dahulu (Best Practice)
       // ════════════════════════════════════════════════════════════════════════
@@ -1458,6 +1455,7 @@ export function MagicLayersModal({
   archetype,
   publicationId,
   savedLayersJson,
+  rawCanvasUrl,
   onApplyChanges,
 }: MagicLayersModalProps) {
   const { toast } = useToast();

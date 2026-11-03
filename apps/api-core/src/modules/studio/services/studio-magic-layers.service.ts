@@ -1,5 +1,8 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { PosterInpainter } from '@polaris/storage';
+import { db, mediaAssets } from '@polaris/database';
+import { eq } from 'drizzle-orm';
+import { AssetType } from '@polaris/shared-types';
 
 export interface OCRBoundingBox {
   id: string;
@@ -374,6 +377,7 @@ export class StudioMagicLayersService {
     naturalH?: number;
     componentBounds: Array<{ x: number; y: number; w: number; h: number; cardBg?: string; name?: string; text?: string }>;
     archetype?: string;
+    publicationId?: string;
   }): Promise<{
     success: boolean;
     cleanBackgroundUrl: string;
@@ -384,7 +388,54 @@ export class StudioMagicLayersService {
       foregroundComponents: Array<{ id: string; name: string; bounds: any }>;
     };
   }> {
-    this.logger.log(`Executing backend inpainting for ${params.componentBounds.length} components`);
+    this.logger.log(`Executing backend inpainting for ${params.componentBounds.length} components (PubID: ${params.publicationId || 'N/A'})`);
+
+    // 1. Cek apakah Master Raw Canvas Asli tersedia di database untuk publicationId ini
+    if (params.publicationId) {
+      try {
+        const assets = await db
+          .select()
+          .from(mediaAssets)
+          .where(eq(mediaAssets.publicationId, params.publicationId));
+
+        const rawAsset = assets.find((a) => a.assetType === AssetType.HEADER_IMAGE);
+        let rawCanvasUrl = rawAsset?.cdnPublicUrl || '';
+
+        if (!rawCanvasUrl) {
+          const posterAsset = assets.find((a) => a.assetType === AssetType.DALLE_POSTER || a.assetType === AssetType.INFOGRAPHIC_PNG);
+          if (posterAsset?.promptUsed) {
+            try {
+              const parsed = JSON.parse(posterAsset.promptUsed);
+              if (parsed.rawCanvasUrl) rawCanvasUrl = parsed.rawCanvasUrl;
+            } catch {}
+          }
+        }
+
+        if (rawCanvasUrl) {
+          this.logger.log(`[MagicLayers] Mengembalikan Master Raw Canvas Asli untuk publication ${params.publicationId}`);
+          return {
+            success: true,
+            cleanBackgroundUrl: rawCanvasUrl,
+            alphaChannelSolid: true,
+            strategyUsed: 'MASTER_RAW_CANVAS_RESTORE',
+            layers: {
+              backgroundLayer: {
+                id: 'layer_background_master',
+                name: 'Poster Asli Bersih (Master Background)',
+                isSolid: true,
+              },
+              foregroundComponents: params.componentBounds.map((b, idx) => ({
+                id: `fg_comp_${idx}`,
+                name: b.name || `Komponen ${idx + 1}`,
+                bounds: b,
+              })),
+            },
+          };
+        }
+      } catch (dbErr) {
+        this.logger.warn(`[MagicLayers] Query raw canvas dari database gagal: ${dbErr}`);
+      }
+    }
 
     try {
       let inputBuffer: Buffer;
