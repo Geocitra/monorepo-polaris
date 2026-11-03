@@ -213,7 +213,7 @@ export function MagicLayersModal({
           if (obj instanceof Textbox) {
             name = `Teks: "${obj.text?.slice(0, 24) || 'Kosong'}..."`;
           } else if (obj instanceof FabricImage) {
-            name = customData.isCutout ? '✨ Objek Depan (Cutout)' : '🖼️ Poster Asli (Latar Belakang)';
+            name = customData.isCutout ? 'Objek Depan (Cutout)' : 'Poster Asli (Latar Belakang)';
           } else {
             name = `Layer ${objects.length - idx}`;
           }
@@ -400,7 +400,7 @@ export function MagicLayersModal({
         bgImg.setCoords();
 
         (bgImg as any).customId = 'layer_background';
-        (bgImg as any).customData = { name: '🖼️ Poster Asli (Latar Belakang)', isBackground: true };
+        (bgImg as any).customData = { name: 'Poster Asli (Latar Belakang)', isBackground: true };
         canvas.add(bgImg);
         canvas.sendObjectToBack(bgImg);
 
@@ -531,7 +531,7 @@ export function MagicLayersModal({
       cutoutImg.setCoords();
 
       (cutoutImg as any).customId = `cutout_${Date.now()}`;
-      (cutoutImg as any).customData = { name: '✨ Objek Depan (Cutout Subjek)', isCutout: true };
+      (cutoutImg as any).customData = { name: 'Objek Depan (Cutout Subjek)', isCutout: true };
 
       fabricRef.current.add(cutoutImg);
       fabricRef.current.bringObjectToFront(cutoutImg);
@@ -657,7 +657,7 @@ export function MagicLayersModal({
     });
     headline.setCoords();
     (headline as any).customId = `grabbed_headline_${Date.now()}`;
-    (headline as any).customData = { name: '📝 Judul Utama (Dapat Diedit)' };
+    (headline as any).customData = { name: 'Judul Utama (Dapat Diedit)' };
     canvas.add(headline);
 
     // 2. Kartu Tonggak Pembahasan (Gaya Kartu Putih & Badge Oranye persis Gambar 2)
@@ -678,7 +678,7 @@ export function MagicLayersModal({
     });
     cardTonggak.setCoords();
     (cardTonggak as any).customId = `grabbed_tonggak_${Date.now()}`;
-    (cardTonggak as any).customData = { name: '📌 Kartu Tonggak (Dapat Diedit)' };
+    (cardTonggak as any).customData = { name: 'Kartu Tonggak (Dapat Diedit)' };
     canvas.add(cardTonggak);
 
     canvas.setActiveObject(headline);
@@ -713,7 +713,7 @@ export function MagicLayersModal({
     });
     txt.setCoords();
     (txt as any).customId = `heading_${Date.now()}`;
-    (txt as any).customData = { name: '📝 Judul Baru' };
+    (txt as any).customData = { name: 'Judul Baru' };
     fabricRef.current.add(txt);
     fabricRef.current.setActiveObject(txt);
     fabricRef.current.renderAll();
@@ -736,7 +736,7 @@ export function MagicLayersModal({
     });
     txt.setCoords();
     (txt as any).customId = `body_${Date.now()}`;
-    (txt as any).customData = { name: '📄 Poin Kalimat' };
+    (txt as any).customData = { name: 'Poin Kalimat' };
     fabricRef.current.add(txt);
     fabricRef.current.setActiveObject(txt);
     fabricRef.current.renderAll();
@@ -759,7 +759,7 @@ export function MagicLayersModal({
     });
     txt.setCoords();
     (txt as any).customId = `dimensi_${Date.now()}`;
-    (txt as any).customData = { name: '📌 Kartu Tonggak Baru' };
+    (txt as any).customData = { name: 'Kartu Tonggak Baru' };
     fabricRef.current.add(txt);
     fabricRef.current.setActiveObject(txt);
     fabricRef.current.renderAll();
@@ -784,7 +784,7 @@ export function MagicLayersModal({
     });
     txt.setCoords();
     (txt as any).customId = `badge_${Date.now()}`;
-    (txt as any).customData = { name: '🏷️ Badge Oranye' };
+    (txt as any).customData = { name: 'Badge Oranye' };
     fabricRef.current.add(txt);
     fabricRef.current.setActiveObject(txt);
     fabricRef.current.renderAll();
@@ -958,15 +958,15 @@ export function MagicLayersModal({
             className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-slate-200 hover:bg-slate-50 text-xs font-bold text-slate-700 transition-colors cursor-pointer"
             title="Keluar dari Magic Layers Studio"
           >
-            <ArrowLeft className="h-4 w-4 text-slate-500" />
+            <ArrowLeft className="h-4 w-4 text-slate-500" strokeWidth={1.75} />
             <span className="hidden sm:inline">Selesai / Tutup</span>
           </button>
 
           <div className="h-5 w-px bg-slate-200" />
 
           <div className="flex items-center gap-2">
-            <div className="h-7 w-7 rounded-lg bg-gradient-to-tr from-purple-600 via-indigo-600 to-blue-600 flex items-center justify-center shadow-xs">
-              <Sparkles className="h-3.5 w-3.5 text-white" />
+            <div className="h-7 w-7 rounded-lg border border-purple-200 bg-purple-50 flex items-center justify-center text-purple-700">
+              <Sparkles className="h-4 w-4" strokeWidth={1.75} />
             </div>
             <div>
               <div className="flex items-center gap-2">
@@ -989,7 +989,7 @@ export function MagicLayersModal({
             className="p-1 text-slate-500 hover:text-slate-800 hover:bg-white rounded transition-colors"
             title="Perkecil Kanvas"
           >
-            <ZoomOut className="h-3.5 w-3.5" />
+            <ZoomOut className="h-3.5 w-3.5" strokeWidth={1.75} />
           </button>
           
           <button
@@ -1007,7 +1007,7 @@ export function MagicLayersModal({
             className="p-1 text-slate-500 hover:text-slate-800 hover:bg-white rounded transition-colors"
             title="Perbesar Kanvas"
           >
-            <ZoomIn className="h-3.5 w-3.5" />
+            <ZoomIn className="h-3.5 w-3.5" strokeWidth={1.75} />
           </button>
         </div>
 
@@ -1016,24 +1016,25 @@ export function MagicLayersModal({
           {/* TOMBOL PISAHKAN OBJEK DEPAN (CUTOUT) */}
           <Button
             size="sm"
+            variant="outline"
             onClick={handleMagicCutout}
             disabled={isCuttingOut}
-            className={`text-xs font-bold gap-1.5 shadow-xs transition-all cursor-pointer ${
+            className={`text-xs font-bold gap-1.5 shadow-2xs transition-all cursor-pointer ${
               cutoutSuccess
-                ? 'bg-emerald-600 hover:bg-emerald-700 text-white'
-                : 'bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white'
+                ? 'border-emerald-300 bg-emerald-50 text-emerald-700 hover:bg-emerald-100'
+                : 'border-purple-300 bg-purple-50/70 text-purple-700 hover:bg-purple-100 hover:border-purple-400'
             }`}
             title="Pisahkan subjek/orang dari latar belakang agar teks bisa berada di belakangnya"
           >
             {isCuttingOut ? (
-              <Loader2 className="h-3.5 w-3.5 animate-spin" />
+              <Loader2 className="h-3.5 w-3.5 animate-spin" strokeWidth={1.75} />
             ) : cutoutSuccess ? (
-              <Check className="h-3.5 w-3.5 text-emerald-100" />
+              <Check className="h-3.5 w-3.5 text-emerald-600" strokeWidth={1.75} />
             ) : (
-              <Wand2 className="h-3.5 w-3.5 text-purple-200" />
+              <Wand2 className="h-3.5 w-3.5 text-purple-600" strokeWidth={1.75} />
             )}
             <span className="hidden sm:inline">
-              {isCuttingOut ? 'Mengekstrak Subjek AI...' : cutoutSuccess ? 'Objek Terpisah!' : '🪄 Pisahkan Objek Depan'}
+              {isCuttingOut ? 'Mengekstrak Subjek AI...' : cutoutSuccess ? 'Objek Terpisah' : 'Pisahkan Objek Depan'}
             </span>
           </Button>
 
@@ -1045,8 +1046,8 @@ export function MagicLayersModal({
             className="text-xs font-bold gap-1.5 border-purple-200 bg-purple-50/60 text-purple-700 hover:bg-purple-100 transition-all cursor-pointer"
             title="Urai teks poster menjadi layer yang dapat digeser dan diedit kata-katanya"
           >
-            <Type className="h-3.5 w-3.5 text-purple-600" />
-            <span className="hidden sm:inline">{hasGrabbedText ? 'Teks Terurai' : '🪄 Ambil Teks (Grab Text)'}</span>
+            <Type className="h-3.5 w-3.5 text-purple-600" strokeWidth={1.75} />
+            <span className="hidden sm:inline">{hasGrabbedText ? 'Teks Terurai' : 'Ambil Teks (Grab Text)'}</span>
           </Button>
 
           {/* UNDUH HD */}
@@ -1056,7 +1057,7 @@ export function MagicLayersModal({
             className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-slate-200 hover:bg-slate-50 text-xs font-bold text-slate-700 transition-colors cursor-pointer"
             title="Unduh berkas gambar HD ke laptop/komputer"
           >
-            <Download className="h-3.5 w-3.5 text-slate-500" />
+            <Download className="h-3.5 w-3.5 text-slate-500" strokeWidth={1.75} />
             <span className="hidden md:inline">Unduh HD</span>
           </button>
 
@@ -1067,7 +1068,7 @@ export function MagicLayersModal({
             className="bg-purple-600 hover:bg-purple-700 text-white text-xs font-bold gap-1.5 shadow-sm cursor-pointer"
             title="Simpan susunan layer dan terapkan ke infografis"
           >
-            <Save className="h-3.5 w-3.5" />
+            <Save className="h-3.5 w-3.5 text-white" strokeWidth={1.75} />
             <span>Terapkan Desain</span>
           </Button>
         </div>
@@ -1080,7 +1081,7 @@ export function MagicLayersModal({
             
             {/* INPUT LANGSUNG UBAH KALIMAT */}
             <div className="flex items-center gap-1.5 bg-slate-50 border border-slate-300 rounded-lg px-2.5 py-1 flex-1 max-w-sm">
-              <Edit3 className="h-3.5 w-3.5 text-purple-600 shrink-0" />
+              <Edit3 className="h-3.5 w-3.5 text-purple-600 shrink-0" strokeWidth={1.75} />
               <input
                 type="text"
                 value={currentTextContent}
@@ -1129,14 +1130,14 @@ export function MagicLayersModal({
                 className={`p-1.5 rounded transition-colors ${isBold ? 'bg-purple-600 text-white' : 'text-slate-600 hover:bg-white'}`}
                 title="Tebal (Bold)"
               >
-                <Bold className="h-3.5 w-3.5" />
+                <Bold className="h-3.5 w-3.5" strokeWidth={1.75} />
               </button>
               <button
                 onClick={toggleItalic}
                 className={`p-1.5 rounded transition-colors ${isItalic ? 'bg-purple-600 text-white' : 'text-slate-600 hover:bg-white'}`}
                 title="Miring (Italic)"
               >
-                <Italic className="h-3.5 w-3.5" />
+                <Italic className="h-3.5 w-3.5" strokeWidth={1.75} />
               </button>
             </div>
 
@@ -1147,21 +1148,21 @@ export function MagicLayersModal({
                 className={`p-1.5 rounded transition-colors ${textAlign === 'left' ? 'bg-purple-600 text-white' : 'text-slate-600 hover:bg-white'}`}
                 title="Rata Kiri"
               >
-                <AlignLeft className="h-3.5 w-3.5" />
+                <AlignLeft className="h-3.5 w-3.5" strokeWidth={1.75} />
               </button>
               <button
                 onClick={() => applyTextAlign('center')}
                 className={`p-1.5 rounded transition-colors ${textAlign === 'center' ? 'bg-purple-600 text-white' : 'text-slate-600 hover:bg-white'}`}
                 title="Rata Tengah"
               >
-                <AlignCenter className="h-3.5 w-3.5" />
+                <AlignCenter className="h-3.5 w-3.5" strokeWidth={1.75} />
               </button>
               <button
                 onClick={() => applyTextAlign('right')}
                 className={`p-1.5 rounded transition-colors ${textAlign === 'right' ? 'bg-purple-600 text-white' : 'text-slate-600 hover:bg-white'}`}
                 title="Rata Kanan"
               >
-                <AlignRight className="h-3.5 w-3.5" />
+                <AlignRight className="h-3.5 w-3.5" strokeWidth={1.75} />
               </button>
             </div>
 
@@ -1222,14 +1223,14 @@ export function MagicLayersModal({
                 className="p-1.5 rounded-lg border border-slate-200 hover:bg-slate-50 text-slate-600 transition-colors"
                 title="Gandakan Elemen Ini"
               >
-                <Copy className="h-3.5 w-3.5" />
+                <Copy className="h-3.5 w-3.5" strokeWidth={1.75} />
               </button>
               <button
                 onClick={deleteSelectedObject}
                 className="p-1.5 rounded-lg border border-red-200 hover:bg-red-50 text-red-600 transition-colors"
                 title="Hapus Elemen Ini"
               >
-                <Trash2 className="h-3.5 w-3.5" />
+                <Trash2 className="h-3.5 w-3.5" strokeWidth={1.75} />
               </button>
             </div>
 
@@ -1263,21 +1264,21 @@ export function MagicLayersModal({
                 className="p-1.5 rounded-lg border border-red-200 hover:bg-red-50 text-red-600 transition-colors"
                 title="Hapus Elemen Ini"
               >
-                <Trash2 className="h-3.5 w-3.5" />
+                <Trash2 className="h-3.5 w-3.5" strokeWidth={1.75} />
               </button>
             </div>
           </div>
         ) : (
           <div className="flex items-center justify-between w-full text-xs text-slate-500">
             <div className="flex items-center gap-2">
-              <Sparkles className="h-3.5 w-3.5 text-purple-600" />
+              <Sparkles className="h-3.5 w-3.5 text-purple-600" strokeWidth={1.75} />
               <span>
-                <strong>Mode Magic Layers:</strong> Poster tampil utuh dan sempurna. Klik tombol <strong>"🪄 Pisahkan Objek Depan"</strong> untuk memisahkan subjek, atau <strong>"🪄 Ambil Teks"</strong> untuk mengedit kalimat.
+                <strong>Mode Magic Layers:</strong> Poster tampil utuh dan sempurna. Klik tombol <strong>"Pisahkan Objek Depan"</strong> untuk memisahkan subjek, atau <strong>"Ambil Teks"</strong> untuk mengedit kalimat.
               </span>
             </div>
             {isCuttingOut && (
               <div className="flex items-center gap-1.5 text-purple-700 font-semibold bg-purple-50 px-2.5 py-0.5 rounded-full border border-purple-200 text-[11px]">
-                <Loader2 className="h-3 w-3 animate-spin" />
+                <Loader2 className="h-3 w-3 animate-spin" strokeWidth={1.75} />
                 <span>Mengekstrak subjek objek depan...</span>
               </div>
             )}
@@ -1299,7 +1300,7 @@ export function MagicLayersModal({
             }`}
             title="Susunan Lapisan (Z-Index)"
           >
-            <Layers className="h-5 w-5" />
+            <Layers className="h-5 w-5" strokeWidth={1.75} />
             <span className="text-[9.5px] mt-0.5">Lapisan</span>
           </button>
 
@@ -1312,7 +1313,7 @@ export function MagicLayersModal({
             }`}
             title="Tambah Elemen Teks"
           >
-            <Type className="h-5 w-5" />
+            <Type className="h-5 w-5" strokeWidth={1.75} />
             <span className="text-[9.5px] mt-0.5">Teks</span>
           </button>
 
@@ -1325,7 +1326,7 @@ export function MagicLayersModal({
             }`}
             title="Tambah Bentuk & Kartu Tonggak"
           >
-            <Square className="h-5 w-5" />
+            <Square className="h-5 w-5" strokeWidth={1.75} />
             <span className="text-[9.5px] mt-0.5">Elemen</span>
           </button>
 
@@ -1338,7 +1339,7 @@ export function MagicLayersModal({
             }`}
             title="Fitur AI Magic Layers"
           >
-            <Wand2 className="h-5 w-5" />
+            <Wand2 className="h-5 w-5" strokeWidth={1.75} />
             <span className="text-[9.5px] mt-0.5">Magic AI</span>
           </button>
         </aside>
@@ -1350,10 +1351,10 @@ export function MagicLayersModal({
             <div className="flex flex-col h-full">
               <div className="px-4 py-3.5 border-b border-slate-100 flex items-center justify-between bg-slate-50/60">
                 <span className="text-xs font-black uppercase tracking-wider text-slate-800 flex items-center gap-1.5">
-                  <Layers className="h-4 w-4 text-purple-600" />
+                  <Layers className="h-4 w-4 text-purple-600" strokeWidth={1.75} />
                   <span>Susunan Lapisan ({layers.length})</span>
                 </span>
-                <span className="text-[10px] text-slate-400 font-mono">Atas ➔ Bawah</span>
+                <span className="text-[10px] text-slate-400 font-mono">Atas ke Bawah</span>
               </div>
 
               <div className="flex-1 overflow-y-auto p-2.5 space-y-1.5">
@@ -1378,13 +1379,13 @@ export function MagicLayersModal({
                     >
                       <div className="flex items-center gap-2 overflow-hidden mr-2">
                         {isCutout ? (
-                          <Sparkles className="h-3.5 w-3.5 text-purple-600 shrink-0" />
+                          <Sparkles className="h-3.5 w-3.5 text-purple-600 shrink-0" strokeWidth={1.75} />
                         ) : layer.object instanceof Textbox ? (
-                          <Type className="h-3.5 w-3.5 text-blue-600 shrink-0" />
+                          <Type className="h-3.5 w-3.5 text-blue-600 shrink-0" strokeWidth={1.75} />
                         ) : layer.object instanceof FabricImage ? (
-                          <ImageIcon className="h-3.5 w-3.5 text-slate-500 shrink-0" />
+                          <ImageIcon className="h-3.5 w-3.5 text-slate-500 shrink-0" strokeWidth={1.75} />
                         ) : (
-                          <Square className="h-3.5 w-3.5 text-emerald-600 shrink-0" />
+                          <Square className="h-3.5 w-3.5 text-emerald-600 shrink-0" strokeWidth={1.75} />
                         )}
                         <span className="truncate text-xs">{layer.name}</span>
                       </div>
@@ -1398,7 +1399,7 @@ export function MagicLayersModal({
                           className="p-1 rounded text-slate-400 hover:text-slate-800 hover:bg-slate-100 disabled:opacity-20"
                           title="Naikkan Layer (Ke Depan)"
                         >
-                          <ArrowUp className="h-3.5 w-3.5" />
+                          <ArrowUp className="h-3.5 w-3.5" strokeWidth={1.75} />
                         </button>
 
                         {/* MOVE DOWN */}
@@ -1408,7 +1409,7 @@ export function MagicLayersModal({
                           className="p-1 rounded text-slate-400 hover:text-slate-800 hover:bg-slate-100 disabled:opacity-20"
                           title="Turunkan Layer (Ke Belakang)"
                         >
-                          <ArrowDown className="h-3.5 w-3.5" />
+                          <ArrowDown className="h-3.5 w-3.5" strokeWidth={1.75} />
                         </button>
 
                         {/* LOCK */}
@@ -1417,7 +1418,7 @@ export function MagicLayersModal({
                           className={`p-1 rounded hover:bg-slate-100 ${layer.locked ? 'text-amber-600' : 'text-slate-400'}`}
                           title={layer.locked ? 'Kunci Dibuka' : 'Kunci Posisi'}
                         >
-                          {layer.locked ? <Lock className="h-3.5 w-3.5" /> : <Unlock className="h-3.5 w-3.5" />}
+                          {layer.locked ? <Lock className="h-3.5 w-3.5" strokeWidth={1.75} /> : <Unlock className="h-3.5 w-3.5" strokeWidth={1.75} />}
                         </button>
 
                         {/* VISIBILITY */}
@@ -1426,20 +1427,12 @@ export function MagicLayersModal({
                           className={`p-1 rounded hover:bg-slate-100 ${layer.visible ? 'text-slate-500' : 'text-slate-300'}`}
                           title={layer.visible ? 'Sembunyikan' : 'Tampilkan'}
                         >
-                          {layer.visible ? <Eye className="h-3.5 w-3.5" /> : <EyeOff className="h-3.5 w-3.5" />}
+                          {layer.visible ? <Eye className="h-3.5 w-3.5" strokeWidth={1.75} /> : <EyeOff className="h-3.5 w-3.5" strokeWidth={1.75} />}
                         </button>
                       </div>
                     </div>
                   );
                 })}
-              </div>
-
-              {/* TIPS HELPER BAWAH */}
-              <div className="p-3.5 border-t border-slate-100 bg-slate-50/80 text-[11px] text-slate-500 space-y-1.5">
-                <span className="font-bold text-slate-700 block">💡 Tips Magic Layers:</span>
-                <p>1. Klik <strong>🪄 Pisahkan Objek Depan</strong> untuk memotong subjek orang.</p>
-                <p>2. Tambahkan teks, lalu klik <strong>⬇️ Turunkan</strong>.</p>
-                <p className="text-purple-700 font-bold">➔ Kalimat otomatis berada di belakang figur orang!</p>
               </div>
             </div>
           )}
@@ -1521,7 +1514,7 @@ export function MagicLayersModal({
             <div className="p-4 space-y-4">
               <div>
                 <h3 className="text-xs font-black uppercase tracking-wider text-slate-800 flex items-center gap-1.5">
-                  <Sparkles className="h-4 w-4 text-purple-600" />
+                  <Sparkles className="h-4 w-4 text-purple-600" strokeWidth={1.75} />
                   <span>Fitur Cerdas AI</span>
                 </h3>
                 <p className="text-[11px] text-slate-400">Otomasi pemisahan layer visual seperti di Canva Pro</p>
@@ -1530,7 +1523,31 @@ export function MagicLayersModal({
               <div className="space-y-3">
                 <div className="p-3.5 rounded-xl border border-purple-200 bg-purple-50/50 space-y-2">
                   <div className="flex items-center gap-2">
-                    <Type className="h-4 w-4 text-purple-600" />
+                    <Wand2 className="h-4 w-4 text-purple-600" strokeWidth={1.75} />
+                    <span className="text-xs font-bold text-purple-900">Pisahkan Objek Depan (Cutout)</span>
+                  </div>
+                  <p className="text-[11px] text-slate-600 leading-relaxed">
+                    Mengekstrak figur orang atau subjek utama menjadi layer terpisah di depan menggunakan AI.
+                  </p>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={handleMagicCutout}
+                    disabled={isCuttingOut}
+                    className="w-full border-purple-300 bg-white hover:bg-purple-50 text-purple-700 font-bold text-xs"
+                  >
+                    {isCuttingOut ? (
+                      <Loader2 className="h-3.5 w-3.5 animate-spin mr-1.5" strokeWidth={1.75} />
+                    ) : (
+                      <Wand2 className="h-3.5 w-3.5 mr-1.5 text-purple-600" strokeWidth={1.75} />
+                    )}
+                    {isCuttingOut ? 'Mengekstrak Subjek AI...' : cutoutSuccess ? 'Objek Terpisah' : 'Pisahkan Objek Depan'}
+                  </Button>
+                </div>
+
+                <div className="p-3.5 rounded-xl border border-purple-200 bg-purple-50/50 space-y-2">
+                  <div className="flex items-center gap-2">
+                    <Type className="h-4 w-4 text-purple-600" strokeWidth={1.75} />
                     <span className="text-xs font-bold text-purple-900">Urai Teks (Magic Grab Text)</span>
                   </div>
                   <p className="text-[11px] text-slate-600 leading-relaxed">
@@ -1538,10 +1555,12 @@ export function MagicLayersModal({
                   </p>
                   <Button
                     size="sm"
+                    variant="outline"
                     onClick={handleGrabText}
-                    className="w-full bg-purple-600 hover:bg-purple-700 text-white font-bold text-xs"
+                    className="w-full border-purple-300 bg-white hover:bg-purple-50 text-purple-700 font-bold text-xs"
                   >
-                    Jalankan Grab Text
+                    <Type className="h-3.5 w-3.5 mr-1.5 text-purple-600" strokeWidth={1.75} />
+                    {hasGrabbedText ? 'Teks Terurai' : 'Jalankan Grab Text'}
                   </Button>
                 </div>
               </div>
