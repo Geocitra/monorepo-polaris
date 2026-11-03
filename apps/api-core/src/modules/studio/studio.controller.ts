@@ -11,6 +11,7 @@ import {
   UseGuards
 } from '@nestjs/common';
 import { StudioService } from './studio.service.js';
+import { StudioMagicLayersService } from './services/studio-magic-layers.service.js';
 import {
   GenerateArticleRequestDto,
   UpdateDraftArticleDto,
@@ -24,7 +25,28 @@ import { SkipRlsContext } from '../../common/decorators/skip-rls-context.decorat
 
 @Controller('studio')
 export class StudioController {
-  constructor(private readonly studioService: StudioService) { }
+  constructor(
+    private readonly studioService: StudioService,
+    private readonly magicLayersService: StudioMagicLayersService,
+  ) { }
+
+  // Analisis Layout, Deteksi Teks OCR, dan Heuristic Grouping untuk Magic Layers
+  @Post('magic-layers/analyze')
+  @SkipRlsContext()
+  @HttpCode(HttpStatus.OK)
+  async analyzeMagicLayers(
+    @Body()
+    dto: {
+      archetype?: string;
+      title?: string;
+      subtitle?: string;
+      author?: string;
+      naturalW?: number;
+      naturalH?: number;
+    }
+  ) {
+    return await this.magicLayersService.analyzeDocumentLayout(dto);
+  }
 
   // Pengecualian: morning-briefing dapat dibaca anggota terdaftar tanpa error 403
   @Get('morning-briefing')

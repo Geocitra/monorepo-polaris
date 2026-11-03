@@ -6,6 +6,7 @@ import {
   StudioGeneratorService,
   StudioArticleService,
   StudioResearchService,
+  StudioMagicLayersService,
 } from './services/index.js';
 import { UrlScraperService } from './url-scraper.service.js';
 import { RedisModule } from '../redis/redis.module.js';
@@ -19,6 +20,7 @@ import { RedisModule } from '../redis/redis.module.js';
     StudioGeneratorService,
     StudioArticleService,
     StudioResearchService,
+    StudioMagicLayersService,
     UrlScraperService,
   ],
   exports: [
@@ -27,6 +29,7 @@ import { RedisModule } from '../redis/redis.module.js';
     StudioGeneratorService,
     StudioArticleService,
     StudioResearchService,
+    StudioMagicLayersService,
     UrlScraperService,
   ],
 })

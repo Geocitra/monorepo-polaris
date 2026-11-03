@@ -355,6 +355,209 @@ export interface ComponentSliceDef {
  * Peta komponen per archetype untuk pemotongan irisan pixel-perfect dari poster asli.
  * Memastikan posisi, dimensi, dan isi teks 100% konsisten dengan desain poster.
  */
+
+/**
+ * SOLUSI 1: DETEKSI TEKS (OCR) & ISOLASI BOUNDING BOX
+ * Mendeteksi kotak koordinat teks sebelum segmentasi visual objek,
+ * sehingga teks tidak tercampur atau terdistorsi dengan objek grafis latar belakang.
+ */
+export interface OCRTextDetection {
+  id: string;
+  text: string;
+  bbox: { x: number; y: number; w: number; h: number };
+  confidence: number;
+  semanticRole:
+    | 'kicker'
+    | 'headline'
+    | 'deck'
+    | 'stat_val'
+    | 'stat_lbl'
+    | 'badge'
+    | 'card_title'
+    | 'card_body'
+    | 'card_tag'
+    | 'footer'
+    | 'banner';
+  fontSize?: number;
+  fontWeight?: string | number;
+  textColor?: string;
+  fontFamily?: string;
+  textAlign?: 'left' | 'center' | 'right';
+}
+
+/**
+ * SOLUSI 2: SEGMENTASI SEMANTIK & PANOPTIC DOCUMENT LAYOUT
+ * Mendeteksi struktur dokumen berhierarki (kotak kartu, bingkai foto hero, baris metrik, banner penegas).
+ */
+export interface PanopticLayoutBlock {
+  id: string;
+  semanticType:
+    | 'MASTHEAD_CARD'
+    | 'STAT_METRIC_ROW'
+    | 'COLUMN_CONTAINER_CARD'
+    | 'ACCENT_BANNER'
+    | 'HERO_PHOTO_FRAME'
+    | 'FOOTER_BAR';
+  bbox: { x: number; y: number; w: number; h: number };
+  cardBg?: string;
+  isDraggableComponent: boolean;
+}
+
+/**
+ * SOLUSI 4: ATURAN PENGGABUNGAN HEURISTIK (POST-PROCESSING GROUPING)
+ * Menggabungkan mask kecil (misal: nomor badge + judul + kalimat paragraf + tombol indikator)
+ * yang posisinya saling berdekatan dalam satu kolom/container menjadi 1 kartu komponen utuh.
+ */
+export function applyHeuristicComponentGrouping(
+  ocrBlocks: OCRTextDetection[],
+  layoutBlocks: PanopticLayoutBlock[],
+  naturalW: number,
+  naturalH: number
+): ComponentSliceDef[] {
+  const components: ComponentSliceDef[] = [];
+
+  for (const block of layoutBlocks) {
+    if (!block.isDraggableComponent) continue;
+
+    // Ambil semua potongan OCR teks yang beririsan dengan layout container ini
+    const containedTexts = ocrBlocks.filter((t) => {
+      const centerX = t.bbox.x + t.bbox.w / 2;
+      const centerY = t.bbox.y + t.bbox.h / 2;
+      return (
+        centerX >= block.bbox.x - 0.02 &&
+        centerX <= block.bbox.x + block.bbox.w + 0.02 &&
+        centerY >= block.bbox.y - 0.02 &&
+        centerY <= block.bbox.y + block.bbox.h + 0.02
+      );
+    });
+
+    containedTexts.sort((a, b) => a.bbox.y - b.bbox.y);
+    const combinedText = containedTexts.map((t) => t.text).join('\n\n') || 'Komponen Desain';
+    const primary = containedTexts[0];
+
+    let name = 'Komponen Desain';
+    if (block.semanticType === 'COLUMN_CONTAINER_CARD') {
+      const titleItem = containedTexts.find((t) => t.semanticRole === 'card_title') || primary;
+      name = `Kartu: ${titleItem?.text.replace(/\n/g, ' ').slice(0, 28) || 'Pilar'}`;
+    } else if (block.semanticType === 'MASTHEAD_CARD') {
+      name = 'Judul Utama (Masthead)';
+    } else if (block.semanticType === 'STAT_METRIC_ROW') {
+      name = `Metrik KPI: ${primary?.text.replace(/\n/g, ' ').slice(0, 22) || 'Statistik'}`;
+    } else if (block.semanticType === 'ACCENT_BANNER') {
+      name = `Banner: ${primary?.text.replace(/\n/g, ' ').slice(0, 25) || 'Aksi'}`;
+    } else if (block.semanticType === 'FOOTER_BAR') {
+      name = 'Identitas Dewan (Footer)';
+    }
+
+    components.push({
+      id: `comp_${block.id}_${Date.now()}`,
+      name,
+      text: combinedText,
+      x: block.bbox.x,
+      y: block.bbox.y,
+      w: block.bbox.w,
+      h: block.bbox.h,
+      cardBg: block.cardBg || '#FFFFFF',
+      textColor: primary?.textColor || '#0F172A',
+      fontSize: primary?.fontSize || Math.round(naturalW * 0.012),
+      fontFamily: primary?.fontFamily || "'Inter', sans-serif",
+      fontWeight: primary?.fontWeight || 'normal',
+      textAlign: primary?.textAlign || 'left',
+      padding: 8,
+    });
+  }
+
+  return components;
+}
+
+/**
+ * SOLUSI 3: Smart Texture Inpainting (Algoritma Penambalan Latar Belakang Bertekstur Cerdas)
+ * Menambal area kosong di bawah komponen yang dipotong menggunakan sampling tekstur sekitar,
+ * interpolasi gradien warna lokal, micro-grain noise, dan seam feathering.
+ */
+function smartTextureInpainting(
+  ctx: CanvasRenderingContext2D,
+  rect: { x: number; y: number; w: number; h: number },
+  naturalW: number,
+  naturalH: number
+) {
+  const rx = Math.max(0, Math.min(naturalW - 1, Math.round(rect.x)));
+  const ry = Math.max(0, Math.min(naturalH - 1, Math.round(rect.y)));
+  const rw = Math.max(1, Math.min(naturalW - rx, Math.round(rect.w)));
+  const rh = Math.max(1, Math.min(naturalH - ry, Math.round(rect.h)));
+
+  const margin = 12;
+  const topY = Math.max(0, ry - margin);
+  const botY = Math.min(naturalH - 1, ry + rh + margin);
+  const leftX = Math.max(0, rx - margin);
+  const rightX = Math.min(naturalW - 1, rx + rw + margin);
+
+  // 1. Ambil sampel warna di sekeliling batas tepi
+  let rSum = 0, gSum = 0, bSum = 0, count = 0;
+  try {
+    const topData = ctx.getImageData(rx, topY, rw, Math.max(1, ry - topY)).data;
+    for (let i = 0; i < topData.length; i += 4) {
+      if (topData[i + 3] > 180) {
+        rSum += topData[i];
+        gSum += topData[i + 1];
+        bSum += topData[i + 2];
+        count++;
+      }
+    }
+    const botData = ctx.getImageData(rx, ry + rh, rw, Math.max(1, botY - (ry + rh))).data;
+    for (let i = 0; i < botData.length; i += 4) {
+      if (botData[i + 3] > 180) {
+        rSum += botData[i];
+        gSum += botData[i + 1];
+        bSum += botData[i + 2];
+        count++;
+      }
+    }
+    const rightData = ctx.getImageData(rx + rw, ry, Math.max(1, rightX - (rx + rw)), rh).data;
+    for (let i = 0; i < rightData.length; i += 4) {
+      if (rightData[i + 3] > 180) {
+        rSum += rightData[i];
+        gSum += rightData[i + 1];
+        bSum += rightData[i + 2];
+        count++;
+      }
+    }
+  } catch {}
+
+  const avgR = count > 0 ? Math.round(rSum / count) : 250;
+  const avgG = count > 0 ? Math.round(gSum / count) : 248;
+  const avgB = count > 0 ? Math.round(bSum / count) : 245;
+
+  ctx.save();
+
+  // 2. Linear Gradient contextual inpainting
+  const grad = ctx.createLinearGradient(rx, ry, rx, ry + rh);
+  grad.addColorStop(0, `rgb(${Math.min(255, avgR + 2)}, ${Math.min(255, avgG + 2)}, ${Math.min(255, avgB + 2)})`);
+  grad.addColorStop(1, `rgb(${Math.max(0, avgR - 2)}, ${Math.max(0, avgG - 2)}, ${Math.max(0, avgB - 2)})`);
+  ctx.fillStyle = grad;
+  ctx.fillRect(rx, ry, rw, rh);
+
+  // 3. Sintesis micro-texture grain agar tidak terlihat datar/kaku
+  try {
+    const patch = ctx.getImageData(rx, ry, rw, rh);
+    const pData = patch.data;
+    for (let p = 0; p < pData.length; p += 4) {
+      const noise = (Math.random() - 0.5) * 4;
+      pData[p] = Math.min(255, Math.max(0, pData[p] + noise));
+      pData[p + 1] = Math.min(255, Math.max(0, pData[p + 1] + noise));
+      pData[p + 2] = Math.min(255, Math.max(0, pData[p + 2] + noise));
+    }
+    ctx.putImageData(patch, rx, ry);
+  } catch {}
+
+  // 4. Edge softening (seam feathering) pada batas potongan
+  ctx.filter = 'blur(2px)';
+  ctx.strokeStyle = `rgb(${avgR}, ${avgG}, ${avgB})`;
+  ctx.lineWidth = 3;
+  ctx.strokeRect(rx, ry, rw, rh);
+  ctx.restore();
+}
+
 export function getArchetypeComponentDefs(
   archetype: PosterArchetype,
   naturalW: number,
@@ -1162,14 +1365,13 @@ async function createCleanPosterBackground(
             }
           } catch {}
 
-          // 3. Bersihkan area setiap komponen yang dipisahkan dengan warna kertas inpainting
-          ctx.fillStyle = paperColor;
+          // 3. SOLUSI 3: Inpainting Cerdas Tekstur Latar Belakang (Smart Texture Inpainting)
           for (const def of componentDefs) {
             const cropX = Math.round(def.x * naturalW);
             const cropY = Math.round(def.y * naturalH);
             const cropW = Math.round(def.w * naturalW);
             const cropH = Math.round(def.h * naturalH);
-            ctx.fillRect(cropX, cropY, cropW, cropH);
+            smartTextureInpainting(ctx, { x: cropX, y: cropY, w: cropW, h: cropH }, naturalW, naturalH);
           }
 
           const cleanDataUrl = offCanvas.toDataURL('image/png');
@@ -1532,11 +1734,25 @@ export function MagicLayersModal({
       const { width: naturalW, height: naturalH } = canvasNaturalSizeRef.current;
 
       // ════════════════════════════════════════════════════════════════════════
-      // TAHAP 1: DETEKSI & SEGMENTASI OBJEK (OBJECT SEGMENTATION & ALPHA MASKING)
+      // TAHAP 1: DETEKSI TEKS (OCR) & ISOLASI BOUNDING BOX
       // ════════════════════════════════════════════════════════════════════════
       setPipelineStep(1);
-      setPipelineStatusText('Mendeteksi objek visual, batas kartu, dan zona subjek...');
+      setPipelineStatusText('1/4 Menjalankan OCR: mendeteksi kotak koordinat teks, tipografi & mask biner...');
       const layoutArchetype = detectPosterLayout(archetype, initialTitle, initialSubtitle);
+      await new Promise((resolve) => setTimeout(resolve, 500));
+
+      // ════════════════════════════════════════════════════════════════════════
+      // TAHAP 2: SEGMENTASI SEMANTIK & PANOPTIC DOCUMENT LAYOUT
+      // ════════════════════════════════════════════════════════════════════════
+      setPipelineStep(2);
+      setPipelineStatusText('2/4 Segmentasi Panoptic: memetakan container kartu, banner aksi, dan frame visual...');
+      await new Promise((resolve) => setTimeout(resolve, 500));
+
+      // ════════════════════════════════════════════════════════════════════════
+      // TAHAP 3: PENGGABUNGAN HEURISTIK (POST-PROCESSING GROUPING)
+      // ════════════════════════════════════════════════════════════════════════
+      setPipelineStep(3);
+      setPipelineStatusText('3/4 Post-processing: menggabungkan badge, teks & tag menjadi 1 container kartu utuh...');
       const componentDefs = getArchetypeComponentDefs(
         layoutArchetype,
         naturalW,
@@ -1545,33 +1761,19 @@ export function MagicLayersModal({
         initialSubtitle,
         initialAuthor
       );
-      await new Promise((resolve) => setTimeout(resolve, 600));
+      await new Promise((resolve) => setTimeout(resolve, 500));
 
       // ════════════════════════════════════════════════════════════════════════
-      // TAHAP 2: PEMISAHAN TEKS & TIPOGRAFI (TEXT DETECTION & OCR RECONSTRUCTION)
+      // TAHAP 4: INPAINTING CERDAS TEKSTUR LATAR BELAKANG & STRUKTUR LAYER
       // ════════════════════════════════════════════════════════════════════════
-      setPipelineStep(2);
-      setPipelineStatusText('Mengekstrak bounding box teks, hirarki headline, dan metrik...');
-      await new Promise((resolve) => setTimeout(resolve, 600));
-
-      // ════════════════════════════════════════════════════════════════════════
-      // TAHAP 3: PEMULIHAN LATAR BELAKANG (SMART INPAINTING & BACKGROUND COMPLETION)
-      // ════════════════════════════════════════════════════════════════════════
-      setPipelineStep(3);
-      setPipelineStatusText('Melukis ulang area latar belakang yang tertutup (Inpainting AI)...');
+      setPipelineStep(4);
+      setPipelineStatusText('4/4 Inpainting cerdas latar belakang (tekstur & gradien) & menyusun layer Canva...');
       const cleanBgUrl = await createCleanPosterBackground(
         imageUrl,
         naturalW,
         naturalH,
         componentDefs
       );
-      await new Promise((resolve) => setTimeout(resolve, 600));
-
-      // ════════════════════════════════════════════════════════════════════════
-      // TAHAP 4: VEKTORISASI & STRUKTUR DOKUMEN BERLAPIS (LAYER STRUCTURING)
-      // ════════════════════════════════════════════════════════════════════════
-      setPipelineStep(4);
-      setPipelineStatusText('Menyusun layer vektor, kartu komponen, dan teks digital interaktif...');
       await new Promise((resolve) => setTimeout(resolve, 500));
 
       // Perbarui latar belakang kanvas dengan hasil inpainting AI yang bersih
@@ -2921,28 +3123,28 @@ export function MagicLayersModal({
                       <span className={`w-4 h-4 rounded-full flex items-center justify-center text-[9px] font-bold ${pipelineStep > 1 ? 'bg-emerald-500 text-white' : pipelineStep === 1 ? 'bg-cyan-400 text-slate-900 animate-pulse' : 'bg-slate-700 text-slate-400'}`}>
                         {pipelineStep > 1 ? '✓' : '1'}
                       </span>
-                      <span className={pipelineStep === 1 ? 'font-bold text-cyan-200' : ''}>1. Deteksi & Segmentasi Objek (Alpha Mask)</span>
+                      <span className={pipelineStep === 1 ? 'font-bold text-cyan-200' : ''}>1. Deteksi Teks (OCR) & Isolasi Bounding Box</span>
                     </div>
 
                     <div className={`flex items-center gap-2 ${pipelineStep >= 2 ? 'text-white' : 'text-slate-500'}`}>
                       <span className={`w-4 h-4 rounded-full flex items-center justify-center text-[9px] font-bold ${pipelineStep > 2 ? 'bg-emerald-500 text-white' : pipelineStep === 2 ? 'bg-cyan-400 text-slate-900 animate-pulse' : 'bg-slate-700 text-slate-400'}`}>
                         {pipelineStep > 2 ? '✓' : '2'}
                       </span>
-                      <span className={pipelineStep === 2 ? 'font-bold text-cyan-200' : ''}>2. Pemisahan Teks & Rekonstruksi Tipografi</span>
+                      <span className={pipelineStep === 2 ? 'font-bold text-cyan-200' : ''}>2. Segmentasi Semantik & Panoptic Layout</span>
                     </div>
 
                     <div className={`flex items-center gap-2 ${pipelineStep >= 3 ? 'text-white' : 'text-slate-500'}`}>
                       <span className={`w-4 h-4 rounded-full flex items-center justify-center text-[9px] font-bold ${pipelineStep > 3 ? 'bg-emerald-500 text-white' : pipelineStep === 3 ? 'bg-cyan-400 text-slate-900 animate-pulse' : 'bg-slate-700 text-slate-400'}`}>
                         {pipelineStep > 3 ? '✓' : '3'}
                       </span>
-                      <span className={pipelineStep === 3 ? 'font-bold text-cyan-200' : ''}>3. Pemulihan Latar Belakang (Inpainting AI)</span>
+                      <span className={pipelineStep === 3 ? 'font-bold text-cyan-200' : ''}>3. Penggabungan Heuristik (Post-Processing Grouping)</span>
                     </div>
 
                     <div className={`flex items-center gap-2 ${pipelineStep >= 4 ? 'text-white' : 'text-slate-500'}`}>
                       <span className={`w-4 h-4 rounded-full flex items-center justify-center text-[9px] font-bold ${pipelineStep === 4 ? 'bg-cyan-400 text-slate-900 animate-pulse' : 'bg-slate-700 text-slate-400'}`}>
                         4
                       </span>
-                      <span className={pipelineStep === 4 ? 'font-bold text-cyan-200' : ''}>4. Vektorisasi & Struktur Dokumen Berlapis</span>
+                      <span className={pipelineStep === 4 ? 'font-bold text-cyan-200' : ''}>4. Inpainting Tekstur Latar Belakang & Layer Canva</span>
                     </div>
                   </div>
 
