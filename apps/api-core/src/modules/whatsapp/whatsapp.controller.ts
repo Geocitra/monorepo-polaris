@@ -27,6 +27,7 @@ import {
   MarkRevisionFaultDto,
   PublicReviewRevisionDto,
   UpdateTenantBriefLimitsDto,
+  DispatchPackageDto,
 } from './dto/whatsapp.dto.js';
 
 interface AuthenticatedRequest extends Request {
@@ -257,6 +258,28 @@ export class WhatsAppController {
     return await this.whatsappService.submitBriefForClientReview(
       operatorId,
       briefId,
+      dto,
+      Boolean(req.user.isSuperadmin),
+      this.extractAuditMeta(req)
+    );
+  }
+
+  /**
+   * POST /api/v1/whatsapp/operator/dispatch-package
+   * Mengirimkan paket konten siap tayang (poster HD + naskah multi-kanal)
+   * langsung ke nomor WhatsApp Dewan melalui WhatsApp Cloud API Bot Resmi Polaris.
+   * Terlindungi dalam Walled Garden tanpa mengekspos nomor pribadi operator maupun klien.
+   */
+  @UseGuards(AuthGuard)
+  @Post('operator/dispatch-package')
+  async dispatchPackageToClient(
+    @Body() dto: DispatchPackageDto,
+    @Req() req: AuthenticatedRequest
+  ) {
+    this.assertOperatorOrSuperadmin(req);
+    const operatorId = req.user.operatorId || req.user.tenantId;
+    return await this.whatsappService.dispatchPackageToClient(
+      operatorId,
       dto,
       Boolean(req.user.isSuperadmin),
       this.extractAuditMeta(req)

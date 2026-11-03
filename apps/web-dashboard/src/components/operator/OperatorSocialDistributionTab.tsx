@@ -8,17 +8,15 @@ import {
   Copy,
   CheckCheck,
   Download,
-  ExternalLink,
-  CheckCircle2,
   Video,
-  ArrowUpRight,
   Loader2,
-  Phone,
-  FileCheck,
+  ShieldCheck,
   ChevronDown,
   ChevronUp,
+  Sparkles,
 } from 'lucide-react';
 import { toast } from '@/components/ui/toast';
+import { ApiClient } from '@/lib/api-client';
 import { AssignedTenant, GeneratedFullResult } from './types';
 
 interface OperatorSocialDistributionTabProps {
@@ -40,7 +38,7 @@ export function OperatorSocialDistributionTab({
 }: OperatorSocialDistributionTabProps) {
   const [activeChannel, setActiveChannel] = useState<SocialChannel>('whatsapp');
 
-  // Text States
+  // Multi-channel Draft Texts
   const [customWaText, setCustomWaText] = useState('');
   const [customIgCaption, setCustomIgCaption] = useState('');
   const [customTiktokCaption, setCustomTiktokCaption] = useState('');
@@ -48,20 +46,11 @@ export function OperatorSocialDistributionTab({
   const [customThreadsText, setCustomThreadsText] = useState('');
 
   // Dispatch Package States
-  const [targetPhone, setTargetPhone] = useState('');
+  const [isDispatching, setIsDispatching] = useState(false);
+  const [lastDispatchedAt, setLastDispatchedAt] = useState<string | null>(null);
   const [showPackagePreview, setShowPackagePreview] = useState(false);
   const [copiedPackage, setCopiedPackage] = useState(false);
   const [copiedSingle, setCopiedSingle] = useState<string | null>(null);
-
-  // Distribution Checklist (Tracking Internal Operator)
-  const [checklist, setChecklist] = useState({
-    portal: generatedResult.publication.status === 'PUBLISHED',
-    whatsapp: false,
-    instagram: false,
-    tiktok: false,
-    x: false,
-    threads: false,
-  });
 
   const portalArticleUrl =
     publishedUrl ||
@@ -71,7 +60,7 @@ export function OperatorSocialDistributionTab({
 
   const posterDownloadUrl = generatedResult.posterUrl || '';
 
-  // Inisialisasi teks berdasarkan data yang digenerate
+  // Inisialisasi draf naskah adaptif per kanal
   useEffect(() => {
     const pub = generatedResult.publication;
     const pack = generatedResult.socialPack;
@@ -79,7 +68,7 @@ export function OperatorSocialDistributionTab({
     const partyTag = (selectedDewan.partyAffiliation || 'Aspirasi').replace(/\s+/g, '');
     const namaTokoh = selectedDewan.fullName || 'Tokoh Polaris';
 
-    // 1. WhatsApp Memo
+    // 1. WhatsApp Siaran
     const defaultWa =
       pack?.whatsappBroadcastText ||
       pack?.whatsappBroadcast ||
@@ -104,14 +93,9 @@ export function OperatorSocialDistributionTab({
     // 5. Threads
     const defaultThreads = `${pub.title}\n\n${pub.excerpt || ''}\n\nPortal: ${portalArticleUrl}\n\n#${dapilTag}`;
     setCustomThreadsText(defaultThreads);
-
-    // Sinkronisasi status portal
-    if (pub.status === 'PUBLISHED') {
-      setChecklist((prev) => ({ ...prev, portal: true }));
-    }
   }, [generatedResult, selectedDewan, publishedUrl, portalArticleUrl]);
 
-  // Handler Copy dengan Toast
+  // Handler Copy dengan Toast Feedback
   const handleCopyText = (text: string, label: string, key: string) => {
     navigator.clipboard.writeText(text);
     setCopiedSingle(key);
@@ -119,11 +103,11 @@ export function OperatorSocialDistributionTab({
     toast({
       type: 'success',
       title: `${label} Disalin!`,
-      description: 'Teks siap ditempel ke platform yang dituju.',
+      description: 'Naskah teks siap digunakan.',
     });
   };
 
-  // Susun Paket Siap Tayang Lengkap untuk WA Klien
+  // Kompilasi Paket Siap Tayang Lengkap untuk WhatsApp Dewan
   const compileFullPackage = () => {
     const pub = generatedResult.publication;
     const namaTokoh = selectedDewan.fullName;
@@ -139,44 +123,72 @@ ${portalArticleUrl}
 ${posterDownloadUrl ? `\n🖼️ *Link Unduh Poster HD:*\n${posterDownloadUrl}` : ''}
 
 ━━━━━━━━━━━━━━━━━━━━━━
-📢 *1. FORMAT SIARAN WHATSAPP (Publik & Media):*
+📢 *1. FORMAT SIARAN WHATSAPP (Warga & Wartawan):*
 ${customWaText}
 
 ━━━━━━━━━━━━━━━━━━━━━━
-📸 *2. CAPTION INSTAGRAM & THREADS:*
+📸 *2. DRAF CAPTION INSTAGRAM:*
 ${customIgCaption}
 
 ━━━━━━━━━━━━━━━━━━━━━━
-🎵 *3. CAPTION TIKTOK:*
+🎵 *3. DRAF CAPTION TIKTOK:*
 ${customTiktokCaption}
 
 ━━━━━━━━━━━━━━━━━━━━━━
-🐦 *4. CUITAN X (TWITTER):*
+🐦 *4. DRAF CUITAN X (TWITTER):*
 ${customXText}
 
 ━━━━━━━━━━━━━━━━━━━━━━
-_Diproduksi oleh Tim Operator Polaris Media Studio_`;
+🧵 *5. DRAF UTAS THREADS:*
+${customThreadsText}
+
+━━━━━━━━━━━━━━━━━━━━━━
+_Diproduksi oleh Tim Redaksi Polaris Media Studio via Bot Resmi_`;
   };
 
-  const handleSendToWhatsApp = () => {
-    const packageText = compileFullPackage();
-    let waUrl = `https://api.whatsapp.com/send?text=${encodeURIComponent(packageText)}`;
-    if (targetPhone.trim()) {
-      const cleanPhone = targetPhone.replace(/[^0-9]/g, '');
-      const formattedPhone = cleanPhone.startsWith('0')
-        ? `62${cleanPhone.slice(1)}`
-        : cleanPhone.startsWith('62')
-        ? cleanPhone
-        : `62${cleanPhone}`;
-      waUrl = `https://api.whatsapp.com/send?phone=${formattedPhone}&text=${encodeURIComponent(packageText)}`;
+  // Kirim Paket Siap Tayang via WhatsApp Cloud API Bot Resmi Polaris (Walled Garden)
+  const handleDispatchViaBot = async () => {
+    if (isDispatching) return;
+    setIsDispatching(true);
+
+    try {
+      const packageText = compileFullPackage();
+
+      const response = await ApiClient.request<{
+        success: boolean;
+        message: string;
+        recipientName: string;
+      }>('/whatsapp/operator/dispatch-package', {
+        method: 'POST',
+        body: JSON.stringify({
+          tenantId: selectedDewan.tenantId,
+          publicationId: generatedResult.publication.id,
+          packageText,
+          posterUrl: generatedResult.posterUrl || undefined,
+        }),
+      });
+
+      const nowStr = new Date().toLocaleTimeString('id-ID', {
+        hour: '2-digit',
+        minute: '2-digit',
+        second: '2-digit',
+      });
+      setLastDispatchedAt(nowStr);
+
+      toast({
+        type: 'success',
+        title: 'Paket Berhasil Dikirim ke Klien!',
+        description: response.message || `Materi telah dikirimkan ke WhatsApp ${selectedDewan.fullName} via Bot Resmi Polaris.`,
+      });
+    } catch (err: any) {
+      toast({
+        type: 'error',
+        title: 'Gagal Mengirim ke WhatsApp',
+        description: err.message || 'Terjadi kendala saat menghubungi WhatsApp Cloud API.',
+      });
+    } finally {
+      setIsDispatching(false);
     }
-    window.open(waUrl, '_blank');
-    setChecklist((prev) => ({ ...prev, whatsapp: true }));
-    toast({
-      type: 'success',
-      title: 'WhatsApp Terbuka',
-      description: 'Paket konten lengkap siap dikirim ke Klien.',
-    });
   };
 
   const handleCopyFullPackage = () => {
@@ -187,74 +199,100 @@ _Diproduksi oleh Tim Operator Polaris Media Studio_`;
     toast({
       type: 'success',
       title: 'Seluruh Paket Disalin!',
-      description: 'Seluruh teks naskah, caption, dan link aset tersalin ke clipboard.',
+      description: 'Seluruh kompilasi naskah, caption, dan link poster tersalin ke clipboard.',
     });
   };
 
-  const toggleChecklist = (key: keyof typeof checklist) => {
-    setChecklist((prev) => ({ ...prev, [key]: !prev[key] }));
-  };
-
-  const completedCount = Object.values(checklist).filter(Boolean).length;
-
   return (
     <div className="space-y-6">
-      {/* 1. DISPATCH BANNER: KIRIM PAKET KE WHATSAPP KLIEN */}
+      {/* 1. DISPATCH CONTROL CARD: BOT RESMI POLARIS */}
       <div className="p-5 sm:p-6 rounded-2xl bg-gradient-to-br from-emerald-500/10 via-teal-500/5 to-indigo-500/10 border-2 border-emerald-500/30 dark:border-emerald-600/40 space-y-4 shadow-sm">
         <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
-          <div className="space-y-1">
+          <div className="space-y-1.5">
             <div className="flex items-center gap-2">
-              <span className="p-2 rounded-xl bg-emerald-600 text-white shadow-xs">
+              <span className="p-2.5 rounded-xl bg-emerald-600 text-white shadow-xs">
                 <MessageCircle className="w-5 h-5" />
               </span>
               <div>
                 <h3 className="text-sm sm:text-base font-black text-slate-900 dark:text-white flex items-center gap-2">
                   <span>Kirim Paket Siap Tayang ke WhatsApp Klien</span>
                   <span className="text-[10px] font-extrabold uppercase px-2 py-0.5 rounded-full bg-emerald-100 dark:bg-emerald-950/80 text-emerald-800 dark:text-emerald-300 border border-emerald-300">
-                    Alur Opsi 1 (Dispatcher)
+                    Bot Resmi Polaris
                   </span>
                 </h3>
-                <p className="text-xs text-slate-600 dark:text-slate-400">
-                  Kompilasi artikel portal, siaran pers WA, caption Instagram/TikTok/X, dan tautan poster visual HD ke dalam 1 pesan WhatsApp terstruktur.
-                </p>
+                <div className="flex items-center gap-2 text-xs text-slate-600 dark:text-slate-400 mt-0.5">
+                  <span className="font-semibold text-slate-900 dark:text-slate-200">
+                    Kepada: {selectedDewan.fullName}
+                  </span>
+                  {selectedDewan.partyAffiliation && (
+                    <span className="px-1.5 py-0.2 rounded bg-slate-200 dark:bg-slate-800 text-[10px] font-bold">
+                      {selectedDewan.partyAffiliation}
+                    </span>
+                  )}
+                  {selectedDewan.customDapilName && (
+                    <span className="text-slate-500 text-[11px]">
+                      • Dapil {selectedDewan.customDapilName}
+                    </span>
+                  )}
+                </div>
               </div>
+            </div>
+
+            <div className="flex items-center gap-1.5 text-[11px] text-emerald-800 dark:text-emerald-300/90 font-medium">
+              <ShieldCheck className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
+              <span>
+                <strong>Terproteksi Walled Garden:</strong> Dikirim otomatis via Bot Cloud API resmi Polaris (+62 831-8022-6507). Nomor pribadi operator dan dewan terisolasi 100% aman.
+              </span>
             </div>
           </div>
 
-          {/* Quick Input Nomor Tujuan & Tombol Kirim */}
-          <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 shrink-0">
-            <div className="relative">
-              <Phone className="w-3.5 h-3.5 absolute left-3 top-3 text-slate-400" />
-              <input
-                type="text"
-                placeholder="No. WhatsApp Klien (Opsional: 08xx)"
-                value={targetPhone}
-                onChange={(e) => setTargetPhone(e.target.value)}
-                className="w-full sm:w-64 pl-8 pr-3 py-2 text-xs rounded-xl bg-white dark:bg-slate-900 border border-emerald-300 dark:border-emerald-700 text-slate-900 dark:text-white placeholder-slate-400 focus:outline-hidden focus:ring-2 focus:ring-emerald-500"
-              />
-            </div>
-
+          {/* Action Buttons: Kirim via Bot & Salin Paket */}
+          <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2.5 shrink-0">
             <button
               type="button"
-              onClick={handleSendToWhatsApp}
-              className="px-4 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-black text-xs transition-all shadow-md shadow-emerald-600/20 flex items-center justify-center gap-2 cursor-pointer hover:scale-[1.02]"
+              onClick={handleDispatchViaBot}
+              disabled={isDispatching}
+              className="px-5 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-black text-xs transition-all shadow-md shadow-emerald-600/25 flex items-center justify-center gap-2 cursor-pointer hover:scale-[1.02] disabled:opacity-60 disabled:cursor-not-allowed"
             >
-              <Send className="w-4 h-4" />
-              <span>Kirim ke WA Sekarang</span>
+              {isDispatching ? (
+                <>
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                  <span>Mengirim via Bot...</span>
+                </>
+              ) : (
+                <>
+                  <Send className="w-4 h-4" />
+                  <span>Kirim ke WhatsApp Dewan</span>
+                </>
+              )}
             </button>
 
             <button
               type="button"
               onClick={handleCopyFullPackage}
-              className="px-3.5 py-2.5 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 hover:bg-slate-50 text-slate-800 dark:text-slate-200 font-bold text-xs transition flex items-center justify-center gap-1.5 cursor-pointer shadow-2xs"
+              className="px-4 py-2.5 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 hover:bg-slate-50 text-slate-800 dark:text-slate-200 font-bold text-xs transition flex items-center justify-center gap-1.5 cursor-pointer shadow-2xs"
             >
-              {copiedPackage ? <CheckCheck className="w-4 h-4 text-emerald-600" /> : <Copy className="w-4 h-4" />}
-              <span>{copiedPackage ? 'Tersalin!' : 'Salin Paket'}</span>
+              {copiedPackage ? (
+                <CheckCheck className="w-4 h-4 text-emerald-600" />
+              ) : (
+                <Copy className="w-4 h-4" />
+              )}
+              <span>{copiedPackage ? 'Tersalin!' : 'Salin Seluruh Paket'}</span>
             </button>
           </div>
         </div>
 
-        {/* Collapsible Pratinjau Pesan Paket WhatsApp */}
+        {/* Live Delivery Status Indicator */}
+        {lastDispatchedAt && (
+          <div className="flex items-center gap-2 p-2.5 rounded-xl bg-emerald-100/70 dark:bg-emerald-950/40 border border-emerald-300 dark:border-emerald-700 text-xs text-emerald-900 dark:text-emerald-200 font-bold">
+            <Sparkles className="w-4 h-4 text-emerald-600 shrink-0" />
+            <span>
+              Paket konten berhasil dikirim ke WhatsApp Dewan pada pukul <strong>{lastDispatchedAt} WIB</strong> via Bot Resmi Polaris.
+            </span>
+          </div>
+        )}
+
+        {/* Collapsible Pratinjau Format Pesan Paket */}
         <div className="border-t border-emerald-200/60 dark:border-emerald-800/40 pt-3">
           <button
             type="button"
@@ -273,109 +311,7 @@ _Diproduksi oleh Tim Operator Polaris Media Studio_`;
         </div>
       </div>
 
-      {/* 2. CHECKLIST DISTRIBUSI OPERATOR (PELACAK STATUS PER KANAL) */}
-      <div className="p-4 rounded-2xl bg-white dark:bg-[#0B0F19] border border-slate-200 dark:border-slate-800 space-y-3">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-100 dark:border-slate-800 pb-2.5">
-          <div className="flex items-center gap-2">
-            <FileCheck className="w-4 h-4 text-indigo-600" />
-            <span className="text-xs font-black uppercase tracking-wider text-slate-800 dark:text-slate-200">
-              Pelacak Status Distribusi ({completedCount}/5 Selesai)
-            </span>
-          </div>
-          <span className="text-[11px] text-slate-500">
-            Tandai kanal yang sudah disebarkan agar tidak tertukar antar akun Klien
-          </span>
-        </div>
-
-        <div className="grid grid-cols-2 sm:grid-cols-5 gap-2.5">
-          {/* Portal */}
-          <button
-            type="button"
-            onClick={() => toggleChecklist('portal')}
-            className={`p-2.5 rounded-xl border text-left transition cursor-pointer flex items-center gap-2 ${
-              checklist.portal
-                ? 'bg-emerald-50 dark:bg-emerald-950/40 border-emerald-300 dark:border-emerald-700 text-emerald-800 dark:text-emerald-300'
-                : 'bg-slate-50 dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-400'
-            }`}
-          >
-            <CheckCircle2 className={`w-4 h-4 shrink-0 ${checklist.portal ? 'text-emerald-600' : 'text-slate-300'}`} />
-            <div className="min-w-0">
-              <div className="text-[11px] font-bold truncate">Portal Publik</div>
-              <div className="text-[9px] opacity-75">{checklist.portal ? 'Sudah Terbit' : 'Belum Terbit'}</div>
-            </div>
-          </button>
-
-          {/* WhatsApp */}
-          <button
-            type="button"
-            onClick={() => toggleChecklist('whatsapp')}
-            className={`p-2.5 rounded-xl border text-left transition cursor-pointer flex items-center gap-2 ${
-              checklist.whatsapp
-                ? 'bg-emerald-50 dark:bg-emerald-950/40 border-emerald-300 dark:border-emerald-700 text-emerald-800 dark:text-emerald-300'
-                : 'bg-slate-50 dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-400'
-            }`}
-          >
-            <CheckCircle2 className={`w-4 h-4 shrink-0 ${checklist.whatsapp ? 'text-emerald-600' : 'text-slate-300'}`} />
-            <div className="min-w-0">
-              <div className="text-[11px] font-bold truncate">WhatsApp Blast</div>
-              <div className="text-[9px] opacity-75">{checklist.whatsapp ? 'Sudah Dikirim' : 'Belum Dikirim'}</div>
-            </div>
-          </button>
-
-          {/* Instagram */}
-          <button
-            type="button"
-            onClick={() => toggleChecklist('instagram')}
-            className={`p-2.5 rounded-xl border text-left transition cursor-pointer flex items-center gap-2 ${
-              checklist.instagram
-                ? 'bg-purple-50 dark:bg-purple-950/40 border-purple-300 dark:border-purple-700 text-purple-800 dark:text-purple-300'
-                : 'bg-slate-50 dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-400'
-            }`}
-          >
-            <CheckCircle2 className={`w-4 h-4 shrink-0 ${checklist.instagram ? 'text-purple-600' : 'text-slate-300'}`} />
-            <div className="min-w-0">
-              <div className="text-[11px] font-bold truncate">Instagram Feed</div>
-              <div className="text-[9px] opacity-75">{checklist.instagram ? 'Sudah Diunggah' : 'Belum Diunggah'}</div>
-            </div>
-          </button>
-
-          {/* TikTok */}
-          <button
-            type="button"
-            onClick={() => toggleChecklist('tiktok')}
-            className={`p-2.5 rounded-xl border text-left transition cursor-pointer flex items-center gap-2 ${
-              checklist.tiktok
-                ? 'bg-rose-50 dark:bg-rose-950/40 border-rose-300 dark:border-rose-700 text-rose-800 dark:text-rose-300'
-                : 'bg-slate-50 dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-400'
-            }`}
-          >
-            <CheckCircle2 className={`w-4 h-4 shrink-0 ${checklist.tiktok ? 'text-rose-600' : 'text-slate-300'}`} />
-            <div className="min-w-0">
-              <div className="text-[11px] font-bold truncate">TikTok Feed</div>
-              <div className="text-[9px] opacity-75">{checklist.tiktok ? 'Sudah Diunggah' : 'Belum Diunggah'}</div>
-            </div>
-          </button>
-
-          {/* X (Twitter) */}
-          <button
-            type="button"
-            onClick={() => toggleChecklist('x')}
-            className={`p-2.5 rounded-xl border text-left transition cursor-pointer flex items-center gap-2 ${
-              checklist.x
-                ? 'bg-slate-200 dark:bg-slate-800 border-slate-400 text-slate-900 dark:text-white'
-                : 'bg-slate-50 dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-400'
-            }`}
-          >
-            <CheckCircle2 className={`w-4 h-4 shrink-0 ${checklist.x ? 'text-slate-900 dark:text-white' : 'text-slate-300'}`} />
-            <div className="min-w-0">
-              <div className="text-[11px] font-bold truncate">X (Twitter)</div>
-              <div className="text-[9px] opacity-75">{checklist.x ? 'Sudah Cuit' : 'Belum Cuit'}</div>
-            </div>
-          </button>
-        </div>
-      </div>
-
-      {/* 3. CHANNEL NAVIGATION TABS */}
+      {/* 2. TAB NAVIGASI FORMAT NASKAH & CAPTION */}
       <div className="flex items-center gap-2 p-1.5 rounded-2xl bg-slate-100 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700/60 overflow-x-auto scrollbar-none">
         <button
           type="button"
@@ -387,7 +323,7 @@ _Diproduksi oleh Tim Operator Polaris Media Studio_`;
           }`}
         >
           <MessageCircle className="w-4 h-4" />
-          <span>WhatsApp Memo</span>
+          <span>Siaran Pers WhatsApp</span>
         </button>
 
         <button
@@ -400,7 +336,7 @@ _Diproduksi oleh Tim Operator Polaris Media Studio_`;
           }`}
         >
           <Instagram className="w-4 h-4" />
-          <span>Instagram Feed & Karusel</span>
+          <span>Instagram Caption</span>
         </button>
 
         <button
@@ -413,7 +349,7 @@ _Diproduksi oleh Tim Operator Polaris Media Studio_`;
           }`}
         >
           <Video className="w-4 h-4 text-[#fe2c55]" />
-          <span>TikTok Feed</span>
+          <span>TikTok Caption</span>
         </button>
 
         <button
@@ -443,7 +379,7 @@ _Diproduksi oleh Tim Operator Polaris Media Studio_`;
         </button>
       </div>
 
-      {/* 4. DETAIL PANEL PER KANAL */}
+      {/* 3. DETAIL PANEL PER FORMAT */}
 
       {/* PANEL WHATSAPP */}
       {activeChannel === 'whatsapp' && (
@@ -454,35 +390,45 @@ _Diproduksi oleh Tim Operator Polaris Media Studio_`;
                 <span>Siaran Pers WhatsApp (Grup Warga & Wartawan)</span>
               </h4>
               <p className="text-[11px] text-slate-500 mt-0.5">
-                Disesuaikan dengan sintaks Markdown WhatsApp (*tebal*, _miring_) dan menyertakan tautan resmi portal.
+                Format naskah siaran pers dengan sintaks Markdown WhatsApp (*tebal*, _miring_) beserta tautan berita portal resmi.
               </p>
             </div>
 
             <div className="flex items-center gap-2 flex-wrap">
-              <a
-                href={`https://api.whatsapp.com/send?text=${encodeURIComponent(customWaText)}`}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs shadow-xs transition cursor-pointer"
-              >
-                <span>Buka WhatsApp</span>
-                <ArrowUpRight className="w-3.5 h-3.5" />
-              </a>
+              {generatedResult.posterUrl && (
+                <button
+                  type="button"
+                  onClick={() => onDownloadPoster()}
+                  disabled={downloadingPoster}
+                  className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs shadow-xs transition cursor-pointer disabled:opacity-60"
+                >
+                  {downloadingPoster ? (
+                    <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                  ) : (
+                    <Download className="w-3.5 h-3.5" />
+                  )}
+                  <span>Unduh Poster HD</span>
+                </button>
+              )}
 
               <button
                 type="button"
                 onClick={() => handleCopyText(customWaText, 'Siaran WhatsApp', 'wa')}
                 className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-white dark:bg-slate-900 border border-emerald-300 dark:border-emerald-700 text-emerald-800 dark:text-emerald-300 font-bold text-xs hover:bg-emerald-50 transition cursor-pointer"
               >
-                {copiedSingle === 'wa' ? <CheckCheck className="w-3.5 h-3.5 text-emerald-600" /> : <Copy className="w-3.5 h-3.5" />}
-                <span>{copiedSingle === 'wa' ? 'Tersalin' : 'Salin Pesan'}</span>
+                {copiedSingle === 'wa' ? (
+                  <CheckCheck className="w-3.5 h-3.5 text-emerald-600" />
+                ) : (
+                  <Copy className="w-3.5 h-3.5" />
+                )}
+                <span>{copiedSingle === 'wa' ? 'Tersalin' : 'Salin Naskah Siaran'}</span>
               </button>
             </div>
           </div>
 
           <div className="space-y-1.5">
             <label className="text-xs font-bold text-slate-700 dark:text-slate-300 flex items-center justify-between">
-              <span>Isi Naskah Siaran (Dapat Diedit Bebas):</span>
+              <span>Isi Naskah Siaran (Dapat Disesuaikan):</span>
               <span className="text-[10px] text-slate-400 font-mono">Format Pesan Siaran</span>
             </label>
             <textarea
@@ -492,23 +438,6 @@ _Diproduksi oleh Tim Operator Polaris Media Studio_`;
               className="w-full p-4 rounded-xl bg-white dark:bg-slate-900 border border-emerald-200 dark:border-emerald-800 text-xs text-slate-900 dark:text-white leading-relaxed font-sans shadow-inner focus:outline-hidden focus:ring-1 focus:ring-emerald-500"
             />
           </div>
-
-          {generatedResult.posterUrl && (
-            <div className="flex items-center justify-between p-3 rounded-xl bg-white dark:bg-slate-900 border border-emerald-200/60 dark:border-emerald-900/40 text-xs">
-              <span className="text-slate-700 dark:text-slate-300 font-medium">
-                Lampirkan poster dokumen resolusi tinggi ke grup chat:
-              </span>
-              <button
-                type="button"
-                onClick={() => onDownloadPoster()}
-                disabled={downloadingPoster}
-                className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs transition cursor-pointer disabled:opacity-60"
-              >
-                {downloadingPoster ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Download className="w-3.5 h-3.5" />}
-                <span>{downloadingPoster ? 'Mengunduh...' : 'Unduh Poster HD'}</span>
-              </button>
-            </div>
-          )}
         </div>
       )}
 
@@ -518,40 +447,40 @@ _Diproduksi oleh Tim Operator Polaris Media Studio_`;
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-purple-200/60 dark:border-purple-800/40 pb-3">
             <div>
               <h4 className="text-xs font-black uppercase tracking-wider text-purple-900 dark:text-purple-300 flex items-center gap-2">
-                <span>Feed & Karusel Instagram</span>
+                <span>Draf Keterangan (Caption Instagram)</span>
               </h4>
               <p className="text-[11px] text-slate-500 mt-0.5">
-                Unduh poster HD dan salin caption untuk diunggah ke Instagram akun Klien.
+                Draf caption Instagram lengkap dengan tagar dapil dan tautan kebijakan untuk disalin oleh Dewan/Ajudan.
               </p>
             </div>
 
             <div className="flex items-center gap-2 flex-wrap">
-              <a
-                href="https://www.instagram.com"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-gradient-to-r from-purple-600 to-pink-600 hover:opacity-95 text-white font-bold text-xs shadow-xs transition cursor-pointer"
-              >
-                <span>Buka Instagram Web</span>
-                <ExternalLink className="w-3.5 h-3.5" />
-              </a>
-
-              <button
-                type="button"
-                onClick={() => onDownloadPoster()}
-                disabled={downloadingPoster}
-                className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-white dark:bg-slate-900 border border-purple-300 dark:border-purple-700 text-purple-800 dark:text-purple-300 font-bold text-xs hover:bg-purple-50 transition cursor-pointer disabled:opacity-60"
-              >
-                {downloadingPoster ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Download className="w-3.5 h-3.5" />}
-                <span>Unduh Gambar</span>
-              </button>
+              {generatedResult.posterUrl && (
+                <button
+                  type="button"
+                  onClick={() => onDownloadPoster()}
+                  disabled={downloadingPoster}
+                  className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-white dark:bg-slate-900 border border-purple-300 dark:border-purple-700 text-purple-800 dark:text-purple-300 font-bold text-xs hover:bg-purple-50 transition cursor-pointer disabled:opacity-60"
+                >
+                  {downloadingPoster ? (
+                    <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                  ) : (
+                    <Download className="w-3.5 h-3.5" />
+                  )}
+                  <span>Unduh Poster</span>
+                </button>
+              )}
 
               <button
                 type="button"
                 onClick={() => handleCopyText(customIgCaption, 'Caption Instagram', 'ig')}
                 className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-purple-600 hover:bg-purple-700 text-white font-bold text-xs transition cursor-pointer"
               >
-                {copiedSingle === 'ig' ? <CheckCheck className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
+                {copiedSingle === 'ig' ? (
+                  <CheckCheck className="w-3.5 h-3.5" />
+                ) : (
+                  <Copy className="w-3.5 h-3.5" />
+                )}
                 <span>{copiedSingle === 'ig' ? 'Tersalin' : 'Salin Caption'}</span>
               </button>
             </div>
@@ -573,8 +502,8 @@ _Diproduksi oleh Tim Operator Polaris Media Studio_`;
             {/* Editor Caption Kanan */}
             <div className={generatedResult.posterUrl ? 'md:col-span-8 space-y-2' : 'col-span-12 space-y-2'}>
               <label className="text-xs font-bold text-slate-700 dark:text-slate-300 flex items-center justify-between">
-                <span>Draf Keterangan (Caption Instagram):</span>
-                <span className="text-[10px] text-purple-600 font-mono">Disertai Tagar Dapil & Link</span>
+                <span>Isi Caption Instagram:</span>
+                <span className="text-[10px] text-purple-600 font-mono">Disertai Tagar Dapil & Link Portal</span>
               </label>
               <textarea
                 value={customIgCaption}
@@ -593,40 +522,40 @@ _Diproduksi oleh Tim Operator Polaris Media Studio_`;
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-200/60 dark:border-slate-800/40 pb-3">
             <div>
               <h4 className="text-xs font-black uppercase tracking-wider text-slate-900 dark:text-white flex items-center gap-2">
-                <span>TikTok Content Posting (Slideshow / Foto)</span>
+                <span>Draf Deskripsi TikTok (Slideshow / Foto)</span>
               </h4>
               <p className="text-[11px] text-slate-500 mt-0.5">
-                Unduh poster resolusi penuh lalu unggah di portal creator TikTok bersama naskah caption.
+                Draf teks TikTok beserta tagar algoritma FYP dan isu daerah.
               </p>
             </div>
 
             <div className="flex items-center gap-2 flex-wrap">
-              <a
-                href="https://www.tiktok.com/upload"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-black hover:bg-slate-800 text-white font-bold text-xs shadow-xs transition cursor-pointer"
-              >
-                <span>Buka TikTok Studio</span>
-                <ExternalLink className="w-3.5 h-3.5" />
-              </a>
-
-              <button
-                type="button"
-                onClick={() => onDownloadPoster()}
-                disabled={downloadingPoster}
-                className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 text-slate-800 dark:text-slate-200 font-bold text-xs hover:bg-slate-50 transition cursor-pointer disabled:opacity-60"
-              >
-                {downloadingPoster ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Download className="w-3.5 h-3.5" />}
-                <span>Unduh Gambar</span>
-              </button>
+              {generatedResult.posterUrl && (
+                <button
+                  type="button"
+                  onClick={() => onDownloadPoster()}
+                  disabled={downloadingPoster}
+                  className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 text-slate-800 dark:text-slate-200 font-bold text-xs hover:bg-slate-50 transition cursor-pointer disabled:opacity-60"
+                >
+                  {downloadingPoster ? (
+                    <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                  ) : (
+                    <Download className="w-3.5 h-3.5" />
+                  )}
+                  <span>Unduh Poster</span>
+                </button>
+              )}
 
               <button
                 type="button"
                 onClick={() => handleCopyText(customTiktokCaption, 'Caption TikTok', 'tiktok')}
                 className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-rose-600 hover:bg-rose-700 text-white font-bold text-xs transition cursor-pointer"
               >
-                {copiedSingle === 'tiktok' ? <CheckCheck className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
+                {copiedSingle === 'tiktok' ? (
+                  <CheckCheck className="w-3.5 h-3.5" />
+                ) : (
+                  <Copy className="w-3.5 h-3.5" />
+                )}
                 <span>{copiedSingle === 'tiktok' ? 'Tersalin' : 'Salin Caption'}</span>
               </button>
             </div>
@@ -634,7 +563,7 @@ _Diproduksi oleh Tim Operator Polaris Media Studio_`;
 
           <div className="space-y-1.5">
             <label className="text-xs font-bold text-slate-700 dark:text-slate-300 flex items-center justify-between">
-              <span>Draf Deskripsi TikTok (Maksimal 2.200 Karakter):</span>
+              <span>Isi Deskripsi TikTok:</span>
               <span className="text-[10px] text-rose-500 font-mono">Tagar Algoritma FYP</span>
             </label>
             <textarea
@@ -653,40 +582,40 @@ _Diproduksi oleh Tim Operator Polaris Media Studio_`;
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-200/60 dark:border-slate-800/40 pb-3">
             <div>
               <h4 className="text-xs font-black uppercase tracking-wider text-slate-900 dark:text-white flex items-center gap-2">
-                <span>X (Twitter) — Cuitan Opini & Utas</span>
+                <span>Draf Cuitan X (Twitter)</span>
               </h4>
               <p className="text-[11px] text-slate-500 mt-0.5">
-                Cuitan ringkas dengan batas 280 karakter untuk diunggah langsung ke akun X tokoh.
+                Cuitan ringkas opini publik yang disesuaikan batas 280 karakter.
               </p>
             </div>
 
             <div className="flex items-center gap-2 flex-wrap">
-              <a
-                href={`https://x.com/compose/post?text=${encodeURIComponent(customXText)}`}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-black hover:bg-slate-800 text-white font-bold text-xs shadow-xs transition cursor-pointer"
-              >
-                <span>Buka & Cuit di X</span>
-                <ExternalLink className="w-3.5 h-3.5" />
-              </a>
-
-              <button
-                type="button"
-                onClick={() => onDownloadPoster()}
-                disabled={downloadingPoster}
-                className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 text-slate-800 dark:text-slate-200 font-bold text-xs hover:bg-slate-50 transition cursor-pointer disabled:opacity-60"
-              >
-                {downloadingPoster ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Download className="w-3.5 h-3.5" />}
-                <span>Unduh Gambar</span>
-              </button>
+              {generatedResult.posterUrl && (
+                <button
+                  type="button"
+                  onClick={() => onDownloadPoster()}
+                  disabled={downloadingPoster}
+                  className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 text-slate-800 dark:text-slate-200 font-bold text-xs hover:bg-slate-50 transition cursor-pointer disabled:opacity-60"
+                >
+                  {downloadingPoster ? (
+                    <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                  ) : (
+                    <Download className="w-3.5 h-3.5" />
+                  )}
+                  <span>Unduh Poster</span>
+                </button>
+              )}
 
               <button
                 type="button"
                 onClick={() => handleCopyText(customXText, 'Cuitan X', 'x')}
                 className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-slate-800 hover:bg-black text-white font-bold text-xs transition cursor-pointer"
               >
-                {copiedSingle === 'x' ? <CheckCheck className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
+                {copiedSingle === 'x' ? (
+                  <CheckCheck className="w-3.5 h-3.5" />
+                ) : (
+                  <Copy className="w-3.5 h-3.5" />
+                )}
                 <span>{copiedSingle === 'x' ? 'Tersalin' : 'Salin Cuitan'}</span>
               </button>
             </div>
@@ -695,7 +624,11 @@ _Diproduksi oleh Tim Operator Polaris Media Studio_`;
           <div className="space-y-1.5">
             <div className="flex items-center justify-between text-xs font-bold text-slate-700 dark:text-slate-300">
               <span>Isi Cuitan:</span>
-              <span className={`text-[10px] font-mono ${customXText.length > 280 ? 'text-rose-500 font-black' : 'text-slate-400'}`}>
+              <span
+                className={`text-[10px] font-mono ${
+                  customXText.length > 280 ? 'text-rose-500 font-black' : 'text-slate-400'
+                }`}
+              >
                 {customXText.length} / 280 Karakter
               </span>
             </div>
@@ -719,30 +652,24 @@ _Diproduksi oleh Tim Operator Polaris Media Studio_`;
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-200/60 dark:border-slate-800/40 pb-3">
             <div>
               <h4 className="text-xs font-black uppercase tracking-wider text-slate-900 dark:text-white flex items-center gap-2">
-                <span>Meta Threads — Opini Utas</span>
+                <span>Draf Utas Meta Threads</span>
               </h4>
               <p className="text-[11px] text-slate-500 mt-0.5">
-                Salin naskah opini dan buka threads.net untuk dipublikasikan ke jejaring Meta.
+                Draf naskah opini untuk dipublikasikan ke jejaring Threads.
               </p>
             </div>
 
             <div className="flex items-center gap-2 flex-wrap">
-              <a
-                href="https://threads.net"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-black hover:bg-slate-800 text-white font-bold text-xs shadow-xs transition cursor-pointer"
-              >
-                <span>Buka Threads.net</span>
-                <ExternalLink className="w-3.5 h-3.5" />
-              </a>
-
               <button
                 type="button"
                 onClick={() => handleCopyText(customThreadsText, 'Naskah Threads', 'threads')}
                 className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-slate-800 hover:bg-black text-white font-bold text-xs transition cursor-pointer"
               >
-                {copiedSingle === 'threads' ? <CheckCheck className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
+                {copiedSingle === 'threads' ? (
+                  <CheckCheck className="w-3.5 h-3.5" />
+                ) : (
+                  <Copy className="w-3.5 h-3.5" />
+                )}
                 <span>{copiedSingle === 'threads' ? 'Tersalin' : 'Salin Teks'}</span>
               </button>
             </div>
@@ -764,4 +691,3 @@ _Diproduksi oleh Tim Operator Polaris Media Studio_`;
     </div>
   );
 }
-

@@ -39,6 +39,7 @@ import {
   SubmitBriefReviewDto,
   MarkRevisionFaultDto,
   UpdateTenantBriefLimitsDto,
+  DispatchPackageDto,
 } from '../dto/whatsapp.dto.js';
 import {
   WhatsAppBriefHelperService,
@@ -928,6 +929,77 @@ export class WhatsAppOperatorBrokerService {
     });
 
     return await this.helper.getTenantWeeklyQuota(tenantId);
+  }
+
+  /**
+   * Mengirimkan paket konten siap tayang (poster HD + naskah siaran + caption)
+   * langsung ke nomor WhatsApp Dewan melalui Cloud API Bot Resmi Polaris.
+   * Terlindungi dalam Walled Garden tanpa mengekspos nomor pribadi operator maupun klien.
+   */
+  public async dispatchPackageToClient(
+    operatorId: string,
+    dto: DispatchPackageDto,
+    isSuperadmin = false,
+    auditMeta?: RequestAuditMeta
+  ): Promise<{ success: boolean; message: string; recipientName: string }> {
+    await this.helper.assertOperatorCanAccessTenant(operatorId, dto.tenantId, isSuperadmin);
+
+    const [tenant] = await db
+      .select({
+        id: tenantMembers.id,
+        fullName: tenantMembers.fullName,
+        phoneNumber: tenantMembers.phoneNumber,
+        partyAffiliation: tenantMembers.partyAffiliation,
+      })
+      .from(tenantMembers)
+      .where(eq(tenantMembers.id, dto.tenantId))
+      .limit(1);
+
+    if (!tenant) {
+      throw new NotFoundException('Data dewan/klien tidak ditemukan.');
+    }
+
+    if (!tenant.phoneNumber) {
+      throw new ForbiddenException(
+        `Dewan "${tenant.fullName}" belum memiliki nomor WhatsApp terdaftar di sistem. Harap lengkapi di profil dewan.`
+      );
+    }
+
+    // 1. Kirim Poster Visual jika tersedia
+    if (dto.posterUrl && dto.posterUrl.startsWith('http')) {
+      try {
+        await this.waClient.sendImageMessage(
+          tenant.phoneNumber,
+          dto.posterUrl,
+          `🖼️ *Poster Visual Siap Tayang*\nUntuk: ${tenant.fullName}`
+        );
+      } catch (err) {
+        this.logger.error(`Gagal mengirim poster via WA Bot: ${err}`);
+      }
+    }
+
+    // 2. Kirim Naskah Paket Konten Lengkap
+    if (dto.packageText && dto.packageText.trim()) {
+      await this.waClient.sendTextMessage(tenant.phoneNumber, dto.packageText.trim());
+    }
+
+    await this.helper.recordOperatorAudit({
+      operatorId,
+      tenantId: dto.tenantId,
+      action: 'OPERATOR_DISPATCHED_PACKAGE_TO_CLIENT',
+      targetEntityId: dto.publicationId || dto.tenantId,
+      details: {
+        recipientName: tenant.fullName,
+        hasPoster: Boolean(dto.posterUrl),
+      },
+      auditMeta,
+    });
+
+    return {
+      success: true,
+      message: `Paket konten berhasil dikirim ke WhatsApp resmi ${tenant.fullName} melalui Bot Polaris.`,
+      recipientName: tenant.fullName,
+    };
   }
 }
 

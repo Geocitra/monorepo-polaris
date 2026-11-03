@@ -11,6 +11,7 @@ import {
   MarkRevisionFaultDto,
   PublicReviewRevisionDto,
   UpdateTenantBriefLimitsDto,
+  DispatchPackageDto,
 } from './dto/whatsapp.dto.js';
 import {
   WhatsAppBriefHelperService,
@@ -199,6 +200,20 @@ export class WhatsAppService {
       adminId,
       tenantId,
       dto,
+      auditMeta
+    );
+  }
+
+  public async dispatchPackageToClient(
+    operatorId: string,
+    dto: DispatchPackageDto,
+    isSuperadmin = false,
+    auditMeta?: RequestAuditMeta
+  ) {
+    return await this.operatorBrokerService.dispatchPackageToClient(
+      operatorId,
+      dto,
+      isSuperadmin,
       auditMeta
     );
   }

@@ -87,3 +87,21 @@ export class UpdateTenantBriefLimitsDto {
   revisionLimit?: number;
 }
 
+export class DispatchPackageDto {
+  @IsUUID()
+  tenantId!: string;
+
+  @IsOptional()
+  @IsUUID()
+  publicationId?: string;
+
+  @IsOptional()
+  @IsString()
+  packageText?: string;
+
+  @IsOptional()
+  @IsString()
+  posterUrl?: string;
+}
+
+
