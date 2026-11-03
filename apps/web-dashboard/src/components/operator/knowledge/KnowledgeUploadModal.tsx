@@ -1,4 +1,4 @@
-en'use client';
+'use client';
 
 import React, { useRef } from 'react';
 import { UploadCloud, RefreshCw, ShieldCheck, Lock, Layers } from 'lucide-react';
