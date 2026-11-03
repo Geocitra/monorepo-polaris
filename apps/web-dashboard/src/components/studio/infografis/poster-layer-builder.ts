@@ -303,23 +303,56 @@ export async function ensurePosterFontsLoaded(manifest: PosterLayerManifest, tim
 
 // ─── Pengambilan manifest dari aset poster ───
 export async function fetchPosterLayerData(
-  publicationId?: string
-): Promise<{ manifest: PosterLayerManifest | null; rawCanvasUrl?: string }> {
-  if (!publicationId) return { manifest: null };
+  imageUrl: string,
+  publicationId?: string,
+  naturalW?: number,
+  naturalH?: number
+): Promise<{ manifest: PosterLayerManifest | null; rawCanvasUrl?: string; detectedArchetype?: string }> {
+  // 1. Panggil backend AI Vision OCR Extractor & Manifest Provider
   try {
-    const detail = await ApiClient.request<any>(`/studio/articles/${publicationId}`);
-    const raw = detail?.asset?.promptUsed;
-    const parsed = typeof raw === 'string' ? JSON.parse(raw) : raw;
-    const m = parsed?.layoutManifest;
-    const valid = !!m && Array.isArray(m.layers) && m.layers.length > 0 && m.width > 0 && m.height > 0;
-    return {
-      manifest: valid ? (m as PosterLayerManifest) : null,
-      rawCanvasUrl: parsed?.rawCanvasUrl || detail?.rawCanvasUrl || undefined,
-    };
+    const res = await ApiClient.request<{
+      success: boolean;
+      manifest: PosterLayerManifest | null;
+      rawCanvasUrl?: string;
+      detectedArchetype?: string;
+    }>('/studio/magic-layers/extract-manifest', {
+      method: 'POST',
+      body: JSON.stringify({
+        imageUrl,
+        publicationId,
+        naturalW,
+        naturalH,
+      }),
+    });
+
+    if (res?.manifest && Array.isArray(res.manifest.layers) && res.manifest.layers.length > 0) {
+      return {
+        manifest: res.manifest,
+        rawCanvasUrl: res.rawCanvasUrl,
+        detectedArchetype: res.detectedArchetype,
+      };
+    }
   } catch (err) {
-    console.warn('[MagicLayers] Gagal mengambil layer manifest:', err);
-    return { manifest: null };
+    console.warn('[MagicLayers] extract-manifest endpoint error:', err);
   }
+
+  // 2. Fallback sekunder: Coba ambil dari detail artikel di DB
+  if (publicationId) {
+    try {
+      const detail = await ApiClient.request<any>(`/studio/articles/${publicationId}`);
+      const raw = detail?.asset?.promptUsed;
+      const parsed = typeof raw === 'string' ? JSON.parse(raw) : raw;
+      const m = parsed?.layoutManifest;
+      const valid = !!m && Array.isArray(m.layers) && m.layers.length > 0 && m.width > 0 && m.height > 0;
+      return {
+        manifest: valid ? (m as PosterLayerManifest) : null,
+        rawCanvasUrl: parsed?.rawCanvasUrl || detail?.rawCanvasUrl || undefined,
+        detectedArchetype: parsed?.archetype,
+      };
+    } catch {}
+  }
+
+  return { manifest: null };
 }
 
 // ─── Builder utama ───

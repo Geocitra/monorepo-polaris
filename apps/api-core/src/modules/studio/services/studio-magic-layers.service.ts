@@ -1,5 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
-import { PosterInpainter } from '@polaris/storage';
+import { PosterInpainter, type PosterLayerManifest } from '@polaris/storage';
+import { PosterVisionExtractorService } from './poster-vision-extractor.service.js';
 import { db, mediaAssets } from '@polaris/database';
 import { eq } from 'drizzle-orm';
 import { AssetType } from '@polaris/shared-types';
@@ -60,6 +61,10 @@ export interface HeuristicGroupedComponent {
 @Injectable()
 export class StudioMagicLayersService {
   private readonly logger = new Logger(StudioMagicLayersService.name);
+
+  constructor(
+    private readonly visionExtractor: PosterVisionExtractorService,
+  ) {}
 
   /**
    * SOLUSI 1 & 2: Deteksi Teks (OCR) Bounding Box & Segmentasi Semantik / Panoptic Layout.
@@ -521,6 +526,115 @@ export class StudioMagicLayersService {
             bounds: b,
           })),
         },
+      };
+    }
+  }
+
+  /**
+   * Mengambil Layout Manifest yang tersimpan di DB atau mengekstrak 100% teks asli poster
+   * menggunakan Vision AI tingkat tinggi (tanpa pernah menggunakan template dummy).
+   */
+  async getOrExtractPosterManifest(params: {
+    imageUrl: string;
+    publicationId?: string;
+    naturalW?: number;
+    naturalH?: number;
+  }): Promise<{
+    success: boolean;
+    manifest: PosterLayerManifest | null;
+    rawCanvasUrl?: string;
+    detectedArchetype?: string;
+  }> {
+    let effectivePubId = params.publicationId;
+    if (!effectivePubId) {
+      try {
+        const [assetMatch] = await db
+          .select({ publicationId: mediaAssets.publicationId })
+          .from(mediaAssets)
+          .where(eq(mediaAssets.cdnPublicUrl, params.imageUrl))
+          .limit(1);
+        if (assetMatch?.publicationId) {
+          effectivePubId = assetMatch.publicationId;
+        } else {
+          const uuidMatches = params.imageUrl.match(/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/gi);
+          if (uuidMatches && uuidMatches.length > 0) {
+            effectivePubId = uuidMatches[uuidMatches.length - 1];
+          }
+        }
+      } catch {}
+    }
+
+    let existingAsset: any = null;
+    let rawCanvasUrl = '';
+    if (effectivePubId) {
+      try {
+        const assets = await db
+          .select()
+          .from(mediaAssets)
+          .where(eq(mediaAssets.publicationId, effectivePubId));
+        const rawAsset = assets.find((a) => a.assetType === AssetType.HEADER_IMAGE);
+        if (rawAsset?.cdnPublicUrl) rawCanvasUrl = rawAsset.cdnPublicUrl;
+
+        existingAsset = assets.find((a) => a.assetType === AssetType.DALLE_POSTER || a.assetType === AssetType.INFOGRAPHIC_PNG);
+        if (existingAsset?.promptUsed) {
+          try {
+            const parsed = JSON.parse(existingAsset.promptUsed);
+            if (!rawCanvasUrl && parsed.rawCanvasUrl) rawCanvasUrl = parsed.rawCanvasUrl;
+            if (parsed.layoutManifest?.layers?.length > 0) {
+              this.logger.log(`[MagicLayers] Mengembalikan layoutManifest yang sudah tersimpan untuk publication ${effectivePubId}`);
+              return {
+                success: true,
+                manifest: parsed.layoutManifest,
+                rawCanvasUrl,
+                detectedArchetype: parsed.archetype,
+              };
+            }
+          } catch {}
+        }
+      } catch (err) {
+        this.logger.warn(`[MagicLayers] Gagal query media_assets: ${err}`);
+      }
+    }
+
+    // Jika belum ada manifest: Gunakan Vision AI Extractor untuk membaca teks ASLI secara verbatim dari poster!
+    try {
+      const extractedContent = await this.visionExtractor.extractContentFromImage(params.imageUrl);
+      const manifest = this.visionExtractor.convertContentToManifest(
+        extractedContent,
+        params.naturalW || 1080,
+        params.naturalH || 1350
+      );
+
+      // Simpan manifest ini ke database media_assets agar tidak perlu dianalisis ulang
+      if (existingAsset?.id) {
+        try {
+          const existingParsed = existingAsset.promptUsed ? JSON.parse(existingAsset.promptUsed) : {};
+          existingParsed.layoutManifest = manifest;
+          existingParsed.archetype = extractedContent.detectedArchetype || existingParsed.archetype;
+          if (rawCanvasUrl && !existingParsed.rawCanvasUrl) existingParsed.rawCanvasUrl = rawCanvasUrl;
+
+          await db
+            .update(mediaAssets)
+            .set({ promptUsed: JSON.stringify(existingParsed) })
+            .where(eq(mediaAssets.id, existingAsset.id));
+          this.logger.log(`[MagicLayers] Berhasil menyimpan hasil Vision AI manifest ke database asset ${existingAsset.id}`);
+        } catch (saveErr) {
+          this.logger.warn(`[MagicLayers] Gagal menyimpan manifest ke prompt_used: ${saveErr}`);
+        }
+      }
+
+      return {
+        success: true,
+        manifest,
+        rawCanvasUrl,
+        detectedArchetype: extractedContent.detectedArchetype,
+      };
+    } catch (visionErr: any) {
+      this.logger.error(`[MagicLayers] Gagal mengekstrak manifest via Vision AI: ${visionErr.message}`);
+      return {
+        success: false,
+        manifest: null,
+        rawCanvasUrl,
       };
     }
   }

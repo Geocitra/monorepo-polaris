@@ -2130,11 +2130,11 @@ export function MagicLayersModal({
       // bisa diedit langsung — 1:1 dengan poster, di atas Master Raw Canvas.
       // ════════════════════════════════════════════════════════════════════════
       setPipelineStep(1);
-      setPipelineStatusText('1/4 Membaca peta elemen poster (kartu, badge, judul, paragraf)...');
-      const layerData = await fetchPosterLayerData(publicationId);
+      setPipelineStatusText('1/4 Menganalisis elemen visual & OCR teks asli dari poster...');
+      const layerData = await fetchPosterLayerData(imageUrl, publicationId, naturalW, naturalH);
       const effectiveRawCanvasUrl = rawCanvasUrl || layerData.rawCanvasUrl;
 
-      if (layerData.manifest && effectiveRawCanvasUrl) {
+      if (layerData.manifest) {
         const manifest = layerData.manifest;
 
         setPipelineStep(2);
@@ -2142,12 +2142,22 @@ export function MagicLayersModal({
         await ensurePosterFontsLoaded(manifest);
 
         setPipelineStep(3);
-        setPipelineStatusText('3/4 Memisahkan kotak kartu dan setiap teks menjadi komponen terpisah...');
+        setPipelineStatusText('3/4 Memisahkan kotak kartu dan setiap teks asli menjadi komponen mandiri...');
         const objects = buildObjectsFromManifest(manifest, naturalW, naturalH);
 
         setPipelineStep(4);
-        setPipelineStatusText('4/4 Memasang latar belakang bersih (Master Raw Canvas)...');
-        const rawImg = await loadResilientFabricImage(resolveSafeImageUrl(effectiveRawCanvasUrl));
+        setPipelineStatusText('4/4 Memasang latar belakang bersih...');
+        const cleanBgToUse = effectiveRawCanvasUrl || await createCleanPosterBackground(
+          imageUrl,
+          naturalW,
+          naturalH,
+          [],
+          layerData.detectedArchetype || archetype,
+          publicationId,
+          effectiveRawCanvasUrl
+        );
+
+        const rawImg = await loadResilientFabricImage(resolveSafeImageUrl(cleanBgToUse));
         placeImageCover(rawImg, naturalW, naturalH);
         (rawImg as any).customId = 'layer_background';
         (rawImg as any).customData = { name: 'Latar Belakang Bersih (Tanpa Teks)', isBackground: true };
@@ -2167,7 +2177,7 @@ export function MagicLayersModal({
         toast({
           type: 'success',
           title: 'Magic Layers Selesai',
-          description: `${textCount} teks dan ${objects.length - textCount} kotak berhasil dipisahkan. Klik dua kali pada teks untuk mengedit langsung.`,
+          description: `${textCount} teks dan ${objects.length - textCount} kotak berhasil dipisahkan sesuai isi konten asli poster Anda.`,
         });
         return;
       }

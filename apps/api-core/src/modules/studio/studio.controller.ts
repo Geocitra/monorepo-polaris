@@ -48,6 +48,22 @@ export class StudioController {
     return await this.magicLayersService.analyzeDocumentLayout(dto);
   }
 
+  // Ekstraksi 100% Manifest Asli Poster (OCR AI Vision & Layout Tanpa Dummy)
+  @Post('magic-layers/extract-manifest')
+  @SkipRlsContext()
+  @HttpCode(HttpStatus.OK)
+  async extractManifest(
+    @Body()
+    dto: {
+      imageUrl: string;
+      publicationId?: string;
+      naturalW?: number;
+      naturalH?: number;
+    },
+  ) {
+    return await this.magicLayersService.getOrExtractPosterManifest(dto);
+  }
+
   // Inpainting Latar Belakang AI (Menambal area kosong dengan pola tekstur sekitar solid)
   @Post('magic-layers/inpaint')
   @SkipRlsContext()
