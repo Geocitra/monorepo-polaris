@@ -2,6 +2,7 @@ import sharp from 'sharp';
 import { isInfographicArchetype } from '@polaris/shared-types';
 import { BrowserSingleton } from './browser-singleton.js';
 import { ChromiumFontFace } from './chromium-font-face.js';
+import type { PosterLayerManifest } from './poster-layer-manifest.js';
 
 /** Escape teks dinamis (hasil AI / input user) sebelum disisipkan ke HTML. */
 function esc(value: unknown): string {
@@ -70,6 +71,8 @@ export interface ChromiumPosterComposeResult {
   sizeBytes: number;
   detectedLuminance: number;
   blendModeUsed: 'multiply' | 'normal';
+  /** Peta elemen poster (kartu, badge, judul, paragraf) untuk Magic Layers. Null bila gagal diekstrak. */
+  layoutManifest: PosterLayerManifest | null;
 }
 
 interface InfographicLayoutConfig {
@@ -1837,7 +1840,7 @@ export class ChromiumPosterCompositor {
 </html>`;
 
     // 2. Render melalui Singleton Chromium Ephemeral Context
-    const renderedWebpBuffer = await BrowserSingleton.renderHtml(html, {
+    const { buffer: renderedWebpBuffer, layoutManifest } = await BrowserSingleton.renderHtmlWithLayers(html, {
       width: 1080,
       height: 1350,
       quality: 90,
@@ -1848,6 +1851,7 @@ export class ChromiumPosterCompositor {
       sizeBytes: renderedWebpBuffer.length,
       detectedLuminance: luminance,
       blendModeUsed,
+      layoutManifest,
     };
   }
 }

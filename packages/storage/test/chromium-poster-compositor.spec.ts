@@ -89,4 +89,63 @@ describe('ChromiumPosterCompositor (Playwright Headless)', () => {
     expect(meta.width).toBe(1080);
     expect(meta.height).toBe(1350);
   });
+  it('harus mengekstrak layer manifest granular (kartu + teks terpisah) untuk Magic Layers', async () => {
+    const dummyCanvas = await sharp({
+      create: { width: 928, height: 1152, channels: 3, background: { r: 200, g: 190, b: 180 } },
+    })
+      .webp()
+      .toBuffer();
+
+    const points = Array.from({ length: 5 }, (_, i) => ({
+      label: `PILAR UJI ${i + 1}`,
+      text: `Deskripsi pilar nomor ${i + 1} untuk pengujian pemisahan layer komponen.`,
+    }));
+
+    const result = await ChromiumPosterCompositor.compose({
+      canvasBuffer: dummyCanvas,
+      copy: {
+        kicker: 'DATA UJI // ANALISIS',
+        headline: 'JUDUL UTAMA PENGUJIAN',
+        deck: 'Deck pengujian.',
+        stats: [
+          { value: '9,3%', label: 'STAT A' },
+          { value: 'RP 1 T', label: 'STAT B' },
+          { value: '15', label: 'STAT C' },
+          { value: '50%', label: 'STAT D' },
+        ],
+        points,
+        closingLine: 'Kalimat penutup pengujian.',
+      },
+      zones: {},
+      archetype: 'INFOGRAPHIC_ADVOCACY_PILLARS',
+    });
+
+    const manifest = result.layoutManifest;
+    expect(manifest).not.toBeNull();
+    expect(manifest!.width).toBe(1080);
+    expect(manifest!.height).toBe(1350);
+
+    if (process.env.DUMP_LAYER_MANIFEST) {
+      const fs = await import('fs');
+      fs.writeFileSync(process.env.DUMP_LAYER_MANIFEST, JSON.stringify(manifest, null, 2));
+      fs.writeFileSync(process.env.DUMP_LAYER_MANIFEST + '.webp', result.buffer);
+    }
+
+    const texts = manifest!.layers.filter((l) => l.kind === 'text');
+    const textOf = (t: string) => texts.find((l) => l.kind === 'text' && l.text === t);
+
+    // Setiap elemen kartu adalah layer teks tersendiri
+    expect(textOf('◈ 01')).toBeTruthy();
+    expect(textOf('PILAR UJI 1')).toBeTruthy();
+    expect(textOf(points[0].text)).toBeTruthy();
+    expect(textOf('✦ INDIKATOR 01')).toBeTruthy();
+    expect(textOf('JUDUL UTAMA PENGUJIAN')).toBeTruthy();
+
+    // Badge membawa kotak latarnya sendiri (pill)
+    const badge = textOf('◈ 01');
+    expect(badge && badge.kind === 'text' && badge.box?.fill).toBeTruthy();
+
+    // Kotak panel kartu tersedia sebagai frame
+    expect(manifest!.layers.some((l) => l.kind === 'frame' && l.role === 'apillars-cols-container')).toBe(true);
+  });
 });

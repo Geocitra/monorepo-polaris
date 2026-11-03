@@ -43,6 +43,14 @@ import {
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/components/ui/toast';
 import { ApiClient } from '@/lib/api-client';
+import {
+  attachComponentOutlineOverlay,
+  buildGranularObjectsFromComponentDefs,
+  buildObjectsFromManifest,
+  ensurePosterFontsLoaded,
+  fetchPosterLayerData,
+  rehydrateMlObjects,
+} from './poster-layer-builder';
 
 interface MagicLayersModalProps {
   isOpen: boolean;
@@ -1007,6 +1015,187 @@ export function getArchetypeComponentDefs(
     ];
   }
 
+  if (archetype === 'INFOGRAPHIC_VISIONARY_TIMELINE') {
+    const headlineText = (title || 'KEMISKINAN DI KOTA BANDUNG MENURUN').toUpperCase();
+    const deckText = subtitle || 'Peta jalan dan target strategis pengentasan kemiskinan daerah.';
+    const authorText = author || 'DR. JONANDA P. A. B // DPRD PROVINSI • DAPIL JABAR';
+
+    return [
+      {
+        id: `slice_vtl_toptag_${Date.now()}`,
+        name: 'Top Tag: POLARIS // DAPIL JABAR',
+        text: 'POLARIS // DAPIL JABAR                       DOKUMEN ADVOKASI PUBLIK',
+        x: 0.050,
+        y: 0.019,
+        w: 0.900,
+        h: 0.024,
+        textColor: '#64748B',
+        fontWeight: 'bold',
+        fontSize: Math.round(naturalW * 0.012),
+        cardBg: '#FFFFFF',
+      },
+      {
+        id: `slice_vtl_masthead_${Date.now()}`,
+        name: 'Judul Utama (Visionary Header)',
+        text: `TELAAH KEBIJAKAN & TARGET STRATEGIS\n${headlineText}\n${deckText}`,
+        x: 0.050,
+        y: 0.056,
+        w: 0.900,
+        h: 0.110,
+        textColor: '#0F172A',
+        fontWeight: 'bold',
+        fontFamily: "'Bebas Neue', 'Inter', sans-serif",
+        fontSize: Math.round(naturalW * 0.032),
+        cardBg: '#FFFFFF',
+      },
+      {
+        id: `slice_vtl_stat_0_${Date.now()}`,
+        name: 'Metrik 01: 5,2%',
+        text: '5,2%\nPENURUNAN KEMISKINAN',
+        x: 0.050,
+        y: 0.171,
+        w: 0.216,
+        h: 0.056,
+        textColor: '#991B1B',
+        fontWeight: 'bold',
+        textAlign: 'center',
+        fontSize: Math.round(naturalW * 0.016),
+        cardBg: '#FFFFFF',
+      },
+      {
+        id: `slice_vtl_stat_1_${Date.now()}`,
+        name: 'Metrik 02: RP 500 MILIAR',
+        text: 'RP 500 MILIAR\nANGGARAN PENANGANAN KEMISKINAN',
+        x: 0.278,
+        y: 0.171,
+        w: 0.216,
+        h: 0.056,
+        textColor: '#991B1B',
+        fontWeight: 'bold',
+        textAlign: 'center',
+        fontSize: Math.round(naturalW * 0.016),
+        cardBg: '#FFFFFF',
+      },
+      {
+        id: `slice_vtl_stat_2_${Date.now()}`,
+        name: 'Metrik 03: 3 KECAMATAN',
+        text: '3 KECAMATAN\nPRIORITAS INTERVENSI',
+        x: 0.506,
+        y: 0.171,
+        w: 0.216,
+        h: 0.056,
+        textColor: '#991B1B',
+        fontWeight: 'bold',
+        textAlign: 'center',
+        fontSize: Math.round(naturalW * 0.016),
+        cardBg: '#FFFFFF',
+      },
+      {
+        id: `slice_vtl_stat_3_${Date.now()}`,
+        name: 'Metrik 04: 95%',
+        text: '95%\nTARGET PEMBERDAYAAN',
+        x: 0.734,
+        y: 0.171,
+        w: 0.216,
+        h: 0.056,
+        textColor: '#991B1B',
+        fontWeight: 'bold',
+        textAlign: 'center',
+        fontSize: Math.round(naturalW * 0.016),
+        cardBg: '#FFFFFF',
+      },
+      {
+        id: `slice_vtl_banner_${Date.now()}`,
+        name: 'Banner: PETA JALAN TARGET',
+        text: 'PETA JALAN TARGET & REALISASI CAPAIAN',
+        x: 0.050,
+        y: 0.463,
+        w: 0.340,
+        h: 0.024,
+        textColor: '#FFFFFF',
+        fontWeight: 'bold',
+        textAlign: 'center',
+        fontSize: Math.round(naturalW * 0.011),
+        cardBg: '#991B1B',
+      },
+      {
+        id: `slice_vtl_step_0_${Date.now()}`,
+        name: 'Fase 01: 5,2% PENURUNAN ANGKA KEMISKINAN',
+        text: 'FASE 01\n5,2% PENURUNAN ANGKA KEMISKINAN\n\nAngka kemiskinan di Kota Bandung turun dari 9,5% menjadi 7,8% dalam dua tahun terakhir, menunjukkan efektivitas program sosial yang diimplementasikan.\n\n✦ TAHAP 01',
+        x: 0.050,
+        y: 0.492,
+        w: 0.220,
+        h: 0.370,
+        textColor: '#1E293B',
+        fontSize: Math.round(naturalW * 0.011),
+        cardBg: '#FFFFFF',
+      },
+      {
+        id: `slice_vtl_step_1_${Date.now()}`,
+        name: 'Fase 02: RP 500 MILIAR UNTUK PROGRAM SOSIAL',
+        text: 'FASE 02\nRP 500 MILIAR UNTUK PROGRAM SOSIAL\n\nPemerintah Kota Bandung mengalokasikan anggaran sebesar Rp 500 miliar untuk program penanggulangan kemiskinan, termasuk pelatihan keterampilan dan bantuan langsung.\n\n✦ TAHAP 02',
+        x: 0.276,
+        y: 0.492,
+        w: 0.220,
+        h: 0.370,
+        textColor: '#1E293B',
+        fontSize: Math.round(naturalW * 0.011),
+        cardBg: '#FFFFFF',
+      },
+      {
+        id: `slice_vtl_step_2_${Date.now()}`,
+        name: 'Fase 03: 3 KECAMATAN PRIORITAS',
+        text: 'FASE 03\n3 KECAMATAN PRIORITAS\n\nTiga kecamatan dengan angka kemiskinan tertinggi, yaitu Kecamatan X, Y dan Z, menjadi fokus utama dalam program intervensi yang lebih intensif.\n\n✦ TAHAP 03',
+        x: 0.502,
+        y: 0.492,
+        w: 0.220,
+        h: 0.370,
+        textColor: '#1E293B',
+        fontSize: Math.round(naturalW * 0.011),
+        cardBg: '#FFFFFF',
+      },
+      {
+        id: `slice_vtl_step_3_${Date.now()}`,
+        name: 'Fase 04: 95% TARGET PEMBERDAYAAN',
+        text: 'FASE 04\n95% TARGET PEMBERDAYAAN\n\nProgram pemberdayaan masyarakat menargetkan 95% partisipasi warga dalam pelatihan keterampilan dan akses ke layanan kesehatan.\n\n✦ TAHAP 04',
+        x: 0.728,
+        y: 0.492,
+        w: 0.220,
+        h: 0.370,
+        textColor: '#1E293B',
+        fontSize: Math.round(naturalW * 0.011),
+        cardBg: '#FFFFFF',
+      },
+      {
+        id: `slice_vtl_closing_${Date.now()}`,
+        name: 'Sintesis Penutup',
+        text: 'Kolaborasi pemerintah dan warga memastikan target pengentasan kemiskinan tercapai tepat waktu.',
+        x: 0.050,
+        y: 0.872,
+        w: 0.900,
+        h: 0.036,
+        textColor: '#0F172A',
+        fontWeight: 'bold',
+        textAlign: 'center',
+        fontSize: Math.round(naturalW * 0.011),
+        cardBg: '#FFFFFF',
+      },
+      {
+        id: `slice_vtl_footer_${Date.now()}`,
+        name: 'Identitas Dewan (Footer)',
+        text: `${authorText}                      2026`,
+        x: 0.050,
+        y: 0.922,
+        w: 0.900,
+        h: 0.038,
+        textColor: '#0F172A',
+        fontWeight: 'bold',
+        fontSize: Math.round(naturalW * 0.012),
+        cardBg: '#FFFFFF',
+      },
+    ];
+  }
+
   // DEFAULT & NARRATIVE WAVE (Pelatihan Balai Kerja 4 Dimensi Zigzag)
   const titleText = (title || 'PENURUNAN PENGANGGURAN MELALUI PELATIHAN').toUpperCase();
   const subtitleText = subtitle || 'Program pelatihan di Balai Latihan Kerja Jawa Barat berhasil menurunkan angka pengangguran terbuka sebesar 12,5% di Kota Bandung. Dengan alokasi anggaran Rp 300 miliar, program ini mendukung 10.000 peserta pelatihan setiap tahun.';
@@ -1416,6 +1605,28 @@ async function createCleanPosterBackground(
   });
 }
 
+/**
+ * Menempatkan gambar latar dengan aturan `background-size: cover; background-position: center`
+ * — identik dengan cara Chromium menempatkan raw canvas saat merender poster, sehingga
+ * komponen hasil manifest jatuh tepat di posisi aslinya.
+ */
+function placeImageCover(img: FabricImage, targetW: number, targetH: number) {
+  const iw = img.width || targetW;
+  const ih = img.height || targetH;
+  const scale = Math.max(targetW / iw, targetH / ih);
+  img.set({
+    originX: 'left',
+    originY: 'top',
+    left: (targetW - iw * scale) / 2,
+    top: (targetH - ih * scale) / 2,
+    scaleX: scale,
+    scaleY: scale,
+    selectable: false,
+    evented: false,
+  });
+  img.setCoords();
+}
+
 export function MagicLayersModal({
   isOpen,
   onClose,
@@ -1433,6 +1644,8 @@ export function MagicLayersModal({
   const { toast } = useToast();
   const canvasElRef = useRef<HTMLCanvasElement | null>(null);
   const fabricRef = useRef<FabricCanvas | null>(null);
+  // Saat ekspor, overlay garis bantu komponen (gaya Canva) tidak ikut dirender
+  const isExportingRef = useRef(false);
   const workspaceRef = useRef<HTMLDivElement | null>(null);
 
   // Studio UI Navigation State
@@ -1661,6 +1874,7 @@ export function MagicLayersModal({
         });
         canvas.on('object:added', () => refreshLayersList(canvas));
         canvas.on('object:removed', () => refreshLayersList(canvas));
+        attachComponentOutlineOverlay(canvas, () => isExportingRef.current);
         canvas.on('text:changed', (e) => {
           if (e.target instanceof Textbox) {
             setCurrentTextContent(e.target.text || '');
@@ -1693,6 +1907,8 @@ export function MagicLayersModal({
           try {
             const sanitizedJson = savedLayersJson.replace(/https?:\/\/[^\/]+(?::\d+)?\/uploads\//g, '/uploads/');
             await canvas.loadFromJSON(sanitizedJson);
+            // Pulihkan renderer dekorasi (kotak badge, border kartu) yang tidak ikut terserialisasi
+            rehydrateMlObjects(canvas);
             canvas.renderAll();
             if (!isDisposed) {
               refreshLayersList(canvas);
@@ -1757,6 +1973,58 @@ export function MagicLayersModal({
       const { width: naturalW, height: naturalH } = canvasNaturalSizeRef.current;
 
       // ════════════════════════════════════════════════════════════════════════
+      // JALUR UTAMA (BEST PRACTICE): LAYER MANIFEST DARI RENDER CHROMIUM
+      // Setiap kotak kartu & teks (badge, judul, paragraf, tag) diekstrak dari DOM
+      // saat poster dirender, lalu dibangun ulang sebagai komponen terpisah yang
+      // bisa diedit langsung — 1:1 dengan poster, di atas Master Raw Canvas.
+      // ════════════════════════════════════════════════════════════════════════
+      setPipelineStep(1);
+      setPipelineStatusText('1/4 Membaca peta elemen poster (kartu, badge, judul, paragraf)...');
+      const layerData = await fetchPosterLayerData(publicationId);
+      const effectiveRawCanvasUrl = rawCanvasUrl || layerData.rawCanvasUrl;
+
+      if (layerData.manifest && effectiveRawCanvasUrl) {
+        const manifest = layerData.manifest;
+
+        setPipelineStep(2);
+        setPipelineStatusText('2/4 Memuat tipografi asli poster...');
+        await ensurePosterFontsLoaded(manifest);
+
+        setPipelineStep(3);
+        setPipelineStatusText('3/4 Memisahkan kotak kartu dan setiap teks menjadi komponen terpisah...');
+        const objects = buildObjectsFromManifest(manifest, naturalW, naturalH);
+
+        setPipelineStep(4);
+        setPipelineStatusText('4/4 Memasang latar belakang bersih (Master Raw Canvas)...');
+        const rawImg = await loadResilientFabricImage(resolveSafeImageUrl(effectiveRawCanvasUrl));
+        placeImageCover(rawImg, naturalW, naturalH);
+        (rawImg as any).customId = 'layer_background';
+        (rawImg as any).customData = { name: 'Latar Belakang Bersih (Tanpa Teks)', isBackground: true };
+
+        canvas.discardActiveObject();
+        canvas.getObjects().slice().forEach((o) => canvas.remove(o));
+        canvas.add(rawImg);
+        canvas.sendObjectToBack(rawImg);
+        objects.forEach((o) => canvas.add(o));
+
+        canvas.requestRenderAll();
+        refreshLayersList(canvas);
+        setIsDecomposed(true);
+
+        const textCount = objects.filter((o) => o instanceof Textbox).length;
+        toast({
+          type: 'success',
+          title: 'Magic Layers Selesai',
+          description: `${textCount} teks dan ${objects.length - textCount} kotak berhasil dipisahkan. Klik dua kali pada teks untuk mengedit langsung.`,
+        });
+        return;
+      }
+
+      console.warn(
+        '[MagicLayers] Layer manifest tidak tersedia untuk poster ini (poster lama). Menggunakan pemetaan archetype.'
+      );
+
+      // ════════════════════════════════════════════════════════════════════════
       // TAHAP 1: DETEKSI TEKS (OCR) & ISOLASI BOUNDING BOX
       // ════════════════════════════════════════════════════════════════════════
       setPipelineStep(1);
@@ -1808,46 +2076,16 @@ export function MagicLayersModal({
       if (existingBg) {
         canvas.remove(existingBg);
       }
-      cleanImg.set({
-        originX: 'left',
-        originY: 'top',
-        left: 0,
-        top: 0,
-        scaleX: naturalW / (cleanImg.width || naturalW),
-        scaleY: naturalH / (cleanImg.height || naturalH),
-        selectable: false,
-        evented: false,
-      });
-      cleanImg.setCoords();
+      placeImageCover(cleanImg, naturalW, naturalH);
       (cleanImg as any).customId = 'layer_background';
       (cleanImg as any).customData = { name: 'Poster Bersih (Latar Belakang Inpainted)', isBackground: true };
       canvas.add(cleanImg);
       canvas.sendObjectToBack(cleanImg);
 
-      // Muat gambar sumber HTMLImageElement untuk pemotongan irisan komponen secara pixel-perfect
-      const sourceImg = await loadResilientHTMLImage(imageUrl);
-
-      // Ekstrak dan tambahkan setiap irisan komponen (pixel-perfect slice) ke kanvas
-      for (const def of componentDefs) {
-        const cropX = Math.round(def.x * naturalW);
-        const cropY = Math.round(def.y * naturalH);
-        const cropW = Math.round(def.w * naturalW);
-        const cropH = Math.round(def.h * naturalH);
-
-        const sliceImg = await createCroppedComponentSlice(
-          sourceImg,
-          { x: cropX, y: cropY, w: cropW, h: cropH },
-          {
-            id: def.id,
-            name: def.name,
-            text: def.text,
-            naturalW,
-            naturalH,
-            def,
-          }
-        );
-        canvas.add(sliceImg);
-      }
+      // Pecah setiap kartu & isinya menjadi komponen Kotak Kartu (Rect) + Teks Terpisah (Textbox)
+      // sehingga user bisa langsung klik & edit kalimat di masing-masing kotak komponen (gaya Canva)
+      const granularObjects = buildGranularObjectsFromComponentDefs(componentDefs, naturalW, naturalH);
+      granularObjects.forEach((obj) => canvas.add(obj));
 
       canvas.renderAll();
       refreshLayersList(canvas);
@@ -2377,17 +2615,24 @@ export function MagicLayersModal({
       const sliceObjects = canvas.getObjects().filter((o) => (o as any).customData?.isComponentSlice);
       sliceObjects.forEach((o) => o.set('stroke', undefined));
       canvas.discardActiveObject();
+      isExportingRef.current = true;
       canvas.renderAll();
 
-      const renderedUrl = canvas.toDataURL({
-        format: 'png',
-        multiplier: 1.0,
-      });
+      let renderedUrl = '';
+      try {
+        renderedUrl = canvas.toDataURL({
+          format: 'png',
+          multiplier: 1.0,
+        });
+      } finally {
+        isExportingRef.current = false;
+      }
 
       sliceObjects.forEach((o) => o.set('stroke', '#7D2AE8'));
       canvas.renderAll();
 
-      const layersJson = JSON.stringify(fabricRef.current.toJSON());
+      // Sertakan customId/customData agar nama layer & dekorasi komponen bisa dipulihkan
+      const layersJson = JSON.stringify(fabricRef.current.toObject(['customId', 'customData']));
 
       onApplyChanges(renderedUrl, layersJson);
 
@@ -2415,12 +2660,18 @@ export function MagicLayersModal({
       const sliceObjects = canvas.getObjects().filter((o) => (o as any).customData?.isComponentSlice);
       sliceObjects.forEach((o) => o.set('stroke', undefined));
       canvas.discardActiveObject();
+      isExportingRef.current = true;
       canvas.renderAll();
 
-      const renderedUrl = canvas.toDataURL({
-        format: 'png',
-        multiplier: 1.5,
-      });
+      let renderedUrl = '';
+      try {
+        renderedUrl = canvas.toDataURL({
+          format: 'png',
+          multiplier: 1.5,
+        });
+      } finally {
+        isExportingRef.current = false;
+      }
 
       sliceObjects.forEach((o) => o.set('stroke', '#7D2AE8'));
       canvas.renderAll();

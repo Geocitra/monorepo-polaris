@@ -167,9 +167,25 @@ export class StudioPosterRegenerationHandler {
 
       const posterBuffer = composed.buffer;
       const posterSizeBytes = composed.sizeBytes;
+
+      let rawCanvasPublicUrl = '';
+      if (artCollage.imageBuffer && artCollage.imageBuffer.length > 0) {
+        const rawDestPath = `posters/${tenantId}/raw-canvas-${Date.now()}-${publicationId}.webp`;
+        try {
+          const rawUpload = await storageAdapter.uploadBuffer(artCollage.imageBuffer, {
+            destinationPath: rawDestPath,
+            contentType: 'image/webp',
+            contentLength: artCollage.imageBuffer.length,
+          });
+          rawCanvasPublicUrl = rawUpload.publicUrl;
+        } catch {}
+      }
+
       const promptUsedJson = JSON.stringify({
         engine: 'ART_COLLAGE_CHROMIUM',
         renderer: 'chromium',
+        rawCanvasUrl: rawCanvasPublicUrl || undefined,
+        layoutManifest: composed.layoutManifest,
         blueprintId: artCollage.blueprintId,
         archetype: artCollage.archetype,
         referenceFile: artCollage.referenceFile,

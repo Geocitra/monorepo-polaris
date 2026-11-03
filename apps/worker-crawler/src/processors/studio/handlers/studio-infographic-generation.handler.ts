@@ -257,6 +257,7 @@ export class StudioInfographicGenerationHandler {
         engine: 'ART_COLLAGE_INFOGRAPHIC_CHROMIUM',
         renderer: 'chromium',
         rawCanvasUrl: rawCanvasPublicUrl,
+        layoutManifest: composed.layoutManifest,
         blueprintId: artCollage.blueprintId,
         archetype: artCollage.archetype,
         referenceFile: artCollage.referenceFile,
