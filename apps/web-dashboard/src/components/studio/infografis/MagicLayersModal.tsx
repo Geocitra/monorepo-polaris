@@ -251,7 +251,8 @@ export function MagicLayersModal({
     }
   };
 
-  // ─── RESIZE & RESPONSIVE FIT ENGINE (100% RASIO PRESISI TANPA LEBIHAN PUTIH) ───
+  // ─── RESIZE & RESPONSIVE FIT ENGINE (100% RASIO PRESISI MENGGUNAKAN CSS DISPLAY) ───
+  // Mempertahankan resolusi buffer asli gambar, hanya mengubah ukuran display CSS agar pas ke layar
   const updateResponsiveFit = useCallback(() => {
     const canvas = fabricRef.current;
     const container = workspaceRef.current;
@@ -272,18 +273,21 @@ export function MagicLayersModal({
     const calculatedFit = Math.min(availW / naturalW, availH / naturalH);
     setFitScale(calculatedFit);
 
-    const effectiveZoom = calculatedFit * zoomLevel;
-    const displayW = Math.round(naturalW * effectiveZoom);
-    const displayH = Math.round(naturalH * effectiveZoom);
+    const effectiveScale = calculatedFit * zoomLevel;
+    const dispW = Math.round(naturalW * effectiveScale);
+    const dispH = Math.round(naturalH * effectiveScale);
 
-    setDisplayDimensions({ width: displayW, height: displayH });
+    setDisplayDimensions({ width: dispW, height: dispH });
 
     try {
-      canvas.setDimensions({ width: displayW, height: displayH });
-      canvas.setZoom(effectiveZoom);
+      // cssOnly: true menjaga buffer kanvas tetap 1080x1350 tanpa distorsi atau double scaling
+      canvas.setDimensions(
+        { width: `${dispW}px`, height: `${dispH}px` },
+        { cssOnly: true }
+      );
       canvas.renderAll();
     } catch (err) {
-      console.warn('[MagicLayers] setDimensions error suppressed:', err);
+      console.warn('[MagicLayers] setDimensions error:', err);
     }
   }, [zoomLevel]);
 
@@ -307,6 +311,8 @@ export function MagicLayersModal({
 
   // Set default Canva-style selection styling
   useEffect(() => {
+    FabricObject.ownDefaults.originX = 'left';
+    FabricObject.ownDefaults.originY = 'top';
     FabricObject.ownDefaults.transparentCorners = false;
     FabricObject.ownDefaults.cornerColor = '#FFFFFF';
     FabricObject.ownDefaults.cornerStrokeColor = '#7D2AE8'; // Canva purple
@@ -317,47 +323,7 @@ export function MagicLayersModal({
     FabricObject.ownDefaults.padding = 4;
   }, []);
 
-  // ─── MAGIC CUTOUT FUNCTION ───
-  const executeCutout = async (canvas: FabricCanvas) => {
-    if (isCuttingOut) return;
-    setIsCuttingOut(true);
-    setCutoutSuccess(false);
-
-    try {
-      const safeUrl = resolveSafeImageUrl(imageUrl);
-      const { removeBackground } = await import('@imgly/background-removal');
-      const blob = await removeBackground(safeUrl);
-      const cutoutUrl = URL.createObjectURL(blob);
-
-      const cutoutImg = await loadResilientFabricImage(cutoutUrl);
-      if (!fabricRef.current || canvas !== fabricRef.current || (canvas as any).isDisposed) return;
-
-      // Posisikan tepat 1:1 di atas gambar latar belakang sehingga menyatu 100% sempurna
-      cutoutImg.set({
-        left: 0,
-        top: 0,
-        scaleX: 1,
-        scaleY: 1,
-        selectable: true,
-      });
-
-      (cutoutImg as any).customId = `cutout_${Date.now()}`;
-      (cutoutImg as any).customData = { name: '✨ Objek Depan (Subjek Manusia/Objek)', isCutout: true };
-
-      canvas.add(cutoutImg);
-      canvas.bringObjectToFront(cutoutImg);
-      canvas.renderAll();
-
-      refreshLayersList(canvas);
-      setCutoutSuccess(true);
-    } catch (err: any) {
-      console.warn('[MagicLayers] Ekstraksi cutout objek depan terlewati:', err);
-    } finally {
-      setIsCuttingOut(false);
-    }
-  };
-
-  // ─── INITIALIZE FABRIC CANVAS (LIFECYCLE TERISOLASI TANPA RACE CONDITION) ───
+  // ─── INITIALIZE FABRIC CANVAS (100% PERSIS POSTER ASLI GAMBAR 2) ───
   useEffect(() => {
     if (!isOpen || !canvasElRef.current) return;
 
@@ -384,7 +350,6 @@ export function MagicLayersModal({
         canvasNaturalSizeRef.current = { width: naturalW, height: naturalH };
 
         // 2. Inisialisasi Fabric Canvas LANGSUNG dengan resolusi asli poster
-        // Ini mencegah pemanggilan setDimensions pada canvas yang belum stabil
         const canvas = new FabricCanvas(canvasElRef.current, {
           width: naturalW,
           height: naturalH,
@@ -414,15 +379,18 @@ export function MagicLayersModal({
           }
         });
 
-        // 3. Tambahkan Latar Belakang Poster 1:1 Tanpa Distorsi
+        // 3. Tambahkan Latar Belakang Poster 1:1 Mengisi Penuh Kanvas Tanpa Distorsi
         bgImg.set({
+          originX: 'left',
+          originY: 'top',
           left: 0,
           top: 0,
-          scaleX: 1,
-          scaleY: 1,
+          scaleX: naturalW / (bgImg.width || naturalW),
+          scaleY: naturalH / (bgImg.height || naturalH),
           selectable: false,
           evented: false,
         });
+        bgImg.setCoords();
 
         (bgImg as any).customId = 'layer_background';
         (bgImg as any).customData = { name: '🖼️ Poster Asli (Latar Belakang)', isBackground: true };
@@ -438,6 +406,9 @@ export function MagicLayersModal({
             if (!isDisposed) {
               refreshLayersList(canvas);
               updateResponsiveFit();
+              setTimeout(() => {
+                if (!isDisposed) updateResponsiveFit();
+              }, 60);
               setIsLoading(false);
             }
             return;
@@ -446,16 +417,16 @@ export function MagicLayersModal({
           }
         }
 
-        // Tampilan awal 100% bersih dan sempurna (identik dengan Gambar 2)
+        // Tampilan awal 100% bersih, tajam, dan sempurna persis seperti poster asli
         canvas.renderAll();
         if (!isDisposed) {
           refreshLayersList(canvas);
           updateResponsiveFit();
+          setTimeout(() => {
+            if (!isDisposed) updateResponsiveFit();
+          }, 60);
           setIsLoading(false);
         }
-
-        // Jalankan pemisahan subjek depan AI secara mulus
-        executeCutout(canvas);
       } catch (err: any) {
         console.error('Error initializing Magic Layers canvas:', err);
         if (!isDisposed) {
@@ -482,6 +453,73 @@ export function MagicLayersModal({
       }
     };
   }, [isOpen, imageUrl, savedLayersJson]);
+
+  // ─── MAGIC CUTOUT FUNCTION (KETIKA PENGGUNA MENGKLIK TOMBOL PISAHKAN OBJEK) ───
+  const handleMagicCutout = async () => {
+    if (!fabricRef.current || isCuttingOut) return;
+    setIsCuttingOut(true);
+    setCutoutSuccess(false);
+
+    try {
+      toast({
+        type: 'info',
+        title: 'Memproses Magic Cutout...',
+        description: 'Mengekstrak subjek manusia/objek menjadi layer terpisah di depan. Harap tunggu sebentar.',
+      });
+
+      const safeUrl = resolveSafeImageUrl(imageUrl);
+      const { removeBackground } = await import('@imgly/background-removal');
+      const blob = await removeBackground(safeUrl);
+      const cutoutUrl = URL.createObjectURL(blob);
+
+      const cutoutImg = await loadResilientFabricImage(cutoutUrl);
+      if (!fabricRef.current) return;
+
+      const naturalW = canvasNaturalSizeRef.current.width;
+      const naturalH = canvasNaturalSizeRef.current.height;
+
+      // Skala yang presisi agar pas 1:1 di atas gambar latar belakang
+      const scaleX = naturalW / (cutoutImg.width || 1);
+      const scaleY = naturalH / (cutoutImg.height || 1);
+
+      cutoutImg.set({
+        originX: 'left',
+        originY: 'top',
+        left: 0,
+        top: 0,
+        scaleX,
+        scaleY,
+        selectable: true,
+      });
+      cutoutImg.setCoords();
+
+      (cutoutImg as any).customId = `cutout_${Date.now()}`;
+      (cutoutImg as any).customData = { name: '✨ Objek Depan (Cutout Subjek)', isCutout: true };
+
+      fabricRef.current.add(cutoutImg);
+      fabricRef.current.bringObjectToFront(cutoutImg);
+      fabricRef.current.renderAll();
+
+      refreshLayersList(fabricRef.current);
+      setCutoutSuccess(true);
+      setActiveTab('layers');
+
+      toast({
+        type: 'success',
+        title: 'Magic Cutout Berhasil!',
+        description: 'Subjek berhasil dipisahkan menjadi layer di depan! Anda kini dapat menggesernya atau menaruh teks di belakangnya.',
+      });
+    } catch (err: any) {
+      console.error('Magic Cutout error:', err);
+      toast({
+        type: 'error',
+        title: 'Magic Cutout Belum Berhasil',
+        description: err?.message || 'Gagal mengekstrak subjek objek.',
+      });
+    } finally {
+      setIsCuttingOut(false);
+    }
+  };
 
   // ─── LIVE SENTENCE / TEXT EDITING HANDLER ───
   const handleLiveTextChange = (newText: string) => {
@@ -566,6 +604,8 @@ export function MagicLayersModal({
 
     // 1. Layer Judul Utama yang rapi dan sesuai gaya poster Gambar 2
     const headline = new Textbox(titleText.toUpperCase(), {
+      originX: 'left',
+      originY: 'top',
       left: w * 0.07,
       top: h * 0.08,
       width: w * 0.86,
@@ -578,12 +618,15 @@ export function MagicLayersModal({
       editable: true,
       shadow: new Shadow({ color: 'rgba(0,0,0,0.1)', blur: 4, offsetX: 0, offsetY: 1 }),
     });
+    headline.setCoords();
     (headline as any).customId = `grabbed_headline_${Date.now()}`;
     (headline as any).customData = { name: '📝 Judul Utama (Dapat Diedit)' };
     canvas.add(headline);
 
     // 2. Kartu Tonggak Pembahasan (Gaya Kartu Putih & Badge Oranye persis Gambar 2)
     const cardTonggak = new Textbox('TONGGAK 01: 15.000 PESERTA PELATIHAN\nBalai Latihan Kerja telah melatih 15.000 peserta dengan kurikulum kebutuhan industri.', {
+      originX: 'left',
+      originY: 'top',
       left: w * 0.50,
       top: h * 0.28,
       width: w * 0.44,
@@ -596,6 +639,7 @@ export function MagicLayersModal({
       editable: true,
       shadow: new Shadow({ color: 'rgba(0,0,0,0.12)', blur: 8, offsetX: 0, offsetY: 2 }),
     });
+    cardTonggak.setCoords();
     (cardTonggak as any).customId = `grabbed_tonggak_${Date.now()}`;
     (cardTonggak as any).customData = { name: '📌 Kartu Tonggak (Dapat Diedit)' };
     canvas.add(cardTonggak);
@@ -616,6 +660,8 @@ export function MagicLayersModal({
   const addTextHeading = () => {
     if (!fabricRef.current) return;
     const txt = new Textbox('JUDUL BARU POSTER', {
+      originX: 'left',
+      originY: 'top',
       left: canvasNaturalSizeRef.current.width / 2 - 200,
       top: canvasNaturalSizeRef.current.height / 2 - 40,
       width: 400,
@@ -628,6 +674,7 @@ export function MagicLayersModal({
       textAlign: 'center',
       shadow: new Shadow({ color: 'rgba(0,0,0,0.15)', blur: 6, offsetX: 0, offsetY: 1 }),
     });
+    txt.setCoords();
     (txt as any).customId = `heading_${Date.now()}`;
     (txt as any).customData = { name: '📝 Judul Baru' };
     fabricRef.current.add(txt);
@@ -638,6 +685,8 @@ export function MagicLayersModal({
   const addTextBody = () => {
     if (!fabricRef.current) return;
     const txt = new Textbox('Tuliskan poin narasi atau kalimat penjelasan kebijakan Anda di sini.', {
+      originX: 'left',
+      originY: 'top',
       left: canvasNaturalSizeRef.current.width / 2 - 220,
       top: canvasNaturalSizeRef.current.height / 2,
       width: 440,
@@ -648,6 +697,7 @@ export function MagicLayersModal({
       padding: 10,
       shadow: new Shadow({ color: 'rgba(0,0,0,0.12)', blur: 6, offsetX: 0, offsetY: 2 }),
     });
+    txt.setCoords();
     (txt as any).customId = `body_${Date.now()}`;
     (txt as any).customData = { name: '📄 Poin Kalimat' };
     fabricRef.current.add(txt);
@@ -658,6 +708,8 @@ export function MagicLayersModal({
   const addDimensiCard = () => {
     if (!fabricRef.current) return;
     const txt = new Textbox('TONGGAK BARU: NAMA AGENDA\nTuliskan uraian pencapaian atau kebijakan daerah di sini.', {
+      originX: 'left',
+      originY: 'top',
       left: canvasNaturalSizeRef.current.width / 2 - 220,
       top: canvasNaturalSizeRef.current.height / 2 - 50,
       width: 440,
@@ -668,6 +720,7 @@ export function MagicLayersModal({
       padding: 12,
       shadow: new Shadow({ color: 'rgba(0,0,0,0.15)', blur: 8, offsetX: 0, offsetY: 2 }),
     });
+    txt.setCoords();
     (txt as any).customId = `dimensi_${Date.now()}`;
     (txt as any).customData = { name: '📌 Kartu Tonggak Baru' };
     fabricRef.current.add(txt);
@@ -678,6 +731,8 @@ export function MagicLayersModal({
   const addBadgeShape = () => {
     if (!fabricRef.current) return;
     const txt = new Textbox('★ TONGGAK 01: PRIORITAS DAERAH ★', {
+      originX: 'left',
+      originY: 'top',
       left: canvasNaturalSizeRef.current.width / 2 - 180,
       top: canvasNaturalSizeRef.current.height / 2 + 50,
       width: 360,
@@ -690,6 +745,7 @@ export function MagicLayersModal({
       textAlign: 'center',
       shadow: new Shadow({ color: 'rgba(0,0,0,0.2)', blur: 6, offsetX: 0, offsetY: 2 }),
     });
+    txt.setCoords();
     (txt as any).customId = `badge_${Date.now()}`;
     (txt as any).customData = { name: '🏷️ Badge Oranye' };
     fabricRef.current.add(txt);
@@ -795,27 +851,12 @@ export function MagicLayersModal({
     try {
       fabricRef.current.discardActiveObject();
 
-      const naturalW = canvasNaturalSizeRef.current.width;
-      const naturalH = canvasNaturalSizeRef.current.height;
-      const currentZoom = fabricRef.current.getZoom();
-      const currentW = fabricRef.current.getWidth();
-      const currentH = fabricRef.current.getHeight();
-
-      fabricRef.current.setDimensions({ width: naturalW, height: naturalH });
-      fabricRef.current.setZoom(1.0);
-      fabricRef.current.renderAll();
-
       const renderedUrl = fabricRef.current.toDataURL({
         format: 'png',
         multiplier: 1.0,
       });
 
       const layersJson = JSON.stringify(fabricRef.current.toJSON());
-
-      // Restore viewport scale
-      fabricRef.current.setDimensions({ width: currentW, height: currentH });
-      fabricRef.current.setZoom(currentZoom);
-      fabricRef.current.renderAll();
 
       onApplyChanges(renderedUrl, layersJson);
 
@@ -841,24 +882,10 @@ export function MagicLayersModal({
     try {
       fabricRef.current.discardActiveObject();
 
-      const naturalW = canvasNaturalSizeRef.current.width;
-      const naturalH = canvasNaturalSizeRef.current.height;
-      const currentZoom = fabricRef.current.getZoom();
-      const currentW = fabricRef.current.getWidth();
-      const currentH = fabricRef.current.getHeight();
-
-      fabricRef.current.setDimensions({ width: naturalW, height: naturalH });
-      fabricRef.current.setZoom(1.0);
-      fabricRef.current.renderAll();
-
       const renderedUrl = fabricRef.current.toDataURL({
         format: 'png',
         multiplier: 1.5,
       });
-
-      fabricRef.current.setDimensions({ width: currentW, height: currentH });
-      fabricRef.current.setZoom(currentZoom);
-      fabricRef.current.renderAll();
 
       const link = document.createElement('a');
       link.download = `polaris-magic-layers-${Date.now()}.png`;
@@ -949,6 +976,30 @@ export function MagicLayersModal({
 
         {/* SISI KANAN: TOMBOL MAGIC AI, UNDUH HD & TERAPKAN DESAIN */}
         <div className="flex items-center gap-2">
+          {/* TOMBOL PISAHKAN OBJEK DEPAN (CUTOUT) */}
+          <Button
+            size="sm"
+            onClick={handleMagicCutout}
+            disabled={isCuttingOut}
+            className={`text-xs font-bold gap-1.5 shadow-xs transition-all cursor-pointer ${
+              cutoutSuccess
+                ? 'bg-emerald-600 hover:bg-emerald-700 text-white'
+                : 'bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white'
+            }`}
+            title="Pisahkan subjek/orang dari latar belakang agar teks bisa berada di belakangnya"
+          >
+            {isCuttingOut ? (
+              <Loader2 className="h-3.5 w-3.5 animate-spin" />
+            ) : cutoutSuccess ? (
+              <Check className="h-3.5 w-3.5 text-emerald-100" />
+            ) : (
+              <Wand2 className="h-3.5 w-3.5 text-purple-200" />
+            )}
+            <span className="hidden sm:inline">
+              {isCuttingOut ? 'Mengekstrak Subjek AI...' : cutoutSuccess ? 'Objek Terpisah!' : '🪄 Pisahkan Objek Depan'}
+            </span>
+          </Button>
+
           {/* TOMBOL URAI TEKS (GRAB TEXT) */}
           <Button
             size="sm"
@@ -1184,7 +1235,7 @@ export function MagicLayersModal({
             <div className="flex items-center gap-2">
               <Sparkles className="h-3.5 w-3.5 text-purple-600" />
               <span>
-                <strong>Mode Magic Layers:</strong> Poster tampil utuh dan sempurna. Klik objek depan untuk menggesernya, atau klik tombol <strong>"🪄 Ambil Teks"</strong> untuk mengedit kata-kata.
+                <strong>Mode Magic Layers:</strong> Poster tampil utuh dan sempurna. Klik tombol <strong>"🪄 Pisahkan Objek Depan"</strong> untuk memisahkan subjek, atau <strong>"🪄 Ambil Teks"</strong> untuk mengedit kalimat.
               </span>
             </div>
             {isCuttingOut && (
@@ -1349,8 +1400,8 @@ export function MagicLayersModal({
               {/* TIPS HELPER BAWAH */}
               <div className="p-3.5 border-t border-slate-100 bg-slate-50/80 text-[11px] text-slate-500 space-y-1.5">
                 <span className="font-bold text-slate-700 block">💡 Tips Magic Layers:</span>
-                <p>1. Objek depan (pekerja/manusia) sudah dipisahkan otomatis.</p>
-                <p>2. Klik layer teks, lalu tekan tombol <strong>⬇️ Turunkan</strong>.</p>
+                <p>1. Klik <strong>🪄 Pisahkan Objek Depan</strong> untuk memotong subjek orang.</p>
+                <p>2. Tambahkan teks, lalu klik <strong>⬇️ Turunkan</strong>.</p>
                 <p className="text-purple-700 font-bold">➔ Kalimat otomatis berada di belakang figur orang!</p>
               </div>
             </div>
@@ -1461,15 +1512,15 @@ export function MagicLayersModal({
           )}
         </div>
 
-        {/* ─── CENTER CANVAS WORKSPACE (EXACT RATIO PRESISI 100% TANPA LEBIHAN PUTIH) ─── */}
+        {/* ─── CENTER CANVAS WORKSPACE (100% PERSIS UKURAN POSTER ASLI GAMBAR 2) ─── */}
         <main
           ref={workspaceRef}
-          className="flex-1 bg-[#F1F3F5] relative flex items-center justify-center p-6 overflow-auto"
+          className="flex-1 bg-[#F1F3F5] relative flex items-center justify-center p-4 sm:p-8 overflow-auto"
         >
           {isLoading && (
             <div className="absolute inset-0 z-20 flex flex-col items-center justify-center bg-white/80 backdrop-blur-xs gap-3">
               <Loader2 className="h-8 w-8 text-purple-600 animate-spin" />
-              <span className="text-xs font-bold text-slate-700">Menyiapkan Lembaran Poster...</span>
+              <span className="text-xs font-bold text-slate-700">Memuat Lembaran Poster...</span>
             </div>
           )}
 
@@ -1477,8 +1528,8 @@ export function MagicLayersModal({
           <div
             className="shadow-2xl ring-1 ring-slate-900/10 bg-white transition-all duration-75 overflow-hidden flex items-center justify-center shrink-0"
             style={{
-              width: displayDimensions.width ? `${displayDimensions.width}px` : 'auto',
-              height: displayDimensions.height ? `${displayDimensions.height}px` : 'auto',
+              width: displayDimensions.width > 0 ? `${displayDimensions.width}px` : 'auto',
+              height: displayDimensions.height > 0 ? `${displayDimensions.height}px` : 'auto',
             }}
           >
             <canvas ref={canvasElRef} />
