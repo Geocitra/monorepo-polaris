@@ -452,6 +452,7 @@ export default function ArticleLibraryPage() {
           onClose={() => setMagicLayersItem(null)}
           imageUrl={magicLayersItem.thumbnailUrl}
           initialTitle={magicLayersItem.title}
+          initialSubtitle={magicLayersItem.excerpt || ''}
           initialAuthor={profile?.fullName ? `${profile.fullName} • ${profile.partyAffiliation || ''}` : 'POLARIS GOV'}
           aspectRatio="4:5"
           onApplyChanges={async (newImageUrl, layersJson) => {

@@ -245,6 +245,7 @@ export function InfographicCanvas({
         onClose={() => setShowMagicLayers(false)}
         imageUrl={iteration.imageUrl}
         initialTitle={iteration.title}
+        initialSubtitle={iteration.caption || iteration.prompt}
         initialAuthor={`${authorName} • ${partyAffiliation}`}
         aspectRatio={iteration.aspectRatio}
         savedLayersJson={iteration.layersData}
