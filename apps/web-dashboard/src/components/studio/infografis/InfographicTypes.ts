@@ -82,6 +82,7 @@ export interface InfographicIteration {
   publicationId?: string;
   isPublished?: boolean;
   publishedUrl?: string;
+  layersData?: string;
 }
 
 export interface InfographicSession {

@@ -597,6 +597,26 @@ export default function InfografisStudioPage() {
     }
   }
 
+  // Pembaruan iterasi dari Magic Layers Canvas Editor
+  function handleUpdateCurrentIteration(updatedFields: Partial<InfographicIteration>) {
+    if (!currentIteration) return;
+    const updated = sessionsRef.current.map((s) => {
+      if (s.id === activeSessionId) {
+        return {
+          ...s,
+          updatedAt: new Date().toISOString(),
+          iterations: s.iterations.map((it) =>
+            it.id === currentIteration.id
+              ? { ...it, ...updatedFields }
+              : it
+          ),
+        };
+      }
+      return s;
+    });
+    persistSessions(updated);
+  }
+
   return (
     <div className="flex min-h-screen bg-slate-100/70 dark:bg-[#070A12] text-slate-900 dark:text-slate-100 font-sans theme-transition">
       <Sidebar subdomain={profile?.subdomain} customDomain={profile?.customDomain} />
@@ -699,6 +719,7 @@ export default function InfografisStudioPage() {
                 publishing={publishing}
                 publishedUrl={publishedUrl}
                 isUnpaid={isUnpaid}
+                onUpdateIteration={handleUpdateCurrentIteration}
               />
 
               {/* STRIP ITERASI CEPAT (DI BAWAH KANVAS) */}
