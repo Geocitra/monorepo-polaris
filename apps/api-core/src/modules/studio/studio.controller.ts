@@ -43,9 +43,25 @@ export class StudioController {
       author?: string;
       naturalW?: number;
       naturalH?: number;
-    }
+    },
   ) {
     return await this.magicLayersService.analyzeDocumentLayout(dto);
+  }
+
+  // Inpainting Latar Belakang AI (Menambal area kosong dengan pola tekstur sekitar solid)
+  @Post('magic-layers/inpaint')
+  @SkipRlsContext()
+  @HttpCode(HttpStatus.OK)
+  async inpaintMagicLayers(
+    @Body()
+    dto: {
+      imageUrl: string;
+      naturalW?: number;
+      naturalH?: number;
+      componentBounds: Array<{ x: number; y: number; w: number; h: number; cardBg?: string }>;
+    },
+  ) {
+    return await this.magicLayersService.inpaintPosterBackground(dto);
   }
 
   // Pengecualian: morning-briefing dapat dibaca anggota terdaftar tanpa error 403

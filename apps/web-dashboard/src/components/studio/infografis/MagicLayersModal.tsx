@@ -479,81 +479,60 @@ function smartTextureInpainting(
   ctx: CanvasRenderingContext2D,
   rect: { x: number; y: number; w: number; h: number },
   naturalW: number,
-  naturalH: number
+  naturalH: number,
+  paperColor: string = '#FAF8F5',
+  def?: ComponentSliceDef
 ) {
   const rx = Math.max(0, Math.min(naturalW - 1, Math.round(rect.x)));
   const ry = Math.max(0, Math.min(naturalH - 1, Math.round(rect.y)));
   const rw = Math.max(1, Math.min(naturalW - rx, Math.round(rect.w)));
   const rh = Math.max(1, Math.min(naturalH - ry, Math.round(rect.h)));
 
-  const margin = 12;
-  const topY = Math.max(0, ry - margin);
-  const botY = Math.min(naturalH - 1, ry + rh + margin);
-  const leftX = Math.max(0, rx - margin);
-  const rightX = Math.min(naturalW - 1, rx + rw + margin);
+  // Parse paperColor menjadi RGB yang bersih (dibatasi minimal 240 agar tidak pernah terkontaminasi abu-abu)
+  let pR = 252, pG = 250, pB = 247;
+  const rgbMatch = paperColor.match(/\d+/g);
+  if (rgbMatch && rgbMatch.length >= 3) {
+    pR = Math.max(242, parseInt(rgbMatch[0], 10));
+    pG = Math.max(240, parseInt(rgbMatch[1], 10));
+    pB = Math.max(236, parseInt(rgbMatch[2], 10));
+  }
 
-  // 1. Ambil sampel warna di sekeliling batas tepi
-  let rSum = 0, gSum = 0, bSum = 0, count = 0;
-  try {
-    const topData = ctx.getImageData(rx, topY, rw, Math.max(1, ry - topY)).data;
-    for (let i = 0; i < topData.length; i += 4) {
-      if (topData[i + 3] > 180) {
-        rSum += topData[i];
-        gSum += topData[i + 1];
-        bSum += topData[i + 2];
-        count++;
-      }
-    }
-    const botData = ctx.getImageData(rx, ry + rh, rw, Math.max(1, botY - (ry + rh))).data;
-    for (let i = 0; i < botData.length; i += 4) {
-      if (botData[i + 3] > 180) {
-        rSum += botData[i];
-        gSum += botData[i + 1];
-        bSum += botData[i + 2];
-        count++;
-      }
-    }
-    const rightData = ctx.getImageData(rx + rw, ry, Math.max(1, rightX - (rx + rw)), rh).data;
-    for (let i = 0; i < rightData.length; i += 4) {
-      if (rightData[i + 3] > 180) {
-        rSum += rightData[i];
-        gSum += rightData[i + 1];
-        bSum += rightData[i + 2];
-        count++;
-      }
-    }
-  } catch {}
-
-  const avgR = count > 0 ? Math.round(rSum / count) : 250;
-  const avgG = count > 0 ? Math.round(gSum / count) : 248;
-  const avgB = count > 0 ? Math.round(bSum / count) : 245;
+  // Jika komponen aslinya berlatar putih (#FFFFFF) atau transparan, inpainting di bawahnya selalu kertas putih bersih solid
+  if (def?.cardBg === '#FFFFFF' || !def?.cardBg || def.cardBg === 'transparent') {
+    pR = 255;
+    pG = 255;
+    pB = 255;
+  }
 
   ctx.save();
+  ctx.globalAlpha = 1.0; // Wajib 100% Solid (Alpha 255) mencegah transparansi tembus container abu-abu
 
-  // 2. Linear Gradient contextual inpainting
+  // 1. Inpainting Gradien Halus Kertas Bersih Poster
   const grad = ctx.createLinearGradient(rx, ry, rx, ry + rh);
-  grad.addColorStop(0, `rgb(${Math.min(255, avgR + 2)}, ${Math.min(255, avgG + 2)}, ${Math.min(255, avgB + 2)})`);
-  grad.addColorStop(1, `rgb(${Math.max(0, avgR - 2)}, ${Math.max(0, avgG - 2)}, ${Math.max(0, avgB - 2)})`);
+  grad.addColorStop(0, '#FFFFFF');
+  grad.addColorStop(0.5, `rgb(${pR}, ${pG}, ${pB})`);
+  grad.addColorStop(1, `rgb(${Math.max(242, pR - 3)}, ${Math.max(240, pG - 3)}, ${Math.max(236, pB - 3)})`);
   ctx.fillStyle = grad;
   ctx.fillRect(rx, ry, rw, rh);
 
-  // 3. Sintesis micro-texture grain agar tidak terlihat datar/kaku
+  // 2. Tambahkan mikro-tekstur serat kertas organik yang sangat halus (noise halus +/- 1.0)
   try {
     const patch = ctx.getImageData(rx, ry, rw, rh);
     const pData = patch.data;
     for (let p = 0; p < pData.length; p += 4) {
-      const noise = (Math.random() - 0.5) * 4;
-      pData[p] = Math.min(255, Math.max(0, pData[p] + noise));
-      pData[p + 1] = Math.min(255, Math.max(0, pData[p + 1] + noise));
-      pData[p + 2] = Math.min(255, Math.max(0, pData[p + 2] + noise));
+      const noise = (Math.random() - 0.5) * 2;
+      pData[p] = Math.min(255, Math.max(242, pData[p] + noise));
+      pData[p + 1] = Math.min(255, Math.max(240, pData[p + 1] + noise));
+      pData[p + 2] = Math.min(255, Math.max(236, pData[p + 2] + noise));
+      pData[p + 3] = 255; // Solid Alpha channel
     }
     ctx.putImageData(patch, rx, ry);
   } catch {}
 
-  // 4. Edge softening (seam feathering) pada batas potongan
-  ctx.filter = 'blur(2px)';
-  ctx.strokeStyle = `rgb(${avgR}, ${avgG}, ${avgB})`;
-  ctx.lineWidth = 3;
+  // 3. Edge softening (seam feathering) pada batas potongan agar menyatu mulus tanpa patahan
+  ctx.filter = 'blur(3px)';
+  ctx.strokeStyle = `rgb(${pR}, ${pG}, ${pB})`;
+  ctx.lineWidth = 4;
   ctx.strokeRect(rx, ry, rw, rh);
   ctx.restore();
 }
@@ -1351,7 +1330,9 @@ async function createCleanPosterBackground(
             return;
           }
 
-          // 1. Gambar seluruh poster asli
+          // 1. SOLUSI 2: Pastikan layer latar belakang memiliki dasar putih solid 100% opaque (mencegah tembus pandang abu-abu)
+          ctx.fillStyle = '#FFFFFF';
+          ctx.fillRect(0, 0, naturalW, naturalH);
           ctx.drawImage(img, 0, 0, naturalW, naturalH);
 
           // 2. Ambil sampel warna background kertas di margin kanan atas
@@ -1365,13 +1346,13 @@ async function createCleanPosterBackground(
             }
           } catch {}
 
-          // 3. SOLUSI 3: Inpainting Cerdas Tekstur Latar Belakang (Smart Texture Inpainting)
+          // 3. SOLUSI 3: Inpainting Cerdas Tekstur Latar Belakang (Bebas dari blok abu-abu)
           for (const def of componentDefs) {
             const cropX = Math.round(def.x * naturalW);
             const cropY = Math.round(def.y * naturalH);
             const cropW = Math.round(def.w * naturalW);
             const cropH = Math.round(def.h * naturalH);
-            smartTextureInpainting(ctx, { x: cropX, y: cropY, w: cropW, h: cropH }, naturalW, naturalH);
+            smartTextureInpainting(ctx, { x: cropX, y: cropY, w: cropW, h: cropH }, naturalW, naturalH, paperColor, def);
           }
 
           const cleanDataUrl = offCanvas.toDataURL('image/png');
@@ -1619,7 +1600,7 @@ export function MagicLayersModal({
         const canvas = new FabricCanvas(canvasElRef.current, {
           width: naturalW,
           height: naturalH,
-          backgroundColor: '#FAF8F5',
+          backgroundColor: '#FFFFFF',
           preserveObjectStacking: true,
           selection: true,
         });
@@ -2111,7 +2092,7 @@ export function MagicLayersModal({
       fontFamily: "'Inter', sans-serif",
       fontWeight: 'bold',
       fill: '#0F172A',
-      backgroundColor: '#FAF8F5',
+      backgroundColor: '#FFFFFF',
       padding: 6,
       editable: true,
       shadow: new Shadow({ color: 'rgba(0,0,0,0.1)', blur: 4, offsetX: 0, offsetY: 1 }),
@@ -2167,7 +2148,7 @@ export function MagicLayersModal({
       fontFamily: "'Inter', sans-serif",
       fontWeight: 'bold',
       fill: '#0F172A',
-      backgroundColor: '#FAF8F5',
+      backgroundColor: '#FFFFFF',
       padding: 6,
       textAlign: 'center',
       shadow: new Shadow({ color: 'rgba(0,0,0,0.15)', blur: 6, offsetX: 0, offsetY: 1 }),
