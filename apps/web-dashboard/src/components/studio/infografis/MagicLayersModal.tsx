@@ -39,6 +39,8 @@ import {
   ChevronRight,
   ArrowLeft,
   Edit3,
+  Undo2,
+  Redo2,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/components/ui/toast';
@@ -1671,6 +1673,14 @@ export function MagicLayersModal({
   const [cutoutSuccess, setCutoutSuccess] = useState(false);
   const [hasGrabbedText, setHasGrabbedText] = useState(false);
 
+  // ─── UNDO / REDO HISTORY STACK (CTRL+Z & CTRL+Y) ───
+  const historyStackRef = useRef<string[]>([]);
+  const historyIndexRef = useRef<number>(-1);
+  const isRestoringHistoryRef = useRef<boolean>(false);
+  const liveTextDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [canUndo, setCanUndo] = useState<boolean>(false);
+  const [canRedo, setCanRedo] = useState<boolean>(false);
+
   // Text Styling & Live Sentence Editing State
   const [currentTextContent, setCurrentTextContent] = useState('');
   const [fontFamily, setFontFamily] = useState("'Inter', sans-serif");
@@ -1716,6 +1726,107 @@ export function MagicLayersModal({
       console.warn('[MagicLayers] refreshLayersList error:', err);
     }
   }, []);
+
+  const SERIALIZED_FABRIC_PROPS = [
+    'customId',
+    'customData',
+    'selectable',
+    'evented',
+    'lockMovementX',
+    'lockMovementY',
+    'lockRotation',
+    'lockScalingX',
+    'lockScalingY',
+    'hasControls',
+    'hasBorders',
+    'visible',
+  ];
+
+  const syncHistoryFlags = useCallback(() => {
+    setCanUndo(historyIndexRef.current > 0);
+    setCanRedo(historyIndexRef.current >= 0 && historyIndexRef.current < historyStackRef.current.length - 1);
+  }, []);
+
+  const pushHistorySnapshot = useCallback(
+    (targetCanvas?: FabricCanvas | null, resetStack = false) => {
+      const canvas = targetCanvas || fabricRef.current;
+      if (!canvas || (canvas as any).isDisposed || isRestoringHistoryRef.current) return;
+      try {
+        const snapshot = JSON.stringify((canvas as any).toObject(SERIALIZED_FABRIC_PROPS));
+        if (resetStack) {
+          historyStackRef.current = [snapshot];
+          historyIndexRef.current = 0;
+          syncHistoryFlags();
+          return;
+        }
+        const currentIdx = historyIndexRef.current;
+        if (currentIdx >= 0 && historyStackRef.current[currentIdx] === snapshot) {
+          return;
+        }
+        const nextStack = historyStackRef.current.slice(0, currentIdx + 1);
+        nextStack.push(snapshot);
+        if (nextStack.length > 50) {
+          nextStack.shift();
+        }
+        historyStackRef.current = nextStack;
+        historyIndexRef.current = nextStack.length - 1;
+        syncHistoryFlags();
+      } catch (err) {
+        console.warn('[MagicLayers] Gagal menyimpan snapshot history:', err);
+      }
+    },
+    [syncHistoryFlags]
+  );
+
+  const restoreHistoryAtIndex = useCallback(
+    async (targetIdx: number) => {
+      const canvas = fabricRef.current;
+      if (!canvas || (canvas as any).isDisposed || isRestoringHistoryRef.current) return;
+      if (targetIdx < 0 || targetIdx >= historyStackRef.current.length) return;
+
+      const snapshot = historyStackRef.current[targetIdx];
+      if (!snapshot) return;
+
+      isRestoringHistoryRef.current = true;
+      try {
+        await canvas.loadFromJSON(snapshot);
+        rehydrateMlObjects(canvas);
+        canvas.getObjects().forEach((obj) => {
+          if ((obj as any).customData?.isBackground) {
+            obj.set({ selectable: false, evented: false });
+          }
+          obj.setCoords();
+        });
+        canvas.discardActiveObject();
+        canvas.requestRenderAll();
+        refreshLayersList(canvas);
+        updateStylePanelFromObject(null);
+        historyIndexRef.current = targetIdx;
+        syncHistoryFlags();
+      } catch (err) {
+        console.warn('[MagicLayers] Gagal memulihkan state Undo/Redo:', err);
+      } finally {
+        isRestoringHistoryRef.current = false;
+      }
+    },
+    [refreshLayersList, syncHistoryFlags]
+  );
+
+  const handleUndo = useCallback(() => {
+    if (historyIndexRef.current <= 0 || isRestoringHistoryRef.current) return;
+    void restoreHistoryAtIndex(historyIndexRef.current - 1);
+  }, [restoreHistoryAtIndex]);
+
+  const handleRedo = useCallback(() => {
+    if (
+      historyIndexRef.current < 0 ||
+      historyIndexRef.current >= historyStackRef.current.length - 1 ||
+      isRestoringHistoryRef.current
+    ) {
+      return;
+    }
+    void restoreHistoryAtIndex(historyIndexRef.current + 1);
+  }, [restoreHistoryAtIndex]);
 
   // Update styling panel and sentence edit input when active object changes
   const updateStylePanelFromObject = (obj: FabricObject | null) => {
@@ -1811,6 +1922,40 @@ export function MagicLayersModal({
     };
   }, [isOpen, updateResponsiveFit]);
 
+  // Shortcut Keyboard Global: Ctrl+Z (Undo) & Ctrl+Y / Ctrl+Shift+Z (Redo)
+  useEffect(() => {
+    if (!isOpen) return;
+
+    const handleKeyDown = (e: KeyboardEvent) => {
+      const target = e.target as HTMLElement | null;
+      const tag = target?.tagName?.toLowerCase();
+      if (tag === 'input' || tag === 'textarea' || tag === 'select' || target?.isContentEditable) {
+        return;
+      }
+      const activeObj = fabricRef.current?.getActiveObject();
+      if (activeObj instanceof Textbox && (activeObj as any).isEditing) {
+        return;
+      }
+
+      const isMod = e.ctrlKey || e.metaKey;
+      if (!isMod) return;
+
+      const key = e.key.toLowerCase();
+      if (key === 'z' && !e.shiftKey) {
+        e.preventDefault();
+        e.stopPropagation();
+        handleUndo();
+      } else if (key === 'y' || (key === 'z' && e.shiftKey)) {
+        e.preventDefault();
+        e.stopPropagation();
+        handleRedo();
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [isOpen, handleUndo, handleRedo]);
+
   // Set default Canva-style selection styling
   useEffect(() => {
     FabricObject.ownDefaults.originX = 'left';
@@ -1871,6 +2016,10 @@ export function MagicLayersModal({
           if (canvas.getActiveObject() instanceof Textbox) {
             updateStylePanelFromObject(canvas.getActiveObject() || null);
           }
+          pushHistorySnapshot(canvas);
+        });
+        canvas.on('text:editing:exited', () => {
+          pushHistorySnapshot(canvas);
         });
         canvas.on('object:added', () => refreshLayersList(canvas));
         canvas.on('object:removed', () => refreshLayersList(canvas));
@@ -1912,6 +2061,7 @@ export function MagicLayersModal({
             canvas.renderAll();
             if (!isDisposed) {
               refreshLayersList(canvas);
+              pushHistorySnapshot(canvas, true);
               updateResponsiveFit();
               setTimeout(() => {
                 if (!isDisposed) updateResponsiveFit();
@@ -1929,6 +2079,7 @@ export function MagicLayersModal({
         canvas.renderAll();
         if (!isDisposed) {
           refreshLayersList(canvas);
+          pushHistorySnapshot(canvas, true);
           updateResponsiveFit();
           setTimeout(() => {
             if (!isDisposed) updateResponsiveFit();
@@ -2009,6 +2160,7 @@ export function MagicLayersModal({
 
         canvas.requestRenderAll();
         refreshLayersList(canvas);
+        pushHistorySnapshot(canvas, true);
         setIsDecomposed(true);
 
         const textCount = objects.filter((o) => o instanceof Textbox).length;
@@ -2089,6 +2241,7 @@ export function MagicLayersModal({
 
       canvas.renderAll();
       refreshLayersList(canvas);
+      pushHistorySnapshot(canvas, true);
       setIsDecomposed(true);
 
       toast({
@@ -2253,6 +2406,10 @@ export function MagicLayersModal({
       selectedObject.initDimensions();
       fabricRef.current.renderAll();
       refreshLayersList(fabricRef.current);
+      if (liveTextDebounceRef.current) clearTimeout(liveTextDebounceRef.current);
+      liveTextDebounceRef.current = setTimeout(() => {
+        pushHistorySnapshot();
+      }, 350);
       return;
     }
 
@@ -2300,6 +2457,7 @@ export function MagicLayersModal({
       selectedObject.set('fontFamily', font);
       selectedObject.initDimensions();
       fabricRef.current?.renderAll();
+      pushHistorySnapshot();
     }
   };
 
@@ -2309,6 +2467,7 @@ export function MagicLayersModal({
       selectedObject.set('fontSize', size);
       selectedObject.initDimensions();
       fabricRef.current?.renderAll();
+      pushHistorySnapshot();
     }
   };
 
@@ -2317,6 +2476,7 @@ export function MagicLayersModal({
     if (selectedObject && selectedObject instanceof Textbox) {
       selectedObject.set('fill', color);
       fabricRef.current?.renderAll();
+      pushHistorySnapshot();
     }
   };
 
@@ -2325,6 +2485,7 @@ export function MagicLayersModal({
     if (selectedObject && selectedObject instanceof Textbox) {
       selectedObject.set('backgroundColor', color);
       fabricRef.current?.renderAll();
+      pushHistorySnapshot();
     }
   };
 
@@ -2335,6 +2496,7 @@ export function MagicLayersModal({
       selectedObject.set('fontWeight', next ? 'bold' : 'normal');
       selectedObject.initDimensions();
       fabricRef.current?.renderAll();
+      pushHistorySnapshot();
     }
   };
 
@@ -2345,6 +2507,7 @@ export function MagicLayersModal({
       selectedObject.set('fontStyle', next ? 'italic' : 'normal');
       selectedObject.initDimensions();
       fabricRef.current?.renderAll();
+      pushHistorySnapshot();
     }
   };
 
@@ -2353,6 +2516,7 @@ export function MagicLayersModal({
     if (selectedObject && selectedObject instanceof Textbox) {
       selectedObject.set('textAlign', align);
       fabricRef.current?.renderAll();
+      pushHistorySnapshot();
     }
   };
 
@@ -2528,6 +2692,7 @@ export function MagicLayersModal({
       fabricRef.current?.add(cloned);
       fabricRef.current?.setActiveObject(cloned);
       fabricRef.current?.renderAll();
+    pushHistorySnapshot();
     });
   };
 
@@ -2545,6 +2710,7 @@ export function MagicLayersModal({
     layer.object.set('visible', !layer.visible);
     fabricRef.current.renderAll();
     refreshLayersList(fabricRef.current);
+    pushHistorySnapshot();
   };
 
   const toggleLayerLock = (layer: LayerItem, e: React.MouseEvent) => {
@@ -2569,6 +2735,7 @@ export function MagicLayersModal({
     fabricRef.current.bringObjectForward(layer.object);
     fabricRef.current.renderAll();
     refreshLayersList(fabricRef.current);
+    pushHistorySnapshot();
   };
 
   const moveLayerDown = (layer: LayerItem, e?: React.MouseEvent) => {
@@ -2577,6 +2744,7 @@ export function MagicLayersModal({
     fabricRef.current.sendObjectBackwards(layer.object);
     fabricRef.current.renderAll();
     refreshLayersList(fabricRef.current);
+    pushHistorySnapshot();
   };
 
   const moveLayerToFront = () => {
@@ -2584,6 +2752,7 @@ export function MagicLayersModal({
     fabricRef.current.bringObjectToFront(selectedObject);
     fabricRef.current.renderAll();
     refreshLayersList(fabricRef.current);
+    pushHistorySnapshot();
   };
 
   const moveLayerToBack = () => {
@@ -2593,6 +2762,7 @@ export function MagicLayersModal({
     if (bg) fabricRef.current.sendObjectToBack(bg);
     fabricRef.current.renderAll();
     refreshLayersList(fabricRef.current);
+    pushHistorySnapshot();
   };
 
   const deleteSelectedObject = () => {
@@ -2605,6 +2775,7 @@ export function MagicLayersModal({
     fabricRef.current.discardActiveObject();
     fabricRef.current.renderAll();
     setSelectedObject(null);
+    pushHistorySnapshot();
   };
 
   // ─── SAVE & APPLY (PIXEL-PERFECT EXPORT) ───
@@ -2734,8 +2905,33 @@ export function MagicLayersModal({
           </div>
         </div>
 
-        {/* SISI TENGAH: ZOOM CONTROLS (FIT TO SCREEN) */}
-        <div className="hidden md:flex items-center gap-1.5 bg-slate-50 border border-slate-200 px-2 py-1 rounded-xl">
+        {/* SISI TENGAH: UNDO / REDO & ZOOM CONTROLS */}
+        <div className="hidden md:flex items-center gap-2">
+          <div className="flex items-center gap-1 bg-slate-50 border border-slate-200 px-1.5 py-1 rounded-xl">
+            <button
+              type="button"
+              onClick={handleUndo}
+              disabled={!canUndo}
+              className="inline-flex items-center gap-1 px-2 py-1 text-xs font-bold text-slate-700 hover:text-purple-700 hover:bg-white rounded-lg transition-colors disabled:opacity-35 disabled:pointer-events-none cursor-pointer"
+              title="Urungkan perubahan terakhir (Ctrl+Z)"
+            >
+              <Undo2 className="h-3.5 w-3.5" strokeWidth={2} />
+              <span className="text-[11px]">Undo</span>
+            </button>
+            <div className="h-4 w-px bg-slate-200" />
+            <button
+              type="button"
+              onClick={handleRedo}
+              disabled={!canRedo}
+              className="inline-flex items-center gap-1 px-2 py-1 text-xs font-bold text-slate-700 hover:text-purple-700 hover:bg-white rounded-lg transition-colors disabled:opacity-35 disabled:pointer-events-none cursor-pointer"
+              title="Ulangi perubahan (Ctrl+Y)"
+            >
+              <Redo2 className="h-3.5 w-3.5" strokeWidth={2} />
+              <span className="text-[11px]">Redo</span>
+            </button>
+          </div>
+
+          <div className="flex items-center gap-1.5 bg-slate-50 border border-slate-200 px-2 py-1 rounded-xl">
           <button
             onClick={() => setZoomLevel((prev) => Math.max(0.4, prev - 0.15))}
             className="p-1 text-slate-500 hover:text-slate-800 hover:bg-white rounded transition-colors"
@@ -2761,6 +2957,7 @@ export function MagicLayersModal({
           >
             <ZoomIn className="h-3.5 w-3.5" strokeWidth={1.75} />
           </button>
+          </div>
         </div>
 
         {/* SISI KANAN: UNDUH HD & TERAPKAN DESAIN */}
