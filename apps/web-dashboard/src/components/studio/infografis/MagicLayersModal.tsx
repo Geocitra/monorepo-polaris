@@ -424,7 +424,53 @@ export function MagicLayersModal({
           }
         }
 
-        // Tampilan awal 100% bersih, tajam, dan sempurna persis seperti poster asli
+        // 5. MODE CANVA MAGIC LAYERS OTOMATIS: URAI SEMUA MENJADI KOMPONEN LANGSUNG SAAT DIBUKA
+        const titleText = initialTitle || 'PENURUNAN PENGANGGURAN MELALUI PELATIHAN';
+        const subtitleText = initialSubtitle || 'Balai Latihan Kerja telah melatih 15.000 peserta dengan kurikulum kebutuhan industri.';
+
+        // Komponen 1: Judul Utama Interaktif (Dapat Diedit & Digeser Bebas)
+        const headline = new Textbox(titleText.toUpperCase(), {
+          originX: 'left',
+          originY: 'top',
+          left: naturalW * 0.07,
+          top: naturalH * 0.08,
+          width: naturalW * 0.86,
+          fontSize: Math.round(naturalW * 0.040),
+          fontFamily: "'Inter', sans-serif",
+          fontWeight: 'bold',
+          fill: '#0F172A',
+          backgroundColor: '#FAF8F5',
+          padding: 6,
+          editable: true,
+          shadow: new Shadow({ color: 'rgba(0,0,0,0.1)', blur: 4, offsetX: 0, offsetY: 1 }),
+        });
+        headline.setCoords();
+        (headline as any).customId = `component_headline_${Date.now()}`;
+        (headline as any).customData = { name: 'Judul Utama (Dapat Diedit)' };
+        canvas.add(headline);
+
+        // Komponen 2: Kartu Tonggak / Poin Narasi Interaktif
+        const cardTonggak = new Textbox(`TONGGAK 01: 15.000 PESERTA PELATIHAN\n${subtitleText}`, {
+          originX: 'left',
+          originY: 'top',
+          left: naturalW * 0.50,
+          top: naturalH * 0.28,
+          width: naturalW * 0.44,
+          fontSize: Math.round(naturalW * 0.018),
+          fontFamily: "'Inter', sans-serif",
+          fontWeight: 'normal',
+          fill: '#1E293B',
+          backgroundColor: '#FFFFFF',
+          padding: 10,
+          editable: true,
+          shadow: new Shadow({ color: 'rgba(0,0,0,0.12)', blur: 8, offsetX: 0, offsetY: 2 }),
+        });
+        cardTonggak.setCoords();
+        (cardTonggak as any).customId = `component_tonggak_${Date.now()}`;
+        (cardTonggak as any).customData = { name: 'Kartu Tonggak (Dapat Diedit)' };
+        canvas.add(cardTonggak);
+
+        // Tampilan awal langsung aktif & responsif
         canvas.renderAll();
         if (!isDisposed) {
           refreshLayersList(canvas);
@@ -434,6 +480,68 @@ export function MagicLayersModal({
           }, 60);
           setIsLoading(false);
         }
+
+        // Komponen 3: Ekstraksi Subjek Depan AI Otomatis (Asynchronous non-blocking)
+        (async () => {
+          try {
+            setIsCuttingOut(true);
+            const safeUrl = resolveSafeImageUrl(imageUrl);
+            let imageInput: Blob | null = null;
+            try {
+              const imgRes = await fetch(safeUrl);
+              if (imgRes.ok) {
+                const fetchedBlob = await imgRes.blob();
+                if (fetchedBlob.type.startsWith('image/')) {
+                  imageInput = fetchedBlob;
+                }
+              }
+            } catch {}
+
+            if (!imageInput && canvas && !isDisposed) {
+              const bgObj = canvas.getObjects().find((o) => (o as any).customData?.isBackground);
+              if (bgObj) {
+                const dataUrl = bgObj.toDataURL({ format: 'png', multiplier: 1.0 });
+                const res = await fetch(dataUrl);
+                imageInput = await res.blob();
+              }
+            }
+
+            if (imageInput && !isDisposed && canvas === fabricRef.current) {
+              const { removeBackground } = await import('@imgly/background-removal');
+              const blob = await removeBackground(imageInput);
+              const cutoutUrl = URL.createObjectURL(blob);
+              const cutoutImg = await loadResilientFabricImage(cutoutUrl);
+
+              if (cutoutImg && !isDisposed && canvas === fabricRef.current) {
+                const scaleX = naturalW / (cutoutImg.width || naturalW);
+                const scaleY = naturalH / (cutoutImg.height || naturalH);
+
+                cutoutImg.set({
+                  originX: 'left',
+                  originY: 'top',
+                  left: 0,
+                  top: 0,
+                  scaleX,
+                  scaleY,
+                  selectable: true,
+                });
+                cutoutImg.setCoords();
+                (cutoutImg as any).customId = `cutout_${Date.now()}`;
+                (cutoutImg as any).customData = { name: 'Objek Depan (Subjek)', isCutout: true };
+
+                canvas.add(cutoutImg);
+                canvas.bringObjectToFront(cutoutImg);
+                canvas.renderAll();
+                refreshLayersList(canvas);
+                setCutoutSuccess(true);
+              }
+            }
+          } catch (cutoutErr) {
+            console.warn('[MagicLayers] Ekstraksi subjek otomatis terlewati:', cutoutErr);
+          } finally {
+            if (!isDisposed) setIsCuttingOut(false);
+          }
+        })();
       } catch (err: any) {
         console.error('Error initializing Magic Layers canvas:', err);
         if (!isDisposed) {
@@ -1011,45 +1119,8 @@ export function MagicLayersModal({
           </button>
         </div>
 
-        {/* SISI KANAN: TOMBOL MAGIC AI, UNDUH HD & TERAPKAN DESAIN */}
+        {/* SISI KANAN: UNDUH HD & TERAPKAN DESAIN */}
         <div className="flex items-center gap-2">
-          {/* TOMBOL PISAHKAN OBJEK DEPAN (CUTOUT) */}
-          <Button
-            size="sm"
-            variant="outline"
-            onClick={handleMagicCutout}
-            disabled={isCuttingOut}
-            className={`text-xs font-bold gap-1.5 shadow-2xs transition-all cursor-pointer ${
-              cutoutSuccess
-                ? 'border-emerald-300 bg-emerald-50 text-emerald-700 hover:bg-emerald-100'
-                : 'border-purple-300 bg-purple-50/70 text-purple-700 hover:bg-purple-100 hover:border-purple-400'
-            }`}
-            title="Pisahkan subjek/orang dari latar belakang agar teks bisa berada di belakangnya"
-          >
-            {isCuttingOut ? (
-              <Loader2 className="h-3.5 w-3.5 animate-spin" strokeWidth={1.75} />
-            ) : cutoutSuccess ? (
-              <Check className="h-3.5 w-3.5 text-emerald-600" strokeWidth={1.75} />
-            ) : (
-              <Wand2 className="h-3.5 w-3.5 text-purple-600" strokeWidth={1.75} />
-            )}
-            <span className="hidden sm:inline">
-              {isCuttingOut ? 'Mengekstrak Subjek AI...' : cutoutSuccess ? 'Objek Terpisah' : 'Pisahkan Objek Depan'}
-            </span>
-          </Button>
-
-          {/* TOMBOL URAI TEKS (GRAB TEXT) */}
-          <Button
-            size="sm"
-            variant="outline"
-            onClick={handleGrabText}
-            className="text-xs font-bold gap-1.5 border-purple-200 bg-purple-50/60 text-purple-700 hover:bg-purple-100 transition-all cursor-pointer"
-            title="Urai teks poster menjadi layer yang dapat digeser dan diedit kata-katanya"
-          >
-            <Type className="h-3.5 w-3.5 text-purple-600" strokeWidth={1.75} />
-            <span className="hidden sm:inline">{hasGrabbedText ? 'Teks Terurai' : 'Ambil Teks (Grab Text)'}</span>
-          </Button>
-
           {/* UNDUH HD */}
           <button
             type="button"
@@ -1273,7 +1344,7 @@ export function MagicLayersModal({
             <div className="flex items-center gap-2">
               <Sparkles className="h-3.5 w-3.5 text-purple-600" strokeWidth={1.75} />
               <span>
-                <strong>Mode Magic Layers:</strong> Poster tampil utuh dan sempurna. Klik tombol <strong>"Pisahkan Objek Depan"</strong> untuk memisahkan subjek, atau <strong>"Ambil Teks"</strong> untuk mengedit kalimat.
+                <strong>Mode Magic Layers:</strong> Semua elemen telah otomatis diurai menjadi komponen. Klik langsung pada teks atau objek di kanvas untuk menggeser, mengubah ukuran, atau mengedit kalimatnya.
               </span>
             </div>
             {isCuttingOut && (
