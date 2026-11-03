@@ -27,6 +27,7 @@ import {
   Clock,
   Send,
   ArrowRight,
+  MessageCircle,
 } from 'lucide-react';
 import {
   WritingStyleSelector,
@@ -41,6 +42,7 @@ import {
   AttachedFileItem,
   GeneratedFullResult,
 } from './types';
+import { OperatorSocialDistributionTab } from './OperatorSocialDistributionTab';
 
 interface OperatorContentTabProps {
   selectedDewan: AssignedTenant;
@@ -487,6 +489,15 @@ export function OperatorContentTab({
             <div className="flex items-center gap-2.5 shrink-0">
               <button
                 type="button"
+                onClick={() => setResultTab('social')}
+                className="px-3.5 py-2 rounded-xl bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-300 dark:border-emerald-700 hover:bg-emerald-100 dark:hover:bg-emerald-900/60 text-xs font-bold text-emerald-800 dark:text-emerald-300 transition flex items-center gap-1.5 cursor-pointer shadow-xs"
+              >
+                <MessageCircle className="w-3.5 h-3.5 text-emerald-600" />
+                <span>Kirim Paket ke WA</span>
+              </button>
+
+              <button
+                type="button"
                 onClick={() => {
                   setGeneratedResult(null);
                   setTopicInput('');
@@ -535,12 +546,13 @@ export function OperatorContentTab({
               onClick={() => setResultTab('social')}
               className={`shrink-0 whitespace-nowrap flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition cursor-pointer ${
                 resultTab === 'social'
-                  ? 'bg-indigo-600 text-white shadow-sm'
+                  ? 'bg-emerald-600 text-white shadow-sm'
                   : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800'
               }`}
             >
               <Share2 className="w-4 h-4" />
-              <span>Siaran Pers WhatsApp &amp; Medsos</span>
+              <span>Distribusi WA &amp; Medsos</span>
+              <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
             </button>
           </div>
 
@@ -744,64 +756,13 @@ export function OperatorContentTab({
 
           {/* SUB-TAB 3: FORMAT WHATSAPP & MEDSOS */}
           {resultTab === 'social' && (
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {/* Kartu Format WhatsApp */}
-              <div className="p-5 rounded-2xl bg-emerald-50/50 dark:bg-emerald-950/20 border border-emerald-200/80 dark:border-emerald-800/60 space-y-3 flex flex-col justify-between">
-                <div className="space-y-2">
-                  <div className="flex items-center justify-between">
-                    <span className="text-xs font-black uppercase tracking-wider text-emerald-800 dark:text-emerald-300 flex items-center gap-1.5">
-                      <span>💬 Siaran Pers WhatsApp (Grup Warga &amp; Wartawan)</span>
-                    </span>
-                    <span className="text-[10px] font-bold text-emerald-600 bg-emerald-100 dark:bg-emerald-900/60 px-2 py-0.5 rounded">
-                      Format Siap Sebar
-                    </span>
-                  </div>
-
-                  <div className="p-3.5 rounded-xl bg-white dark:bg-slate-900 text-xs text-slate-800 dark:text-slate-200 font-sans leading-relaxed whitespace-pre-line border border-emerald-100 dark:border-emerald-900/40 max-h-72 overflow-y-auto">
-                    {generatedResult.socialPack?.whatsappBroadcastText ||
-                      generatedResult.socialPack?.whatsappBroadcast ||
-                      `*SIARAN PERS RESMI*\n*${generatedResult.publication.title}*\n_${selectedDewan.fullName} — ${selectedDewan.partyAffiliation || ''}_\n\n${generatedResult.publication.excerpt || ''}\n\n📌 *Poin Pokok Kebijakan:*\n${(generatedResult.publication.bodyContentMarkdown || '').slice(0, 450)}...\n\nBaca rilis selengkapnya di portal resmi:\n${publishedUrl || `https://polaris.id/p/${generatedResult.publication.id}`}`}
-                  </div>
-                </div>
-
-                <button
-                  type="button"
-                  onClick={onCopyWa}
-                  className="w-full py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold transition flex items-center justify-center gap-2 cursor-pointer shadow-sm"
-                >
-                  {copiedWa ? <CheckCheck className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
-                  <span>{copiedWa ? 'Tersalin ke Clipboard!' : 'Salin Pesan Siaran WhatsApp (1-Klik)'}</span>
-                </button>
-              </div>
-
-              {/* Kartu Format Instagram & Threads */}
-              <div className="p-5 rounded-2xl bg-purple-50/50 dark:bg-purple-950/20 border border-purple-200/80 dark:border-purple-800/60 space-y-3 flex flex-col justify-between">
-                <div className="space-y-2">
-                  <div className="flex items-center justify-between">
-                    <span className="text-xs font-black uppercase tracking-wider text-purple-800 dark:text-purple-300 flex items-center gap-1.5">
-                      <span>📸 Keterangan Instagram &amp; Threads</span>
-                    </span>
-                    <span className="text-[10px] font-bold text-purple-600 bg-purple-100 dark:bg-purple-900/60 px-2 py-0.5 rounded">
-                      Kanal Visual
-                    </span>
-                  </div>
-
-                  <div className="p-3.5 rounded-xl bg-white dark:bg-slate-900 text-xs text-slate-800 dark:text-slate-200 font-sans leading-relaxed whitespace-pre-line border border-purple-100 dark:border-purple-900/40 max-h-72 overflow-y-auto">
-                    {generatedResult.socialPack?.instagramCaption ||
-                      `${generatedResult.publication.title}\n\n${generatedResult.publication.excerpt || ''}\n\n#${(selectedDewan.customDapilName || 'Dapil').replace(/\s+/g, '')} #SuaraRakyat #KerjaNyata #Polaris`}
-                  </div>
-                </div>
-
-                <button
-                  type="button"
-                  onClick={onCopyIg}
-                  className="w-full py-2.5 rounded-xl bg-purple-600 hover:bg-purple-700 text-white text-xs font-bold transition flex items-center justify-center gap-2 cursor-pointer shadow-sm"
-                >
-                  {copiedIg ? <CheckCheck className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
-                  <span>{copiedIg ? 'Tersalin!' : 'Salin Keterangan Instagram'}</span>
-                </button>
-              </div>
-            </div>
+            <OperatorSocialDistributionTab
+              selectedDewan={selectedDewan}
+              generatedResult={generatedResult}
+              publishedUrl={publishedUrl}
+              downloadingPoster={downloadingPoster}
+              onDownloadPoster={onDownloadPoster}
+            />
           )}
 
           {/* AKSI PENERBITAN RESMI PORTAL & REKOMENDASI TOKOH BERIKUTNYA */}

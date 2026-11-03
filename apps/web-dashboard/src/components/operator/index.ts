@@ -8,3 +8,4 @@ export * from './OperatorWorkspaceNav';
 export * from './OperatorContentTab';
 export * from './OperatorAspirasiTab';
 export * from './OperatorCommentsTab';
+export * from './OperatorSocialDistributionTab';
