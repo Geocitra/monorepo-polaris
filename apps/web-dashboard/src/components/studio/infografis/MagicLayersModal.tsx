@@ -97,13 +97,20 @@ const PRESET_FONTS = [
 
 /**
  * Normalisasi URL untuk mengatasi batasan CORS antarlocalhost (3000 vs 4000).
- * Jika URL mengarah ke /uploads/ di backend server mana pun, kita alihkan ke same-origin /uploads/... via Next.js rewrite.
+ * Mengembalikan URL absolut yang aman diakses dari browser / web worker.
  */
 function resolveSafeImageUrl(url: string): string {
   if (!url) return '';
   const uploadsIdx = url.indexOf('/uploads/');
-  if (uploadsIdx !== -1 && (url.startsWith('http://') || url.startsWith('https://'))) {
-    return url.substring(uploadsIdx);
+  if (uploadsIdx !== -1) {
+    const relativePath = url.substring(uploadsIdx);
+    if (typeof window !== 'undefined') {
+      return `${window.location.origin}${relativePath}`;
+    }
+    return relativePath;
+  }
+  if (typeof window !== 'undefined' && url.startsWith('/')) {
+    return `${window.location.origin}${url}`;
   }
   return url;
 }
@@ -468,8 +475,38 @@ export function MagicLayersModal({
       });
 
       const safeUrl = resolveSafeImageUrl(imageUrl);
+
+      // 1. Dapatkan Blob gambar poster murni (mencegah error Invalid format: text/html pada @imgly)
+      let imageInput: Blob | null = null;
+      try {
+        const imgRes = await fetch(safeUrl);
+        if (imgRes.ok) {
+          const fetchedBlob = await imgRes.blob();
+          if (fetchedBlob.type.startsWith('image/')) {
+            imageInput = fetchedBlob;
+          }
+        }
+      } catch (fetchErr) {
+        console.warn('[MagicCutout] Fetch blob poster terlewati:', fetchErr);
+      }
+
+      // Fallback tangguh: Ambil data gambar langsung dari Fabric canvas jika network fetch gagal
+      if (!imageInput && fabricRef.current) {
+        const bgObj = fabricRef.current.getObjects().find((o) => (o as any).customData?.isBackground);
+        if (bgObj) {
+          const dataUrl = bgObj.toDataURL({ format: 'png', multiplier: 1.0 });
+          const res = await fetch(dataUrl);
+          imageInput = await res.blob();
+        }
+      }
+
+      if (!imageInput) {
+        throw new Error('Tidak dapat memproses berkas gambar poster.');
+      }
+
+      // 2. Jalankan pemisahan subjek depan AI (@imgly/background-removal)
       const { removeBackground } = await import('@imgly/background-removal');
-      const blob = await removeBackground(safeUrl);
+      const blob = await removeBackground(imageInput);
       const cutoutUrl = URL.createObjectURL(blob);
 
       const cutoutImg = await loadResilientFabricImage(cutoutUrl);
