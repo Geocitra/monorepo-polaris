@@ -292,6 +292,8 @@ export function MagicLayersModal({
   const [fitScale, setFitScale] = useState<number>(0.5);
 
   const [isLoading, setIsLoading] = useState(true);
+  const [isDecomposed, setIsDecomposed] = useState<boolean>(!!savedLayersJson);
+  const [isScanning, setIsScanning] = useState<boolean>(false);
   const [isCuttingOut, setIsCuttingOut] = useState(false);
   const [cutoutSuccess, setCutoutSuccess] = useState(false);
   const [hasGrabbedText, setHasGrabbedText] = useState(false);
@@ -493,9 +495,8 @@ export function MagicLayersModal({
           }
         });
 
-        // 3. Bersihkan area kartu & teks dari gambar poster agar "background ya background saja" (Bebas Duplikat / Ghosting)
-        const cleanBgUrl = await createCleanPosterBackground(imageUrl, naturalW, naturalH);
-        const bgImg = await loadResilientFabricImage(cleanBgUrl);
+        // 3. Tambahkan Latar Belakang Poster 1:1 Mengisi Penuh Kanvas Tanpa Distorsi (Poster Asli Utuh)
+        const bgImg = await loadResilientFabricImage(imageUrl);
 
         bgImg.set({
           originX: 'left',
@@ -510,11 +511,11 @@ export function MagicLayersModal({
         bgImg.setCoords();
 
         (bgImg as any).customId = 'layer_background';
-        (bgImg as any).customData = { name: 'Latar Belakang & Foto Kolase', isBackground: true };
+        (bgImg as any).customData = { name: 'Poster Asli (Latar Belakang)', isBackground: true };
         canvas.add(bgImg);
         canvas.sendObjectToBack(bgImg);
 
-        // 4. Jika ada sesi tersimpan, muat kembali
+        // 4. Jika ada sesi tersimpan sebelumnya, muat kembali susunan layernya
         if (savedLayersJson) {
           try {
             const sanitizedJson = savedLayersJson.replace(/https?:\/\/[^\/]+(?::\d+)?\/uploads\//g, '/uploads/');
@@ -527,170 +528,15 @@ export function MagicLayersModal({
                 if (!isDisposed) updateResponsiveFit();
               }, 60);
               setIsLoading(false);
+              setIsDecomposed(true);
             }
             return;
           } catch (jsonErr) {
-            console.warn('[MagicLayers] Sesi JSON tersimpan tidak dapat dimuat, menggunakan tata letak awal:', jsonErr);
+            console.warn('[MagicLayers] Sesi JSON tersimpan tidak dapat dimuat, menampilkan poster asli:', jsonErr);
           }
         }
 
-        // 5. MODE CANVA MAGIC LAYERS: URAI SELURUH POSTER MENJADI KOMPONEN TERSTRUKTUR
-        // ─── KOMPONEN 1: HEADER BOX (KICKER + JUDUL UTAMA + RINGKASAN NARASI) ───
-        const kickerText = 'DATA PELATIHAN KERJA // ANALISIS KEBIJAKAN';
-        const titleText = (initialTitle || 'PENURUNAN PENGANGGURAN MELALUI PELATIHAN').toUpperCase();
-        const deckText = initialSubtitle || 'Program pelatihan di Balai Latihan Kerja Jawa Barat berhasil menurunkan pengangguran terbuka sebesar 10% dalam dua tahun terakhir. Dengan total peserta mencapai 15.000 orang, langkah ini menjadi kunci dalam meningkatkan daya saing tenaga kerja.';
-
-        const headerBox = new Textbox(`${kickerText}\n${titleText}\n${deckText}`, {
-          originX: 'left',
-          originY: 'top',
-          left: Math.round(naturalW * 0.048),
-          top: Math.round(naturalH * 0.056),
-          width: Math.round(naturalW * 0.904),
-          fontSize: Math.round(naturalW * 0.015),
-          fontFamily: "'Inter', sans-serif",
-          fill: '#0F172A',
-          backgroundColor: '#FFFFFF',
-          padding: 14,
-          stroke: '#E2E8F0',
-          strokeWidth: 1.5,
-          shadow: new Shadow({ color: 'rgba(0,0,0,0.06)', blur: 10, offsetX: 0, offsetY: 2 }),
-          editable: true,
-          lineHeight: 1.35,
-        });
-        headerBox.setCoords();
-        (headerBox as any).customId = `component_header_${Date.now()}`;
-        (headerBox as any).customData = { name: 'Judul Utama & Narasi' };
-        canvas.add(headerBox);
-
-        // ─── KOMPONEN 2: 3 KARTU STATISTIK KPI (HORIZONTAL ROW) ───
-        const kpiWidth = Math.round((naturalW * 0.460) / 3 - 6);
-        const kpiTop = Math.round(naturalH * 0.188);
-        const kpiStartLeft = Math.round(naturalW * 0.490);
-
-        const kpiItems = [
-          { val: '10%', lbl: 'PENURUNAN PENGANGGURAN', name: 'Statistik 01: 10%' },
-          { val: 'RP 200 MILIAR', lbl: 'TOTAL ANGGARAN PROGRAM', name: 'Statistik 02: Rp 200 Miliar' },
-          { val: '8 KOTA', lbl: 'KONSENTRASI PELATIHAN', name: 'Statistik 03: 8 Kota' },
-        ];
-
-        kpiItems.forEach((kpi, idx) => {
-          const kpiCard = new Textbox(`${kpi.val}\n${kpi.lbl}`, {
-            originX: 'left',
-            originY: 'top',
-            left: kpiStartLeft + idx * (kpiWidth + 9),
-            top: kpiTop,
-            width: kpiWidth,
-            fontSize: Math.round(naturalW * 0.011),
-            fontFamily: "'Inter', sans-serif",
-            fontWeight: 'bold',
-            textAlign: 'center',
-            fill: '#E06D28',
-            backgroundColor: '#FFFFFF',
-            padding: 8,
-            stroke: '#E06D28',
-            strokeWidth: 1.5,
-            shadow: new Shadow({ color: 'rgba(0,0,0,0.04)', blur: 6, offsetX: 0, offsetY: 1 }),
-            editable: true,
-            lineHeight: 1.25,
-          });
-          kpiCard.setCoords();
-          (kpiCard as any).customId = `component_kpi_${idx}_${Date.now()}`;
-          (kpiCard as any).customData = { name: kpi.name };
-          canvas.add(kpiCard);
-        });
-
-        // ─── KOMPONEN 3: 5 KARTU TONGGAK & 1 KARTU SINTESIS KEBIJAKAN ───
-        // (1 CARD + ISI = 1 KONTEN MANDIRI YANG DAPAT DIGESER & DIUBAH ISI KALIMATNYA)
-        const cardWidth = Math.round(naturalW * 0.460);
-        const cardStartLeft = Math.round(naturalW * 0.490);
-
-        const cardItems = [
-          {
-            title: 'TONGGAK 01: 15.000 PESERTA PELATIHAN',
-            body: 'Sejak 2021, Balai Latihan Kerja telah melatih 15.000 peserta, meningkatkan keterampilan di sektor industri dan jasa. Program ini berfokus pada kebutuhan pasar kerja yang terus berkembang.',
-            top: Math.round(naturalH * 0.254),
-            name: 'Kartu Tonggak 01 (Dapat Diedit)',
-          },
-          {
-            title: 'TONGGAK 02: RP 200 MILIAR DIANGGARKAN',
-            body: 'Pemerintah Provinsi Jawa Barat mengalokasikan anggaran sebesar Rp 200 miliar untuk program pelatihan, mencakup fasilitas, instruktur dan materi pelatihan yang relevan.',
-            top: Math.round(naturalH * 0.366),
-            name: 'Kartu Tonggak 02 (Dapat Diedit)',
-          },
-          {
-            title: 'TONGGAK 03: 8 KOTA PRIORITAS',
-            body: 'Pelatihan dilaksanakan di 8 kota prioritas, termasuk Kota Bandung, dengan tujuan menjangkau daerah dengan tingkat pengangguran tinggi dan meningkatkan kualitas tenaga kerja.',
-            top: Math.round(naturalH * 0.478),
-            name: 'Kartu Tonggak 03 (Dapat Diedit)',
-          },
-          {
-            title: 'TONGGAK 04: 95% PENYERAPAN TENAGA KERJA',
-            body: 'Dari total peserta pelatihan, 95% berhasil terserap di dunia kerja, menunjukkan efektivitas program dalam meningkatkan employability dan daya saing.',
-            top: Math.round(naturalH * 0.590),
-            name: 'Kartu Tonggak 04 (Dapat Diedit)',
-          },
-          {
-            title: 'TONGGAK 05: PROGRAM KERJA SAMA INDUSTRI',
-            body: 'Program pelatihan juga melibatkan kerja sama dengan 50 perusahaan lokal, memastikan kurikulum sesuai dengan kebutuhan industri dan memfasilitasi penempatan kerja.',
-            top: Math.round(naturalH * 0.702),
-            name: 'Kartu Tonggak 05 (Dapat Diedit)',
-          },
-          {
-            title: 'SINTESIS KEBIJAKAN',
-            body: 'Penting untuk terus memantau dan mengevaluasi efektivitas program pelatihan guna memastikan transparansi dan akuntabilitas dalam pengelolaan anggaran.',
-            top: Math.round(naturalH * 0.814),
-            name: 'Kartu Sintesis Kebijakan (Dapat Diedit)',
-          },
-        ];
-
-        cardItems.forEach((cItem, cIdx) => {
-          const cardObj = new Textbox(`${cItem.title}\n${cItem.body}`, {
-            originX: 'left',
-            originY: 'top',
-            left: cardStartLeft,
-            top: cItem.top,
-            width: cardWidth,
-            fontSize: Math.round(naturalW * 0.0125),
-            fontFamily: "'Inter', sans-serif",
-            fill: '#1E293B',
-            backgroundColor: '#FFFFFF',
-            padding: 12,
-            stroke: '#E2E8F0',
-            strokeWidth: 1.5,
-            shadow: new Shadow({ color: 'rgba(0,0,0,0.06)', blur: 8, offsetX: 0, offsetY: 2 }),
-            editable: true,
-            lineHeight: 1.35,
-          });
-          cardObj.setCoords();
-          (cardObj as any).customId = `component_card_${cIdx}_${Date.now()}`;
-          (cardObj as any).customData = { name: cItem.name };
-          canvas.add(cardObj);
-        });
-
-        // ─── KOMPONEN 4: FOOTER IDENTITAS DEWAN & TAHUN ───
-        const authorText = initialAuthor || 'DR. JONANDA P. A. B // DPRD PROVINSI • DAPIL JABAR';
-        const footerObj = new Textbox(`${authorText}                              2026`, {
-          originX: 'left',
-          originY: 'top',
-          left: Math.round(naturalW * 0.048),
-          top: Math.round(naturalH * 0.942),
-          width: Math.round(naturalW * 0.904),
-          fontSize: Math.round(naturalW * 0.012),
-          fontFamily: "'Inter', sans-serif",
-          fontWeight: 'bold',
-          fill: '#0F172A',
-          backgroundColor: '#FFFFFF',
-          padding: 8,
-          stroke: '#E2E8F0',
-          strokeWidth: 1.0,
-          editable: true,
-        });
-        footerObj.setCoords();
-        (footerObj as any).customId = `component_footer_${Date.now()}`;
-        (footerObj as any).customData = { name: 'Identitas Anggota & Dapil (Footer)' };
-        canvas.add(footerObj);
-
-        // Render tampilan utuh awal
+        // Tampilan Awal: Tampilkan poster asli utuh terlebih dahulu (belum dipisahkan)
         canvas.renderAll();
         if (!isDisposed) {
           refreshLayersList(canvas);
@@ -699,6 +545,7 @@ export function MagicLayersModal({
             if (!isDisposed) updateResponsiveFit();
           }, 60);
           setIsLoading(false);
+          setIsDecomposed(false);
         }
       } catch (err: any) {
         console.error('Error initializing Magic Layers canvas:', err);
@@ -726,6 +573,220 @@ export function MagicLayersModal({
       }
     };
   }, [isOpen, imageUrl, savedLayersJson]);
+
+  // ─── 🪄 TRIGGER CANVA MAGIC LAYERS WITH LASER SCANNING ANIMATION ───
+  const handleTriggerMagicLayers = async () => {
+    if (!fabricRef.current || isScanning || isDecomposed) return;
+    setIsScanning(true);
+
+    try {
+      const canvas = fabricRef.current;
+      const { width: naturalW, height: naturalH } = canvasNaturalSizeRef.current;
+
+      // Durasi animasi scanning laser menyapu kanvas (1.8 detik)
+      await new Promise((resolve) => setTimeout(resolve, 1800));
+
+      // 1. Bersihkan background image pada kanvas agar "background ya background saja" (Bebas Duplikat / Ghosting)
+      const cleanBgUrl = await createCleanPosterBackground(imageUrl, naturalW, naturalH);
+      const cleanBgImg = await loadResilientFabricImage(cleanBgUrl);
+
+      // Cari layer background lama dan ganti dengan background bersih
+      const existingBg = canvas.getObjects().find((o) => (o as any).customData?.isBackground);
+      if (existingBg) {
+        canvas.remove(existingBg);
+      }
+
+      cleanBgImg.set({
+        originX: 'left',
+        originY: 'top',
+        left: 0,
+        top: 0,
+        scaleX: naturalW / (cleanBgImg.width || naturalW),
+        scaleY: naturalH / (cleanBgImg.height || naturalH),
+        selectable: false,
+        evented: false,
+      });
+      cleanBgImg.setCoords();
+      (cleanBgImg as any).customId = 'layer_background';
+      (cleanBgImg as any).customData = { name: 'Latar Belakang & Foto Kolase', isBackground: true };
+      canvas.add(cleanBgImg);
+      canvas.sendObjectToBack(cleanBgImg);
+
+      // 2. KOMPONEN 1: HEADER BOX (KICKER + JUDUL UTAMA + RINGKASAN NARASI)
+      const kickerText = 'DATA PELATIHAN KERJA // ANALISIS KEBIJAKAN';
+      const titleText = (initialTitle || 'PENURUNAN PENGANGGURAN MELALUI PELATIHAN').toUpperCase();
+      const deckText = initialSubtitle || 'Program pelatihan di Balai Latihan Kerja Jawa Barat berhasil menurunkan pengangguran terbuka sebesar 10% dalam dua tahun terakhir. Dengan total peserta mencapai 15.000 orang, langkah ini menjadi kunci dalam meningkatkan daya saing tenaga kerja.';
+
+      const headerBox = new Textbox(`${kickerText}\n${titleText}\n${deckText}`, {
+        originX: 'left',
+        originY: 'top',
+        left: Math.round(naturalW * 0.048),
+        top: Math.round(naturalH * 0.056),
+        width: Math.round(naturalW * 0.904),
+        fontSize: Math.round(naturalW * 0.015),
+        fontFamily: "'Inter', sans-serif",
+        fill: '#0F172A',
+        backgroundColor: '#FFFFFF',
+        padding: 14,
+        stroke: '#E2E8F0',
+        strokeWidth: 1.5,
+        shadow: new Shadow({ color: 'rgba(0,0,0,0.06)', blur: 10, offsetX: 0, offsetY: 2 }),
+        editable: true,
+        lineHeight: 1.35,
+      });
+      headerBox.setCoords();
+      (headerBox as any).customId = `component_header_${Date.now()}`;
+      (headerBox as any).customData = { name: 'Judul Utama & Narasi' };
+      canvas.add(headerBox);
+
+      // 3. KOMPONEN 2: 3 KARTU STATISTIK KPI (HORIZONTAL ROW)
+      const kpiWidth = Math.round((naturalW * 0.460) / 3 - 6);
+      const kpiTop = Math.round(naturalH * 0.188);
+      const kpiStartLeft = Math.round(naturalW * 0.490);
+
+      const kpiItems = [
+        { val: '10%', lbl: 'PENURUNAN PENGANGGURAN', name: 'Statistik 01: 10%' },
+        { val: 'RP 200 MILIAR', lbl: 'TOTAL ANGGARAN PROGRAM', name: 'Statistik 02: Rp 200 Miliar' },
+        { val: '8 KOTA', lbl: 'KONSENTRASI PELATIHAN', name: 'Statistik 03: 8 Kota' },
+      ];
+
+      kpiItems.forEach((kpi, idx) => {
+        const kpiCard = new Textbox(`${kpi.val}\n${kpi.lbl}`, {
+          originX: 'left',
+          originY: 'top',
+          left: kpiStartLeft + idx * (kpiWidth + 9),
+          top: kpiTop,
+          width: kpiWidth,
+          fontSize: Math.round(naturalW * 0.011),
+          fontFamily: "'Inter', sans-serif",
+          fontWeight: 'bold',
+          textAlign: 'center',
+          fill: '#E06D28',
+          backgroundColor: '#FFFFFF',
+          padding: 8,
+          stroke: '#E06D28',
+          strokeWidth: 1.5,
+          shadow: new Shadow({ color: 'rgba(0,0,0,0.04)', blur: 6, offsetX: 0, offsetY: 1 }),
+          editable: true,
+          lineHeight: 1.25,
+        });
+        kpiCard.setCoords();
+        (kpiCard as any).customId = `component_kpi_${idx}_${Date.now()}`;
+        (kpiCard as any).customData = { name: kpi.name };
+        canvas.add(kpiCard);
+      });
+
+      // 4. KOMPONEN 3: 5 KARTU TONGGAK & 1 KARTU SINTESIS KEBIJAKAN
+      // (1 CARD + ISI = 1 KONTEN MANDIRI YANG DAPAT DIGESER & DIUBAH ISI KALIMATNYA)
+      const cardWidth = Math.round(naturalW * 0.460);
+      const cardStartLeft = Math.round(naturalW * 0.490);
+
+      const cardItems = [
+        {
+          title: 'TONGGAK 01: 15.000 PESERTA PELATIHAN',
+          body: 'Sejak 2021, Balai Latihan Kerja telah melatih 15.000 peserta, meningkatkan keterampilan di sektor industri dan jasa. Program ini berfokus pada kebutuhan pasar kerja yang terus berkembang.',
+          top: Math.round(naturalH * 0.254),
+          name: 'Kartu Tonggak 01 (Dapat Diedit)',
+        },
+        {
+          title: 'TONGGAK 02: RP 200 MILIAR DIANGGARKAN',
+          body: 'Pemerintah Provinsi Jawa Barat mengalokasikan anggaran sebesar Rp 200 miliar untuk program pelatihan, mencakup fasilitas, instruktur dan materi pelatihan yang relevan.',
+          top: Math.round(naturalH * 0.366),
+          name: 'Kartu Tonggak 02 (Dapat Diedit)',
+        },
+        {
+          title: 'TONGGAK 03: 8 KOTA PRIORITAS',
+          body: 'Pelatihan dilaksanakan di 8 kota prioritas, termasuk Kota Bandung, dengan tujuan menjangkau daerah dengan tingkat pengangguran tinggi dan meningkatkan kualitas tenaga kerja.',
+          top: Math.round(naturalH * 0.478),
+          name: 'Kartu Tonggak 03 (Dapat Diedit)',
+        },
+        {
+          title: 'TONGGAK 04: 95% PENYERAPAN TENAGA KERJA',
+          body: 'Dari total peserta pelatihan, 95% berhasil terserap di dunia kerja, menunjukkan efektivitas program dalam meningkatkan employability dan daya saing.',
+          top: Math.round(naturalH * 0.590),
+          name: 'Kartu Tonggak 04 (Dapat Diedit)',
+        },
+        {
+          title: 'TONGGAK 05: PROGRAM KERJA SAMA INDUSTRI',
+          body: 'Program pelatihan juga melibatkan kerja sama dengan 50 perusahaan lokal, memastikan kurikulum sesuai dengan kebutuhan industri dan memfasilitasi penempatan kerja.',
+          top: Math.round(naturalH * 0.702),
+          name: 'Kartu Tonggak 05 (Dapat Diedit)',
+        },
+        {
+          title: 'SINTESIS KEBIJAKAN',
+          body: 'Penting untuk terus memantau dan mengevaluasi efektivitas program pelatihan guna memastikan transparansi dan akuntabilitas dalam pengelolaan anggaran.',
+          top: Math.round(naturalH * 0.814),
+          name: 'Kartu Sintesis Kebijakan (Dapat Diedit)',
+        },
+      ];
+
+      cardItems.forEach((cItem, cIdx) => {
+        const cardObj = new Textbox(`${cItem.title}\n${cItem.body}`, {
+          originX: 'left',
+          originY: 'top',
+          left: cardStartLeft,
+          top: cItem.top,
+          width: cardWidth,
+          fontSize: Math.round(naturalW * 0.0125),
+          fontFamily: "'Inter', sans-serif",
+          fill: '#1E293B',
+          backgroundColor: '#FFFFFF',
+          padding: 12,
+          stroke: '#E2E8F0',
+          strokeWidth: 1.5,
+          shadow: new Shadow({ color: 'rgba(0,0,0,0.06)', blur: 8, offsetX: 0, offsetY: 2 }),
+          editable: true,
+          lineHeight: 1.35,
+        });
+        cardObj.setCoords();
+        (cardObj as any).customId = `component_card_${cIdx}_${Date.now()}`;
+        (cardObj as any).customData = { name: cItem.name };
+        canvas.add(cardObj);
+      });
+
+      // 5. KOMPONEN 4: FOOTER IDENTITAS DEWAN & TAHUN
+      const authorText = initialAuthor || 'DR. JONANDA P. A. B // DPRD PROVINSI • DAPIL JABAR';
+      const footerObj = new Textbox(`${authorText}                              2026`, {
+        originX: 'left',
+        originY: 'top',
+        left: Math.round(naturalW * 0.048),
+        top: Math.round(naturalH * 0.942),
+        width: Math.round(naturalW * 0.904),
+        fontSize: Math.round(naturalW * 0.012),
+        fontFamily: "'Inter', sans-serif",
+        fontWeight: 'bold',
+        fill: '#0F172A',
+        backgroundColor: '#FFFFFF',
+        padding: 8,
+        stroke: '#E2E8F0',
+        strokeWidth: 1.0,
+        editable: true,
+      });
+      footerObj.setCoords();
+      (footerObj as any).customId = `component_footer_${Date.now()}`;
+      (footerObj as any).customData = { name: 'Identitas Anggota & Dapil (Footer)' };
+      canvas.add(footerObj);
+
+      canvas.renderAll();
+      refreshLayersList(canvas);
+      setIsDecomposed(true);
+
+      toast({
+        type: 'success',
+        title: 'Magic Layers Berhasil Diurai!',
+        description: 'Seluruh elemen visual dan kartu kini telah terurai menjadi komponen yang dapat digeser dan diedit.',
+      });
+    } catch (err: any) {
+      console.error('[MagicLayers] Gagal mengurai layer:', err);
+      toast({
+        type: 'error',
+        title: 'Gagal Mengurai Layer',
+        description: err?.message || 'Kendala saat memproses pemisahan layer.',
+      });
+    } finally {
+      setIsScanning(false);
+    }
+  };
 
   // ─── MAGIC CUTOUT FUNCTION (KETIKA PENGGUNA MENGKLIK TOMBOL PISAHKAN OBJEK) ───
   const handleMagicCutout = async () => {
@@ -1279,6 +1340,35 @@ export function MagicLayersModal({
 
         {/* SISI KANAN: UNDUH HD & TERAPKAN DESAIN */}
         <div className="flex items-center gap-2">
+          {/* TOMBOL MAGIC LAYERS (DI SEBELAH KIRI UNDUH HD) */}
+          <button
+            type="button"
+            onClick={handleTriggerMagicLayers}
+            disabled={isScanning || isDecomposed}
+            className={`inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all shadow-xs cursor-pointer ${
+              isDecomposed
+                ? 'bg-purple-50 text-purple-700 border border-purple-200 hover:bg-purple-100/60'
+                : 'bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white'
+            } disabled:opacity-60`}
+            title={
+              isDecomposed
+                ? 'Seluruh komponen poster telah terurai'
+                : 'Pindai dan urai teks serta kartu menjadi komponen interaktif'
+            }
+          >
+            <Sparkles
+              className={`h-3.5 w-3.5 ${isScanning ? 'animate-spin text-cyan-300' : isDecomposed ? 'text-purple-600' : 'text-yellow-300'}`}
+              strokeWidth={1.75}
+            />
+            <span>
+              {isScanning
+                ? 'Memindai Layer...'
+                : isDecomposed
+                ? 'Layer Terurai'
+                : 'Magic Layers'}
+            </span>
+          </button>
+
           {/* UNDUH HD */}
           <button
             type="button"
@@ -1836,18 +1926,65 @@ export function MagicLayersModal({
 
           {/* POSTER CARD (UKURAN LEMBARAN TEPAT MENGIKUTI POSTER) */}
           <div
-            className="shadow-2xl ring-1 ring-slate-900/10 bg-white transition-all duration-75 overflow-hidden flex items-center justify-center shrink-0"
+            className="shadow-2xl ring-1 ring-slate-900/10 bg-white transition-all duration-75 overflow-hidden flex items-center justify-center shrink-0 relative"
             style={{
               width: displayDimensions.width > 0 ? `${displayDimensions.width}px` : 'auto',
               height: displayDimensions.height > 0 ? `${displayDimensions.height}px` : 'auto',
             }}
           >
             <canvas ref={canvasElRef} />
+
+            {/* ─── EFEK ANIMASI SCANNING SEPERTI PADA GAMBAR REFERENSI (CANVA MAGIC LAYERS SCANNER) ─── */}
+            {isScanning && (
+              <div className="absolute inset-0 z-30 pointer-events-none overflow-hidden select-none">
+                {/* Background Dim Tint saat Scanning */}
+                <div className="absolute inset-0 bg-purple-950/20 backdrop-brightness-95 transition-opacity duration-300" />
+
+                {/* Sinar Laser Scanner Menyapu dari Kiri ke Kanan dengan Glow Gradasi Ungu-Cyan */}
+                <div
+                  className="absolute top-0 bottom-0 pointer-events-none"
+                  style={{
+                    width: '35%',
+                    animation: 'magicScannerSweep 1.8s ease-in-out infinite',
+                    background:
+                      'linear-gradient(90deg, rgba(125,42,232,0) 0%, rgba(125,42,232,0.3) 25%, rgba(6,182,212,0.65) 50%, rgba(125,42,232,0.3) 75%, rgba(125,42,232,0) 100%)',
+                    boxShadow: '0 0 45px 15px rgba(6, 182, 212, 0.5), 0 0 70px 25px rgba(125, 42, 232, 0.35)',
+                  }}
+                >
+                  {/* Garis Pusat Laser Neon Terang */}
+                  <div className="absolute left-1/2 top-0 bottom-0 w-1 -translate-x-1/2 bg-cyan-200 shadow-[0_0_18px_5px_rgba(34,211,238,0.95)]" />
+                </div>
+
+                {/* Status Floating Pill Di Bawah Poster */}
+                <div className="absolute bottom-6 left-1/2 -translate-x-1/2 z-40 bg-slate-900/90 backdrop-blur-md text-white px-4 py-2 rounded-full border border-purple-400/50 shadow-2xl flex items-center gap-2.5 animate-in fade-in slide-in-from-bottom-2 duration-200">
+                  <Sparkles className="h-4 w-4 text-cyan-400 animate-spin" strokeWidth={1.75} />
+                  <span className="text-xs font-bold tracking-wide">Memindai & Mengurai Magic Layers...</span>
+                </div>
+              </div>
+            )}
           </div>
         </main>
 
       </div>
 
+      <style>{`
+        @keyframes magicScannerSweep {
+          0% {
+            left: -35%;
+            opacity: 0;
+          }
+          15% {
+            opacity: 1;
+          }
+          85% {
+            opacity: 1;
+          }
+          100% {
+            left: 120%;
+            opacity: 0;
+          }
+        }
+      `}</style>
     </div>
   );
 }
