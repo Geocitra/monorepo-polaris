@@ -34,6 +34,36 @@ import {
 
 const SESSION_TTL_SECONDS = 259200; // 72 jam (3 hari) untuk mengakomodasi ritme kerja Anggota Dewan yang sibuk
 
+/**
+ * Memotong judul baris WhatsApp List Drawer secara cerdas pada batas kata (word boundary).
+ * Meta WhatsApp Cloud API membatasi:
+ * - row.title maksimal 24 karakter (jika >24 akan ditolak dengan HTTP 400 parameter violation).
+ * - row.description maksimal 72 karakter.
+ */
+function formatSmartRowTitle(index: number | null, fullTitle: string, maxLen = 24): string {
+  const prefix = index !== null ? `${index}. ` : '';
+  const available = maxLen - prefix.length;
+  const clean = fullTitle.trim().replace(/\s+/g, ' ');
+  if (clean.length <= available) return `${prefix}${clean}`;
+  const sub = clean.slice(0, available);
+  const lastSpace = sub.lastIndexOf(' ');
+  const wordTruncated =
+    lastSpace > 4 ? sub.slice(0, lastSpace) : sub.slice(0, Math.max(available - 2, 4));
+  return `${prefix}${wordTruncated}..`;
+}
+
+function formatSmartRowDesc(fullText: string, prefix = '', maxLen = 72): string {
+  const cleanPrefix = prefix ? `${prefix} ` : '';
+  const available = maxLen - cleanPrefix.length;
+  const clean = fullText.trim().replace(/\s+/g, ' ');
+  if (clean.length <= available) return `${cleanPrefix}${clean}`;
+  const sub = clean.slice(0, available);
+  const lastSpace = sub.lastIndexOf(' ');
+  const wordTruncated =
+    lastSpace > 12 ? sub.slice(0, lastSpace) : sub.slice(0, Math.max(available - 3, 5));
+  return `${cleanPrefix}${wordTruncated}...`;
+}
+
 @Injectable()
 export class WhatsAppBotSessionService implements OnModuleDestroy {
   private readonly logger = new Logger(WhatsAppBotSessionService.name);
@@ -275,6 +305,24 @@ export class WhatsAppBotSessionService implements OnModuleDestroy {
         lowerCmd
       );
       if (isHandled) return;
+    }
+
+    // Pemilihan cepat nomor artikel (1-5) dari arsip naskah / hasil cari yang baru saja dibuka
+    if (itemType === 'TEXT' && /^[1-5]$/.test(lowerCmd)) {
+      const selectedIdx = parseInt(lowerCmd, 10) - 1;
+      const cachedPubList = await this.redisService.get<string[]>(
+        `whatsapp:active_pub_page:${tenant.id}`
+      );
+      if (cachedPubList && cachedPubList[selectedIdx]) {
+        const pubId = cachedPubList[selectedIdx];
+        await this.sendPublicationDetailPrompt(
+          tenant.id,
+          tenant.fullName,
+          pubId,
+          normalizedSender
+        );
+        return;
+      }
     }
 
     const draftKey = `whatsapp:draft:${tenant.id}`;
@@ -614,6 +662,12 @@ export class WhatsAppBotSessionService implements OnModuleDestroy {
     if (buttonId.startsWith('BRIEF_LOOKUP:')) {
       const briefId = buttonId.slice('BRIEF_LOOKUP:'.length).trim();
       await this.sendBriefDetailCard(tenant.id, briefId, phoneE164);
+      return;
+    }
+
+    if (buttonId.startsWith('PUB_PUBLISH:')) {
+      const pubId = buttonId.slice('PUB_PUBLISH:'.length).trim();
+      await this.publishDraftPublicationFromClient(tenant.id, tenant.fullName, pubId, phoneE164);
       return;
     }
 
@@ -1568,6 +1622,40 @@ export class WhatsAppBotSessionService implements OnModuleDestroy {
     const hasMore = pubs.length > limit;
     const displayPubs = pubs.slice(0, limit);
 
+    // Cache publikasi aktif untuk navigasi angka cepat (1-5) via balasan chat
+    await this.redisService.set(
+      `whatsapp:active_pub_page:${tenantId}`,
+      displayPubs.map((p) => p.id),
+      3600
+    );
+
+    const draftPubs = displayPubs.filter((p) => p.status !== 'PUBLISHED');
+    const publishedPubs = displayPubs.filter((p) => p.status === 'PUBLISHED');
+
+    const emojiNumbers = ['1️⃣', '2️⃣', '3️⃣', '4️⃣', '5️⃣', '6️⃣', '7️⃣', '8️⃣', '9️⃣', '🔟'];
+
+    // Susun daftar judul lengkap (100% tanpa potongan karakter) langsung di chat bubble
+    const publicationLines = displayPubs.map((p, idx) => {
+      const numEmoji = emojiNumbers[idx] || `${idx + 1}.`;
+      const statusBadge =
+        p.status === 'PUBLISHED'
+          ? '✅ _Resmi Tayang di Portal_'
+          : '⏳ _Draf Belum Terbit (Bisa Di-UP/Revisi)_';
+      return `${numEmoji} *${p.title}*\n   ${statusBadge}`;
+    });
+
+    const bodyText = [
+      `📚 *Arsip Konten & Naskah — Halaman ${page}*`,
+      `Bapak/Ibu *${tenantName}*, berikut daftar judul publikasi Anda:`,
+      '',
+      ...publicationLines,
+      '',
+      '────────────────────────────',
+      'Tekan tombol *Pilih Konten* di bawah untuk melihat poster HD, teks sebar, atau menindaklanjuti draf.',
+      '',
+      '_💡 Tips: Anda juga bisa langsung membalas dengan nomor (misal: ketik "1" atau "2") atau ketik "cari <kata>" (misal: "cari sampah")._',
+    ].join('\n');
+
     const navRows: Array<{ id: string; title: string; description: string }> = [];
     if (hasMore) {
       navRows.push({
@@ -1589,26 +1677,51 @@ export class WhatsAppBotSessionService implements OnModuleDestroy {
       description: 'Buka pilihan layanan utama Asisten Redaksi Polaris',
     });
 
+    const sections: Array<{
+      title: string;
+      rows: Array<{ id: string; title: string; description: string }>;
+    }> = [];
+
+    let itemNumber = 1;
+
+    if (draftPubs.length > 0) {
+      sections.push({
+        title: `⏳ Draf Belum Terbit (${draftPubs.length})`,
+        rows: draftPubs.map((p) => {
+          const num = itemNumber++;
+          return {
+            id: `PUB_DETAIL:${p.id}`,
+            title: formatSmartRowTitle(num, p.title),
+            description: formatSmartRowDesc(p.title, '⏳ Draf:'),
+          };
+        }),
+      });
+    }
+
+    if (publishedPubs.length > 0) {
+      sections.push({
+        title: `✅ Resmi Tayang (${publishedPubs.length})`,
+        rows: publishedPubs.map((p) => {
+          const num = itemNumber++;
+          return {
+            id: `PUB_DETAIL:${p.id}`,
+            title: formatSmartRowTitle(num, p.title),
+            description: formatSmartRowDesc(p.title, '✅ Tayang:'),
+          };
+        }),
+      });
+    }
+
+    sections.push({
+      title: 'Navigasi Halaman & Menu',
+      rows: navRows,
+    });
+
     await this.waClient.sendInteractiveList(
       phoneE164,
-      `Berikut adalah arsip naskah & konten Bapak/Ibu *${tenantName}* *(Halaman ${page})*.\n\nSilakan tekan tombol di bawah lalu pilih judul konten untuk menerima *Link Artikel, Poster HD, dan Teks Siap Sebar (Broadcast WA)*:\n\n_💡 Tips: Anda juga bisa mengetik "cari <kata>" (misal: "cari sampah") untuk mencari langsung._`,
+      bodyText,
       '📚 Pilih Konten',
-      [
-        {
-          title: `Daftar Konten (Halaman ${page})`,
-          rows: displayPubs.map((p) => ({
-            id: `PUB_DETAIL:${p.id}`,
-            title: p.title.slice(0, 24),
-            description: `${
-              p.status === 'PUBLISHED' ? '✅ Tayang' : '📝 Draft'
-            } • ${p.title.slice(0, 55)}`,
-          })),
-        },
-        {
-          title: 'Navigasi Halaman & Menu',
-          rows: navRows,
-        },
-      ],
+      sections,
       'Arsip & Link Konten',
       'Asisten Redaksi Polaris'
     );
@@ -1654,6 +1767,38 @@ export class WhatsAppBotSessionService implements OnModuleDestroy {
       return;
     }
 
+    // Cache artikel pencarian agar bisa dibuka via ketik "1", "2", dst.
+    if (matchedPubs.length > 0) {
+      await this.redisService.set(
+        `whatsapp:active_pub_page:${tenantId}`,
+        matchedPubs.map((p) => p.id),
+        3600
+      );
+    }
+
+    const emojiNumbers = ['1️⃣', '2️⃣', '3️⃣', '4️⃣', '5️⃣'];
+    const pubLines = matchedPubs.map((p, idx) => {
+      const numEmoji = emojiNumbers[idx] || `${idx + 1}.`;
+      const statusBadge = p.status === 'PUBLISHED' ? '✅ _Tayang_' : '⏳ _Draf_';
+      return `${numEmoji} *${p.title}* (${statusBadge})`;
+    });
+
+    const briefLines = matchedBriefs.map(
+      (b) => `• 🎫 *#${b.briefCode}* (${b.status}): _"${b.topicSummary.slice(0, 70)}..."_`
+    );
+
+    const bodyText = [
+      `🔍 *Hasil Pencarian: "${keyword}"*`,
+      `Akun: *${tenantName}*`,
+      '',
+      pubLines.length > 0 ? `*Artikel/Naskah Ditemukan:*\n${pubLines.join('\n')}` : '',
+      briefLines.length > 0 ? `*Tiket Ditemukan:*\n${briefLines.join('\n')}` : '',
+      '',
+      'Silakan pilih judul dari menu drawer di bawah (atau ketik nomor artikel):',
+    ]
+      .filter(Boolean)
+      .join('\n');
+
     const sections: Array<{
       title: string;
       rows: Array<{ id: string; title: string; description: string }>;
@@ -1662,10 +1807,13 @@ export class WhatsAppBotSessionService implements OnModuleDestroy {
     if (matchedPubs.length > 0) {
       sections.push({
         title: `Artikel Ditemukan (${matchedPubs.length})`,
-        rows: matchedPubs.map((p) => ({
+        rows: matchedPubs.map((p, idx) => ({
           id: `PUB_DETAIL:${p.id}`,
-          title: p.title.slice(0, 24),
-          description: `${p.status === 'PUBLISHED' ? '✅ Tayang' : '📝 Draft'} • ${p.title.slice(0, 55)}`,
+          title: formatSmartRowTitle(idx + 1, p.title),
+          description: formatSmartRowDesc(
+            p.title,
+            p.status === 'PUBLISHED' ? '✅ Tayang:' : '⏳ Draf:'
+          ),
         })),
       });
     }
@@ -1675,8 +1823,8 @@ export class WhatsAppBotSessionService implements OnModuleDestroy {
         title: `Tiket Request Ditemukan (${matchedBriefs.length})`,
         rows: matchedBriefs.map((b) => ({
           id: `BRIEF_LOOKUP:${b.id}`,
-          title: `#${b.briefCode}`,
-          description: `${b.status} • ${b.topicSummary.slice(0, 55)}`,
+          title: formatSmartRowTitle(null, `#${b.briefCode}`),
+          description: formatSmartRowDesc(b.topicSummary, `[${b.status}]`),
         })),
       });
     }
@@ -1694,7 +1842,7 @@ export class WhatsAppBotSessionService implements OnModuleDestroy {
 
     await this.waClient.sendInteractiveList(
       phoneE164,
-      `🔍 Ditemukan hasil untuk kata kunci *"${keyword}"* pada akun *${tenantName}*.\n\nSilakan tekan tombol di bawah untuk membuka naskah atau status tiket yang Anda tuju:`,
+      bodyText,
       '🔍 Lihat Hasil',
       sections,
       'Hasil Pencarian Polaris',
@@ -1808,6 +1956,12 @@ export class WhatsAppBotSessionService implements OnModuleDestroy {
       return;
     }
 
+    const [linkedBrief] = await db
+      .select()
+      .from(contentBriefs)
+      .where(and(eq(contentBriefs.linkedPublicationId, pub.id), eq(contentBriefs.tenantId, tenantId)))
+      .limit(1);
+
     const assets = await db
       .select()
       .from(mediaAssets)
@@ -1821,11 +1975,15 @@ export class WhatsAppBotSessionService implements OnModuleDestroy {
       .limit(1);
 
     const posterUrl = assets[0]?.cdnPublicUrl;
+    const isPublished = pub.status === 'PUBLISHED';
+
     if (posterUrl && posterUrl.startsWith('http')) {
       await this.waClient.sendImageMessage(
         phoneE164,
         posterUrl,
-        `🖼️ *Poster Resmi:* ${pub.title}`
+        isPublished
+          ? `🖼️ *Poster Resmi:* ${pub.title}`
+          : `🖼️ *[Pratinjau Poster Draf]:* ${pub.title}`
       );
     }
 
@@ -1834,23 +1992,159 @@ export class WhatsAppBotSessionService implements OnModuleDestroy {
       syndication?.instagramCaption ||
       pub.excerpt;
 
+    if (isPublished) {
+      // KASUS A: KONTEN SUDAH TAYANG (Fokus pada Distribusi & Sebar)
+      await this.waClient.sendInteractiveButtons(
+        phoneE164,
+        [
+          `📰 *[RESMI TAYANG]*`,
+          `*${pub.title}*`,
+          '',
+          `• Status: *✅ Telah Tayang di Portal Berita Publik*`,
+          `• 🔗 Link Berita: ${pub.canonicalUrl}`,
+          '',
+          '*Teks Siap Sebar / Caption:*',
+          shareableCaption.slice(0, 600),
+        ].join('\n'),
+        [
+          { id: 'MENU_LATEST_LINKS', title: '📚 Arsip Lainnya' },
+          { id: 'MENU_NEW_BRIEF', title: '📝 Request Baru' },
+          { id: 'MENU_OPEN_MAIN', title: '📋 Menu Utama' },
+        ],
+        'Paket Konten Resmi Tayang',
+        'Asisten Redaksi Polaris'
+      );
+    } else {
+      // KASUS B: KONTEN MASIH DRAF (Fokus pada Tindak Lanjut: Minta Terbitkan vs Revisi vs Biarkan)
+      const canRevise =
+        linkedBrief && linkedBrief.revisionUsed < linkedBrief.revisionLimit;
+
+      const buttons = [];
+      buttons.push({ id: `PUB_PUBLISH:${pub.id}`, title: '🚀 Terbitkan Sekarang' });
+      if (canRevise) {
+        buttons.push({ id: `REV_START:${linkedBrief.id}`, title: '✏️ Minta Revisi' });
+      }
+      buttons.push({ id: 'MENU_OPEN_MAIN', title: '📁 Biarkan di Draf' });
+
+      await this.waClient.sendInteractiveButtons(
+        phoneE164,
+        [
+          `📝 *[DRAF KONTEN — BELUM TAYANG]*`,
+          `*${pub.title}*`,
+          '',
+          `• Status: *⏳ Draf Siap Tindak Lanjut*`,
+          linkedBrief
+            ? `• Tiket Terkait: *#${linkedBrief.briefCode}* (Sisa Revisi: *${Math.max(
+                0,
+                linkedBrief.revisionLimit - linkedBrief.revisionUsed
+              )}x*)`
+            : '',
+          '',
+          '*Ringkasan Naskah Draf:*',
+          `"${pub.excerpt}"`,
+          '',
+          '💡 _Konten ini belum dipublikasikan ke portal publik._',
+          '• Tekan *🚀 Terbitkan Sekarang* untuk langsung menayangkan naskah ini ke portal berita publik.',
+          canRevise
+            ? '• Tekan *✏️ Minta Revisi* jika ada bagian yang ingin disempurnakan.'
+            : '',
+          '• Tekan *📁 Biarkan di Draf* jika hanya ingin meninjau tanpa mengubah status.',
+        ]
+          .filter(Boolean)
+          .join('\n'),
+        buttons.slice(0, 3),
+        'Tindak Lanjut Draf Konten',
+        'Asisten Redaksi Polaris'
+      );
+    }
+  }
+
+  private async publishDraftPublicationFromClient(
+    tenantId: string,
+    tenantName: string,
+    publicationId: string,
+    phoneE164: string
+  ): Promise<void> {
+    const [pub] = await db
+      .select()
+      .from(contentPublications)
+      .where(and(eq(contentPublications.id, publicationId), eq(contentPublications.tenantId, tenantId)))
+      .limit(1);
+
+    if (!pub) {
+      await this.waClient.sendTextMessage(phoneE164, 'Draf konten tidak ditemukan.');
+      return;
+    }
+
+    if (pub.status === 'PUBLISHED') {
+      await this.waClient.sendTextMessage(
+        phoneE164,
+        `Konten "${pub.title}" sudah berstatus resmi tayang sebelumnya.`
+      );
+      return;
+    }
+
+    const now = new Date();
+    await withTenantContext(tenantId, async (tx) => {
+      await tx
+        .update(contentPublications)
+        .set({
+          status: 'PUBLISHED',
+          publishedAt: now,
+          updatedAt: now,
+        })
+        .where(eq(contentPublications.id, pub.id));
+
+      const [brief] = await tx
+        .select()
+        .from(contentBriefs)
+        .where(and(eq(contentBriefs.linkedPublicationId, pub.id), eq(contentBriefs.tenantId, tenantId)))
+        .limit(1);
+
+      if (brief) {
+        await tx
+          .update(contentBriefs)
+          .set({
+            status: 'PUBLISHED',
+            articleStatus: 'APPROVED',
+            imageStatus: 'APPROVED',
+            captionStatus: 'APPROVED',
+            approvedAt: now,
+            publishedAt: now,
+            updatedAt: now,
+          })
+          .where(eq(contentBriefs.id, brief.id));
+
+        if (brief.assignedOperatorId) {
+          await this.redisService.emitUserNotification(brief.assignedOperatorId, {
+            id: `pub_up_${Date.now()}`,
+            title: `🚀 Draf Diterbitkan Klien — #${brief.briefCode}`,
+            message: `${tenantName} telah menyetujui dan menerbitkan draf "${pub.title}" via WhatsApp.`,
+            category: 'ARTICLE',
+            link: '/operator/workspace',
+          });
+        }
+      }
+    });
+
     await this.waClient.sendInteractiveButtons(
       phoneE164,
       [
-        `📰 *${pub.title}*`,
-        `• Status: *${pub.status === 'PUBLISHED' ? '✅ Sudah Tayang' : pub.status}*`,
-        `• 🔗 Link Artikel: ${pub.canonicalUrl}`,
+        `🎉 *KONTEN RESMI TAYANG DI PORTAL PUBLIK!*`,
         '',
-        '*Teks Siap Sebar / Caption:*',
-        shareableCaption.slice(0, 650),
+        `Bapak/Ibu *${tenantName}*, draf artikel Anda telah resmi dipublikasikan secara live:`,
+        `📰 *${pub.title}*`,
+        `🔗 *Tautan Berita:* ${pub.canonicalUrl}`,
+        '',
+        'Tim Redaksi mengucapkan selamat! Paket konten siap sebar (poster & caption) dapat diambil kapan saja melalui menu arsip.',
       ].join('\n'),
       [
-        { id: 'MENU_LATEST_LINKS', title: '📚 Konten Lainnya' },
-        { id: 'MENU_NEW_BRIEF', title: '📝 Request Baru' },
+        { id: `PUB_DETAIL:${pub.id}`, title: '📦 Ambil Teks & Poster' },
+        { id: 'MENU_NEW_BRIEF', title: '📝 Request Konten Baru' },
         { id: 'MENU_OPEN_MAIN', title: '📋 Menu Utama' },
       ],
-      'Paket Konten Siap Sebar',
-      'Asisten Redaksi Polaris'
+      'Publikasi Berhasil',
+      'Portal Berita Resmi Polaris'
     );
   }
 
