@@ -1,5 +1,5 @@
 import { Injectable, Logger } from '@nestjs/common';
-import { PosterInpainter, ChromiumPosterCompositor, type PosterLayerManifest } from '@polaris/storage';
+import { PosterInpainter, ChromiumPosterCompositor, PosterColorHarmonizer, type PosterLayerManifest } from '@polaris/storage';
 import { PosterVisionExtractorService } from './poster-vision-extractor.service.js';
 import { db, mediaAssets, contentPublications } from '@polaris/database';
 import { eq } from 'drizzle-orm';
@@ -590,10 +590,19 @@ export class StudioMagicLayersService {
             // Posisi, dimensi, padding, dan warna 100% identik dengan gambar yang dilihat user.
             // KEMBALIKAN LANGSUNG TANPA PERNAH MELEMPAR KE VISION AI!
             if (isChromiumNative && m?.layers && m.layers.length >= 10 && !params.forceReExtract) {
-              this.logger.log(`[MagicLayers] Mengembalikan layoutManifest Chromium Native 100% presisi (${m.layers.length} layers, archetype=${parsed.archetype}) untuk publication ${effectivePubId}`);
+              this.logger.log(`[MagicLayers] Mengembalikan layoutManifest Chromium Native (${m.layers.length} layers, archetype=${parsed.archetype}) untuk publication ${effectivePubId}`);
+              const harmonized = await PosterColorHarmonizer.harmonizeManifest(parsed.layoutManifest, params.imageUrl);
+              if (JSON.stringify(harmonized) !== JSON.stringify(parsed.layoutManifest) && existingAsset?.id) {
+                parsed.layoutManifest = harmonized;
+                await db
+                  .update(mediaAssets)
+                  .set({ promptUsed: JSON.stringify(parsed) })
+                  .where(eq(mediaAssets.id, existingAsset.id));
+                this.logger.log(`[MagicLayers] Manifest berhasil diselaraskan dengan warna piksel asli poster (asset ${existingAsset.id})`);
+              }
               return {
                 success: true,
-                manifest: parsed.layoutManifest,
+                manifest: harmonized,
                 rawCanvasUrl,
                 detectedArchetype: parsed.archetype,
               };
@@ -611,9 +620,10 @@ export class StudioMagicLayersService {
                 imageUrl: params.imageUrl,
               });
               if (recomposed.manifest && recomposed.manifest.layers.length >= 10) {
+                const harmonized = await PosterColorHarmonizer.harmonizeManifest(recomposed.manifest, params.imageUrl);
                 return {
                   success: true,
-                  manifest: recomposed.manifest,
+                  manifest: harmonized,
                   rawCanvasUrl: recomposed.rawCanvasUrl || rawCanvasUrl,
                   detectedArchetype: recomposed.detectedArchetype || parsed.archetype,
                 };
@@ -623,9 +633,10 @@ export class StudioMagicLayersService {
             // 3. JIKA NON-CHROMIUM NATIVE (eksternal / upload) dan sudah memiliki manifest valid:
             if (!isChromiumNative && m?.layers && m.layers.length >= 4 && !params.forceReExtract) {
               this.logger.log(`[MagicLayers] Mengembalikan layoutManifest tersimpan (${m.layers.length} layers) untuk publication ${effectivePubId}`);
+              const harmonized = await PosterColorHarmonizer.harmonizeManifest(parsed.layoutManifest, params.imageUrl);
               return {
                 success: true,
-                manifest: parsed.layoutManifest,
+                manifest: harmonized,
                 rawCanvasUrl,
                 detectedArchetype: parsed.archetype,
               };
@@ -647,12 +658,14 @@ export class StudioMagicLayersService {
         } catch {}
       }
 
-      const manifest = this.visionExtractor.convertContentToManifest(
+      const rawManifest = this.visionExtractor.convertContentToManifest(
         extractedContent,
         params.naturalW || 1080,
         params.naturalH || 1350,
         existingArchetype
       );
+
+      const manifest = await PosterColorHarmonizer.harmonizeManifest(rawManifest, params.imageUrl);
 
       // Simpan manifest ini ke database media_assets agar tidak perlu dianalisis ulang
       if (existingAsset?.id) {

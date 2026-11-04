@@ -3,6 +3,7 @@ import { isInfographicArchetype } from '@polaris/shared-types';
 import { BrowserSingleton } from './browser-singleton.js';
 import { ChromiumFontFace } from './chromium-font-face.js';
 import type { PosterLayerManifest } from './poster-layer-manifest.js';
+import { PosterColorHarmonizer, isColorDark } from './poster-color-harmonizer.js';
 
 /** Escape teks dinamis (hasil AI / input user) sebelum disisipkan ke HTML. */
 function esc(value: unknown): string {
@@ -106,17 +107,20 @@ function renderInfographicArchetypeLayout(params: {
   const points = copy.points || [];
 
   // Solid, 100% Opaque High-Contrast Editorial Surfaces (NO INVALID HEX, NO MUDDY BLUR)
-  // Seluruh Infografis wajib selalu menggunakan kartu putih solid #FFFFFF agar 100% terbaca tajam dan tidak gelap-di-atas-gelap
-  const cardBgSolid = '#FFFFFF';
-  const headerBgSolid = '#FFFFFF';
-  const pillBgSolid = '#F8FAFC';
-  const borderRuleColor = `${accentColor}33`;
+  // Adaptif terhadap tema poster: Kertas Terang vs Kertas Gelap (Dark Mode)
+  const isDarkSecondary = secondaryColor && isColorDark(secondaryColor);
+  const darkCardBg = isDarkSecondary ? secondaryColor : '#0F172A';
+
+  const cardBgSolid = isLightPaper ? '#FFFFFF' : darkCardBg;
+  const headerBgSolid = isLightPaper ? '#FFFFFF' : darkCardBg;
+  const pillBgSolid = isLightPaper ? '#F8FAFC' : (isDarkSecondary ? secondaryColor : '#1E293B');
+  const borderRuleColor = isLightPaper ? `${accentColor}33` : `${accentColor}55`;
 
   // 100% Guaranteed High-Contrast Typography (Crisp and legible on any screen)
-  const titleColor = '#0F172A';
-  const bodyTextColor = '#1E293B';
-  const deckTextColor = '#334155';
-  const mutedTextColor = '#64748B';
+  const titleColor = isLightPaper ? '#0F172A' : '#FFFFFF';
+  const bodyTextColor = isLightPaper ? '#1E293B' : '#F1F5F9';
+  const deckTextColor = isLightPaper ? '#334155' : '#CBD5E1';
+  const mutedTextColor = isLightPaper ? '#64748B' : '#94A3B8';
 
   // Helper KPI Stats Primer (4 Metrik Angka Kunci Kredibel)
   const defaultStatValues = ['15,2%', 'RP 1,2 T', '5 KOTA', '100%'];
@@ -1753,14 +1757,14 @@ export class ChromiumPosterCompositor {
       font-size: 13px;
       font-weight: 800;
       letter-spacing: 2px;
-      color: ${isInfographic ? '#0F172A' : accentColor};
-      background: ${isInfographic ? '#FFFFFF' : (isLightPaper ? 'rgba(255, 255, 255, 0.88)' : 'rgba(15, 23, 42, 0.85)')};
-      border: 1px solid ${isInfographic ? `${accentColor}33` : `${accentColor}44`};
+      color: ${isInfographic ? (isLightPaper ? '#0F172A' : '#FFFFFF') : accentColor};
+      background: ${isLightPaper ? 'rgba(255, 255, 255, 0.95)' : 'rgba(15, 23, 42, 0.92)'};
+      border: 1px solid ${isInfographic ? (isLightPaper ? `${accentColor}33` : `${accentColor}55`) : `${accentColor}44`};
       border-radius: 6px;
       padding: 6px 14px;
       text-transform: uppercase;
       box-shadow: 0 2px 8px rgba(0,0,0,0.06);
-      text-shadow: ${isInfographic ? 'none' : textShadow};
+      text-shadow: ${isLightPaper ? 'none' : textShadow};
     }
 
     ${customLayoutCss}
@@ -1774,20 +1778,20 @@ export class ChromiumPosterCompositor {
       display: flex;
       align-items: center;
       justify-content: space-between;
-      background: ${isInfographic ? '#FFFFFF' : (isLightPaper ? 'rgba(255, 255, 255, 0.90)' : 'rgba(15, 23, 42, 0.88)')};
-      border: 1px solid ${isInfographic ? `${accentColor}33` : (isLightPaper ? 'rgba(0,0,0,0.1)' : 'rgba(255,255,255,0.12)')};
+      background: ${isLightPaper ? 'rgba(255, 255, 255, 0.95)' : 'rgba(15, 23, 42, 0.92)'};
+      border: 1px solid ${isInfographic ? (isLightPaper ? `${accentColor}33` : `${accentColor}55`) : (isLightPaper ? 'rgba(0,0,0,0.1)' : 'rgba(255,255,255,0.12)')};
       border-radius: 8px;
       padding: 8px 18px;
       box-shadow: 0 3px 12px rgba(0, 0, 0, 0.12);
       backdrop-filter: blur(8px);
-      text-shadow: ${isInfographic ? 'none' : textShadow};
+      text-shadow: ${isLightPaper ? 'none' : textShadow};
     }
 
     .signature-title {
       font-family: 'Bebas Neue', sans-serif;
       font-size: 24px;
       letter-spacing: 2px;
-      color: ${isInfographic ? '#0F172A' : primaryColor};
+      color: ${isLightPaper ? '#0F172A' : '#FFFFFF'};
     }
 
     .footer-year {
@@ -1802,7 +1806,7 @@ export class ChromiumPosterCompositor {
   <div class="ink-layer">
     <div class="edition-tag">
       <span style="color: ${accentColor}; font-weight: 900;">${esc(editionTag)}</span>
-      <span style="color: ${isInfographic ? '#475569' : accentColor}; font-weight: 800;">${esc(headerTag || 'DOKUMEN ANALISIS PUBLIK')}</span>
+      <span style="color: ${isLightPaper ? '#475569' : '#CBD5E1'}; font-weight: 800;">${esc(headerTag || 'DOKUMEN ANALISIS PUBLIK')}</span>
     </div>
 
     ${mainContentHtml}
@@ -1846,12 +1850,16 @@ export class ChromiumPosterCompositor {
       quality: 90,
     });
 
+    const finalManifest = layoutManifest
+      ? await PosterColorHarmonizer.harmonizeManifest(layoutManifest, renderedWebpBuffer)
+      : null;
+
     return {
       buffer: renderedWebpBuffer,
       sizeBytes: renderedWebpBuffer.length,
       detectedLuminance: luminance,
       blendModeUsed,
-      layoutManifest,
+      layoutManifest: finalManifest,
     };
   }
 }
