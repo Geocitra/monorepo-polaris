@@ -143,12 +143,15 @@ export class PosterColorHarmonizer {
 
           const [r, g, b] = patchStats.channels.map((c) => Math.round(c.mean));
           const luminance = 0.299 * r + 0.587 * g + 0.114 * b;
-          const isDarkCard = luminance < 125;
+          const isDarkCard = luminance < 125 || isColorDark(frame.fill);
 
           if (isDarkCard) {
-            // Latar kartu pada gambar ASLI adalah GELAP (misal #0F172B / #14201B)
-            const sampledHex = `#${r.toString(16).padStart(2, '0')}${g.toString(16).padStart(2, '0')}${b.toString(16).padStart(2, '0')}`.toUpperCase();
-            frame.fill = sampledHex;
+            // Latar kartu pada gambar ASLI adalah GELAP (misal #0F172B / #14201B / #DC2626)
+            // Hanya isi jika belum ada fill khusus atau jika fill saat ini putih default
+            if (!frame.fill || frame.fill === '#FFFFFF') {
+              const sampledHex = `#${r.toString(16).padStart(2, '0')}${g.toString(16).padStart(2, '0')}${b.toString(16).padStart(2, '0')}`.toUpperCase();
+              frame.fill = sampledHex;
+            }
 
             // Sesuaikan border frame agar kontras dengan kartu gelap
             if (frame.borders) {
@@ -180,8 +183,8 @@ export class PosterColorHarmonizer {
                 if (isAccentRole) continue;
 
                 // Jika teks netral berwarna gelap, ubah menjadi TERANG agar kontras & 100% terbaca
-                if (isColorDark(text.color)) {
-                  if (text.role.includes('headline') || text.role.includes('title')) {
+                if (isColorDark(text.color) || text.role.includes('banner')) {
+                  if (text.role.includes('headline') || text.role.includes('title') || text.role.includes('banner')) {
                     text.color = '#FFFFFF';
                   } else if (text.role.includes('desc') || text.role.includes('body')) {
                     text.color = '#F1F5F9';
@@ -197,7 +200,10 @@ export class PosterColorHarmonizer {
             }
           } else {
             // Latar kartu pada gambar ASLI adalah TERANG (misal #FFFFFF / cream)
-            frame.fill = luminance > 240 ? '#FFFFFF' : `rgb(${r}, ${g}, ${b})`;
+            // JANGAN timpa jika frame sudah memiliki warna solid dari analisis AI (seperti #FFFFFF atau #DC2626)
+            if (!frame.fill || frame.fill.startsWith('rgb(')) {
+              frame.fill = luminance > 160 ? '#FFFFFF' : `rgb(${r}, ${g}, ${b})`;
+            }
 
             // Selaraskan semua teks yang berada di dalam frame terang ini
             for (const text of textLayers) {

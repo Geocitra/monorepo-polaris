@@ -107,26 +107,30 @@ Tugas Anda adalah membaca gambar poster ini dan mendeteksi SEMUA elemen visual (
 
 PERINGATAN KERAS & ATURAN MUTLAK:
 1. 100% DINAMIS & VERBATIM: Deteksi HANYA apa yang ada di gambar poster! JANGAN MEMBUAT ELEMEN FIKTIF!
-   - JANGAN PERNAH menambahkan teks dummy seperti "PETA JALAN TARGET & REALISASI CAPAIAN" atau "+ TAHAP 01" jika tidak tertulis di gambar!
+   - JANGAN PERNAH menambahkan teks dummy seperti "PETA JALAN TARGET & REALISASI CAPAIAN" jika tidak tertulis di gambar!
    - JANGAN PERNAH menambahkan garis timeline jika di gambar aslinya tidak ada!
-2. PERHATIKAN KOLOM & POSISI HORISONTAL (xmin, xmax) SECARA PRESISI:
-   - Jika kotak judul berada di sebelah KIRI (misal separuh lebar poster), catat xmin ~ 45 dan xmax ~ 460. JANGAN PERNAH merentangkan kotak ke lebar penuh (xmax: 950) jika di gambar hanya separuh atau di kanannya ada elemen lain!
+2. PERHATIKAN WARNA LATAR & TEKS SECARA PRESISI DARI GAMBAR ASLI:
+   - Jika kotak kartu/kolom/header berlatar belakang PUTIH BERSIH (#FFFFFF), isi "fill": "#FFFFFF"! JANGAN biarkan null atau diisi warna kertas kraft!
+   - Kotak banner pita merah ("banner-box" dengan "fill": "#DC2626") HANYA dibuat jika di gambar benar-benar ada kotak pita merah (seperti seksi "PILAR AKSI & ADVOKASI BERKELANJUTAN" di tengah), dengan teks "banner-text" textColor "#FFFFFF"! Untuk kicker atas, itu adalah teks kicker biasa dengan textColor aksen, BUKAN banner box!
+   - Jika ada badge penomoran (seperti "◆ 01"), sertakan simbol berlian "◆" dan warnanya!
+   - Jika di bawah setiap kartu ada tombol tag indikator (seperti "+ INDIKATOR 01"), deteksi sebagai elemen teks terpisah ("card-tag") dengan text persis kata demi kata!
+3. PERHATIKAN KOLOM & POSISI HORISONTAL (xmin, xmax) SECARA PRESISI:
+   - Jika kotak judul berada di sebelah KIRI (misal separuh lebar poster), catat xmin ~ 45 dan xmax ~ 460. JANGAN PERNAH merentangkan kotak ke lebar penuh jika di gambar hanya separuh atau di kanannya ada elemen lain!
    - Jika di sebelah KANAN atas ada kartu metrik / kpi / cards, catat posisi xmin dan xmax aslinya di sisi kanan (misal xmin ~ 480 s.d. xmax ~ 950).
-   - Jika ada kartu-kartu berjejer ke samping (horizontal) di bagian bawah atau tengah, catat setiap kartu secara terpisah dengan xmin dan xmax masing-masing kartu!
-   - Jika poster memiliki kartu bergelombang / zigzag bersilang (DIMENSI 01..04), catat posisi koordinat kotak dan teksnya di lokasi aslinya masing-masing!
-3. DETEKSI SETIAP ELEMEN VISUAL KE DALAM ARRAY "elements":
+   - Jika ada kartu-kartu berjejer ke samping (horizontal 4 atau 5 kolom), catat setiap kotak kartu secara terpisah dengan xmin dan xmax masing-masing kartu!
+4. DETEKSI SETIAP ELEMEN VISUAL KE DALAM ARRAY "elements":
    Untuk setiap elemen (kotak kartu atau teks), berikan objek:
    - id: string unik ("el_1", "el_2", ...)
    - kind: "frame" (untuk kotak container / kartu) atau "text" (untuk teks)
-   - role: peran elemen (misal: "topbar", "kicker", "headline", "deck", "kpi-card", "kpi-val", "kpi-lbl", "card-box", "card-badge", "card-title", "card-desc", "banner", "synthesis-box", "synthesis-text", "footer-box", "signature", "year")
+   - role: peran elemen ("topbar", "header-card", "kicker", "headline", "deck", "kpi-card", "kpi-box", "kpi-val", "kpi-lbl", "banner-box", "banner-text", "card-box", "card-badge", "card-title", "card-desc", "card-tag", "synthesis-box", "synthesis-text", "footer-bar", "signature", "year")
    - text: teks persis kata per kata (hanya jika kind === "text")
    - box_2d: [ymin, xmin, ymax, xmax] koordinat bounding box dalam skala normalisasi 0 sampai 1000
-   - fill: warna latar jika ada container frame (misal "#FFFFFF", "#3B4A3C", atau null)
-   - textColor: warna teks hex (misal "#0F172A", "#FFFFFF", "#EA580C", "#334155")
+   - fill: warna latar jika ada container frame (misal "#FFFFFF", "#DC2626", "#0F172A")
+   - textColor: warna teks hex (misal "#0F172A", "#FFFFFF", "#DC2626", "#EA580C", "#334155")
    - fontSize: estimasi ukuran font pt
    - fontWeight: "bold" atau "normal"
-   - bgFill: warna latar badge teks jika teks memiliki latar tombol/pill sendiri (misal "#EA580C")
-4. JUGA EKSTRAK STRUKTUR RINGKASAN:
+   - bgFill: warna latar badge teks jika teks memiliki latar tombol/pill sendiri (misal "#DC2626", "#FEE2E2")
+5. JUGA EKSTRAK STRUKTUR RINGKASAN:
    - detectedArchetype: "INFOGRAPHIC_NARRATIVE_WAVE" | "INFOGRAPHIC_VISIONARY_TIMELINE" | "INFOGRAPHIC_ADVOCACY_PILLARS" | "INFOGRAPHIC_CHRONICLE_GRID" | "INFOGRAPHIC_RADIAL_CLOCK" | "INFOGRAPHIC_CUSTOM_DYNAMIC"
    - topBar: { left, right }
    - kicker, headline, deck
@@ -318,11 +322,16 @@ Format JSON yang wajib dihasilkan (hanya JSON murni):
       return { x, y, w, h };
     };
 
-    // 1. Render Frame Layers (Latar Kartu, Kotak Metrik, Header Container)
+    // 1. Render Frame Layers (Latar Kartu, Kotak Metrik, Header Container, Banner)
     for (const el of frameElements) {
       if (!el.box_2d || el.box_2d.length < 4) continue;
       const { x, y, w, h } = toPixels(el.box_2d);
       if (w < 10 || h < 10) continue;
+
+      const isBannerFrame = el.role.includes('banner');
+      const isCardFrame = el.role.includes('card');
+      const isHeaderFrame = el.role.includes('header');
+      const isFooterFrame = el.role.includes('footer');
 
       layers.push({
         kind: 'frame',
@@ -332,14 +341,16 @@ Format JSON yang wajib dihasilkan (hanya JSON murni):
         y,
         w,
         h,
-        fill: el.fill || '#FFFFFF',
+        fill: isBannerFrame ? (el.fill || '#DC2626') : (el.fill || '#FFFFFF'),
         radius: 4,
-        borders: {
-          top: { w: 1, color: '#E2E8F0' },
-          right: { w: 1, color: '#E2E8F0' },
-          bottom: { w: 1, color: '#E2E8F0' },
-          left: { w: 1, color: '#E2E8F0' },
-        },
+        borders: isBannerFrame
+          ? { top: null, right: null, bottom: null, left: null }
+          : {
+              top: { w: isHeaderFrame ? 3 : 1, color: isHeaderFrame ? '#DC2626' : '#E2E8F0' },
+              right: { w: 1, color: '#E2E8F0' },
+              bottom: { w: isCardFrame ? 3 : 1, color: isCardFrame ? '#DC2626' : '#E2E8F0' },
+              left: { w: 1, color: '#E2E8F0' },
+            },
         shadow: { color: 'rgba(0,0,0,0.06)', offsetX: 0, offsetY: 2, blur: 8 },
       });
     }
@@ -423,10 +434,13 @@ Format JSON yang wajib dihasilkan (hanya JSON murni):
       const { x, y, w, h } = toPixels(el.box_2d);
       if (w < 10 || h < 8) continue;
 
-      const isHeadline = el.role.includes('headline') || el.role.includes('title');
-      const isKpiVal = el.role.includes('kpi-val') || el.role.includes('stat-val');
-      const isDeck = el.role.includes('deck');
+      const isHeadline = el.role === 'headline' || el.role === 'main-headline';
+      const isCardTitle = el.role.includes('card-title') || el.role.includes('card_title');
+      const isBanner = el.role.includes('banner');
       const isBadge = el.role.includes('badge') || Boolean(el.bgFill);
+      const isTag = el.role.includes('tag') || el.role.includes('indikator');
+      const isDeck = el.role.includes('deck');
+      const isKpiVal = el.role.includes('kpi-val') || el.role.includes('stat-val');
 
       let fontFamily = "'Plus Jakarta Sans', sans-serif";
       if (isHeadline) {
@@ -444,7 +458,42 @@ Format JSON yang wajib dihasilkan (hanya JSON murni):
               ? 28
               : isDeck
                 ? 14
-                : 12.5;
+                : isCardTitle
+                  ? 15
+                  : 12.5;
+
+      let box: any = null;
+      let finalTextColor = el.textColor || '#0F172A';
+
+      if (el.bgFill) {
+        box = {
+          fill: el.bgFill,
+          radius: 3,
+          borders: { top: null, right: null, bottom: null, left: null },
+          shadow: null,
+          padding: { t: 4, r: 10, b: 4, l: 10 },
+        };
+      } else if (isBadge) {
+        box = {
+          fill: el.fill || '#DC2626',
+          radius: 3,
+          borders: { top: null, right: null, bottom: null, left: null },
+          shadow: null,
+          padding: { t: 3, r: 8, b: 3, l: 8 },
+        };
+        finalTextColor = '#FFFFFF';
+      } else if (isTag) {
+        box = {
+          fill: '#FEE2E2',
+          radius: 3,
+          borders: { top: null, right: null, bottom: null, left: null },
+          shadow: null,
+          padding: { t: 3, r: 8, b: 3, l: 8 },
+        };
+        finalTextColor = el.textColor || '#DC2626';
+      } else if (isBanner) {
+        finalTextColor = '#FFFFFF';
+      }
 
       layers.push({
         kind: 'text',
@@ -457,21 +506,13 @@ Format JSON yang wajib dihasilkan (hanya JSON murni):
         h,
         fontFamily,
         fontSize: calculatedFontSize,
-        fontWeight: el.fontWeight || (isHeadline || isKpiVal || isBadge ? 'bold' : 'normal'),
+        fontWeight: el.fontWeight || (isHeadline || isKpiVal || isBadge || isCardTitle || isBanner ? 'bold' : 'normal'),
         fontStyle: isDeck ? 'italic' : 'normal',
-        color: el.textColor || '#0F172A',
-        textAlign: el.textAlign || (isKpiVal ? 'center' : 'left'),
+        color: finalTextColor,
+        textAlign: el.textAlign || (isKpiVal || isBadge || isTag ? 'center' : 'left'),
         lineHeightPx: Math.round(calculatedFontSize * 1.2),
-        letterSpacingPx: isHeadline ? 1.5 : 0.5,
-        box: el.bgFill
-          ? {
-              fill: el.bgFill,
-              radius: 3,
-              borders: { top: null, right: null, bottom: null, left: null },
-              shadow: null,
-              padding: { t: 4, r: 10, b: 4, l: 10 },
-            }
-          : null,
+        letterSpacingPx: isHeadline ? 1.5 : isBadge ? 1.2 : 0.5,
+        box,
       });
     }
 
