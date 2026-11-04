@@ -10,6 +10,12 @@ volumes:
   polaris_redis_data:
     driver: local
 
+x-logging: &default-logging
+  driver: "json-file"
+  options:
+    max-size: "20m"
+    max-file: "3"
+
 services:
   # =========================================================================
   # 1. DATABASE KERNEL: POSTGRESQL 16 + PGVECTOR
@@ -39,6 +45,7 @@ services:
         limits:
           cpus: '1.0'
           memory: 350M
+    logging: *default-logging
 
   # =========================================================================
   # 2. CACHING & QUEUE BUS: REDIS 7
@@ -63,6 +70,7 @@ services:
         limits:
           cpus: '0.5'
           memory: 64M
+    logging: *default-logging
 
   # =========================================================================
   # 3. BACKEND API CORE: NESTJS MODULAR APPLICATION
@@ -107,6 +115,7 @@ services:
         limits:
           cpus: '1.0'
           memory: 300M
+    logging: *default-logging
 
   # =========================================================================
   # 4. HEADLESS BACKGROUND WORKER: BULLMQ PROCESSORS & CRON
@@ -145,6 +154,7 @@ services:
         limits:
           cpus: '1.0'
           memory: 1G
+    logging: *default-logging
 
   # =========================================================================
   # 5. PRIVATE EXECUTIVE WORKSPACE: NEXT.JS STANDALONE DASHBOARD
@@ -181,6 +191,7 @@ services:
         limits:
           cpus: '1.0'
           memory: 350M
+    logging: *default-logging
 
   # =========================================================================
   # 6. PUBLIC CIVIC MICROSITE: NEXT.JS STANDALONE PORTAL
@@ -217,3 +228,4 @@ services:
         limits:
           cpus: '1.0'
           memory: 350M
+    logging: *default-logging
