@@ -60,8 +60,19 @@ export class PosterVisionExtractorService {
 
     let targetDataUrl = imageUrl;
 
-    // 1. Cek jika file path lokal atau file://
-    if (imageUrl.startsWith('file://') || /^[a-zA-Z]:\\/.test(imageUrl) || imageUrl.startsWith('/')) {
+    // 1. Cek jika file path lokal atau file:// atau URL lokal /uploads/...
+    const cleanLocalPath = imageUrl.replace(/^file:\/\/\/?/, '').replace(/^https?:\/\/[^/]+\//, '').replace(/^\//, '');
+    if (cleanLocalPath && fs.existsSync(cleanLocalPath)) {
+      try {
+        const buf = fs.readFileSync(cleanLocalPath);
+        const ext = cleanLocalPath.toLowerCase().split('.').pop();
+        const mime = ext === 'png' ? 'image/png' : ext === 'webp' ? 'image/webp' : 'image/jpeg';
+        targetDataUrl = `data:${mime};base64,${buf.toString('base64')}`;
+        this.logger.log(`[VisionExtractor] Berhasil membaca file lokal langsung: ${cleanLocalPath} (${buf.length} bytes)`);
+      } catch (fsErr) {
+        this.logger.warn(`[VisionExtractor] Gagal membaca path lokal: ${fsErr}`);
+      }
+    } else if (imageUrl.startsWith('file://') || /^[a-zA-Z]:\\/.test(imageUrl) || imageUrl.startsWith('/')) {
       try {
         const cleanPath = imageUrl.replace(/^file:\/\/\/?/, '');
         if (fs.existsSync(cleanPath)) {
@@ -76,7 +87,7 @@ export class PosterVisionExtractorService {
       }
     }
 
-    // 2. Jika URL HTTP/HTTPS, download dan convert ke data URL
+    // 2. Jika URL HTTP/HTTPS remote, download dan convert ke data URL
     if (!targetDataUrl.startsWith('data:') && (imageUrl.startsWith('http://') || imageUrl.startsWith('https://'))) {
       try {
         const fetchRes = await fetch(imageUrl);
@@ -96,24 +107,27 @@ Tugas Anda adalah membaca gambar poster ini dan mendeteksi SEMUA elemen visual (
 
 PERINGATAN KERAS & ATURAN MUTLAK:
 1. 100% DINAMIS & VERBATIM: Deteksi HANYA apa yang ada di gambar poster! JANGAN MEMBUAT ELEMEN FIKTIF!
-   - Jika poster tidak memiliki garis timeline horisontal di bawah, JANGAN PERNAH MEMBUAT TIMELINE!
    - JANGAN PERNAH menambahkan teks dummy seperti "PETA JALAN TARGET & REALISASI CAPAIAN" atau "+ TAHAP 01" jika tidak tertulis di gambar!
-   - Jika poster memiliki kartu vertikal di sebelah kanan (misal TONGGAK 01, TONGGAK 02, dsb.), deteksi posisi koordinat aslinya di sebelah kanan!
-   - Jika poster memiliki kartu bergelombang / zigzag bersilang (DIMENSI 01..04), deteksi posisi koordinat aslinya!
-2. DETEKSI SETIAP ELEMEN VISUAL KE DALAM ARRAY "elements":
+   - JANGAN PERNAH menambahkan garis timeline jika di gambar aslinya tidak ada!
+2. PERHATIKAN KOLOM & POSISI HORISONTAL (xmin, xmax) SECARA PRESISI:
+   - Jika kotak judul berada di sebelah KIRI (misal separuh lebar poster), catat xmin ~ 45 dan xmax ~ 460. JANGAN PERNAH merentangkan kotak ke lebar penuh (xmax: 950) jika di gambar hanya separuh atau di kanannya ada elemen lain!
+   - Jika di sebelah KANAN atas ada kartu metrik / kpi / cards, catat posisi xmin dan xmax aslinya di sisi kanan (misal xmin ~ 480 s.d. xmax ~ 950).
+   - Jika ada kartu-kartu berjejer ke samping (horizontal) di bagian bawah atau tengah, catat setiap kartu secara terpisah dengan xmin dan xmax masing-masing kartu!
+   - Jika poster memiliki kartu bergelombang / zigzag bersilang (DIMENSI 01..04), catat posisi koordinat kotak dan teksnya di lokasi aslinya masing-masing!
+3. DETEKSI SETIAP ELEMEN VISUAL KE DALAM ARRAY "elements":
    Untuk setiap elemen (kotak kartu atau teks), berikan objek:
    - id: string unik ("el_1", "el_2", ...)
    - kind: "frame" (untuk kotak container / kartu) atau "text" (untuk teks)
-   - role: peran elemen (misal: "topbar", "kicker", "headline", "deck", "kpi-card", "kpi-val", "kpi-lbl", "card-box", "card-badge", "card-title", "card-desc", "synthesis-box", "synthesis-text", "footer-box", "signature", "year")
+   - role: peran elemen (misal: "topbar", "kicker", "headline", "deck", "kpi-card", "kpi-val", "kpi-lbl", "card-box", "card-badge", "card-title", "card-desc", "banner", "synthesis-box", "synthesis-text", "footer-box", "signature", "year")
    - text: teks persis kata per kata (hanya jika kind === "text")
    - box_2d: [ymin, xmin, ymax, xmax] koordinat bounding box dalam skala normalisasi 0 sampai 1000
-   - fill: warna latar jika ada container frame (misal "#FFFFFF")
-   - textColor: warna teks hex (misal "#0F172A", "#EA580C", "#D7261E", "#334155")
+   - fill: warna latar jika ada container frame (misal "#FFFFFF", "#3B4A3C", atau null)
+   - textColor: warna teks hex (misal "#0F172A", "#FFFFFF", "#EA580C", "#334155")
    - fontSize: estimasi ukuran font pt
    - fontWeight: "bold" atau "normal"
    - bgFill: warna latar badge teks jika teks memiliki latar tombol/pill sendiri (misal "#EA580C")
-3. JUGA EKSTRAK STRUKTUR RINGKASAN:
-   - detectedArchetype: "INFOGRAPHIC_NARRATIVE_WAVE" | "INFOGRAPHIC_VISIONARY_TIMELINE" | "INFOGRAPHIC_ADVOCACY_PILLARS" | "INFOGRAPHIC_CHRONICLE_GRID" | "INFOGRAPHIC_RADIAL_CLOCK" | "GENERIC_INFOGRAPHIC"
+4. JUGA EKSTRAK STRUKTUR RINGKASAN:
+   - detectedArchetype: "INFOGRAPHIC_NARRATIVE_WAVE" | "INFOGRAPHIC_VISIONARY_TIMELINE" | "INFOGRAPHIC_ADVOCACY_PILLARS" | "INFOGRAPHIC_CHRONICLE_GRID" | "INFOGRAPHIC_RADIAL_CLOCK" | "INFOGRAPHIC_CUSTOM_DYNAMIC"
    - topBar: { left, right }
    - kicker, headline, deck
    - stats: [ { value, label } ]

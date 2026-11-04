@@ -585,12 +585,20 @@ export class StudioMagicLayersService {
             const m = parsed.layoutManifest;
             const isChromiumNative = parsed.renderer === 'chromium' || parsed.engine === 'ART_COLLAGE_INFOGRAPHIC_CHROMIUM';
 
-            // 1. JIKA CHROMIUM NATIVE & SUDAH MEMILIKI MANIFEST VALID (>= 10 layers):
-            // Manifest ini diekstrak langsung oleh Playwright Chromium dari DOM getBoundingClientRect() asli.
-            // Posisi, dimensi, padding, dan warna 100% identik dengan gambar yang dilihat user.
-            // KEMBALIKAN LANGSUNG TANPA PERNAH MELEMPAR KE VISION AI!
-            if (isChromiumNative && m?.layers && m.layers.length >= 10 && !params.forceReExtract) {
-              this.logger.log(`[MagicLayers] Mengembalikan layoutManifest Chromium Native (${m.layers.length} layers, archetype=${parsed.archetype}) untuk publication ${effectivePubId}`);
+            // Cek apakah manifest saat ini adalah template hardcode lama (memiliki id/role template kaku yang merusak tata letak asli)
+            const isLegacyHardcoded = m?.layers?.some((l: any) =>
+              typeof l.role === 'string' && (
+                l.role.startsWith('rclock-') ||
+                l.role.startsWith('apillars-') ||
+                l.role.startsWith('vtimeline-') ||
+                l.role.startsWith('cgrid-') ||
+                l.role.startsWith('nwave-')
+              )
+            );
+
+            // 1. JIKA SUDAH MEMILIKI MANIFEST VALID & BUKAN TEMPLATE HARDCODE LAMA & TIDAK DIPAKSA RE-EXTRACT:
+            if (m?.layers && m.layers.length >= 4 && !isLegacyHardcoded && !params.forceReExtract) {
+              this.logger.log(`[MagicLayers] Mengembalikan layoutManifest tersimpan (${m.layers.length} layers, archetype=${parsed.archetype}) untuk publication ${effectivePubId}`);
               const harmonized = await PosterColorHarmonizer.harmonizeManifest(parsed.layoutManifest, params.imageUrl);
               if (JSON.stringify(harmonized) !== JSON.stringify(parsed.layoutManifest) && existingAsset?.id) {
                 parsed.layoutManifest = harmonized;
@@ -608,37 +616,22 @@ export class StudioMagicLayersService {
               };
             }
 
-            // 2. JIKA CHROMIUM NATIVE NAMUN MANIFEST BELUM LENGKAP (< 10 layers) ATAU forceReExtract:
-            // Jangan menebak dengan Vision AI! Re-compose manifest langsung melalui Chromium!
-            if (isChromiumNative) {
-              this.logger.log(`[MagicLayers] Poster Chromium native belum memiliki manifest lengkap. Menjalankan re-compose Chromium...`);
-              const recomposed = await this.recomposeChromiumNativeManifest({
-                effectivePubId,
-                existingAsset,
-                parsedPromptUsed: parsed,
-                rawCanvasUrl,
-                imageUrl: params.imageUrl,
-              });
-              if (recomposed.manifest && recomposed.manifest.layers.length >= 10) {
-                const harmonized = await PosterColorHarmonizer.harmonizeManifest(recomposed.manifest, params.imageUrl);
-                return {
-                  success: true,
-                  manifest: harmonized,
-                  rawCanvasUrl: recomposed.rawCanvasUrl || rawCanvasUrl,
-                  detectedArchetype: recomposed.detectedArchetype || parsed.archetype,
-                };
-              }
-            }
-
-            // 3. JIKA NON-CHROMIUM NATIVE (eksternal / upload) dan sudah memiliki manifest valid:
-            if (!isChromiumNative && m?.layers && m.layers.length >= 4 && !params.forceReExtract) {
-              this.logger.log(`[MagicLayers] Mengembalikan layoutManifest tersimpan (${m.layers.length} layers) untuk publication ${effectivePubId}`);
-              const harmonized = await PosterColorHarmonizer.harmonizeManifest(parsed.layoutManifest, params.imageUrl);
+            // 2. JIKA MANIFEST BELUM LENGKAP (< 4 layers), ATAU MERUPAKAN TEMPLATE HARDCODE LAMA, ATAU forceReExtract:
+            // Jalankan ekstraksi dinamis visual murni 1:1 langsung dari gambar asli!
+            this.logger.log(`[MagicLayers] Menjalankan dynamic vision extraction dari gambar asli untuk publication ${effectivePubId} (isLegacyHardcoded=${isLegacyHardcoded})...`);
+            const recomposed = await this.recomposeChromiumNativeManifest({
+              effectivePubId,
+              existingAsset,
+              parsedPromptUsed: parsed,
+              rawCanvasUrl,
+              imageUrl: params.imageUrl,
+            });
+            if (recomposed.manifest && recomposed.manifest.layers.length >= 3) {
               return {
                 success: true,
-                manifest: harmonized,
-                rawCanvasUrl,
-                detectedArchetype: parsed.archetype,
+                manifest: recomposed.manifest,
+                rawCanvasUrl: recomposed.rawCanvasUrl || rawCanvasUrl,
+                detectedArchetype: recomposed.detectedArchetype || parsed.archetype,
               };
             }
           } catch {}
@@ -702,9 +695,9 @@ export class StudioMagicLayersService {
   }
 
   /**
-   * Re-compose Chromium Native Manifest secara deterministik.
-   * Dipanggil jika poster Chromium Native belum memiliki manifest lengkap.
-   * Menghasilkan DOM manifest 100% presisi tanpa tebakan Vision AI.
+   * Re-compose Manifest secara 100% DINAMIS langsung dari gambar visual asli.
+   * Menggunakan Vision AI untuk membaca posisi piksel bounding box nyata (2D)
+   * dan menyelaraskan warna dengan PosterColorHarmonizer.
    */
   private async recomposeChromiumNativeManifest(params: {
     effectivePubId: string;
@@ -714,82 +707,24 @@ export class StudioMagicLayersService {
     imageUrl: string;
   }): Promise<{ manifest: PosterLayerManifest | null; rawCanvasUrl?: string; detectedArchetype?: string }> {
     try {
-      this.logger.log(`[MagicLayers] Re-composing Chromium native manifest untuk publication ${params.effectivePubId}...`);
+      this.logger.log(`[MagicLayers] Dynamic visual extraction untuk publication ${params.effectivePubId}...`);
 
-      const targetCanvasUrl = params.rawCanvasUrl || params.imageUrl;
-      let canvasBuf: Buffer | null = null;
-      if (targetCanvasUrl && targetCanvasUrl.startsWith('http')) {
-        try {
-          const res = await fetch(targetCanvasUrl);
-          if (res.ok) {
-            canvasBuf = Buffer.from(await res.arrayBuffer());
-          }
-        } catch {}
-      }
-
-      if (!canvasBuf) {
-        canvasBuf = Buffer.from(
-          'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8/5+hHgAHggJ/PchI7wAAAABJRU5ErkJggg==',
-          'base64'
-        );
-      }
-
-      const [pub] = await db
-        .select()
-        .from(contentPublications)
-        .where(eq(contentPublications.id, params.effectivePubId))
-        .limit(1);
-
-      // Gunakan Vision AI Extractor hanya untuk membaca teks kata-per-kata secara verbatim dari poster
       const extractedContent = await this.visionExtractor.extractContentFromImage(params.imageUrl);
 
-      const bp = params.parsedPromptUsed?.blueprintId || '';
-      const archetype =
-        params.parsedPromptUsed?.archetype ||
-        (bp.includes('WAVE')
-          ? 'INFOGRAPHIC_NARRATIVE_WAVE'
-          : bp.includes('CLOCK')
-            ? 'INFOGRAPHIC_RADIAL_CLOCK'
-            : bp.includes('PILLAR')
-              ? 'INFOGRAPHIC_ADVOCACY_PILLARS'
-              : bp.includes('CHRONICLE')
-                ? 'INFOGRAPHIC_CHRONICLE_GRID'
-                : extractedContent.detectedArchetype || 'INFOGRAPHIC_VISIONARY_TIMELINE');
+      const rawManifest = this.visionExtractor.convertContentToManifest(
+        extractedContent,
+        1080,
+        1350,
+        params.parsedPromptUsed?.archetype
+      );
 
-      const copy = {
-        headline: pub?.title || extractedContent.headline || 'INFOGRAFIK PUBLIK',
-        kicker: extractedContent.kicker || 'DATA ADVOKASI // KEBIJAKAN DAERAH',
-        deck: extractedContent.deck || pub?.excerpt || '',
-        stats: extractedContent.stats && extractedContent.stats.length > 0 ? extractedContent.stats : undefined,
-        points:
-          extractedContent.cards && extractedContent.cards.length > 0
-            ? extractedContent.cards.map((c) => ({
-                label: c.title || c.badge,
-                text: c.desc,
-              }))
-            : [],
-        closingLine: extractedContent.closing || '',
-      };
+      const harmonized = await PosterColorHarmonizer.harmonizeManifest(rawManifest, params.imageUrl);
 
-      const result = await ChromiumPosterCompositor.compose({
-        canvasBuffer: canvasBuf,
-        copy,
-        zones: params.parsedPromptUsed?.layout || {},
-        archetype,
-        palette: params.parsedPromptUsed?.mutation?.palette
-          ? {
-              accentHex: params.parsedPromptUsed.mutation.palette.accentHex,
-              secondaryHex: params.parsedPromptUsed.mutation.palette.secondaryHex,
-            }
-          : undefined,
-        editionTag: 'POLARIS // DAPIL JABAR',
-        headerTag: 'DOKUMEN ADVOKASI PUBLIK',
-        signature: 'DR. JONANDA P. A. B // DPRD PROVINSI • DAPIL JABAR',
-      });
-
-      if (result.layoutManifest && result.layoutManifest.layers.length >= 10) {
-        params.parsedPromptUsed.layoutManifest = result.layoutManifest;
-        params.parsedPromptUsed.archetype = archetype;
+      if (harmonized && harmonized.layers.length >= 3) {
+        params.parsedPromptUsed.layoutManifest = harmonized;
+        params.parsedPromptUsed.visionDynamic = true;
+        params.parsedPromptUsed.archetype =
+          extractedContent.detectedArchetype || params.parsedPromptUsed?.archetype || 'INFOGRAPHIC_CUSTOM_DYNAMIC';
         if (params.rawCanvasUrl && !params.parsedPromptUsed.rawCanvasUrl) {
           params.parsedPromptUsed.rawCanvasUrl = params.rawCanvasUrl;
         }
@@ -800,16 +735,16 @@ export class StudioMagicLayersService {
           .where(eq(mediaAssets.id, params.existingAsset.id));
 
         this.logger.log(
-          `[MagicLayers] Sukses re-compose Chromium manifest (${result.layoutManifest.layers.length} layers, archetype=${archetype})`
+          `[MagicLayers] Sukses mengekstrak dynamic manifest (${harmonized.layers.length} layers, archetype=${params.parsedPromptUsed.archetype})`
         );
         return {
-          manifest: result.layoutManifest,
+          manifest: harmonized,
           rawCanvasUrl: params.rawCanvasUrl,
-          detectedArchetype: archetype,
+          detectedArchetype: params.parsedPromptUsed.archetype,
         };
       }
     } catch (reErr) {
-      this.logger.warn(`[MagicLayers] Gagal re-compose Chromium manifest: ${reErr}`);
+      this.logger.warn(`[MagicLayers] Gagal mengekstrak dynamic manifest: ${reErr}`);
     }
     return { manifest: null };
   }
