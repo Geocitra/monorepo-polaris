@@ -545,14 +545,27 @@ export class WhatsAppOperatorBrokerService {
 
     const isRevisionInProgress = row.brief.status === 'REVISION_REQUESTED';
     const isTerminalStatus = ['PUBLISHED', 'APPROVED', 'REJECTED'].includes(row.brief.status);
+    const requiresAnswer = Boolean(dto.requiresClientAnswer);
 
     const statusLine = isRevisionInProgress
       ? `🔄 *Status Tiket:* Sedang Dikerjakan Revisi (Putaran #${row.brief.revisionUsed}/${row.brief.revisionLimit})`
-      : `📌 *Status Tiket:* Dalam Penanganan Tim Redaksi`;
+      : requiresAnswer
+        ? `❓ *Status Tiket:* Menunggu Konfirmasi / Jawaban Anda`
+        : `📌 *Status Tiket:* Informasi / Perkembangan Redaksi`;
 
     const instructionFooter = isRevisionInProgress
-      ? '_Tim Redaksi sedang mengerjakan perbaikan konten Anda. Jika ada detail tambahan untuk revisi ini, silakan balas pesan ini secara langsung (tiket Anda tetap aktif hingga pratinjau baru dikirim)._'
-      : '_Silakan balas pesan ini secara langsung untuk menjawab Editor Redaksi (Anda dapat mengirim beberapa pesan atau foto beruntun)._';
+      ? '_Tim Redaksi sedang mengerjakan perbaikan konten Anda. Jika ada detail tambahan untuk revisi ini, silakan balas pesan ini secara langsung._'
+      : requiresAnswer
+        ? '_Mohon balas pesan ini untuk memberikan konfirmasi kepada Editor Redaksi agar pengerjaan dapat dilanjutkan._'
+        : '_Pesan informasi dari Tim Redaksi Polaris. Tiket Anda tetap aktif berjalan di meja redaksi._';
+
+    const waButtons = [
+      ...(requiresAnswer
+        ? [{ id: `CLARIFY_REPLY:${row.brief.id}`, title: '💬 Jawab Klarifikasi' }]
+        : []),
+      { id: 'MENU_CHECK_STATUS', title: '📊 Status Pengerjaan' },
+      { id: 'MENU_OPEN_MAIN', title: '📋 Menu Utama' },
+    ];
 
     const waResult = await this.waClient.sendInteractiveButtons(
       row.phoneNumber,
@@ -564,19 +577,18 @@ export class WhatsAppOperatorBrokerService {
         '',
         instructionFooter,
       ].join('\n'),
-      [
-        { id: 'MENU_CHECK_STATUS', title: '📊 Status Pengerjaan' },
-        { id: 'MENU_OPEN_MAIN', title: '📋 Menu Utama' },
-      ],
+      waButtons,
       `Pesan Redaksi #${row.brief.briefCode}`,
-      'Tiket tetap aktif sampai konten tayang'
+      'Tim Redaksi Polaris'
     );
 
     const nextBriefStatus = isRevisionInProgress
       ? 'REVISION_REQUESTED'
       : isTerminalStatus
         ? row.brief.status
-        : 'NEED_CLARIFICATION';
+        : requiresAnswer
+          ? 'NEED_CLARIFICATION'
+          : row.brief.status;
 
     const updatedBrief = await withTenantContext(row.brief.tenantId, async (tx) => {
       await tx.insert(contentBriefMessages).values({

@@ -6,6 +6,7 @@ import {
   detectOperatorContactLeak,
   getWibHours,
   getTimeHorizonInfo,
+  isNewBriefExplicitTrigger,
 } from './contact-sanitizer.util.js';
 
 describe('WhatsApp Contact Sanitizer & Broker Security Guard', () => {
@@ -74,5 +75,25 @@ describe('WhatsApp Contact Sanitizer & Broker Security Guard', () => {
     expect(horizon4.badgeLabel).toBe('🗓️ TARGET BESOK PAGI');
     expect(horizon4.isAfterCutoff).toBe(true);
   });
+
+  it('mendeteksi pemicu eksplisit request brief baru agar tidak dibajak tiket klarifikasi/revisi', () => {
+    // True cases (kasus Reno Sebastian dan variasi request baru)
+    expect(isNewBriefExplicitTrigger('buatkan artikel untuk respon bencana alam gempa di papua.')).toBe(true);
+    expect(isNewBriefExplicitTrigger('bikin konten tentang peresmian jembatan cisadane')).toBe(true);
+    expect(isNewBriefExplicitTrigger('halo tolong buatkan artikel mengenai sosialisasi pilkada')).toBe(true);
+    expect(isNewBriefExplicitTrigger('request konten infografis retribusi')).toBe(true);
+    expect(isNewBriefExplicitTrigger('topik baru untuk rilis pers')).toBe(true);
+    expect(isNewBriefExplicitTrigger('bisa tolong buatkan rilis berita')).toBe(true);
+
+    // False cases (jawaban klarifikasi atau catatan revisi biasa)
+    expect(isNewBriefExplicitTrigger('baik ditunggu ya pak')).toBe(false);
+    expect(isNewBriefExplicitTrigger('coba gambar nya lebih ke bagaimana cara mengatasi dan cara retribusi sampah dengan benar')).toBe(false);
+    expect(isNewBriefExplicitTrigger('iya datanya sudah dari bps')).toBe(false);
+    expect(isNewBriefExplicitTrigger('ok siap')).toBe(false);
+    expect(isNewBriefExplicitTrigger('fotonya yang ini ya pak')).toBe(false);
+    expect(isNewBriefExplicitTrigger('')).toBe(false);
+    expect(isNewBriefExplicitTrigger(null)).toBe(false);
+  });
 });
+
 

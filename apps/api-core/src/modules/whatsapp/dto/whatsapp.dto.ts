@@ -34,9 +34,13 @@ export class RejectBriefDto {
 
 export class SendClarificationDto {
   @IsString()
-  @MinLength(5)
+  @MinLength(2)
   @MaxLength(1500)
   questionText!: string;
+
+  @IsOptional()
+  @IsBoolean()
+  requiresClientAnswer?: boolean;
 }
 
 export class SubmitBriefReviewDto {

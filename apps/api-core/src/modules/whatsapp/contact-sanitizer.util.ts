@@ -192,3 +192,36 @@ export function detectOperatorContactLeak(text: string): ContactLeakCheckResult 
   return { hasLeak: false };
 }
 
+/**
+ * Mendeteksi apakah pesan teks klien merupakan pemicu eksplisit request brief baru
+ * (contoh: "buatkan artikel...", "bikin konten...", "request konten...").
+ * Digunakan untuk mencegah chat baru dibajak oleh tiket yang sedang butuh klarifikasi/revisi.
+ */
+export function isNewBriefExplicitTrigger(text?: string | null): boolean {
+  if (!text) return false;
+  const t = text.trim().toLowerCase();
+
+  const explicitPrefixes = [
+    'buatkan',
+    'bikin',
+    'bikinin',
+    'tolong buat',
+    'tolong bikinin',
+    'tuliskan artikel',
+    'request konten',
+    'request baru',
+    'request artikel',
+    'topik baru',
+    'rilis berita',
+    'buat artikel',
+    'bikin rilis',
+  ];
+  if (explicitPrefixes.some((p) => t.startsWith(p))) {
+    return true;
+  }
+
+  const regex =
+    /^(halo\s+|mohon\s+|tolong\s+|bisa\s+)*(buatkan|bikin|bikinin|buat|tuliskan|request)\s+(artikel|konten|berita|rilis|post|tulisan|materi|topik|liputan)/i;
+  return regex.test(t);
+}
+

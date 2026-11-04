@@ -223,6 +223,7 @@ export function OperatorWhatsAppBriefsTab({
   const [showRejectBox, setShowRejectBox] = useState(false);
   const [sendingReply, setSendingReply] = useState(false);
   const [replyText, setReplyText] = useState('');
+  const [requiresAnswer, setRequiresAnswer] = useState(false);
   const [togglingFaultMsgId, setTogglingFaultMsgId] = useState<string | null>(null);
   const [actionFeedback, setActionFeedback] = useState<{
     type: 'success' | 'error';
@@ -377,15 +378,21 @@ export function OperatorWhatsAppBriefsTab({
         `/whatsapp/briefs/${selectedBrief.id}/clarify`,
         {
           method: 'POST',
-          body: JSON.stringify({ questionText: replyText.trim() }),
+          body: JSON.stringify({
+            questionText: replyText.trim(),
+            requiresClientAnswer: requiresAnswer,
+          }),
         }
       );
 
       setBriefs((prev) => prev.map((b) => (b.id === updated.id ? updated : b)));
       setReplyText('');
+      setRequiresAnswer(false);
       setActionFeedback({
         type: 'success',
-        text: 'Pesan balasan berhasil diteruskan ke WhatsApp klien melalui Broker Polaris.',
+        text: requiresAnswer
+          ? 'Pertanyaan klarifikasi dikirim (status tiket: Menunggu Klarifikasi Klien).'
+          : 'Pesan balasan/update redaksi berhasil diteruskan ke WhatsApp klien.',
       });
     } catch (err: any) {
       setActionFeedback({
@@ -1253,6 +1260,23 @@ export function OperatorWhatsAppBriefsTab({
                       </>
                     )}
                   </button>
+                </div>
+
+                <div className="flex items-center gap-2 pt-0.5 text-[11px]">
+                  <label className="flex items-center gap-1.5 cursor-pointer font-bold text-slate-700 dark:text-slate-300 select-none">
+                    <input
+                      type="checkbox"
+                      checked={requiresAnswer}
+                      onChange={(e) => setRequiresAnswer(e.target.checked)}
+                      className="w-3.5 h-3.5 rounded text-indigo-600 border-slate-300 dark:border-slate-700 focus:ring-indigo-500 cursor-pointer"
+                    />
+                    <span>Tandai butuh jawaban/konfirmasi klien</span>
+                  </label>
+                  <span className="text-[10px] text-slate-400">
+                    {requiresAnswer
+                      ? '(Status tiket akan berubah menjadi "Menunggu Klarifikasi")'
+                      : '(Pesan informatif/update redaksi, status pengerjaan tiket tetap berjalan)'}
+                  </span>
                 </div>
               </form>
             </div>
