@@ -585,40 +585,22 @@ export class StudioMagicLayersService {
             const m = parsed.layoutManifest;
             const isChromiumNative = parsed.renderer === 'chromium' || parsed.engine === 'ART_COLLAGE_INFOGRAPHIC_CHROMIUM';
 
-            // Cek apakah manifest saat ini adalah template hardcode lama (memiliki id/role template kaku yang merusak tata letak asli)
-            const isLegacyHardcoded = m?.layers?.some((l: any) =>
-              typeof l.role === 'string' && (
-                l.role.startsWith('rclock-') ||
-                l.role.startsWith('apillars-') ||
-                l.role.startsWith('vtimeline-') ||
-                l.role.startsWith('cgrid-') ||
-                l.role.startsWith('nwave-')
-              )
-            );
-
-            // 1. JIKA SUDAH MEMILIKI MANIFEST VALID & BUKAN TEMPLATE HARDCODE LAMA & TIDAK DIPAKSA RE-EXTRACT:
-            if (m?.layers && m.layers.length >= 4 && !isLegacyHardcoded && !params.forceReExtract) {
-              this.logger.log(`[MagicLayers] Mengembalikan layoutManifest tersimpan (${m.layers.length} layers, archetype=${parsed.archetype}) untuk publication ${effectivePubId}`);
-              const harmonized = await PosterColorHarmonizer.harmonizeManifest(parsed.layoutManifest, params.imageUrl);
-              if (JSON.stringify(harmonized) !== JSON.stringify(parsed.layoutManifest) && existingAsset?.id) {
-                parsed.layoutManifest = harmonized;
-                await db
-                  .update(mediaAssets)
-                  .set({ promptUsed: JSON.stringify(parsed) })
-                  .where(eq(mediaAssets.id, existingAsset.id));
-                this.logger.log(`[MagicLayers] Manifest berhasil diselaraskan dengan warna piksel asli poster (asset ${existingAsset.id})`);
-              }
+            // 1. JIKA CHROMIUM NATIVE & SUDAH MEMILIKI MANIFEST VALID (>= 8 layers):
+            // Manifest ini diekstrak langsung oleh Playwright Chromium dari DOM getBoundingClientRect() asli saat poster dirender.
+            // Posisi, dimensi, padding, dan warna 100% identik dengan gambar yang dilihat user!
+            if (isChromiumNative && m?.layers && m.layers.length >= 8 && !params.forceReExtract) {
+              this.logger.log(`[MagicLayers] Mengembalikan layoutManifest Chromium Native DOM asli (${m.layers.length} layers, archetype=${parsed.archetype}) untuk publication ${effectivePubId}`);
               return {
                 success: true,
-                manifest: harmonized,
+                manifest: m,
                 rawCanvasUrl,
                 detectedArchetype: parsed.archetype,
               };
             }
 
-            // 2. JIKA MANIFEST BELUM LENGKAP (< 4 layers), ATAU MERUPAKAN TEMPLATE HARDCODE LAMA, ATAU forceReExtract:
-            // Jalankan ekstraksi dinamis visual murni 1:1 langsung dari gambar asli!
-            this.logger.log(`[MagicLayers] Menjalankan dynamic vision extraction dari gambar asli untuk publication ${effectivePubId} (isLegacyHardcoded=${isLegacyHardcoded})...`);
+            // 2. JIKA NON-CHROMIUM NATIVE ATAU MANIFEST BELUM LENGKAP ATAU forceReExtract:
+            // Jalankan ekstraksi dinamis visual murni 1:1 langsung dari gambar asli via Vision AI!
+            this.logger.log(`[MagicLayers] Menjalankan dynamic vision extraction dari gambar asli untuk publication ${effectivePubId}...`);
             const recomposed = await this.recomposeChromiumNativeManifest({
               effectivePubId,
               existingAsset,

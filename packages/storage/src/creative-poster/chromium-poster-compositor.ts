@@ -1850,16 +1850,12 @@ export class ChromiumPosterCompositor {
       quality: 90,
     });
 
-    const finalManifest = layoutManifest
-      ? await PosterColorHarmonizer.harmonizeManifest(layoutManifest, renderedWebpBuffer)
-      : null;
-
     return {
       buffer: renderedWebpBuffer,
       sizeBytes: renderedWebpBuffer.length,
       detectedLuminance: luminance,
       blendModeUsed,
-      layoutManifest: finalManifest,
+      layoutManifest: layoutManifest || null,
     };
   }
 }
