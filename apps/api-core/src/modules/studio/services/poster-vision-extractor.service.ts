@@ -330,6 +330,79 @@ Format JSON yang wajib dihasilkan (hanya JSON murni):
       });
     }
 
+    // Jika Vision AI tidak mengekstrak kotak frame secara eksplisit, sintesiskan kotak frame solid #FFFFFF
+    // di belakang teks kartu dan judul agar teks tidak pernah mengambang di atas foto!
+    if (frameElements.length === 0 && textElements.length > 0) {
+      // a. Sintesis kotak header jika ada kicker/headline/deck
+      const headerTexts = textElements.filter((e) =>
+        e.role.includes('headline') || e.role.includes('kicker') || e.role.includes('deck')
+      );
+      if (headerTexts.length > 0) {
+        const boxes = headerTexts.map((e) => toPixels(e.box_2d));
+        const minX = Math.max(20, Math.min(...boxes.map((b) => b.x)) - 20);
+        const minY = Math.max(20, Math.min(...boxes.map((b) => b.y)) - 16);
+        const maxX = Math.min(width - 20, Math.max(...boxes.map((b) => b.x + b.w)) + 20);
+        const maxY = Math.min(height - 20, Math.max(...boxes.map((b) => b.y + b.h)) + 16);
+        layers.push({
+          kind: 'frame',
+          id: `f_auto_header_${seq++}`,
+          role: 'header-box',
+          x: minX,
+          y: minY,
+          w: maxX - minX,
+          h: maxY - minY,
+          fill: '#FFFFFF',
+          radius: 4,
+          borders: { top: { w: 3.5, color: '#D7261E' }, right: null, bottom: { w: 1.5, color: '#E2E8F0' }, left: null },
+          shadow: { color: 'rgba(0,0,0,0.06)', offsetX: 0, offsetY: 4, blur: 18 },
+        });
+      }
+
+      // b. Sintesis kotak kartu untuk setiap card-box atau card cluster
+      const cardTexts = textElements.filter((e) =>
+        e.role.includes('card') || e.role.includes('desc') || e.role.includes('body')
+      );
+      // Kelompokkan berdasarkan posisi vertikal berdekatan (selisih < 120px)
+      const sortedCards = [...cardTexts].sort((a, b) => a.box_2d[0] - b.box_2d[0]);
+      const cardClusters: ExtractedPosterElement[][] = [];
+      let currentCluster: ExtractedPosterElement[] = [];
+      for (const el of sortedCards) {
+        if (currentCluster.length === 0) {
+          currentCluster.push(el);
+        } else {
+          const prevY = currentCluster[currentCluster.length - 1].box_2d[2];
+          if (el.box_2d[0] - prevY < 120) {
+            currentCluster.push(el);
+          } else {
+            cardClusters.push(currentCluster);
+            currentCluster = [el];
+          }
+        }
+      }
+      if (currentCluster.length > 0) cardClusters.push(currentCluster);
+
+      for (const cluster of cardClusters) {
+        const boxes = cluster.map((e) => toPixels(e.box_2d));
+        const minX = Math.max(20, Math.min(...boxes.map((b) => b.x)) - 16);
+        const minY = Math.max(20, Math.min(...boxes.map((b) => b.y)) - 14);
+        const maxX = Math.min(width - 20, Math.max(...boxes.map((b) => b.x + b.w)) + 16);
+        const maxY = Math.min(height - 20, Math.max(...boxes.map((b) => b.y + b.h)) + 14);
+        layers.push({
+          kind: 'frame',
+          id: `f_auto_card_${seq++}`,
+          role: 'card-box',
+          x: minX,
+          y: minY,
+          w: maxX - minX,
+          h: maxY - minY,
+          fill: '#FFFFFF',
+          radius: 4,
+          borders: { top: { w: 1, color: '#E2E8F0' }, right: { w: 1, color: '#E2E8F0' }, bottom: { w: 1, color: '#E2E8F0' }, left: { w: 1, color: '#E2E8F0' } },
+          shadow: { color: 'rgba(0,0,0,0.06)', offsetX: 0, offsetY: 2, blur: 12 },
+        });
+      }
+    }
+
     // 2. Render Text Layers (Judul, Subjudul, Kartu, KPI, Footer)
     for (const el of textElements) {
       if (!el.box_2d || el.box_2d.length < 4 || !el.text?.trim()) continue;
@@ -736,34 +809,36 @@ Format JSON yang wajib dihasilkan (hanya JSON murni):
     this.addMastheadHeaderLayers(layers, content, accentColor, headerW, 'apillars', () => seq++);
     this.addStatRowLayers(layers, content, accentColor, headerW, 'apillars-stat', () => seq++);
 
-    // Banner Section Tag (Tengah)
-    const bannerText = content.banner || 'PILAR AKSI & ADVOKASI BERKELANJUTAN';
-    const bannerW = Math.min(520, Math.max(300, bannerText.length * 9.5 + 36));
-    layers.push({
-      kind: 'text',
-      id: `t_${seq++}`,
-      role: 'apillars-section-tag',
-      text: bannerText,
-      x: 54,
-      y: 626,
-      w: bannerW,
-      h: 26,
-      fontFamily: "'Plus Jakarta Sans', sans-serif",
-      fontSize: 12,
-      fontWeight: '800',
-      fontStyle: 'normal',
-      color: '#FFFFFF',
-      textAlign: 'center',
-      lineHeightPx: 16,
-      letterSpacingPx: 1.5,
-      box: {
-        fill: accentColor,
-        radius: 4,
-        borders: { top: null, right: null, bottom: null, left: null },
-        shadow: { color: 'rgba(0,0,0,0.1)', offsetX: 0, offsetY: 2, blur: 8 },
-        padding: { t: 5, r: 16, b: 5, l: 16 },
-      },
-    });
+    // Banner Section Tag (Tengah) - Hanya jika benar-benar ada di konten gambar poster
+    if (content.banner && content.banner.trim().length > 0) {
+      const bannerText = content.banner.trim();
+      const bannerW = Math.min(520, Math.max(300, bannerText.length * 9.5 + 36));
+      layers.push({
+        kind: 'text',
+        id: `t_${seq++}`,
+        role: 'apillars-section-tag',
+        text: bannerText,
+        x: 54,
+        y: 626,
+        w: bannerW,
+        h: 26,
+        fontFamily: "'Plus Jakarta Sans', sans-serif",
+        fontSize: 12,
+        fontWeight: '800',
+        fontStyle: 'normal',
+        color: '#FFFFFF',
+        textAlign: 'center',
+        lineHeightPx: 16,
+        letterSpacingPx: 1.5,
+        box: {
+          fill: accentColor,
+          radius: 4,
+          borders: { top: null, right: null, bottom: null, left: null },
+          shadow: { color: 'rgba(0,0,0,0.1)', offsetX: 0, offsetY: 2, blur: 8 },
+          padding: { t: 5, r: 16, b: 5, l: 16 },
+        },
+      });
+    }
 
     // 5 Pilar Kartu Berjejer Kolom
     const cards = content.cards || [];
@@ -1127,37 +1202,39 @@ Format JSON yang wajib dihasilkan (hanya JSON murni):
           });
         }
 
-        const tagText = card.tag || `✦ TAHAP 0${idx + 1}`;
-        layers.push({
-          kind: 'text',
-          id: `t_${seq++}`,
-          role: 'vstep-metric-tag',
-          text: tagText,
-          x: colX + 14,
-          y: colContainerY + colContainerH - 42,
-          w: colW - 28,
-          h: 18,
-          fontFamily: "'Plus Jakarta Sans', sans-serif",
-          fontSize: 10.5,
-          fontWeight: '800',
-          fontStyle: 'normal',
-          color: accentColor,
-          textAlign: 'center',
-          lineHeightPx: 16,
-          letterSpacingPx: 1,
-          box: {
-            fill: `${accentColor}18`,
-            radius: 4,
-            borders: {
-              top: { w: 1, color: `${accentColor}33` },
-              right: { w: 1, color: `${accentColor}33` },
-              bottom: { w: 1, color: `${accentColor}33` },
-              left: { w: 1, color: `${accentColor}33` },
+        if (card.tag && card.tag.trim().length > 0) {
+          const tagText = card.tag.trim();
+          layers.push({
+            kind: 'text',
+            id: `t_${seq++}`,
+            role: 'vstep-metric-tag',
+            text: tagText,
+            x: colX + 14,
+            y: colContainerY + colContainerH - 42,
+            w: colW - 28,
+            h: 18,
+            fontFamily: "'Plus Jakarta Sans', sans-serif",
+            fontSize: 10.5,
+            fontWeight: '800',
+            fontStyle: 'normal',
+            color: accentColor,
+            textAlign: 'center',
+            lineHeightPx: 16,
+            letterSpacingPx: 1,
+            box: {
+              fill: `${accentColor}18`,
+              radius: 4,
+              borders: {
+                top: { w: 1, color: `${accentColor}33` },
+                right: { w: 1, color: `${accentColor}33` },
+                bottom: { w: 1, color: `${accentColor}33` },
+                left: { w: 1, color: `${accentColor}33` },
+              },
+              shadow: null,
+              padding: { t: 4, r: 8, b: 4, l: 8 },
             },
-            shadow: null,
-            padding: { t: 4, r: 8, b: 4, l: 8 },
-          },
-        });
+          });
+        }
       });
     }
 

@@ -1,7 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common';
-import { PosterInpainter, type PosterLayerManifest } from '@polaris/storage';
+import { PosterInpainter, ChromiumPosterCompositor, type PosterLayerManifest } from '@polaris/storage';
 import { PosterVisionExtractorService } from './poster-vision-extractor.service.js';
-import { db, mediaAssets } from '@polaris/database';
+import { db, mediaAssets, contentPublications } from '@polaris/database';
 import { eq } from 'drizzle-orm';
 import { AssetType } from '@polaris/shared-types';
 
@@ -585,39 +585,50 @@ export class StudioMagicLayersService {
             const m = parsed.layoutManifest;
             const isChromiumNative = parsed.renderer === 'chromium' || parsed.engine === 'ART_COLLAGE_INFOGRAPHIC_CHROMIUM';
 
-            // Deteksi korupsi manifest: jika manifest berisi vtimeline-steps-grid atau "PETA JALAN TARGET"
-            // padahal poster bukan topik peta jalan, atau jika archetype bukan visionary timeline tetapi tertimpa timeline!
-            const hasPoisonedTimeline =
-              m?.layers?.some((l: any) =>
-                l.role?.includes('vtimeline-steps-grid') ||
-                (l.text && l.text.includes('PETA JALAN TARGET')) ||
-                (l.role?.includes('vstep-metric-tag') && l.text?.includes('TAHAP'))
-              ) && !(parsed.archetype === 'INFOGRAPHIC_VISIONARY_TIMELINE' && (existingAsset?.promptUsed || '').toLowerCase().includes('peta jalan target'));
-
-            const isCorruptedWave =
-              parsed.archetype === 'INFOGRAPHIC_NARRATIVE_WAVE' &&
-              m?.layers?.some((l: any) => l.role?.includes('vtimeline-steps-grid') || l.role?.includes('vstep-'));
-
-            const statLayers = m?.layers?.filter((l: any) =>
-              l.role?.includes('stat') || l.role?.includes('kpi')
-            );
-            const hasBannerError = m?.layers?.some((l: any) =>
-              l.text && /RP\s*\d+/i.test(l.text) && (l.role?.includes('bar-tag') || l.role?.includes('section-tag') || l.role?.includes('banner'))
-            );
-            const isDefective = !m?.layers || m.layers.length < 4 || isCorruptedWave || hasPoisonedTimeline || (
-              !isChromiumNative && ((statLayers && statLayers.length < 2) || hasBannerError)
-            );
-
-            if (m?.layers?.length > 0 && !params.forceReExtract && !isDefective) {
-              this.logger.log(`[MagicLayers] Mengembalikan layoutManifest yang valid dari DB (${isChromiumNative ? 'Chromium Native' : 'Vision AI'}) untuk publication ${effectivePubId}`);
+            // 1. JIKA CHROMIUM NATIVE & SUDAH MEMILIKI MANIFEST VALID (>= 10 layers):
+            // Manifest ini diekstrak langsung oleh Playwright Chromium dari DOM getBoundingClientRect() asli.
+            // Posisi, dimensi, padding, dan warna 100% identik dengan gambar yang dilihat user.
+            // KEMBALIKAN LANGSUNG TANPA PERNAH MELEMPAR KE VISION AI!
+            if (isChromiumNative && m?.layers && m.layers.length >= 10 && !params.forceReExtract) {
+              this.logger.log(`[MagicLayers] Mengembalikan layoutManifest Chromium Native 100% presisi (${m.layers.length} layers, archetype=${parsed.archetype}) untuk publication ${effectivePubId}`);
               return {
                 success: true,
                 manifest: parsed.layoutManifest,
                 rawCanvasUrl,
                 detectedArchetype: parsed.archetype,
               };
-            } else if (isDefective || params.forceReExtract) {
-              this.logger.warn(`[MagicLayers] Manifest lama/cacat terdeteksi (force=${params.forceReExtract}, corruptedWave=${isCorruptedWave}, poisonedTimeline=${hasPoisonedTimeline}, statCount=${statLayers?.length}, bannerErr=${hasBannerError}). Menjalankan Vision AI ulang...`);
+            }
+
+            // 2. JIKA CHROMIUM NATIVE NAMUN MANIFEST BELUM LENGKAP (< 10 layers) ATAU forceReExtract:
+            // Jangan menebak dengan Vision AI! Re-compose manifest langsung melalui Chromium!
+            if (isChromiumNative) {
+              this.logger.log(`[MagicLayers] Poster Chromium native belum memiliki manifest lengkap. Menjalankan re-compose Chromium...`);
+              const recomposed = await this.recomposeChromiumNativeManifest({
+                effectivePubId,
+                existingAsset,
+                parsedPromptUsed: parsed,
+                rawCanvasUrl,
+                imageUrl: params.imageUrl,
+              });
+              if (recomposed.manifest && recomposed.manifest.layers.length >= 10) {
+                return {
+                  success: true,
+                  manifest: recomposed.manifest,
+                  rawCanvasUrl: recomposed.rawCanvasUrl || rawCanvasUrl,
+                  detectedArchetype: recomposed.detectedArchetype || parsed.archetype,
+                };
+              }
+            }
+
+            // 3. JIKA NON-CHROMIUM NATIVE (eksternal / upload) dan sudah memiliki manifest valid:
+            if (!isChromiumNative && m?.layers && m.layers.length >= 4 && !params.forceReExtract) {
+              this.logger.log(`[MagicLayers] Mengembalikan layoutManifest tersimpan (${m.layers.length} layers) untuk publication ${effectivePubId}`);
+              return {
+                success: true,
+                manifest: parsed.layoutManifest,
+                rawCanvasUrl,
+                detectedArchetype: parsed.archetype,
+              };
             }
           } catch {}
         }
@@ -675,5 +686,118 @@ export class StudioMagicLayersService {
         rawCanvasUrl,
       };
     }
+  }
+
+  /**
+   * Re-compose Chromium Native Manifest secara deterministik.
+   * Dipanggil jika poster Chromium Native belum memiliki manifest lengkap.
+   * Menghasilkan DOM manifest 100% presisi tanpa tebakan Vision AI.
+   */
+  private async recomposeChromiumNativeManifest(params: {
+    effectivePubId: string;
+    existingAsset: any;
+    parsedPromptUsed: any;
+    rawCanvasUrl: string;
+    imageUrl: string;
+  }): Promise<{ manifest: PosterLayerManifest | null; rawCanvasUrl?: string; detectedArchetype?: string }> {
+    try {
+      this.logger.log(`[MagicLayers] Re-composing Chromium native manifest untuk publication ${params.effectivePubId}...`);
+
+      const targetCanvasUrl = params.rawCanvasUrl || params.imageUrl;
+      let canvasBuf: Buffer | null = null;
+      if (targetCanvasUrl && targetCanvasUrl.startsWith('http')) {
+        try {
+          const res = await fetch(targetCanvasUrl);
+          if (res.ok) {
+            canvasBuf = Buffer.from(await res.arrayBuffer());
+          }
+        } catch {}
+      }
+
+      if (!canvasBuf) {
+        canvasBuf = Buffer.from(
+          'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8/5+hHgAHggJ/PchI7wAAAABJRU5ErkJggg==',
+          'base64'
+        );
+      }
+
+      const [pub] = await db
+        .select()
+        .from(contentPublications)
+        .where(eq(contentPublications.id, params.effectivePubId))
+        .limit(1);
+
+      // Gunakan Vision AI Extractor hanya untuk membaca teks kata-per-kata secara verbatim dari poster
+      const extractedContent = await this.visionExtractor.extractContentFromImage(params.imageUrl);
+
+      const bp = params.parsedPromptUsed?.blueprintId || '';
+      const archetype =
+        params.parsedPromptUsed?.archetype ||
+        (bp.includes('WAVE')
+          ? 'INFOGRAPHIC_NARRATIVE_WAVE'
+          : bp.includes('CLOCK')
+            ? 'INFOGRAPHIC_RADIAL_CLOCK'
+            : bp.includes('PILLAR')
+              ? 'INFOGRAPHIC_ADVOCACY_PILLARS'
+              : bp.includes('CHRONICLE')
+                ? 'INFOGRAPHIC_CHRONICLE_GRID'
+                : extractedContent.detectedArchetype || 'INFOGRAPHIC_VISIONARY_TIMELINE');
+
+      const copy = {
+        headline: pub?.title || extractedContent.headline || 'INFOGRAFIK PUBLIK',
+        kicker: extractedContent.kicker || 'DATA ADVOKASI // KEBIJAKAN DAERAH',
+        deck: extractedContent.deck || pub?.excerpt || '',
+        stats: extractedContent.stats && extractedContent.stats.length > 0 ? extractedContent.stats : undefined,
+        points:
+          extractedContent.cards && extractedContent.cards.length > 0
+            ? extractedContent.cards.map((c) => ({
+                label: c.title || c.badge,
+                text: c.desc,
+              }))
+            : [],
+        closingLine: extractedContent.closing || '',
+      };
+
+      const result = await ChromiumPosterCompositor.compose({
+        canvasBuffer: canvasBuf,
+        copy,
+        zones: params.parsedPromptUsed?.layout || {},
+        archetype,
+        palette: params.parsedPromptUsed?.mutation?.palette
+          ? {
+              accentHex: params.parsedPromptUsed.mutation.palette.accentHex,
+              secondaryHex: params.parsedPromptUsed.mutation.palette.secondaryHex,
+            }
+          : undefined,
+        editionTag: 'POLARIS // DAPIL JABAR',
+        headerTag: 'DOKUMEN ADVOKASI PUBLIK',
+        signature: 'DR. JONANDA P. A. B // DPRD PROVINSI • DAPIL JABAR',
+      });
+
+      if (result.layoutManifest && result.layoutManifest.layers.length >= 10) {
+        params.parsedPromptUsed.layoutManifest = result.layoutManifest;
+        params.parsedPromptUsed.archetype = archetype;
+        if (params.rawCanvasUrl && !params.parsedPromptUsed.rawCanvasUrl) {
+          params.parsedPromptUsed.rawCanvasUrl = params.rawCanvasUrl;
+        }
+
+        await db
+          .update(mediaAssets)
+          .set({ promptUsed: JSON.stringify(params.parsedPromptUsed) })
+          .where(eq(mediaAssets.id, params.existingAsset.id));
+
+        this.logger.log(
+          `[MagicLayers] Sukses re-compose Chromium manifest (${result.layoutManifest.layers.length} layers, archetype=${archetype})`
+        );
+        return {
+          manifest: result.layoutManifest,
+          rawCanvasUrl: params.rawCanvasUrl,
+          detectedArchetype: archetype,
+        };
+      }
+    } catch (reErr) {
+      this.logger.warn(`[MagicLayers] Gagal re-compose Chromium manifest: ${reErr}`);
+    }
+    return { manifest: null };
   }
 }
