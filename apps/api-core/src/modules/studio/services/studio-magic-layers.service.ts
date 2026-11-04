@@ -583,17 +583,27 @@ export class StudioMagicLayersService {
             if (!rawCanvasUrl && parsed.rawCanvasUrl) rawCanvasUrl = parsed.rawCanvasUrl;
 
             const m = parsed.layoutManifest;
-            const statLayers = m?.layers?.filter((l: any) => l.role?.includes('stat-val') || l.role?.includes('stat'));
+            const isChromiumNative = parsed.renderer === 'chromium' || parsed.engine === 'ART_COLLAGE_INFOGRAPHIC_CHROMIUM';
+
+            // Deteksi korupsi manifest: jika archetype asli poster adalah INFOGRAPHIC_NARRATIVE_WAVE
+            // tetapi manifest berisi vtimeline-steps-grid atau vstep-, berarti manifest pernah tertimpa
+            // oleh bug extractor timeline lama!
+            const isCorruptedWave =
+              parsed.archetype === 'INFOGRAPHIC_NARRATIVE_WAVE' &&
+              m?.layers?.some((l: any) => l.role?.includes('vtimeline-steps-grid') || l.role?.includes('vstep-'));
+
+            const statLayers = m?.layers?.filter((l: any) =>
+              l.role?.includes('stat') || l.role?.includes('kpi')
+            );
             const hasBannerError = m?.layers?.some((l: any) =>
               l.text && /RP\s*\d+/i.test(l.text) && (l.role?.includes('bar-tag') || l.role?.includes('section-tag') || l.role?.includes('banner'))
             );
-            const isDefective = m?.layers && (
-              (statLayers && statLayers.length < 2) ||
-              hasBannerError
+            const isDefective = !m?.layers || m.layers.length < 4 || isCorruptedWave || (
+              !isChromiumNative && ((statLayers && statLayers.length < 2) || hasBannerError)
             );
 
             if (m?.layers?.length > 0 && !params.forceReExtract && !isDefective) {
-              this.logger.log(`[MagicLayers] Mengembalikan layoutManifest yang valid dari DB untuk publication ${effectivePubId}`);
+              this.logger.log(`[MagicLayers] Mengembalikan layoutManifest yang valid dari DB (${isChromiumNative ? 'Chromium Native' : 'Vision AI'}) untuk publication ${effectivePubId}`);
               return {
                 success: true,
                 manifest: parsed.layoutManifest,
@@ -601,7 +611,7 @@ export class StudioMagicLayersService {
                 detectedArchetype: parsed.archetype,
               };
             } else if (isDefective || params.forceReExtract) {
-              this.logger.warn(`[MagicLayers] Manifest lama/cacat terdeteksi (force=${params.forceReExtract}, statCount=${statLayers?.length}, bannerErr=${hasBannerError}). Menjalankan Vision AI ulang...`);
+              this.logger.warn(`[MagicLayers] Manifest lama/cacat terdeteksi (force=${params.forceReExtract}, corruptedWave=${isCorruptedWave}, statCount=${statLayers?.length}, bannerErr=${hasBannerError}). Menjalankan Vision AI ulang...`);
             }
           } catch {}
         }
@@ -613,10 +623,18 @@ export class StudioMagicLayersService {
     // Jika belum ada manifest: Gunakan Vision AI Extractor untuk membaca teks ASLI secara verbatim dari poster!
     try {
       const extractedContent = await this.visionExtractor.extractContentFromImage(params.imageUrl);
+      let existingArchetype: string | undefined = undefined;
+      if (existingAsset?.promptUsed) {
+        try {
+          existingArchetype = JSON.parse(existingAsset.promptUsed).archetype;
+        } catch {}
+      }
+
       const manifest = this.visionExtractor.convertContentToManifest(
         extractedContent,
         params.naturalW || 1080,
-        params.naturalH || 1350
+        params.naturalH || 1350,
+        existingArchetype
       );
 
       // Simpan manifest ini ke database media_assets agar tidak perlu dianalisis ulang
