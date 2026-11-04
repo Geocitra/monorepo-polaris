@@ -18,6 +18,9 @@ import {
   ExternalLink,
   AlertTriangle,
   RotateCcw,
+  Check,
+  ArrowRight,
+  Search,
 } from 'lucide-react';
 import { AdminApiClient } from '@/lib/api-client';
 import {
@@ -37,6 +40,42 @@ interface OperatorWhatsAppBriefsTabProps {
   }) => void;
   onOpenLinkedArticle?: (publicationId: string, brief: ContentBriefItem) => void;
   onBriefStatsChanged?: () => void;
+}
+
+const PIPELINE_STEPS = [
+  { key: 'SUBMITTED', label: 'Bahan Masuk', icon: '📥' },
+  { key: 'IN_PROGRESS', label: 'Dikerjakan', icon: '⚙️' },
+  { key: 'READY_FOR_REVIEW', label: 'Review Klien', icon: '👀' },
+  { key: 'REVISION_REQUESTED', label: 'Revisi', icon: '✏️' },
+  { key: 'PUBLISHED', label: 'Tayang', icon: '✅' },
+];
+
+function getPipelineActiveIndex(status: string): number {
+  if (status === 'PUBLISHED' || status === 'APPROVED') return 4;
+  if (status === 'REVISION_REQUESTED') return 3;
+  if (status === 'READY_FOR_REVIEW') return 2;
+  if (status === 'IN_PROGRESS' || status === 'ACCEPTED' || status === 'NEED_CLARIFICATION') return 1;
+  return 0; // SUBMITTED
+}
+
+function isGreetingBubble(text?: string | null): boolean {
+  if (!text) return false;
+  const t = text.trim().toLowerCase().replace(/[^\w\s]/g, '');
+  return [
+    'hal',
+    'halp',
+    'hlp',
+    'halo',
+    'hallo',
+    'hai',
+    'hi',
+    'p',
+    'tes',
+    'test',
+    'permisi',
+    'assalamualaikum',
+    'assalamu alaikum',
+  ].includes(t);
 }
 
 const CONTACT_LEAK_REGEX_LIST: Array<{ regex: RegExp; warning: string }> = [
@@ -119,6 +158,15 @@ function getStatusBadgeConfig(status: ContentBriefItem['status']) {
   }
 }
 
+function cleanSummaryDisplay(summary: string): string {
+  if (!summary) return '';
+  // Bersihkan sapaan berulang di awal jika masih ada
+  const cleaned = summary
+    .replace(/^(?:hal|halp|hlp|halo|hallo|hai|hi|p|tes|test|permisi)\s+/gi, '')
+    .trim();
+  return cleaned || summary;
+}
+
 export function OperatorWhatsAppBriefsTab({
   selectedDewan,
   onHydrateBriefToStudio,
@@ -129,7 +177,10 @@ export function OperatorWhatsAppBriefsTab({
   const [weeklyQuota, setWeeklyQuota] = useState<TenantWeeklyBriefQuota | null>(null);
   const [loading, setLoading] = useState(true);
   const [selectedBriefId, setSelectedBriefId] = useState<string | null>(null);
-  const [statusFilter, setStatusFilter] = useState<'ALL' | 'ACTIVE' | 'DONE'>('ALL');
+  const [statusFilter, setStatusFilter] = useState<'ALL' | 'ACTIVE' | 'REVISION' | 'DONE'>('ALL');
+  const [searchQuery, setSearchQuery] = useState('');
+  const [currentPage, setCurrentPage] = useState(1);
+  const ITEMS_PER_PAGE = 8;
 
   // Action states
   const [hydratingStudio, setHydratingStudio] = useState(false);
@@ -181,15 +232,35 @@ export function OperatorWhatsAppBriefsTab({
   const selectedBrief = briefs.find((b) => b.id === selectedBriefId) || briefs[0] || null;
   const leakWarning = replyText.trim() ? checkClientSideContactLeak(replyText) : null;
 
+  const latestRevisionMessage = selectedBrief?.messages
+    ?.filter((m) => m.direction === 'INBOUND' && (m.revisionRound || 0) > 0)
+    .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())[0];
+
   const filteredBriefs = briefs.filter((b) => {
     if (statusFilter === 'ACTIVE') {
-      return !['PUBLISHED', 'APPROVED', 'REJECTED'].includes(b.status);
+      if (['PUBLISHED', 'APPROVED', 'REJECTED'].includes(b.status)) return false;
+    } else if (statusFilter === 'REVISION') {
+      if (b.status !== 'REVISION_REQUESTED' && (!b.revisionUsed || b.revisionUsed <= 0)) return false;
+    } else if (statusFilter === 'DONE') {
+      if (!['PUBLISHED', 'APPROVED', 'REJECTED'].includes(b.status)) return false;
     }
-    if (statusFilter === 'DONE') {
-      return ['PUBLISHED', 'APPROVED', 'REJECTED'].includes(b.status);
+
+    if (searchQuery.trim()) {
+      const q = searchQuery.toLowerCase().trim();
+      const matchCode = b.briefCode?.toLowerCase().includes(q);
+      const matchTopic = b.topicSummary?.toLowerCase().includes(q);
+      const matchPhone = b.tenantMaskedPhone?.toLowerCase().includes(q);
+      if (!matchCode && !matchTopic && !matchPhone) return false;
     }
+
     return true;
   });
+
+  const totalPages = Math.ceil(filteredBriefs.length / ITEMS_PER_PAGE) || 1;
+  const paginatedBriefs = filteredBriefs.slice(
+    (currentPage - 1) * ITEMS_PER_PAGE,
+    currentPage * ITEMS_PER_PAGE
+  );
 
   const handleAcceptBrief = async (priority: 'URGENT' | 'NORMAL') => {
     if (!selectedBrief || acceptingBrief) return;
@@ -460,29 +531,67 @@ export function OperatorWhatsAppBriefsTab({
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-5">
         {/* KOLOM KIRI: DAFTAR TIKET BRIEF */}
         <div className="lg:col-span-4 bg-white dark:bg-[#0B0F19] rounded-2xl border border-slate-200 dark:border-slate-800 shadow-xs overflow-hidden flex flex-col">
-          <div className="p-3.5 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between gap-2">
-            <span className="text-xs font-black uppercase tracking-wider text-slate-800 dark:text-slate-200">
-              Daftar Tiket ({filteredBriefs.length})
-            </span>
-            <div className="flex items-center gap-1 bg-slate-100 dark:bg-slate-900 p-0.5 rounded-lg">
-              {(['ALL', 'ACTIVE', 'DONE'] as const).map((f) => (
+          <div className="p-3.5 border-b border-slate-100 dark:border-slate-800 space-y-2.5">
+            <div className="flex items-center justify-between gap-2">
+              <span className="text-xs font-black uppercase tracking-wider text-slate-800 dark:text-slate-200">
+                Daftar Tiket ({filteredBriefs.length})
+              </span>
+              <div className="flex items-center gap-1 bg-slate-100 dark:bg-slate-900 p-0.5 rounded-lg">
+                {(['ALL', 'ACTIVE', 'REVISION', 'DONE'] as const).map((f) => (
+                  <button
+                    key={f}
+                    type="button"
+                    onClick={() => {
+                      setStatusFilter(f);
+                      setCurrentPage(1);
+                    }}
+                    className={`px-2 py-1 rounded-md text-[10px] font-bold transition cursor-pointer ${
+                      statusFilter === f
+                        ? 'bg-white dark:bg-slate-800 text-slate-900 dark:text-white shadow-2xs'
+                        : 'text-slate-500 hover:text-slate-800 dark:hover:text-slate-300'
+                    }`}
+                  >
+                    {f === 'ALL'
+                      ? 'Semua'
+                      : f === 'ACTIVE'
+                      ? 'Aktif'
+                      : f === 'REVISION'
+                      ? 'Revisi'
+                      : 'Selesai'}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Kotak Pencarian Tiket Cepat */}
+            <div className="relative">
+              <Search className="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+              <input
+                type="text"
+                placeholder="Cari kode tiket (#BR-...) atau kata topik..."
+                value={searchQuery}
+                onChange={(e) => {
+                  setSearchQuery(e.target.value);
+                  setCurrentPage(1);
+                }}
+                className="w-full pl-8 pr-7 py-1.5 text-xs rounded-xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+              />
+              {searchQuery && (
                 <button
-                  key={f}
                   type="button"
-                  onClick={() => setStatusFilter(f)}
-                  className={`px-2 py-1 rounded-md text-[10px] font-bold transition cursor-pointer ${
-                    statusFilter === f
-                      ? 'bg-white dark:bg-slate-800 text-slate-900 dark:text-white shadow-2xs'
-                      : 'text-slate-500 hover:text-slate-800 dark:hover:text-slate-300'
-                  }`}
+                  onClick={() => {
+                    setSearchQuery('');
+                    setCurrentPage(1);
+                  }}
+                  className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 text-xs cursor-pointer"
                 >
-                  {f === 'ALL' ? 'Semua' : f === 'ACTIVE' ? 'Aktif' : 'Selesai'}
+                  ✕
                 </button>
-              ))}
+              )}
             </div>
           </div>
 
-          <div className="divide-y divide-slate-100 dark:divide-slate-800/80 max-h-[640px] overflow-y-auto">
+          <div className="divide-y divide-slate-100 dark:divide-slate-800/80 max-h-[600px] overflow-y-auto">
             {loading ? (
               <div className="p-8 text-center text-xs text-slate-400 flex items-center justify-center gap-2">
                 <RefreshCw className="w-4 h-4 animate-spin text-indigo-500" />
@@ -492,14 +601,16 @@ export function OperatorWhatsAppBriefsTab({
               <div className="p-8 text-center space-y-2">
                 <MessageCircle className="w-7 h-7 text-slate-300 dark:text-slate-700 mx-auto" />
                 <div className="text-xs font-bold text-slate-700 dark:text-slate-300">
-                  Belum Ada Tiket Request WhatsApp
+                  {searchQuery ? 'Tidak Ada Tiket yang Cocok' : 'Belum Ada Tiket Request WhatsApp'}
                 </div>
                 <p className="text-[11px] text-slate-400">
-                  Saat {selectedDewan.fullName} mengirim topik, foto kegiatan, atau pesan diskusi ke nomor WA Polaris, tiket akan otomatis muncul di sini.
+                  {searchQuery
+                    ? `Tidak ditemukan tiket dengan kata kunci "${searchQuery}". Coba kata kunci lain.`
+                    : `Saat ${selectedDewan.fullName} mengirim topik, foto kegiatan, atau pesan diskusi ke nomor WA Polaris, tiket akan otomatis muncul di sini.`}
                 </p>
               </div>
             ) : (
-              filteredBriefs.map((item) => {
+              paginatedBriefs.map((item) => {
                 const isSelected = selectedBrief?.id === item.id;
                 const badge = getStatusBadgeConfig(item.status);
                 const mediaCount = item.messages.filter(
@@ -538,13 +649,18 @@ export function OperatorWhatsAppBriefsTab({
                     </div>
 
                     <p className="text-xs font-bold text-slate-800 dark:text-slate-200 line-clamp-2 mt-1.5 leading-snug">
-                      {item.topicSummary}
+                      {cleanSummaryDisplay(item.topicSummary)}
                     </p>
 
                     <div className="flex items-center justify-between text-[10px] text-slate-400 mt-2">
-                      <span>
-                        📎 {mediaCount} lampiran • 🔄 Revisi {item.revisionUsed}/{item.revisionLimit}
-                      </span>
+                      <div className="flex items-center gap-1.5 flex-wrap">
+                        <span>📎 {mediaCount} berkas</span>
+                        {item.revisionUsed > 0 && (
+                          <span className="px-1.5 py-0.5 rounded text-[9.5px] font-black bg-rose-100 text-rose-800 dark:bg-rose-950 dark:text-rose-300">
+                            Revisi {item.revisionUsed}/{item.revisionLimit}
+                          </span>
+                        )}
+                      </div>
                       <span>
                         {new Date(item.updatedAt).toLocaleDateString('id-ID', {
                           day: '2-digit',
@@ -559,6 +675,31 @@ export function OperatorWhatsAppBriefsTab({
               })
             )}
           </div>
+
+          {/* Toolbar Navigasi Halaman (Pagination) */}
+          {totalPages > 1 && (
+            <div className="p-2.5 border-t border-slate-100 dark:border-slate-800 bg-slate-50/70 dark:bg-slate-900/70 flex items-center justify-between text-[11px] text-slate-600 dark:text-slate-400">
+              <button
+                type="button"
+                disabled={currentPage <= 1}
+                onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+                className="px-2.5 py-1 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 disabled:opacity-40 hover:bg-slate-100 dark:hover:bg-slate-700 transition cursor-pointer font-bold"
+              >
+                ◀ Sebelumnya
+              </button>
+              <span className="font-bold">
+                Hal {currentPage} dari {totalPages}
+              </span>
+              <button
+                type="button"
+                disabled={currentPage >= totalPages}
+                onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+                className="px-2.5 py-1 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 disabled:opacity-40 hover:bg-slate-100 dark:hover:bg-slate-700 transition cursor-pointer font-bold"
+              >
+                Selanjutnya ▶
+              </button>
+            </div>
+          )}
         </div>
 
         {/* KOLOM KANAN: DETAIL TIKET, LAMPIRAN MEDIA, TOMBOL AKSI STUDIO, & LIVE CHAT BROKER */}
@@ -609,19 +750,35 @@ export function OperatorWhatsAppBriefsTab({
                     </h4>
                   </div>
 
-                  {/* TOMBOL 1-KLIK MUAT KE PABRIK KONTEN */}
+                  {/* TOMBOL 1-KLIK MUAT KE PABRIK KONTEN / TINDAK LANJUTI REVISI */}
                   <div className="flex items-center gap-2 shrink-0 flex-wrap">
                     <button
                       type="button"
                       disabled={hydratingStudio}
                       onClick={handleHydrateToStudio}
-                      className="px-4 py-2.5 rounded-xl bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-500 hover:to-violet-500 text-white text-xs font-black shadow-md shadow-indigo-500/20 flex items-center gap-2 transition cursor-pointer disabled:opacity-50"
+                      className={`px-4 py-2.5 rounded-xl text-white text-xs font-black shadow-md flex items-center gap-2 transition cursor-pointer disabled:opacity-50 ${
+                        selectedBrief.status === 'REVISION_REQUESTED' || selectedBrief.revisionUsed > 0
+                          ? 'bg-gradient-to-r from-rose-600 via-indigo-600 to-indigo-700 hover:from-rose-500 hover:to-indigo-600 shadow-rose-500/20'
+                          : 'bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-500 hover:to-violet-500 shadow-indigo-500/20'
+                      }`}
                     >
                       {hydratingStudio ? (
                         <>
                           <RefreshCw className="w-4 h-4 animate-spin" />
-                          <span>Memuat Bahan &amp; Lampiran...</span>
+                          <span>Membuka Kanvas Studio...</span>
                         </>
+                      ) : selectedBrief.linkedPublicationId ? (
+                        selectedBrief.status === 'REVISION_REQUESTED' || selectedBrief.revisionUsed > 0 ? (
+                          <>
+                            <RotateCcw className="w-4 h-4 text-amber-300" />
+                            <span>Buka Draf &amp; Tindak Lanjuti Revisi di Studio</span>
+                          </>
+                        ) : (
+                          <>
+                            <ExternalLink className="w-4 h-4 text-amber-300" />
+                            <span>Buka Draf di Studio AI</span>
+                          </>
+                        )
                       ) : (
                         <>
                           <Sparkles className="w-4 h-4 text-amber-300" />
@@ -644,6 +801,84 @@ export function OperatorWhatsAppBriefsTab({
                     )}
                   </div>
                 </div>
+
+                {/* 5-STEP PIPELINE PROGRESS TRACKER */}
+                <div className="bg-slate-50/80 dark:bg-slate-900/60 rounded-xl p-3 border border-slate-200/80 dark:border-slate-800 flex items-center justify-between gap-1 overflow-x-auto scrollbar-none">
+                  {PIPELINE_STEPS.map((step, idx) => {
+                    const activeIdx = getPipelineActiveIndex(selectedBrief.status);
+                    const isCompleted = idx < activeIdx;
+                    const isCurrent = idx === activeIdx;
+
+                    return (
+                      <div key={step.key} className="flex items-center gap-1.5 shrink-0">
+                        <div
+                          className={`flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[11px] font-bold transition-all ${
+                            isCurrent
+                              ? 'bg-indigo-600 text-white shadow-xs ring-2 ring-indigo-500/20'
+                              : isCompleted
+                              ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300'
+                              : 'text-slate-400 bg-white/60 dark:bg-slate-800/60'
+                          }`}
+                        >
+                          <span>{isCompleted ? '✓' : step.icon}</span>
+                          <span>{step.label}</span>
+                        </div>
+                        {idx < PIPELINE_STEPS.length - 1 && (
+                          <div
+                            className={`w-3 sm:w-5 h-0.5 rounded-full ${
+                              idx < activeIdx ? 'bg-emerald-500' : 'bg-slate-200 dark:bg-slate-700'
+                            }`}
+                          />
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+
+                {/* KARTU HIGHLIGHT ARAHAN REVISI KLIEN */}
+                {(selectedBrief.status === 'REVISION_REQUESTED' || selectedBrief.revisionUsed > 0) && (
+                  <div className="p-4 rounded-xl bg-gradient-to-r from-rose-500/10 via-amber-500/10 to-indigo-500/10 border-2 border-rose-500/30 dark:border-rose-800/60 shadow-xs space-y-2">
+                    <div className="flex items-center justify-between gap-2 flex-wrap">
+                      <div className="flex items-center gap-2">
+                        <span className="w-6 h-6 rounded-lg bg-rose-600 text-white flex items-center justify-center text-xs font-bold shrink-0">
+                          <RotateCcw className="w-3.5 h-3.5" />
+                        </span>
+                        <span className="text-xs font-black text-rose-800 dark:text-rose-300 uppercase tracking-wide">
+                          Instruksi Revisi Klien (Putaran {selectedBrief.revisionUsed} dari {selectedBrief.revisionLimit})
+                        </span>
+                      </div>
+                      <div className="flex items-center gap-1.5 flex-wrap">
+                        {selectedBrief.imageStatus === 'REVISION_REQUESTED' && (
+                          <span className="px-2 py-0.5 rounded text-[10px] font-black bg-rose-100 text-rose-800 dark:bg-rose-950 dark:text-rose-200 border border-rose-300">
+                            🖼️ Gambar &amp; Poster
+                          </span>
+                        )}
+                        {selectedBrief.articleStatus === 'REVISION_REQUESTED' && (
+                          <span className="px-2 py-0.5 rounded text-[10px] font-black bg-rose-100 text-rose-800 dark:bg-rose-950 dark:text-rose-200 border border-rose-300">
+                            📰 Naskah Artikel
+                          </span>
+                        )}
+                        {selectedBrief.captionStatus === 'REVISION_REQUESTED' && (
+                          <span className="px-2 py-0.5 rounded text-[10px] font-black bg-rose-100 text-rose-800 dark:bg-rose-950 dark:text-rose-200 border border-rose-300">
+                            💬 Caption &amp; Medsos
+                          </span>
+                        )}
+                      </div>
+                    </div>
+
+                    {latestRevisionMessage?.textBody ? (
+                      <div className="p-3 rounded-lg bg-white/80 dark:bg-slate-900/80 border border-rose-200 dark:border-rose-900/50">
+                        <p className="text-xs font-semibold text-slate-800 dark:text-slate-100 leading-relaxed whitespace-pre-wrap">
+                          &ldquo;{latestRevisionMessage.textBody}&rdquo;
+                        </p>
+                      </div>
+                    ) : (
+                      <p className="text-xs text-slate-600 dark:text-slate-300">
+                        Klien meminta revisi pada komponen di atas. Silakan tindak lanjuti di Pabrik Konten Studio.
+                      </p>
+                    )}
+                  </div>
+                )}
 
                 {/* BARIS KONTROL PENERIMAAN / PENOLAKAN TIKET & STATUS KOMPONEN REVISI */}
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pt-2 border-t border-slate-100 dark:border-slate-800/80">
@@ -737,6 +972,56 @@ export function OperatorWhatsAppBriefsTab({
                 {selectedBrief.messages.map((msg) => {
                   const isInbound = msg.direction === 'INBOUND';
                   const isRevisionMsg = isInbound && msg.revisionRound > 0;
+                  const isGreeting = isInbound && !isRevisionMsg && isGreetingBubble(msg.textBody);
+                  const isOutboundReview =
+                    !isInbound &&
+                    (msg.textBody?.includes('Konten Siap Ditinjau') ||
+                      msg.textBody?.includes('Review #') ||
+                      msg.textBody?.includes('Pratinjau'));
+
+                  if (isGreeting) {
+                    return (
+                      <div key={msg.id} className="flex items-center justify-start py-0.5">
+                        <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-slate-100 dark:bg-slate-800 text-[11px] text-slate-500 dark:text-slate-400 border border-slate-200 dark:border-slate-700">
+                          <span>👋</span>
+                          <span>
+                            Sapaan pembuka:{' '}
+                            <strong className="text-slate-700 dark:text-slate-300 font-semibold">
+                              &ldquo;{msg.textBody}&rdquo;
+                            </strong>
+                          </span>
+                          <span className="text-[10px] text-slate-400 font-mono">
+                            {new Date(msg.createdAt).toLocaleTimeString('id-ID', {
+                              hour: '2-digit',
+                              minute: '2-digit',
+                            })}
+                          </span>
+                        </div>
+                      </div>
+                    );
+                  }
+
+                  if (isOutboundReview) {
+                    return (
+                      <div key={msg.id} className="flex flex-col items-end">
+                        <div className="max-w-xl rounded-2xl p-3.5 border bg-emerald-950/90 border-emerald-700/60 text-emerald-100 space-y-2 shadow-xs">
+                          <div className="flex items-center justify-between gap-3 text-[10px] text-emerald-300">
+                            <span className="font-black uppercase flex items-center gap-1.5">
+                              <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" />
+                              <span>Paket Pratinjau Terkirim ke WhatsApp Klien</span>
+                            </span>
+                            <span className="font-mono">
+                              {new Date(msg.createdAt).toLocaleTimeString('id-ID', {
+                                hour: '2-digit',
+                                minute: '2-digit',
+                              })}
+                            </span>
+                          </div>
+                          <p className="text-xs leading-relaxed whitespace-pre-wrap">{msg.textBody}</p>
+                        </div>
+                      </div>
+                    );
+                  }
 
                   return (
                     <div
@@ -745,16 +1030,20 @@ export function OperatorWhatsAppBriefsTab({
                     >
                       <div
                         className={`max-w-xl rounded-2xl p-3.5 border space-y-2 ${
-                          isInbound
+                          isRevisionMsg
+                            ? 'bg-rose-50/50 dark:bg-rose-950/20 border-rose-300 dark:border-rose-800 text-slate-900 dark:text-slate-100 shadow-xs'
+                            : isInbound
                             ? 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-slate-900 dark:text-slate-100'
-                            : 'bg-indigo-600 text-white border-indigo-600'
+                            : 'bg-indigo-600 text-white border-indigo-600 shadow-xs'
                         }`}
                       >
                         {/* Header Bubble */}
                         <div className="flex items-center justify-between gap-3 text-[10px] opacity-80">
                           <span className="font-black uppercase">
                             {isInbound
-                              ? `👤 ${selectedBrief.tenantFullName} (via WA)`
+                              ? isRevisionMsg
+                                ? `✏️ ${selectedBrief.tenantFullName} (Catatan Revisi)`
+                                : `👤 ${selectedBrief.tenantFullName} (via WA)`
                               : '👨‍💼 Tim Redaksi Polaris'}
                           </span>
                           <span className="flex items-center gap-1">

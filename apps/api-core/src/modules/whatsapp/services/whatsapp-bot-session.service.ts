@@ -4,6 +4,7 @@ import {
   OnModuleDestroy,
   ForbiddenException,
 } from '@nestjs/common';
+import { ilike, or } from 'drizzle-orm';
 import {
   db,
   eq,
@@ -28,12 +29,16 @@ import {
   WhatsAppBriefHelperService,
   DraftCartState,
   RevisionSessionState,
+  DraftCartItem,
 } from './whatsapp-brief-helper.service.js';
+
+const SESSION_TTL_SECONDS = 259200; // 72 jam (3 hari) untuk mengakomodasi ritme kerja Anggota Dewan yang sibuk
 
 @Injectable()
 export class WhatsAppBotSessionService implements OnModuleDestroy {
   private readonly logger = new Logger(WhatsAppBotSessionService.name);
   private readonly debounceTimers = new Map<string, NodeJS.Timeout>();
+  private readonly revisionDebounceTimers = new Map<string, NodeJS.Timeout>();
 
   constructor(
     private readonly redisService: RedisService,
@@ -46,6 +51,10 @@ export class WhatsAppBotSessionService implements OnModuleDestroy {
       clearTimeout(timer);
     }
     this.debounceTimers.clear();
+    for (const timer of this.revisionDebounceTimers.values()) {
+      clearTimeout(timer);
+    }
+    this.revisionDebounceTimers.clear();
   }
 
   public verifyWebhookHandshake(
@@ -175,11 +184,11 @@ export class WhatsAppBotSessionService implements OnModuleDestroy {
       return;
     }
 
-    // 6. Cek apakah Client sedang dalam sesi mengisi Catatan Revisi
+    // 6. Cek apakah Client sedang dalam sesi mengisi Catatan Revisi (Mendukung Multi-Bubble / "Tipsy-Tipsy")
     const revSessionKey = `whatsapp:rev_session:${tenant.id}`;
     const activeRevSession = await this.redisService.get<RevisionSessionState>(revSessionKey);
     if (activeRevSession) {
-      await this.processClientRevisionSubmission(tenant, normalizedSender, activeRevSession, {
+      await this.appendClientRevisionBubble(tenant, normalizedSender, activeRevSession, {
         wamid,
         itemType,
         extractedText,
@@ -218,14 +227,54 @@ export class WhatsAppBotSessionService implements OnModuleDestroy {
       return;
     }
 
-    // 8. Perintah Cepat Teks & Deteksi Sapaan Menu Utama
-    const lowerCmd = extractedText.toLowerCase();
+    // 8. Perintah Cepat Teks, Pencarian Topik & Deteksi Sapaan Menu Utama
+    const lowerCmd = extractedText.toLowerCase().trim();
     if (
       itemType === 'TEXT' &&
-      (lowerCmd === 'status' || lowerCmd === 'cek status' || lowerCmd === 'kuota')
+      (lowerCmd === 'status' ||
+        lowerCmd === 'cek status' ||
+        lowerCmd === 'kuota' ||
+        lowerCmd === 'tiket' ||
+        lowerCmd === 'riwayat' ||
+        lowerCmd === 'daftar tiket')
     ) {
       await this.sendClientStatusOverview(tenant.id, tenant.fullName, normalizedSender);
       return;
+    }
+
+    if (
+      itemType === 'TEXT' &&
+      (lowerCmd === 'arsip' ||
+        lowerCmd === 'konten' ||
+        lowerCmd === 'draft' ||
+        lowerCmd === 'draf' ||
+        lowerCmd === 'artikel')
+    ) {
+      await this.sendLatestPublicationsMenu(tenant.id, tenant.fullName, normalizedSender, 1);
+      return;
+    }
+
+    // Pencarian kata kunci: "cari sampah", "cari reses", "cari jalan rusak"
+    if (itemType === 'TEXT' && lowerCmd.startsWith('cari ')) {
+      const keyword = extractedText.slice(5).trim();
+      if (keyword) {
+        await this.handleClientKeywordSearch(tenant.id, tenant.fullName, normalizedSender, keyword);
+        return;
+      }
+    }
+
+    // Pencarian langsung kode tiket: "#BR-2611-7626", "BR-2611-7626", atau 4 digit angka "7626"
+    if (
+      itemType === 'TEXT' &&
+      (lowerCmd.startsWith('#br-') || lowerCmd.startsWith('br-') || /^\d{4}$/.test(lowerCmd))
+    ) {
+      const isHandled = await this.handleClientDirectTicketLookup(
+        tenant.id,
+        tenant.fullName,
+        normalizedSender,
+        lowerCmd
+      );
+      if (isHandled) return;
     }
 
     const draftKey = `whatsapp:draft:${tenant.id}`;
@@ -234,9 +283,13 @@ export class WhatsAppBotSessionService implements OnModuleDestroy {
     if (itemType === 'TEXT' && (lowerCmd === 'batal' || lowerCmd === 'cancel')) {
       this.clearTenantDebounceTimer(tenant.id);
       await this.redisService.del(draftKey);
-      await this.waClient.sendTextMessage(
+      await this.waClient.sendInteractiveButtons(
         normalizedSender,
-        'Keranjang request topik telah dibatalkan. Silakan kirim topik, foto, atau dokumen baru kapan saja.'
+        '✅ Keranjang request topik telah dibatalkan. Silakan pilih menu layanan di bawah ini atau kirim topik baru kapan saja:',
+        [
+          { id: 'MENU_NEW_BRIEF', title: '📝 Request Baru' },
+          { id: 'MENU_OPEN_MAIN', title: '📋 Menu Utama' },
+        ]
       );
       return;
     }
@@ -252,7 +305,7 @@ export class WhatsAppBotSessionService implements OnModuleDestroy {
       return;
     }
 
-    // Jika keranjang masih kosong dan klien mengirim sapaan singkat ("halo", "p", "menu", dll.),
+    // Jika keranjang masih kosong dan klien mengirim sapaan singkat ("halo", "hal", "halp", "p", "menu", dll.),
     // langsung tampilkan Menu Utama Interaktif (List Drawer) tanpa menunggu debounce.
     if (
       itemType === 'TEXT' &&
@@ -310,7 +363,7 @@ export class WhatsAppBotSessionService implements OnModuleDestroy {
     });
     draftState.updatedAtMs = Date.now();
 
-    await this.redisService.set(draftKey, draftState, 7200);
+    await this.redisService.set(draftKey, draftState, SESSION_TTL_SECONDS);
     this.scheduleDraftConfirmationPrompt(tenant.id);
   }
 
@@ -320,10 +373,19 @@ export class WhatsAppBotSessionService implements OnModuleDestroy {
       clearTimeout(existing);
       this.debounceTimers.delete(tenantId);
     }
+    const existingRev = this.revisionDebounceTimers.get(tenantId);
+    if (existingRev) {
+      clearTimeout(existingRev);
+      this.revisionDebounceTimers.delete(tenantId);
+    }
   }
 
   private scheduleDraftConfirmationPrompt(tenantId: string): void {
-    this.clearTenantDebounceTimer(tenantId);
+    const existing = this.debounceTimers.get(tenantId);
+    if (existing) {
+      clearTimeout(existing);
+      this.debounceTimers.delete(tenantId);
+    }
     const timer = setTimeout(async () => {
       this.debounceTimers.delete(tenantId);
       try {
@@ -341,12 +403,83 @@ export class WhatsAppBotSessionService implements OnModuleDestroy {
     this.debounceTimers.set(tenantId, timer);
   }
 
+  private scheduleRevisionConfirmationPrompt(tenantId: string, phoneE164: string): void {
+    const existing = this.revisionDebounceTimers.get(tenantId);
+    if (existing) {
+      clearTimeout(existing);
+      this.revisionDebounceTimers.delete(tenantId);
+    }
+    const revDebounceMs = Math.min(this.helper.draftDebounceMs, 15000);
+    const timer = setTimeout(async () => {
+      this.revisionDebounceTimers.delete(tenantId);
+      try {
+        const revKey = `whatsapp:rev_session:${tenantId}`;
+        const revSession = await this.redisService.get<RevisionSessionState>(revKey);
+        if (revSession && revSession.items && revSession.items.length > 0) {
+          await this.sendRevisionConfirmationPrompt(revSession, phoneE164);
+        }
+      } catch (err) {
+        this.logger.error(
+          `[WhatsAppRevisionDebounce] Gagal mengirim rekap revisi untuk tenant ${tenantId}: ${(err as Error).message}`
+        );
+      }
+    }, revDebounceMs);
+    this.revisionDebounceTimers.set(tenantId, timer);
+  }
+
+  private async sendRevisionConfirmationPrompt(
+    revSession: RevisionSessionState,
+    phoneE164: string
+  ): Promise<void> {
+    const items = revSession.items || [];
+    const photoCount = items.filter((i) => i.messageType === 'IMAGE').length;
+    const docCount = items.filter((i) => i.messageType === 'DOCUMENT').length;
+    const rawTexts = items
+      .map((i) => i.textBody?.trim())
+      .filter((t): t is string => Boolean(t));
+    const cleanedTexts = this.helper.cleanTopicParts(rawTexts);
+
+    const combinedNotes =
+      cleanedTexts.length > 0
+        ? cleanedTexts.join(' | ').slice(0, 260)
+        : 'Lampiran foto/dokumen pengganti (tanpa catatan teks)';
+
+    const summaryLines = [
+      `📋 *Rekap Catatan Revisi Anda — #${revSession.briefCode}*`,
+      `• 🎯 Komponen Target: *${revSession.targetComponents.join(', ')}*`,
+      `• 💬 Catatan Terkumpul (${cleanedTexts.length} pesan): _"${combinedNotes}"_`,
+      photoCount > 0 || docCount > 0
+        ? `• 📎 Lampiran Baru: *${photoCount} foto, ${docCount} dokumen*`
+        : '',
+      '',
+      '💡 *Masih ada kalimat atau foto tambahan?*',
+      'Silakan langsung ketik atau kirimkan lagi di bawah ini—sistem otomatis menggabungkannya ke dalam rekap revisi ini.',
+      '',
+      'Jika catatan revisi Anda sudah lengkap, tekan tombol *✅ Kirim Revisi* di bawah ini:',
+    ]
+      .filter(Boolean)
+      .join('\n');
+
+    await this.waClient.sendInteractiveButtons(
+      phoneE164,
+      summaryLines,
+      [
+        { id: `REV_COMMIT:${revSession.briefId}`, title: '✅ Kirim Revisi' },
+        { id: `REV_CLEAR:${revSession.briefId}`, title: '🔄 Ulangi Catatan' },
+        { id: `REV_CANCEL:${revSession.briefId}`, title: '❌ Batalkan' },
+      ],
+      `Konfirmasi Revisi #${revSession.briefCode}`,
+      'Belum memotong kuota revisi sampai Anda klik Kirim'
+    );
+  }
+
   private async sendDraftConfirmationPrompt(draft: DraftCartState): Promise<void> {
     const photoCount = draft.items.filter((i) => i.messageType === 'IMAGE').length;
     const docCount = draft.items.filter((i) => i.messageType === 'DOCUMENT').length;
-    const textSnippets = draft.items
+    const rawSnippets = draft.items
       .map((i) => i.textBody?.trim())
       .filter((t): t is string => Boolean(t));
+    const textSnippets = this.helper.cleanTopicParts(rawSnippets);
 
     const combinedTopic =
       textSnippets.length > 0
@@ -354,6 +487,44 @@ export class WhatsAppBotSessionService implements OnModuleDestroy {
         : 'Lampiran kegiatan/dokumen (tanpa catatan teks)';
 
     const quota = await this.helper.getTenantWeeklyQuota(draft.tenantId);
+    const pendingReviewBrief = await this.helper.findBriefReadyForReview(draft.tenantId);
+    const canAttachAsRevision =
+      pendingReviewBrief && pendingReviewBrief.revisionUsed < pendingReviewBrief.revisionLimit;
+
+    if (canAttachAsRevision && pendingReviewBrief) {
+      const remRev = pendingReviewBrief.revisionLimit - pendingReviewBrief.revisionUsed;
+      const summaryWithGuard = [
+        `Halo Bapak/Ibu *${draft.tenantName}*, pesan Anda telah kami tampung:`,
+        `• 📝 Isi Pesan: _"${combinedTopic}"_`,
+        photoCount > 0 || docCount > 0
+          ? `• 📎 Lampiran: *${photoCount} foto, ${docCount} dokumen*`
+          : '',
+        '',
+        `⚠️ *Konfirmasi Konteks Tiket Aktif:*`,
+        `Saat ini Anda masih memiliki tiket *#${pendingReviewBrief.briefCode}* yang sedang menunggu persetujuan/revisi (Sisa revisi: *${remRev}x*).`,
+        '',
+        `• Jika pesan di atas adalah *Catatan Revisi untuk #${pendingReviewBrief.briefCode}*, tekan *✏️ Revisi #${pendingReviewBrief.briefCode.slice(-4)}* _(tidak memotong kuota mingguan)_.`,
+        `• Jika ini adalah *Request Topik Baru*, tekan *🟢 Kirim Topik Baru* _(Sisa kuota minggu ini: ${quota.weeklyRemaining}/${quota.weeklyLimit})_:`,
+      ]
+        .filter(Boolean)
+        .join('\n');
+
+      await this.waClient.sendInteractiveButtons(
+        draft.phoneE164,
+        summaryWithGuard,
+        [
+          {
+            id: `DRAFT_TO_REV:${pendingReviewBrief.id}`,
+            title: `✏️ Revisi #${pendingReviewBrief.briefCode.slice(-4)}`,
+          },
+          { id: 'BRIEF_SUBMIT_NORMAL', title: '🟢 Kirim Topik Baru' },
+          { id: 'BRIEF_CANCEL', title: '❌ Batal' },
+        ],
+        'Konfirmasi Revisi vs Topik Baru',
+        'Masih ada tambahan? Langsung ketik lagi sebelum klik tombol'
+      );
+      return;
+    }
 
     const summaryLines = [
       `Halo Bapak/Ibu *${draft.tenantName}*, bahan konten Anda telah kami tampung:`,
@@ -362,7 +533,8 @@ export class WhatsAppBotSessionService implements OnModuleDestroy {
       `• 📄 Dokumen Lampiran: *${docCount} file*`,
       `• 📊 Sisa Jatah Minggu Ini: *${quota.weeklyRemaining} dari ${quota.weeklyLimit} request*`,
       '',
-      'Jika masih ada foto/dokumen tambahan, silakan langsung kirim lagi. Jika sudah lengkap, pilih tingkat urgensi di bawah untuk diteruskan ke Tim Redaksi:',
+      '💡 *Masih ada kalimat/foto tambahan?* Langsung kirim lagi di bawah ini, sistem otomatis menggabungkannya.',
+      'Jika sudah lengkap semua, pilih tingkat urgensi untuk diteruskan ke Tim Redaksi:',
     ].join('\n');
 
     await this.waClient.sendInteractiveButtons(
@@ -374,7 +546,7 @@ export class WhatsAppBotSessionService implements OnModuleDestroy {
         { id: 'BRIEF_CANCEL', title: '❌ Batal' },
       ],
       'Konfirmasi Request Konten',
-      'Tim Redaksi Polaris'
+      'Kuota baru terpotong setelah Anda menekan tombol Kirim'
     );
   }
 
@@ -422,13 +594,26 @@ export class WhatsAppBotSessionService implements OnModuleDestroy {
     }
 
     if (buttonId === 'MENU_LATEST_LINKS') {
-      await this.sendLatestPublicationsMenu(tenant.id, tenant.fullName, phoneE164);
+      await this.sendLatestPublicationsMenu(tenant.id, tenant.fullName, phoneE164, 1);
+      return;
+    }
+
+    if (buttonId.startsWith('PUBS_PAGE:')) {
+      const pageStr = buttonId.slice('PUBS_PAGE:'.length).trim();
+      const pageNum = parseInt(pageStr, 10) || 1;
+      await this.sendLatestPublicationsMenu(tenant.id, tenant.fullName, phoneE164, pageNum);
       return;
     }
 
     if (buttonId.startsWith('PUB_DETAIL:')) {
       const pubId = buttonId.slice('PUB_DETAIL:'.length).trim();
       await this.sendPublicationDetailPackage(tenant.id, pubId, phoneE164);
+      return;
+    }
+
+    if (buttonId.startsWith('BRIEF_LOOKUP:')) {
+      const briefId = buttonId.slice('BRIEF_LOOKUP:'.length).trim();
+      await this.sendBriefDetailCard(tenant.id, briefId, phoneE164);
       return;
     }
 
@@ -506,9 +691,14 @@ export class WhatsAppBotSessionService implements OnModuleDestroy {
     if (buttonId === 'BRIEF_SUBMIT_URGENT' || buttonId === 'BRIEF_SUBMIT_NORMAL') {
       const draft = await this.redisService.get<DraftCartState>(draftKey);
       if (!draft || draft.items.length === 0) {
-        await this.waClient.sendTextMessage(
+        await this.waClient.sendInteractiveButtons(
           phoneE164,
-          'Keranjang bahan Anda sudah kosong atau telah dikirim sebelumnya. Silakan kirim teks, foto, atau dokumen topik baru.'
+          'Keranjang bahan Anda sudah kosong atau telah dikirim sebelumnya. Silakan kirim teks, foto, atau dokumen topik baru:',
+          [
+            { id: 'MENU_NEW_BRIEF', title: '📝 Request Baru' },
+            { id: 'MENU_CHECK_STATUS', title: '📊 Cek Status' },
+            { id: 'MENU_OPEN_MAIN', title: '📋 Menu Utama' },
+          ]
         );
         return;
       }
@@ -521,27 +711,121 @@ export class WhatsAppBotSessionService implements OnModuleDestroy {
       const quota = await this.helper.getTenantWeeklyQuota(tenant.id);
 
       const quotaNotice =
-        quota.weeklyRemaining > 0
-          ? `Request ini akan diproses oleh Tim Redaksi (sisa jatah minggu ini sebelum diproses: *${quota.weeklyRemaining}/${quota.weeklyLimit}*).`
-          : `Jatah request minggu ini (*${quota.weeklyLimit}/${quota.weeklyLimit}*) telah penuh. Request Anda tetap kami simpan dan dijadwalkan otomatis untuk slot Senin depan.`;
+        quota.weeklyUsed <= quota.weeklyLimit
+          ? `• 📊 Pemakaian Jatah Minggu Ini: *${quota.weeklyUsed} dari ${quota.weeklyLimit} request* (Sisa: *${quota.weeklyRemaining} request*)`
+          : `• 🗓️ Jatah request minggu ini (*${quota.weeklyLimit}/${quota.weeklyLimit}*) telah penuh. Request ini diamankan untuk antrean prioritas Senin depan.`;
 
-      await this.waClient.sendTextMessage(
+      await this.waClient.sendInteractiveButtons(
         phoneE164,
         [
-          `✅ *Request Diterima: #${createdBrief.briefCode}*`,
-          `• Sinyal Urgensi: *${clientUrgency === 'URGENT' ? 'Mendesak (Hari Ini)' : 'Biasa'}*`,
-          `• Status: *Menunggu Verifikasi Tim Redaksi*`,
-          '',
+          `✅ *Request Resmi Diterima: #${createdBrief.briefCode}*`,
+          `• Sinyal Urgensi: *${clientUrgency === 'URGENT' ? '🔴 Mendesak (Hari Ini)' : '🟢 Biasa'}*`,
+          `• Status Saat Ini: *Menunggu Diproses Tim Redaksi*`,
           quotaNotice,
-          'Kami akan mengirimkan pratinjau Artikel, Poster, dan Caption langsung ke WhatsApp ini setelah selesai dibuat.',
-        ].join('\n')
+          '',
+          '🔒 *Sesi pengiriman bahan selesai.* Kami akan mengirimkan pratinjau Artikel, Poster, dan Caption ke WhatsApp ini setelah selesai diracik. Sambil menunggu, Anda bebas mengakses menu lain:',
+        ].join('\n'),
+        [
+          { id: 'MENU_CHECK_STATUS', title: '📊 Cek Status' },
+          { id: 'MENU_LATEST_LINKS', title: '🔗 Arsip Konten' },
+          { id: 'MENU_OPEN_MAIN', title: '📋 Menu Utama' },
+        ],
+        `Tiket #${createdBrief.briefCode} Terdaftar`,
+        'Asisten Redaksi Polaris'
       );
+      return;
+    }
+
+    if (buttonId.startsWith('DRAFT_TO_REV:')) {
+      const briefId = buttonId.slice('DRAFT_TO_REV:'.length).trim();
+      const draft = await this.redisService.get<DraftCartState>(draftKey);
+      if (!draft || draft.items.length === 0) {
+        await this.waClient.sendTextMessage(
+          phoneE164,
+          'Pesan catatan Anda sudah tidak ditemukan di keranjang sementara. Silakan ketik ulang catatan revisi Anda.'
+        );
+        return;
+      }
+      await this.redisService.del(draftKey);
+
+      const [brief] = await db
+        .select()
+        .from(contentBriefs)
+        .where(and(eq(contentBriefs.id, briefId), eq(contentBriefs.tenantId, tenant.id)))
+        .limit(1);
+
+      if (!brief) {
+        await this.waClient.sendTextMessage(phoneE164, 'Tiket tujuan revisi tidak ditemukan.');
+        return;
+      }
+
+      const syntheticRevSession: RevisionSessionState = {
+        briefId: brief.id,
+        briefCode: brief.briefCode,
+        tenantId: tenant.id,
+        targetComponents: ['ARTICLE', 'IMAGE', 'CAPTION'],
+        createdAtMs: Date.now(),
+        items: draft.items,
+      };
+
+      await this.commitRevisionCart(tenant, phoneE164, syntheticRevSession);
       return;
     }
 
     if (buttonId.startsWith('REV_APPROVE:')) {
       const briefId = buttonId.slice('REV_APPROVE:'.length).trim();
+      await this.redisService.del(`whatsapp:rev_session:${tenant.id}`);
       await this.approveAndPublishBriefFromClient(tenant.id, briefId, phoneE164);
+      return;
+    }
+
+    if (buttonId.startsWith('REV_CANCEL:')) {
+      await this.redisService.del(`whatsapp:rev_session:${tenant.id}`);
+      await this.waClient.sendInteractiveButtons(
+        phoneE164,
+        '✅ Mode revisi telah dibatalkan (kuota revisi Anda *tidak terpotong*). Silakan pilih menu layanan di bawah ini:',
+        [
+          { id: 'MENU_CHECK_STATUS', title: '📊 Cek Status' },
+          { id: 'MENU_OPEN_MAIN', title: '📋 Menu Utama' },
+        ]
+      );
+      return;
+    }
+
+    if (buttonId.startsWith('REV_CLEAR:')) {
+      const revKey = `whatsapp:rev_session:${tenant.id}`;
+      const existingRev = await this.redisService.get<RevisionSessionState>(revKey);
+      if (existingRev) {
+        existingRev.items = [];
+        existingRev.updatedAtMs = Date.now();
+        await this.redisService.set(revKey, existingRev, SESSION_TTL_SECONDS);
+        await this.waClient.sendInteractiveButtons(
+          phoneE164,
+          `🔄 Catatan revisi sebelumnya untuk *#${existingRev.briefCode}* telah dikosongkan.\n\nSilakan ketik ulang catatan revisi Anda (bisa kirim beberapa pesan/foto beruntun, lalu tunggu 15 detik hingga rekap muncul):`,
+          [
+            { id: `REV_CANCEL:${existingRev.briefId}`, title: '❌ Batalkan Revisi' },
+            { id: 'MENU_OPEN_MAIN', title: '📋 Menu Utama' },
+          ]
+        );
+      }
+      return;
+    }
+
+    if (buttonId.startsWith('REV_COMMIT:')) {
+      const revKey = `whatsapp:rev_session:${tenant.id}`;
+      const existingRev = await this.redisService.get<RevisionSessionState>(revKey);
+      if (!existingRev || !existingRev.items || existingRev.items.length === 0) {
+        await this.waClient.sendInteractiveButtons(
+          phoneE164,
+          'Catatan revisi sudah dikirim atau masih kosong. Silakan cek status tiket Anda:',
+          [
+            { id: 'MENU_CHECK_STATUS', title: '📊 Cek Status' },
+            { id: 'MENU_OPEN_MAIN', title: '📋 Menu Utama' },
+          ]
+        );
+        return;
+      }
+      await this.commitRevisionCart(tenant, phoneE164, existingRev);
       return;
     }
 
@@ -558,10 +842,31 @@ export class WhatsAppBotSessionService implements OnModuleDestroy {
         return;
       }
 
-      if (brief.revisionUsed >= brief.revisionLimit) {
-        await this.waClient.sendTextMessage(
+      // Guardrail 1: Tolak revisi jika tiket sudah PUBLISHED / APPROVED / REJECTED
+      if (['PUBLISHED', 'APPROVED', 'REJECTED'].includes(brief.status)) {
+        await this.waClient.sendInteractiveButtons(
           phoneE164,
-          `Mohon maaf, batas revisi untuk tiket *#${brief.briefCode}* telah habis (*${brief.revisionUsed}/${brief.revisionLimit} putaran*). Silakan setujui hasil saat ini atau kirim topik sebagai request baru.`
+          `🔒 *Tiket #${brief.briefCode} Telah Selesai (${brief.status})*\n\nKonten pada tiket ini sudah resmi disetujui/tayang sehingga tidak dapat direvisi kembali.\n\nJika Anda ingin membuat konten untuk topik baru, silakan pilih *Request Konten Baru*:`,
+          [
+            { id: 'MENU_NEW_BRIEF', title: '📝 Request Baru' },
+            { id: 'MENU_LATEST_LINKS', title: '🔗 Arsip Konten' },
+            { id: 'MENU_OPEN_MAIN', title: '📋 Menu Utama' },
+          ],
+          `Tiket #${brief.briefCode} Terkunci`,
+          'Asisten Redaksi Polaris'
+        );
+        return;
+      }
+
+      // Guardrail 2: Tolak jika batas putaran revisi sudah habis
+      if (brief.revisionUsed >= brief.revisionLimit) {
+        await this.waClient.sendInteractiveButtons(
+          phoneE164,
+          `Mohon maaf, batas revisi untuk tiket *#${brief.briefCode}* telah habis (*${brief.revisionUsed}/${brief.revisionLimit} putaran*). Silakan setujui hasil saat ini untuk ditayangkan:`,
+          [
+            { id: `REV_APPROVE:${brief.id}`, title: '✅ Setujui & Tayang' },
+            { id: 'MENU_OPEN_MAIN', title: '📋 Menu Utama' },
+          ]
         );
         return;
       }
@@ -597,6 +902,18 @@ export class WhatsAppBotSessionService implements OnModuleDestroy {
 
       if (!brief) return;
 
+      if (['PUBLISHED', 'APPROVED', 'REJECTED'].includes(brief.status)) {
+        await this.waClient.sendInteractiveButtons(
+          phoneE164,
+          `🔒 Tiket *#${brief.briefCode}* telah resmi selesai/tayang dan tidak dapat direvisi lagi.`,
+          [
+            { id: 'MENU_NEW_BRIEF', title: '📝 Request Baru' },
+            { id: 'MENU_OPEN_MAIN', title: '📋 Menu Utama' },
+          ]
+        );
+        return;
+      }
+
       let targetComponents: ('ARTICLE' | 'IMAGE' | 'CAPTION')[] = ['ARTICLE', 'IMAGE', 'CAPTION'];
       let label = 'Artikel, Gambar & Caption';
       if (prefix === 'REV_COMP_ART') {
@@ -613,13 +930,33 @@ export class WhatsAppBotSessionService implements OnModuleDestroy {
         tenantId: tenant.id,
         targetComponents,
         createdAtMs: Date.now(),
+        updatedAtMs: Date.now(),
+        items: [],
       };
 
-      await this.redisService.set(`whatsapp:rev_session:${tenant.id}`, revSession, 1800);
+      await this.redisService.set(
+        `whatsapp:rev_session:${tenant.id}`,
+        revSession,
+        SESSION_TTL_SECONDS
+      );
 
-      await this.waClient.sendTextMessage(
+      await this.waClient.sendInteractiveButtons(
         phoneE164,
-        `✏️ *Mode Revisi (${label}) — #${brief.briefCode}*\n\nSilakan balas pesan ini dengan *catatan revisi lengkap Anda dalam 1 pesan* (Anda juga boleh melampirkan 1 foto pengganti beserta keterangannya).`
+        [
+          `✏️ *Mode Catatan Revisi Aktif — #${brief.briefCode}*`,
+          `• 🎯 Komponen: *${label}*`,
+          `• 🔄 Sisa Jatah Revisi: *${brief.revisionLimit - brief.revisionUsed} dari ${brief.revisionLimit} putaran*`,
+          '',
+          '*Cara Mengirim Catatan Revisi:*',
+          '1️⃣ Silakan ketik poin-poin perbaikan Anda (boleh *1 pesan panjang* maupun *beberapa pesan/foto secara beruntun*).',
+          '2️⃣ Setelah selesai mengetik, *tunggu sekitar 15 detik* hingga asisten menampilkan Rekap & Tombol Konfirmasi Kirim.',
+        ].join('\n'),
+        [
+          { id: `REV_CANCEL:${brief.id}`, title: '❌ Batalkan Revisi' },
+          { id: 'MENU_OPEN_MAIN', title: '📋 Menu Utama' },
+        ],
+        `Mode Revisi #${brief.briefCode}`,
+        'Sesi revisi aktif hingga Anda menekan Kirim Revisi'
       );
       return;
     }
@@ -646,9 +983,11 @@ export class WhatsAppBotSessionService implements OnModuleDestroy {
     const weeklyQuotaPeriod = getCurrentWibWeeklyPeriod();
     const briefCode = await this.helper.generateUniqueBriefCode();
 
-    const textParts = draft.items
+    const rawTextParts = draft.items
       .map((i) => i.textBody?.trim())
       .filter((t): t is string => Boolean(t));
+
+    const textParts = this.helper.cleanTopicParts(rawTextParts);
 
     const topicSummary =
       textParts.length > 0
@@ -754,6 +1093,14 @@ export class WhatsAppBotSessionService implements OnModuleDestroy {
       );
     }
 
+    const hasPendingRevisionWork =
+      brief.revisionUsed > 0 &&
+      (brief.articleStatus === 'REVISION' ||
+        brief.imageStatus === 'REVISION' ||
+        brief.captionStatus === 'REVISION');
+
+    const nextStatusAfterReply = hasPendingRevisionWork ? 'REVISION_REQUESTED' : 'IN_PROGRESS';
+
     await withTenantContext(tenant.id, async (tx) => {
       await tx.insert(contentBriefMessages).values({
         briefId: brief.id,
@@ -775,15 +1122,26 @@ export class WhatsAppBotSessionService implements OnModuleDestroy {
       await tx
         .update(contentBriefs)
         .set({
-          status: 'IN_PROGRESS',
+          status: nextStatusAfterReply,
           updatedAt: new Date(),
         })
         .where(eq(contentBriefs.id, brief.id));
     });
 
-    await this.waClient.sendTextMessage(
+    await this.waClient.sendInteractiveButtons(
       phoneE164,
-      `✅ Terima kasih Bapak/Ibu *${tenant.fullName}*, jawaban konfirmasi Anda untuk tiket *#${brief.briefCode}* telah diteruskan ke Tim Redaksi.`
+      [
+        `✅ Terima kasih Bapak/Ibu *${tenant.fullName}*, pesan tambahan Anda untuk tiket *#${brief.briefCode}* telah diteruskan ke layar Editor Redaksi.`,
+        '',
+        '🔄 *Status Tiket:* Sedang Dikerjakan Tim Redaksi (Belum Selesai).',
+        'Kami akan mengirimkan pratinjau terbaru ke WhatsApp ini segera setelah selesai diracik.',
+      ].join('\n'),
+      [
+        { id: 'MENU_CHECK_STATUS', title: '📊 Status Pengerjaan' },
+        { id: 'MENU_OPEN_MAIN', title: '📋 Menu Utama' },
+      ],
+      `Balasan Diterima #${brief.briefCode}`,
+      'Tiket tetap aktif dalam pengerjaan'
     );
 
     if (brief.assignedOperatorId) {
@@ -797,7 +1155,11 @@ export class WhatsAppBotSessionService implements OnModuleDestroy {
     }
   }
 
-  public async processClientRevisionSubmission(
+  /**
+   * Menampung bubble catatan revisi dari WhatsApp secara beruntun ("Tipsy-Tipsy" maupun "Bulk")
+   * ke dalam keranjang revisi sebelum di-commit menjadi 1 putaran revisi utuh.
+   */
+  private async appendClientRevisionBubble(
     tenant: { id: string; fullName: string },
     phoneE164: string,
     revSession: RevisionSessionState,
@@ -810,20 +1172,48 @@ export class WhatsAppBotSessionService implements OnModuleDestroy {
       rawFileName?: string;
     }
   ): Promise<void> {
-    await this.redisService.del(`whatsapp:rev_session:${tenant.id}`);
+    const revKey = `whatsapp:rev_session:${tenant.id}`;
+    const lowerCmd = input.extractedText.trim().toLowerCase();
 
-    const [brief] = await db
-      .select()
-      .from(contentBriefs)
-      .where(and(eq(contentBriefs.id, revSession.briefId), eq(contentBriefs.tenantId, tenant.id)))
-      .limit(1);
-
-    if (!brief) return;
-
-    if (brief.revisionUsed >= brief.revisionLimit) {
-      await this.waClient.sendTextMessage(
+    if (input.itemType === 'TEXT' && (lowerCmd === 'batal' || lowerCmd === 'cancel')) {
+      this.clearTenantDebounceTimer(tenant.id);
+      await this.redisService.del(revKey);
+      await this.waClient.sendInteractiveButtons(
         phoneE164,
-        `Batas revisi untuk tiket *#${brief.briefCode}* telah habis (${brief.revisionUsed}/${brief.revisionLimit}).`
+        `✅ Mode revisi untuk tiket *#${revSession.briefCode}* telah dibatalkan (kuota revisi Anda tidak terpotong).`,
+        [
+          { id: 'MENU_CHECK_STATUS', title: '📊 Cek Status' },
+          { id: 'MENU_OPEN_MAIN', title: '📋 Menu Utama' },
+        ]
+      );
+      return;
+    }
+
+    if (
+      input.itemType === 'TEXT' &&
+      (lowerCmd === 'kirim' || lowerCmd === 'selesai') &&
+      revSession.items &&
+      revSession.items.length > 0
+    ) {
+      this.clearTenantDebounceTimer(tenant.id);
+      await this.commitRevisionCart(tenant, phoneE164, revSession);
+      return;
+    }
+
+    // Jika keranjang revisi masih kosong dan klien hanya mengetik sapaan ("halo", "hal", "p"),
+    // ingatkan dengan ramah bahwa ia sedang berada di Mode Revisi tanpa menganggapnya isi revisi.
+    if (
+      input.itemType === 'TEXT' &&
+      (!revSession.items || revSession.items.length === 0) &&
+      this.helper.isNoiseGreetingLine(input.extractedText)
+    ) {
+      await this.waClient.sendInteractiveButtons(
+        phoneE164,
+        `Halo Bapak/Ibu *${tenant.fullName}*, saat ini Anda sedang berada di *Mode Revisi #${revSession.briefCode}* (Komponen: *${revSession.targetComponents.join(', ')}*).\n\nSilakan langsung ketik poin perbaikan atau kirimkan foto pengganti di bawah ini, atau batalkan jika ingin kembali ke Menu Utama:`,
+        [
+          { id: `REV_CANCEL:${revSession.briefId}`, title: '❌ Batalkan Revisi' },
+          { id: 'MENU_OPEN_MAIN', title: '📋 Menu Utama' },
+        ]
       );
       return;
     }
@@ -845,26 +1235,127 @@ export class WhatsAppBotSessionService implements OnModuleDestroy {
       );
     }
 
+    const updatedItems: DraftCartItem[] = Array.isArray(revSession.items)
+      ? [...revSession.items]
+      : [];
+
+    updatedItems.push({
+      waMessageId: input.wamid,
+      messageType: input.itemType,
+      textBody: input.extractedText || undefined,
+      mediaR2Url: uploaded.r2StorageUrl,
+      mediaCdnUrl: uploaded.cdnPublicUrl,
+      mediaMimeType: uploaded.mimeType,
+      mediaFileName: uploaded.fileName,
+      mediaFileSizeBytes: uploaded.fileSizeBytes,
+      createdAtIso: new Date().toISOString(),
+    });
+
+    const updatedSession: RevisionSessionState = {
+      ...revSession,
+      items: updatedItems,
+      updatedAtMs: Date.now(),
+    };
+
+    await this.redisService.set(revKey, updatedSession, SESSION_TTL_SECONDS);
+    this.scheduleRevisionConfirmationPrompt(tenant.id, phoneE164);
+  }
+
+  /**
+   * Mengeksekusi seluruh isi keranjang revisi (baik 1 bubble maupun banyak bubble + foto)
+   * menjadi 1 putaran revisi utuh pada tiket Content Brief.
+   */
+  private async commitRevisionCart(
+    tenant: { id: string; fullName: string },
+    phoneE164: string,
+    revSession: RevisionSessionState
+  ): Promise<void> {
+    this.clearTenantDebounceTimer(tenant.id);
+    await this.redisService.del(`whatsapp:rev_session:${tenant.id}`);
+
+    const [brief] = await db
+      .select()
+      .from(contentBriefs)
+      .where(and(eq(contentBriefs.id, revSession.briefId), eq(contentBriefs.tenantId, tenant.id)))
+      .limit(1);
+
+    if (!brief) return;
+
+    if (['PUBLISHED', 'APPROVED', 'REJECTED'].includes(brief.status)) {
+      await this.waClient.sendInteractiveButtons(
+        phoneE164,
+        `🔒 Tiket *#${brief.briefCode}* sudah berstatus *${brief.status}* sehingga tidak dapat direvisi kembali.`,
+        [
+          { id: 'MENU_NEW_BRIEF', title: '📝 Request Baru' },
+          { id: 'MENU_OPEN_MAIN', title: '📋 Menu Utama' },
+        ]
+      );
+      return;
+    }
+
+    if (brief.revisionUsed >= brief.revisionLimit) {
+      await this.waClient.sendInteractiveButtons(
+        phoneE164,
+        `Batas revisi untuk tiket *#${brief.briefCode}* telah habis (${brief.revisionUsed}/${brief.revisionLimit} putaran).`,
+        [
+          { id: `REV_APPROVE:${brief.id}`, title: '✅ Setujui & Tayang' },
+          { id: 'MENU_OPEN_MAIN', title: '📋 Menu Utama' },
+        ]
+      );
+      return;
+    }
+
+    const items = revSession.items || [];
+    if (items.length === 0) return;
+
     const nextRound = brief.revisionUsed + 1;
     const comps = revSession.targetComponents;
 
+    const rawTextParts = items
+      .map((i) => i.textBody?.trim())
+      .filter((t): t is string => Boolean(t));
+    const cleanedTexts = this.helper.cleanTopicParts(rawTextParts);
+    const combinedRevisionText =
+      cleanedTexts.length > 0
+        ? cleanedTexts.join('\n')
+        : 'Permintaan revisi dengan lampiran media baru.';
+
+    const mediaItems = items.filter((i) => i.mediaR2Url || i.mediaCdnUrl);
+
     await withTenantContext(tenant.id, async (tx) => {
-      await tx.insert(contentBriefMessages).values({
-        briefId: brief.id,
-        tenantId: tenant.id,
-        direction: 'INBOUND',
-        messageType: input.itemType,
-        waMessageId: input.wamid,
-        textBody: input.extractedText || 'Permintaan revisi dengan lampiran media baru.',
-        mediaR2Url: uploaded.r2StorageUrl ?? null,
-        mediaCdnUrl: uploaded.cdnPublicUrl ?? null,
-        mediaMimeType: uploaded.mimeType ?? null,
-        mediaFileName: uploaded.fileName ?? null,
-        mediaFileSizeBytes: uploaded.fileSizeBytes ?? null,
-        revisionRound: nextRound,
-        targetComponents: comps,
-        isInternalFault: false,
-      });
+      if (mediaItems.length > 0) {
+        for (let idx = 0; idx < mediaItems.length; idx++) {
+          const m = mediaItems[idx];
+          await tx.insert(contentBriefMessages).values({
+            briefId: brief.id,
+            tenantId: tenant.id,
+            direction: 'INBOUND',
+            messageType: m.messageType,
+            waMessageId: m.waMessageId,
+            textBody: idx === 0 ? combinedRevisionText : m.textBody || null,
+            mediaR2Url: m.mediaR2Url ?? null,
+            mediaCdnUrl: m.mediaCdnUrl ?? null,
+            mediaMimeType: m.mediaMimeType ?? null,
+            mediaFileName: m.mediaFileName ?? null,
+            mediaFileSizeBytes: m.mediaFileSizeBytes ?? null,
+            revisionRound: nextRound,
+            targetComponents: comps,
+            isInternalFault: false,
+          });
+        }
+      } else {
+        await tx.insert(contentBriefMessages).values({
+          briefId: brief.id,
+          tenantId: tenant.id,
+          direction: 'INBOUND',
+          messageType: 'TEXT',
+          waMessageId: items[0].waMessageId,
+          textBody: combinedRevisionText,
+          revisionRound: nextRound,
+          targetComponents: comps,
+          isInternalFault: false,
+        });
+      }
 
       await tx
         .update(contentBriefs)
@@ -880,15 +1371,23 @@ export class WhatsAppBotSessionService implements OnModuleDestroy {
     });
 
     const remaining = Math.max(0, brief.revisionLimit - nextRound);
-    await this.waClient.sendTextMessage(
+    await this.waClient.sendInteractiveButtons(
       phoneE164,
       [
-        `✅ *Catatan Revisi Diterima — #${brief.briefCode}*`,
-        `• Komponen: *${comps.join(', ')}*`,
-        `• Putaran Revisi: *${nextRound} dari ${brief.revisionLimit}* (Sisa revisi: *${remaining}x*)`,
+        `✅ *Catatan Revisi Resmi Diterima — #${brief.briefCode}*`,
+        `• 🎯 Komponen Diperbaiki: *${comps.join(', ')}*`,
+        `• 🔄 Putaran Revisi: *${nextRound} dari ${brief.revisionLimit}* (Sisa kuota revisi: *${remaining}x*)`,
+        `• 📊 Kuota Request Mingguan: *Tidak Terpotong*`,
         '',
-        'Tim Redaksi sedang mengerjakan perbaikan sesuai arahan Anda.',
-      ].join('\n')
+        '🔒 *Sesi input revisi selesai.* Tim Redaksi sedang mengerjakan perbaikan sesuai arahan Anda dan akan mengirimkan pratinjau terbaru ke WhatsApp ini. Sambil menunggu, Anda bebas mengakses menu lain:',
+      ].join('\n'),
+      [
+        { id: 'MENU_CHECK_STATUS', title: '📊 Status Pengerjaan' },
+        { id: 'MENU_LATEST_LINKS', title: '🔗 Arsip Konten' },
+        { id: 'MENU_OPEN_MAIN', title: '📋 Menu Utama' },
+      ],
+      `Revisi #${brief.briefCode} Diproses`,
+      'Asisten Redaksi Polaris'
     );
 
     if (brief.assignedOperatorId) {
@@ -900,6 +1399,59 @@ export class WhatsAppBotSessionService implements OnModuleDestroy {
         link: '/operator/workspace',
       });
     }
+  }
+
+  /**
+   * Digunakan untuk pengiriman revisi 1-langkah secara langsung (misalnya dari Form Web Magic Review).
+   */
+  public async processClientRevisionSubmission(
+    tenant: { id: string; fullName: string },
+    phoneE164: string,
+    revSession: RevisionSessionState,
+    input: {
+      wamid: string;
+      itemType: 'TEXT' | 'IMAGE' | 'DOCUMENT';
+      extractedText: string;
+      mediaId?: string;
+      rawMimeType?: string;
+      rawFileName?: string;
+    }
+  ): Promise<void> {
+    let uploaded: {
+      r2StorageUrl?: string;
+      cdnPublicUrl?: string;
+      mimeType?: string;
+      fileSizeBytes?: number;
+      fileName?: string;
+    } = {};
+
+    if (input.mediaId) {
+      uploaded = await this.waClient.downloadMediaToR2(
+        input.mediaId,
+        tenant.id,
+        input.rawMimeType,
+        input.rawFileName
+      );
+    }
+
+    const sessionWithSingleItem: RevisionSessionState = {
+      ...revSession,
+      items: [
+        {
+          waMessageId: input.wamid,
+          messageType: input.itemType,
+          textBody: input.extractedText,
+          mediaR2Url: uploaded.r2StorageUrl,
+          mediaCdnUrl: uploaded.cdnPublicUrl,
+          mediaMimeType: uploaded.mimeType,
+          mediaFileName: uploaded.fileName,
+          mediaFileSizeBytes: uploaded.fileSizeBytes,
+          createdAtIso: new Date().toISOString(),
+        },
+      ],
+    };
+
+    await this.commitRevisionCart(tenant, phoneE164, sessionWithSingleItem);
   }
 
   public async approveAndPublishBriefFromClient(
@@ -987,16 +1539,21 @@ export class WhatsAppBotSessionService implements OnModuleDestroy {
   private async sendLatestPublicationsMenu(
     tenantId: string,
     tenantName: string,
-    phoneE164: string
+    phoneE164: string,
+    page = 1
   ): Promise<void> {
+    const limit = 5;
+    const offset = Math.max(0, (page - 1) * limit);
+
     const pubs = await db
       .select()
       .from(contentPublications)
       .where(eq(contentPublications.tenantId, tenantId))
       .orderBy(desc(contentPublications.createdAt))
-      .limit(5);
+      .limit(limit + 1)
+      .offset(offset);
 
-    if (pubs.length === 0) {
+    if (pubs.length === 0 && page === 1) {
       await this.waClient.sendInteractiveButtons(
         phoneE164,
         `Halo Bapak/Ibu *${tenantName}*, saat ini belum ada arsip artikel yang diterbitkan. Silakan ajukan request konten pertama Anda:`,
@@ -1008,14 +1565,38 @@ export class WhatsAppBotSessionService implements OnModuleDestroy {
       return;
     }
 
+    const hasMore = pubs.length > limit;
+    const displayPubs = pubs.slice(0, limit);
+
+    const navRows: Array<{ id: string; title: string; description: string }> = [];
+    if (hasMore) {
+      navRows.push({
+        id: `PUBS_PAGE:${page + 1}`,
+        title: `➡️ Halaman ${page + 1}`,
+        description: 'Buka daftar 5 konten berikutnya',
+      });
+    }
+    if (page > 1) {
+      navRows.push({
+        id: `PUBS_PAGE:${page - 1}`,
+        title: `◀️ Halaman ${page - 1}`,
+        description: 'Kembali ke halaman sebelumnya',
+      });
+    }
+    navRows.push({
+      id: 'MENU_OPEN_MAIN',
+      title: '📋 Menu Utama',
+      description: 'Buka pilihan layanan utama Asisten Redaksi Polaris',
+    });
+
     await this.waClient.sendInteractiveList(
       phoneE164,
-      `Berikut adalah *${pubs.length} konten terakhir* Bapak/Ibu *${tenantName}*.\n\nSilakan tekan tombol di bawah lalu pilih judul konten untuk menerima *Link Artikel, Poster, dan Teks Siap Sebar*:`,
+      `Berikut adalah arsip naskah & konten Bapak/Ibu *${tenantName}* *(Halaman ${page})*.\n\nSilakan tekan tombol di bawah lalu pilih judul konten untuk menerima *Link Artikel, Poster HD, dan Teks Siap Sebar (Broadcast WA)*:\n\n_💡 Tips: Anda juga bisa mengetik "cari <kata>" (misal: "cari sampah") untuk mencari langsung._`,
       '📚 Pilih Konten',
       [
         {
-          title: 'Arsip Konten Terbaru',
-          rows: pubs.map((p) => ({
+          title: `Daftar Konten (Halaman ${page})`,
+          rows: displayPubs.map((p) => ({
             id: `PUB_DETAIL:${p.id}`,
             title: p.title.slice(0, 24),
             description: `${
@@ -1024,17 +1605,180 @@ export class WhatsAppBotSessionService implements OnModuleDestroy {
           })),
         },
         {
-          title: 'Navigasi',
-          rows: [
-            {
-              id: 'MENU_OPEN_MAIN',
-              title: '📋 Kembali ke Menu Utama',
-              description: 'Buka pilihan layanan utama Asisten Redaksi Polaris',
-            },
-          ],
+          title: 'Navigasi Halaman & Menu',
+          rows: navRows,
         },
       ],
       'Arsip & Link Konten',
+      'Asisten Redaksi Polaris'
+    );
+  }
+
+  private async handleClientKeywordSearch(
+    tenantId: string,
+    tenantName: string,
+    phoneE164: string,
+    keyword: string
+  ): Promise<void> {
+    const pattern = `%${keyword.trim()}%`;
+    const matchedPubs = await db
+      .select()
+      .from(contentPublications)
+      .where(and(eq(contentPublications.tenantId, tenantId), ilike(contentPublications.title, pattern)))
+      .orderBy(desc(contentPublications.createdAt))
+      .limit(5);
+
+    const matchedBriefs = await db
+      .select()
+      .from(contentBriefs)
+      .where(
+        and(
+          eq(contentBriefs.tenantId, tenantId),
+          or(ilike(contentBriefs.topicSummary, pattern), ilike(contentBriefs.briefCode, pattern))
+        )
+      )
+      .orderBy(desc(contentBriefs.createdAt))
+      .limit(3);
+
+    if (matchedPubs.length === 0 && matchedBriefs.length === 0) {
+      await this.waClient.sendInteractiveButtons(
+        phoneE164,
+        `🔍 Tidak ditemukan artikel atau tiket dengan kata kunci *"${keyword}"*.\n\nTips: Anda bisa mencari kata umum (misal: _"cari sampah"_, _"cari reses"_) atau mencari kode tiket (misal: _"7626"_).`,
+        [
+          { id: 'MENU_LATEST_LINKS', title: '📚 Buka Semua Arsip' },
+          { id: 'MENU_OPEN_MAIN', title: '📋 Menu Utama' },
+        ],
+        'Pencarian Tidak Ditemukan',
+        'Asisten Redaksi Polaris'
+      );
+      return;
+    }
+
+    const sections: Array<{
+      title: string;
+      rows: Array<{ id: string; title: string; description: string }>;
+    }> = [];
+
+    if (matchedPubs.length > 0) {
+      sections.push({
+        title: `Artikel Ditemukan (${matchedPubs.length})`,
+        rows: matchedPubs.map((p) => ({
+          id: `PUB_DETAIL:${p.id}`,
+          title: p.title.slice(0, 24),
+          description: `${p.status === 'PUBLISHED' ? '✅ Tayang' : '📝 Draft'} • ${p.title.slice(0, 55)}`,
+        })),
+      });
+    }
+
+    if (matchedBriefs.length > 0) {
+      sections.push({
+        title: `Tiket Request Ditemukan (${matchedBriefs.length})`,
+        rows: matchedBriefs.map((b) => ({
+          id: `BRIEF_LOOKUP:${b.id}`,
+          title: `#${b.briefCode}`,
+          description: `${b.status} • ${b.topicSummary.slice(0, 55)}`,
+        })),
+      });
+    }
+
+    sections.push({
+      title: 'Navigasi',
+      rows: [
+        {
+          id: 'MENU_OPEN_MAIN',
+          title: '📋 Kembali ke Menu Utama',
+          description: 'Buka pilihan layanan utama Asisten Redaksi Polaris',
+        },
+      ],
+    });
+
+    await this.waClient.sendInteractiveList(
+      phoneE164,
+      `🔍 Ditemukan hasil untuk kata kunci *"${keyword}"* pada akun *${tenantName}*.\n\nSilakan tekan tombol di bawah untuk membuka naskah atau status tiket yang Anda tuju:`,
+      '🔍 Lihat Hasil',
+      sections,
+      'Hasil Pencarian Polaris',
+      'Asisten Redaksi Polaris'
+    );
+  }
+
+  private async handleClientDirectTicketLookup(
+    tenantId: string,
+    tenantName: string,
+    phoneE164: string,
+    rawQuery: string
+  ): Promise<boolean> {
+    const cleanDigits = rawQuery.replace(/[^0-9]/g, '');
+    const cleanCode = rawQuery.replace(/^#/, '').toUpperCase();
+
+    const briefs = await db
+      .select()
+      .from(contentBriefs)
+      .where(
+        and(
+          eq(contentBriefs.tenantId, tenantId),
+          or(
+            ilike(contentBriefs.briefCode, `%${cleanCode}%`),
+            cleanDigits.length >= 4 ? ilike(contentBriefs.briefCode, `%${cleanDigits}%`) : undefined
+          )
+        )
+      )
+      .orderBy(desc(contentBriefs.createdAt))
+      .limit(1);
+
+    if (briefs.length === 0) {
+      return false;
+    }
+
+    await this.sendBriefDetailCard(tenantId, briefs[0].id, phoneE164);
+    return true;
+  }
+
+  private async sendBriefDetailCard(
+    tenantId: string,
+    briefId: string,
+    phoneE164: string
+  ): Promise<void> {
+    const [brief] = await db
+      .select()
+      .from(contentBriefs)
+      .where(and(eq(contentBriefs.id, briefId), eq(contentBriefs.tenantId, tenantId)))
+      .limit(1);
+
+    if (!brief) {
+      await this.waClient.sendTextMessage(phoneE164, 'Tiket request tidak ditemukan.');
+      return;
+    }
+
+    const buttons = [];
+    if (brief.status === 'READY_FOR_REVIEW') {
+      buttons.push(
+        { id: `REV_APPROVE:${brief.id}`, title: '✅ Setujui & Tayang' },
+        { id: `REV_START:${brief.id}`, title: '✏️ Minta Revisi' }
+      );
+    } else if (brief.linkedPublicationId) {
+      buttons.push({ id: `PUB_DETAIL:${brief.linkedPublicationId}`, title: '📰 Buka Konten' });
+    }
+    buttons.push({ id: 'MENU_OPEN_MAIN', title: '📋 Menu Utama' });
+
+    await this.waClient.sendInteractiveButtons(
+      phoneE164,
+      [
+        `📋 *Detail Tiket Request #${brief.briefCode}*`,
+        `• Status: *${brief.status}*`,
+        `• Prioritas: *${brief.clientUrgency === 'URGENT' ? '🔴 Mendesak' : '🟢 Normal'}*`,
+        `• Revisi: *${brief.revisionUsed} dari ${brief.revisionLimit} putaran*`,
+        '',
+        `*Catatan Topik:*`,
+        `"${brief.topicSummary}"`,
+        '',
+        `*Status Komponen:*`,
+        `• 📰 Artikel: ${brief.articleStatus}`,
+        `• 🖼️ Poster: ${brief.imageStatus}`,
+        `• 💬 Caption: ${brief.captionStatus}`,
+      ].join('\n'),
+      buttons.slice(0, 3),
+      `Tiket #${brief.briefCode}`,
       'Asisten Redaksi Polaris'
     );
   }
@@ -1233,6 +1977,9 @@ export class WhatsAppBotSessionService implements OnModuleDestroy {
     const clean = text.trim().toLowerCase().replace(/[^a-z0-9\s]/g, '');
     if (!clean) return true;
     const greetings = new Set([
+      'hal',
+      'halp',
+      'hlp',
       'halo',
       'hallo',
       'hi',
@@ -1256,6 +2003,7 @@ export class WhatsAppBotSessionService implements OnModuleDestroy {
       'selamat sore',
       'selamat malam',
       'assalamualaikum',
+      'permisi',
       'min',
       'admin',
       'polaris',
@@ -1272,13 +2020,56 @@ export class WhatsAppBotSessionService implements OnModuleDestroy {
     phoneE164: string
   ): Promise<void> {
     const quota = await this.helper.getTenantWeeklyQuota(tenantId);
+    const pendingReviewBrief = await this.helper.findBriefReadyForReview(tenantId);
+
+    const activeTicketLines = pendingReviewBrief
+      ? [
+          '',
+          `📌 *Tiket Menunggu Tinjauan Anda:*`,
+          `• *#${pendingReviewBrief.briefCode}* (Sisa revisi: *${Math.max(0, pendingReviewBrief.revisionLimit - pendingReviewBrief.revisionUsed)}/${pendingReviewBrief.revisionLimit}*)`,
+        ]
+      : [];
+
     const body = [
       `Halo Bapak/Ibu *${tenantName}*, selamat datang di *Asisten Redaksi Polaris*.`,
       '',
       `📊 Sisa Jatah Request Minggu Ini: *${quota.weeklyRemaining} dari ${quota.weeklyLimit} request*`,
+      ...activeTicketLines,
       '',
       'Silakan tekan tombol *📋 Pilih Layanan* di bawah ini (atau langsung kirimkan foto kegiatan, dokumen, & catatan topik Anda):',
     ].join('\n');
+
+    const serviceRows = [
+      ...(pendingReviewBrief && pendingReviewBrief.revisionUsed < pendingReviewBrief.revisionLimit
+        ? [
+            {
+              id: `REV_START:${pendingReviewBrief.id}`,
+              title: `✏️ Revisi #${pendingReviewBrief.briefCode.slice(-4)}`,
+              description: `Ajukan perbaikan untuk tiket #${pendingReviewBrief.briefCode} yang sedang ditinjau`,
+            },
+            {
+              id: `REV_APPROVE:${pendingReviewBrief.id}`,
+              title: `✅ Setujui #${pendingReviewBrief.briefCode.slice(-4)}`,
+              description: `Setujui & tayangkan konten pada tiket #${pendingReviewBrief.briefCode}`,
+            },
+          ]
+        : []),
+      {
+        id: 'MENU_NEW_BRIEF',
+        title: '📝 Request Konten Baru',
+        description: 'Kirim topik/isu, foto kegiatan, atau dokumen PDF/Word',
+      },
+      {
+        id: 'MENU_LATEST_LINKS',
+        title: '🔗 Link & Arsip Konten',
+        description: 'Ambil link artikel tayang, poster, & caption siap sebar',
+      },
+      {
+        id: 'MENU_CHECK_STATUS',
+        title: '📊 Status & Sisa Kuota',
+        description: 'Lihat progres pengerjaan konten & sisa jatah minggu ini',
+      },
+    ];
 
     await this.waClient.sendInteractiveList(
       phoneE164,
@@ -1287,23 +2078,7 @@ export class WhatsAppBotSessionService implements OnModuleDestroy {
       [
         {
           title: 'Layanan Konten & Redaksi',
-          rows: [
-            {
-              id: 'MENU_NEW_BRIEF',
-              title: '📝 Request Konten Baru',
-              description: 'Kirim topik/isu, foto kegiatan, atau dokumen PDF/Word',
-            },
-            {
-              id: 'MENU_LATEST_LINKS',
-              title: '🔗 Link & Arsip Konten',
-              description: 'Ambil link artikel tayang, poster, & caption siap sebar',
-            },
-            {
-              id: 'MENU_CHECK_STATUS',
-              title: '📊 Status & Sisa Kuota',
-              description: 'Lihat progres pengerjaan konten & sisa jatah minggu ini',
-            },
-          ],
+          rows: serviceRows,
         },
         {
           title: 'Diskusi & Panduan',
@@ -1322,7 +2097,7 @@ export class WhatsAppBotSessionService implements OnModuleDestroy {
         },
       ],
       'Asisten Redaksi Polaris',
-      'Pilih menu tanpa perlu mengetik perintah'
+      'Pilih menu tanpa menghilangkan proses yang berjalan'
     );
   }
 }

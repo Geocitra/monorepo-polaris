@@ -225,20 +225,43 @@ export class WhatsAppOperatorBrokerService {
       .where(eq(contentBriefMessages.briefId, briefId))
       .orderBy(asc(contentBriefMessages.createdAt));
 
-    const inboundTextParts = msgs
-      .filter((m) => m.direction === 'INBOUND' && m.textBody && m.textBody.trim())
+    const initialTextsRaw = msgs
+      .filter(
+        (m) =>
+          m.direction === 'INBOUND' &&
+          m.messageType !== 'INTERACTIVE' &&
+          m.revisionRound === 0 &&
+          m.textBody &&
+          m.textBody.trim()
+      )
+      .map((m) => m.textBody!.trim());
+
+    const cleanedInitialTexts = this.helper.cleanTopicParts(initialTextsRaw);
+
+    const revisionTextParts = msgs
+      .filter(
+        (m) =>
+          m.direction === 'INBOUND' &&
+          m.messageType !== 'INTERACTIVE' &&
+          m.revisionRound > 0 &&
+          m.textBody &&
+          m.textBody.trim()
+      )
       .map((m) => {
-        if (m.revisionRound > 0) {
-          return `[Catatan Revisi Putaran #${m.revisionRound}]: ${m.textBody?.trim()}`;
-        }
-        return m.textBody?.trim() || '';
-      })
-      .filter(Boolean);
+        const compLabel =
+          m.targetComponents && m.targetComponents.length > 0
+            ? ` (${m.targetComponents.join(', ')})`
+            : '';
+        return `[Catatan Revisi Putaran #${m.revisionRound}${compLabel}]: ${m.textBody?.trim()}`;
+      });
+
+    const combinedParts = [...cleanedInitialTexts, ...revisionTextParts].filter(Boolean);
 
     const topicPrompt =
-      inboundTextParts.length > 0
-        ? inboundTextParts.join('\n\n')
-        : currentBriefDto.topicSummary;
+      combinedParts.length > 0
+        ? combinedParts.join('\n\n')
+        : this.helper.cleanTopicParts([currentBriefDto.topicSummary]).join('\n\n') ||
+          currentBriefDto.topicSummary;
 
     const mediaMsgs = msgs.filter(
       (m) =>
@@ -516,22 +539,40 @@ export class WhatsAppOperatorBrokerService {
       );
     }
 
+    const isRevisionInProgress = row.brief.status === 'REVISION_REQUESTED';
+    const isTerminalStatus = ['PUBLISHED', 'APPROVED', 'REJECTED'].includes(row.brief.status);
+
+    const statusLine = isRevisionInProgress
+      ? `🔄 *Status Tiket:* Sedang Dikerjakan Revisi (Putaran #${row.brief.revisionUsed}/${row.brief.revisionLimit})`
+      : `📌 *Status Tiket:* Dalam Penanganan Tim Redaksi`;
+
+    const instructionFooter = isRevisionInProgress
+      ? '_Tim Redaksi sedang mengerjakan perbaikan konten Anda. Jika ada detail tambahan untuk revisi ini, silakan balas pesan ini secara langsung (tiket Anda tetap aktif hingga pratinjau baru dikirim)._'
+      : '_Silakan balas pesan ini secara langsung untuk menjawab Editor Redaksi (Anda dapat mengirim beberapa pesan atau foto beruntun)._';
+
     const waResult = await this.waClient.sendInteractiveButtons(
       row.phoneNumber,
       [
         `👨‍💼 *Editor Redaksi Polaris — #${row.brief.briefCode}*`,
+        statusLine,
         '',
         dto.questionText.trim(),
         '',
-        '_Silakan ketik balasan Anda secara langsung, atau pilih menu di bawah ini:_',
+        instructionFooter,
       ].join('\n'),
       [
-        { id: 'LIVE_CHAT_END', title: '✅ Cukup / Selesai' },
+        { id: 'MENU_CHECK_STATUS', title: '📊 Status Pengerjaan' },
         { id: 'MENU_OPEN_MAIN', title: '📋 Menu Utama' },
       ],
       `Pesan Redaksi #${row.brief.briefCode}`,
-      'Asisten Redaksi Polaris'
+      'Tiket tetap aktif sampai konten tayang'
     );
+
+    const nextBriefStatus = isRevisionInProgress
+      ? 'REVISION_REQUESTED'
+      : isTerminalStatus
+        ? row.brief.status
+        : 'NEED_CLARIFICATION';
 
     const updatedBrief = await withTenantContext(row.brief.tenantId, async (tx) => {
       await tx.insert(contentBriefMessages).values({
@@ -550,7 +591,7 @@ export class WhatsAppOperatorBrokerService {
       const [updated] = await tx
         .update(contentBriefs)
         .set({
-          status: 'NEED_CLARIFICATION',
+          status: nextBriefStatus,
           updatedAt: new Date(),
         })
         .where(eq(contentBriefs.id, briefId))
@@ -757,24 +798,41 @@ export class WhatsAppOperatorBrokerService {
         ].join('\n')
       );
     } else {
+      await this.redisService.del(`whatsapp:rev_session:${row.brief.tenantId}`);
+
       const reviewBody = [
         `✨ *Konten Siap Ditinjau — #${row.brief.briefCode}*`,
         `• 📰 Judul: *${publication.title}*`,
         `• 💬 Ringkasan Caption: _"${captionPreview.slice(0, 280)}..."_`,
         `• 🔗 Baca Artikel Lengkap (Tanpa Login): ${reviewUrl}`,
-        `• 🔄 Sisa Jatah Revisi: *${remainingRevs} dari ${updatedBrief.revisionLimit} putaran*`,
+        remainingRevs > 0
+          ? `• 🔄 Sisa Jatah Revisi: *${remainingRevs} dari ${updatedBrief.revisionLimit} putaran*`
+          : `• 🔒 Jatah Revisi: *Telah terpakai penuh (${updatedBrief.revisionUsed}/${updatedBrief.revisionLimit} putaran)*`,
         dto.customNote ? `\n📌 Catatan Tim Redaksi: _"${dto.customNote}"_` : '',
+        '',
+        remainingRevs > 0
+          ? '_Silakan pilih *Setujui & Tayang* jika sudah sesuai, atau *Minta Revisi* jika ada bagian yang perlu diperbaiki:_'
+          : '_Seluruh putaran revisi telah selesai dikerjakan. Silakan tekan *Setujui & Tayang* untuk menerbitkan konten:_',
       ]
         .filter(Boolean)
         .join('\n');
 
+      const reviewButtons =
+        remainingRevs > 0
+          ? [
+              { id: `REV_APPROVE:${briefId}`, title: '✅ Setujui & Tayang' },
+              { id: `REV_START:${briefId}`, title: '✏️ Minta Revisi' },
+              { id: 'MENU_OPEN_MAIN', title: '📋 Menu Utama' },
+            ]
+          : [
+              { id: `REV_APPROVE:${briefId}`, title: '✅ Setujui & Tayang' },
+              { id: 'MENU_OPEN_MAIN', title: '📋 Menu Utama' },
+            ];
+
       await this.waClient.sendInteractiveButtons(
         row.phoneNumber,
         reviewBody,
-        [
-          { id: `REV_APPROVE:${briefId}`, title: '✅ Setujui & Tayang' },
-          { id: `REV_START:${briefId}`, title: '✏️ Minta Revisi' },
-        ],
+        reviewButtons,
         `Review #${row.brief.briefCode}`,
         'Tim Redaksi Polaris'
       );

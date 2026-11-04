@@ -1,6 +1,6 @@
 'use client';
 
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { BookOpen, Plus, RefreshCw, Search, Edit3 } from 'lucide-react';
 
 interface OperatorArticlesTabProps {
@@ -30,6 +30,13 @@ export function OperatorArticlesTab({
   onLoadArticleToCanvas,
   loadingCanvasArticleId,
 }: OperatorArticlesTabProps) {
+  const [currentPage, setCurrentPage] = useState(1);
+  const ITEMS_PER_PAGE = 8;
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [articlesFilter, articlesSearch]);
+
   const filteredDewanArticles = dewanArticles.filter((a) => {
     if (articlesFilter === 'DRAFT' && a.status === 'PUBLISHED') return false;
     if (articlesFilter === 'PUBLISHED' && a.status !== 'PUBLISHED') return false;
@@ -44,13 +51,19 @@ export function OperatorArticlesTab({
     return true;
   });
 
+  const totalPages = Math.ceil(filteredDewanArticles.length / ITEMS_PER_PAGE) || 1;
+  const paginatedArticles = filteredDewanArticles.slice(
+    (currentPage - 1) * ITEMS_PER_PAGE,
+    currentPage * ITEMS_PER_PAGE
+  );
+
   return (
     <div className="bg-white dark:bg-[#0B0F19] rounded-2xl p-6 border border-slate-200 dark:border-slate-800 shadow-sm space-y-6 animate-in fade-in duration-150">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-100 dark:border-slate-800 pb-4">
         <div>
           <h4 className="text-sm font-bold text-slate-900 dark:text-white flex items-center gap-2">
             <BookOpen className="w-4 h-4 text-indigo-600" />
-            <span>Arsip & Draf Naskah: {selectedDewan?.fullName || 'Dewan'}</span>
+            <span>Arsip &amp; Draf Naskah: {selectedDewan?.fullName || 'Dewan'}</span>
           </h4>
           <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
             Daftar seluruh naskah kebijakan, rilis, dan draf yang tersimpan di profil dewan ini.
@@ -134,12 +147,12 @@ export function OperatorArticlesTab({
             Belum ada naskah untuk filter ini
           </p>
           <p className="text-[11px] text-slate-400">
-            Gunakan tab &quot;Pabrik Konten & Visual AI&quot; untuk membuat naskah pertama.
+            Gunakan tab &quot;Pabrik Konten &amp; Visual AI&quot; untuk membuat naskah pertama.
           </p>
         </div>
       ) : (
         <div className="space-y-3">
-          {filteredDewanArticles.map((art) => {
+          {paginatedArticles.map((art) => {
             const isPublished = art.status === 'PUBLISHED';
             const isLoadingCanvas = loadingCanvasArticleId === art.id;
 
@@ -197,6 +210,31 @@ export function OperatorArticlesTab({
               </div>
             );
           })}
+
+          {/* Pagination Controls */}
+          {totalPages > 1 && (
+            <div className="pt-2 flex items-center justify-between text-xs text-slate-500 border-t border-slate-100 dark:border-slate-800">
+              <button
+                type="button"
+                disabled={currentPage <= 1}
+                onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+                className="px-3 py-1.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 disabled:opacity-40 hover:bg-slate-100 dark:hover:bg-slate-700 transition cursor-pointer font-bold"
+              >
+                ◀ Sebelumnya
+              </button>
+              <span className="font-bold">
+                Halaman {currentPage} dari {totalPages} ({filteredDewanArticles.length} naskah)
+              </span>
+              <button
+                type="button"
+                disabled={currentPage >= totalPages}
+                onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+                className="px-3 py-1.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 disabled:opacity-40 hover:bg-slate-100 dark:hover:bg-slate-700 transition cursor-pointer font-bold"
+              >
+                Selanjutnya ▶
+              </button>
+            </div>
+          )}
         </div>
       )}
     </div>

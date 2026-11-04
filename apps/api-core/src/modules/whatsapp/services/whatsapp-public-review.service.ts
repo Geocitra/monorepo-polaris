@@ -106,6 +106,11 @@ export class WhatsAppPublicReviewService {
 
   public async requestRevisionByToken(rawToken: string, dto: PublicReviewRevisionDto) {
     const brief = await this.findBriefByValidReviewToken(rawToken);
+    if (['PUBLISHED', 'APPROVED', 'REJECTED'].includes(brief.status)) {
+      throw new BadRequestException(
+        `Tiket #${brief.briefCode} telah selesai/tayang dan terkunci permanen (tidak dapat direvisi kembali).`
+      );
+    }
     if (brief.revisionUsed >= brief.revisionLimit) {
       throw new BadRequestException(
         `Jatah revisi untuk tiket #${brief.briefCode} telah mencapai batas maksimal (${brief.revisionLimit} putaran).`

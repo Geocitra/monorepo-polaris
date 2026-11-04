@@ -160,8 +160,31 @@ export class StudioGeneratorService implements OnModuleDestroy {
         .returning();
 
       // Jika generasi konten ini berasal dari Tiket Request WA (Content Brief),
-      // ikat langsung linked_publication_id di dalam transaksi yang sama agar relasi DB konsisten.
+      // terapkan aturan 1 Tiket = 1 Konten: cegah regenerasi tiket yang sudah tayang/selesai,
+      // ikat langsung linked_publication_id yang baru, dan bersihkan draf lama agar tidak duplikat.
       if (dto.briefId && dto.briefId.trim()) {
+        const [existingBrief] = await tx
+          .select()
+          .from(contentBriefs)
+          .where(
+            and(
+              eq(contentBriefs.id, dto.briefId.trim()),
+              eq(contentBriefs.tenantId, tenantId)
+            )
+          )
+          .limit(1);
+
+        if (
+          existingBrief &&
+          ['PUBLISHED', 'APPROVED', 'REJECTED'].includes(existingBrief.status)
+        ) {
+          throw new ForbiddenException(
+            `Tiket #${existingBrief.briefCode} telah selesai/tayang dan terkunci permanen.`
+          );
+        }
+
+        const previousPubId = existingBrief?.linkedPublicationId || null;
+
         await tx
           .update(contentBriefs)
           .set({
@@ -177,6 +200,25 @@ export class StudioGeneratorService implements OnModuleDestroy {
               eq(contentBriefs.tenantId, tenantId)
             )
           );
+
+        if (previousPubId && previousPubId !== created.id) {
+          const [oldPub] = await tx
+            .select({ id: contentPublications.id, status: contentPublications.status })
+            .from(contentPublications)
+            .where(
+              and(
+                eq(contentPublications.id, previousPubId),
+                eq(contentPublications.tenantId, tenantId)
+              )
+            )
+            .limit(1);
+
+          if (oldPub && oldPub.status !== ContentStatus.PUBLISHED) {
+            await tx
+              .delete(contentPublications)
+              .where(eq(contentPublications.id, previousPubId));
+          }
+        }
       }
 
       return created;

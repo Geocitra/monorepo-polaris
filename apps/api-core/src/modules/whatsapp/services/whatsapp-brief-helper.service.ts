@@ -58,6 +58,8 @@ export interface RevisionSessionState {
   tenantId: string;
   targetComponents: ('ARTICLE' | 'IMAGE' | 'CAPTION')[];
   createdAtMs: number;
+  updatedAtMs?: number;
+  items?: DraftCartItem[];
 }
 
 export interface RequestAuditMeta {
@@ -66,6 +68,7 @@ export interface RequestAuditMeta {
 }
 
 export const QUOTA_CONSUMING_STATUSES = [
+  'SUBMITTED',
   'ACCEPTED',
   'IN_PROGRESS',
   'NEED_CLARIFICATION',
@@ -74,6 +77,33 @@ export const QUOTA_CONSUMING_STATUSES = [
   'APPROVED',
   'PUBLISHED',
 ] as const;
+
+const NOISE_GREETING_TOKENS = new Set([
+  'hal',
+  'halp',
+  'halo',
+  'hallo',
+  'hi',
+  'hai',
+  'p',
+  'ping',
+  'tes',
+  'test',
+  'min',
+  'admin',
+  'pak',
+  'bu',
+  'pagi',
+  'siang',
+  'sore',
+  'malam',
+  'selamat pagi',
+  'selamat siang',
+  'selamat sore',
+  'selamat malam',
+  'assalamualaikum',
+  'permisi',
+]);
 
 @Injectable()
 export class WhatsAppBriefHelperService implements OnModuleInit {
@@ -278,6 +308,47 @@ export class WhatsAppBriefHelperService implements OnModuleInit {
       .limit(1);
 
     return brief || null;
+  }
+
+  public async findBriefReadyForReview(tenantId: string) {
+    const [brief] = await db
+      .select()
+      .from(contentBriefs)
+      .where(
+        and(
+          eq(contentBriefs.tenantId, tenantId),
+          eq(contentBriefs.status, 'READY_FOR_REVIEW')
+        )
+      )
+      .orderBy(desc(contentBriefs.updatedAt))
+      .limit(1);
+
+    return brief || null;
+  }
+
+  /**
+   * Memeriksa apakah suatu baris chat hanyalah sapaan singkat / typo ("hal", "halp", "halo", "p", dll.)
+   * agar tidak mengotori ringkasan topik dan prompt AI di Studio.
+   */
+  public isNoiseGreetingLine(raw: string | null | undefined): boolean {
+    if (!raw) return true;
+    const clean = raw
+      .trim()
+      .toLowerCase()
+      .replace(/[^a-z0-9\s]/g, '')
+      .replace(/\s+/g, ' ');
+    if (!clean) return true;
+    return NOISE_GREETING_TOKENS.has(clean);
+  }
+
+  /**
+   * Membersihkan deretan pesan teks dari sapaan pendek ("hal", "halp", "halo")
+   * apabila sudah ada kalimat topik utama yang lebih berbobot.
+   */
+  public cleanTopicParts(parts: string[]): string[] {
+    const trimmed = parts.map((p) => p.trim()).filter(Boolean);
+    const meaningful = trimmed.filter((p) => !this.isNoiseGreetingLine(p));
+    return meaningful.length > 0 ? meaningful : trimmed;
   }
 
   public async generateUniqueBriefCode(): Promise<string> {

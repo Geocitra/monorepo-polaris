@@ -829,10 +829,16 @@ export default function OperatorCockpitPage() {
               selectedDewan={selectedDewan}
               onHydrateBriefToStudio={({ brief, topicPrompt, attachments }) => {
                 setActiveBrief(brief);
-                setGeneratedResult(null);
                 setTopicInput(topicPrompt);
                 setAttachedFiles(attachments);
-                setActiveTab('CONTENT');
+                if (brief.linkedPublicationId) {
+                  // Jika tiket ini sudah memiliki draf publikasi (misal revisi atau draf lanjutan),
+                  // muat langsung naskah dan poster sebelumnya ke kanvas studio agar operator tidak mengulang dari nol!
+                  loadArticleToCanvas(brief.linkedPublicationId);
+                } else {
+                  setGeneratedResult(null);
+                  setActiveTab('CONTENT');
+                }
               }}
               onOpenLinkedArticle={(publicationId, brief) => {
                 setActiveBrief(brief);
