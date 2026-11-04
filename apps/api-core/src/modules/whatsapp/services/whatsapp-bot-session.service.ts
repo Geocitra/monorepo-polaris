@@ -315,9 +315,8 @@ export class WhatsAppBotSessionService implements OnModuleDestroy {
       );
       if (cachedPubList && cachedPubList[selectedIdx]) {
         const pubId = cachedPubList[selectedIdx];
-        await this.sendPublicationDetailPrompt(
+        await this.sendPublicationDetailPackage(
           tenant.id,
-          tenant.fullName,
           pubId,
           normalizedSender
         );
