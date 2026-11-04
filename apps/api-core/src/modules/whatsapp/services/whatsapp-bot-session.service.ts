@@ -73,28 +73,6 @@ export interface SessionIntentState {
   startedAtMs: number;
 }
 
-function isNewBriefExplicitTrigger(text?: string | null): boolean {
-  if (!text) return false;
-  const t = text.trim().toLowerCase();
-  return (
-    t.startsWith('buatkan') ||
-    t.startsWith('bikin') ||
-    t.startsWith('tolong buat') ||
-    t.startsWith('tuliskan artikel') ||
-    t.startsWith('request konten') ||
-    t.startsWith('request baru') ||
-    t.startsWith('topik baru') ||
-    t.startsWith('rilis berita')
-  );
-}
-
-export interface SessionIntentState {
-  mode: 'NEW_BRIEF' | 'REVISION' | 'CLARIFY';
-  briefId?: string;
-  briefCode?: string;
-  startedAtMs: number;
-}
-
 @Injectable()
 export class WhatsAppBotSessionService implements OnModuleDestroy {
   private readonly logger = new Logger(WhatsAppBotSessionService.name);
@@ -254,7 +232,7 @@ export class WhatsAppBotSessionService implements OnModuleDestroy {
     // JIKA USER DALAM MODE DRAFT REQUEST BARU (Baik dari Tombol Menu Maupun Kalimat Eksplisit)
     if (sessionIntent?.mode === 'NEW_BRIEF' || isExplicitNewBrief) {
       if (!sessionIntent || sessionIntent.mode !== 'NEW_BRIEF') {
-        await this.redisService.set<SessionIntentState>(
+        await this.redisService.set(
           sessionIntentKey,
           { mode: 'NEW_BRIEF', startedAtMs: Date.now() },
           1800
@@ -306,11 +284,11 @@ export class WhatsAppBotSessionService implements OnModuleDestroy {
     const revSessionKey = `whatsapp:rev_session:${tenant.id}`;
     const activeRevSession = await this.redisService.get<RevisionSessionState>(revSessionKey);
     if (activeRevSession || sessionIntent?.mode === 'REVISION') {
-      const targetRevSession = activeRevSession || {
+      const targetRevSession: RevisionSessionState = activeRevSession || {
         briefId: sessionIntent?.briefId || '',
         briefCode: sessionIntent?.briefCode || '',
         tenantId: tenant.id,
-        targetComponents: ['ARTICLE', 'POSTER', 'CAPTION'],
+        targetComponents: ['ARTICLE', 'IMAGE', 'CAPTION'],
         createdAtMs: sessionIntent?.startedAtMs || Date.now(),
         updatedAtMs: Date.now(),
         items: [],
@@ -505,7 +483,7 @@ export class WhatsAppBotSessionService implements OnModuleDestroy {
     }
 
     // Fallback: Kiriman bebas teks/gambar/dokumen diperlakukan sebagai bahan brief baru
-    await this.redisService.set<SessionIntentState>(
+    await this.redisService.set(
       sessionIntentKey,
       { mode: 'NEW_BRIEF', startedAtMs: Date.now() },
       1800
@@ -1340,7 +1318,7 @@ export class WhatsAppBotSessionService implements OnModuleDestroy {
         revSession,
         SESSION_TTL_SECONDS
       );
-      await this.redisService.set<SessionIntentState>(
+      await this.redisService.set(
         `whatsapp:session_intent:${tenant.id}`,
         {
           mode: 'REVISION',
@@ -1388,7 +1366,7 @@ export class WhatsAppBotSessionService implements OnModuleDestroy {
         return;
       }
 
-      await this.redisService.set<SessionIntentState>(
+      await this.redisService.set(
         `whatsapp:session_intent:${tenant.id}`,
         {
           mode: 'CLARIFY',
@@ -1403,7 +1381,7 @@ export class WhatsAppBotSessionService implements OnModuleDestroy {
         phoneE164,
         [
           `💬 *Menjawab Klarifikasi Redaksi — #${brief.briefCode}*`,
-          `Topik: *${brief.topicTitle || 'Brief Konten'}*`,
+          `Topik: *${brief.topicSummary || 'Brief Konten'}*`,
           '',
           'Silakan ketik jawaban atau kirimkan foto/dokumen pelengkap untuk Editor Redaksi.',
           'Pesan Anda langsung diteruskan ke tiket ini tanpa tertukar dengan tiket lain.',
