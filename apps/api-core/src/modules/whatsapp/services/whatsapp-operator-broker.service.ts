@@ -31,6 +31,7 @@ import { WhatsAppCloudClient } from '../whatsapp-cloud.client.js';
 import {
   getCurrentWibWeeklyPeriod,
   detectOperatorContactLeak,
+  getTimeHorizonInfo,
 } from '../contact-sanitizer.util.js';
 import {
   AcceptBriefDto,
@@ -382,13 +383,16 @@ export class WhatsAppOperatorBrokerService {
     const quotaAfter = await this.helper.getTenantWeeklyQuota(row.brief.tenantId);
 
     if (nextStatus === 'IN_PROGRESS') {
+      const horizon = getTimeHorizonInfo(finalPriority as 'URGENT' | 'NORMAL', new Date());
       const scheduleMsg =
         finalPriority === 'URGENT'
-          ? 'diprioritaskan untuk diproses *hari ini*.'
-          : 'sedang dikerjakan oleh Tim Redaksi sesuai antrean.';
+          ? 'dialokasikan ke Tim Editor Utama sebagai prioritas tayang hari ini.'
+          : horizon.isAfterCutoff
+            ? 'dijadwalkan untuk diproduksi pertama pada jam kerja redaksi besok pagi (mulai pukul 08:00 WIB).'
+            : 'sudah di meja pengerjaan Tim Redaksi untuk diproses tayang hari ini.';
       await this.waClient.sendTextMessage(
         row.phoneNumber,
-        `👨‍💻 *Update Tiket #${row.brief.briefCode}*\n\nRequest topik Anda telah diterima Tim Redaksi dan ${scheduleMsg}\n(Pemakaian jatah minggu ini: *${quotaAfter.weeklyUsed}/${quotaAfter.weeklyLimit}*).`
+        `👨‍💻 *Update Tiket #${row.brief.briefCode}*\n\nRequest topik Anda telah diterima Tim Redaksi dan ${scheduleMsg}\n(Sisa jatah minggu ini: *${quotaAfter.weeklyRemaining} request*).`
       );
     } else {
       await this.waClient.sendTextMessage(

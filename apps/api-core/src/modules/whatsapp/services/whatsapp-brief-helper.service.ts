@@ -169,6 +169,7 @@ export class WhatsAppBriefHelperService implements OnModuleInit {
           status content_brief_status_enum NOT NULL DEFAULT 'SUBMITTED',
           client_urgency brief_urgency_level_enum NOT NULL DEFAULT 'NORMAL',
           operator_priority brief_urgency_level_enum NOT NULL DEFAULT 'NORMAL',
+          target_window VARCHAR(30) NOT NULL DEFAULT 'TODAY_REGULAR',
           topic_summary TEXT NOT NULL,
           weekly_quota_period VARCHAR(15) NOT NULL,
           weekly_request_limit INT NOT NULL DEFAULT 3,
@@ -192,6 +193,8 @@ export class WhatsAppBriefHelperService implements OnModuleInit {
         CREATE INDEX IF NOT EXISTS idx_content_briefs_tenant_status ON content_briefs(tenant_id, status, created_at DESC);
         CREATE INDEX IF NOT EXISTS idx_content_briefs_operator_status ON content_briefs(assigned_operator_id, status, created_at DESC);
         CREATE INDEX IF NOT EXISTS idx_content_briefs_weekly_quota ON content_briefs(tenant_id, weekly_quota_period);
+
+        ALTER TABLE content_briefs ADD COLUMN IF NOT EXISTS target_window VARCHAR(30) NOT NULL DEFAULT 'TODAY_REGULAR';
 
         CREATE TABLE IF NOT EXISTS content_brief_messages (
           id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -445,6 +448,7 @@ export class WhatsAppBriefHelperService implements OnModuleInit {
       status: brief.status,
       clientUrgency: brief.clientUrgency,
       operatorPriority: brief.operatorPriority,
+      targetWindow: ((brief as any).targetWindow || 'TODAY_REGULAR') as any,
       topicSummary: brief.topicSummary,
       weeklyQuotaPeriod: brief.weeklyQuotaPeriod,
       weeklyRequestLimit: brief.weeklyRequestLimit,

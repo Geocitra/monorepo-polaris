@@ -35,6 +35,7 @@ export const contentBriefs = pgTable('content_briefs', {
   status: contentBriefStatusEnum('status').default('SUBMITTED').notNull(),
   clientUrgency: briefUrgencyLevelEnum('client_urgency').default('NORMAL').notNull(),
   operatorPriority: briefUrgencyLevelEnum('operator_priority').default('NORMAL').notNull(),
+  targetWindow: varchar('target_window', { length: 30 }).default('TODAY_REGULAR').notNull(),
   topicSummary: text('topic_summary').notNull(),
   weeklyQuotaPeriod: varchar('weekly_quota_period', { length: 15 }).notNull(),
   weeklyRequestLimit: integer('weekly_request_limit').default(3).notNull(),

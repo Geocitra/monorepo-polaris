@@ -4,6 +4,8 @@ import {
   maskClientPhoneNumber,
   getCurrentWibWeeklyPeriod,
   detectOperatorContactLeak,
+  getWibHours,
+  getTimeHorizonInfo,
 } from './contact-sanitizer.util.js';
 
 describe('WhatsApp Contact Sanitizer & Broker Security Guard', () => {
@@ -31,6 +33,46 @@ describe('WhatsApp Contact Sanitizer & Broker Security Guard', () => {
     expect(detectOperatorContactLeak('Klik wa.me/628123456789 untuk lanjut').hasLeak).toBe(true);
     expect(detectOperatorContactLeak('DM instagram saya di @operator_polaris').hasLeak).toBe(true);
     expect(detectOperatorContactLeak('Bisa japri atau wa pribadi saja pak').hasLeak).toBe(true);
+  });
+
+  it('menghitung jam WIB (UTC+7) dengan benar', () => {
+    // 03:00 UTC = 10:00 WIB
+    const morningDate = new Date('2026-11-04T03:00:00Z');
+    expect(getWibHours(morningDate)).toBe(10);
+
+    // 12:30 UTC = 19:30 WIB
+    const eveningDate = new Date('2026-11-04T12:30:00Z');
+    expect(getWibHours(eveningDate)).toBe(19);
+  });
+
+  it('menentukan horizon waktu komitmen pengerjaan (Time-Horizon SLA)', () => {
+    // 1. Siang hari (10:00 WIB) dengan urgensi URGENT -> TODAY_PRIORITY
+    const morningUrgent = new Date('2026-11-04T03:00:00Z');
+    const horizon1 = getTimeHorizonInfo('URGENT', morningUrgent);
+    expect(horizon1.target).toBe('TODAY_PRIORITY');
+    expect(horizon1.badgeLabel).toBe('⚡ PRIORITAS HARI INI');
+    expect(horizon1.isAfterCutoff).toBe(false);
+
+    // 2. Siang hari (14:00 WIB) dengan urgensi NORMAL -> TODAY_REGULAR
+    const daytimeNormal = new Date('2026-11-04T07:00:00Z');
+    const horizon2 = getTimeHorizonInfo('NORMAL', daytimeNormal);
+    expect(horizon2.target).toBe('TODAY_REGULAR');
+    expect(horizon2.badgeLabel).toBe('🟢 TAYANG HARI INI');
+    expect(horizon2.isAfterCutoff).toBe(false);
+
+    // 3. Malam hari (20:00 WIB) baik URGENT maupun NORMAL -> NEXT_DAY_MORNING
+    const nightTime = new Date('2026-11-04T13:00:00Z');
+    const horizon3 = getTimeHorizonInfo('URGENT', nightTime);
+    expect(horizon3.target).toBe('NEXT_DAY_MORNING');
+    expect(horizon3.badgeLabel).toBe('🗓️ TARGET BESOK PAGI');
+    expect(horizon3.isAfterCutoff).toBe(true);
+
+    // 4. Subuh dini hari (05:00 WIB) -> NEXT_DAY_MORNING
+    const earlyMorning = new Date('2026-11-04T22:00:00Z'); // 22:00 UTC kemarin = 05:00 WIB
+    const horizon4 = getTimeHorizonInfo('NORMAL', earlyMorning);
+    expect(horizon4.target).toBe('NEXT_DAY_MORNING');
+    expect(horizon4.badgeLabel).toBe('🗓️ TARGET BESOK PAGI');
+    expect(horizon4.isAfterCutoff).toBe(true);
   });
 });
 

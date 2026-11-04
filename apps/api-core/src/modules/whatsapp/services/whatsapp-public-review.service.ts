@@ -70,6 +70,8 @@ export class WhatsAppPublicReviewService {
       briefCode: brief.briefCode,
       tenantFullName: tenant?.fullName || 'Anggota Dewan',
       status: brief.status,
+      targetWindow: brief.targetWindow,
+      clientUrgency: brief.clientUrgency,
       revisionUsed: brief.revisionUsed,
       revisionLimit: brief.revisionLimit,
       revisionRemaining: Math.max(0, brief.revisionLimit - brief.revisionUsed),

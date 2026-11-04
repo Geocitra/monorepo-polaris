@@ -578,6 +578,7 @@ export interface ContentBriefDto {
   status: string;
   clientUrgency: 'NORMAL' | 'URGENT';
   operatorPriority: 'NORMAL' | 'URGENT';
+  targetWindow?: 'TODAY_PRIORITY' | 'TODAY_REGULAR' | 'NEXT_DAY_MORNING';
   topicSummary: string;
   weeklyQuotaPeriod: string;
   weeklyRequestLimit: number;

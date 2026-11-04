@@ -24,6 +24,7 @@ import { WhatsAppCloudClient } from '../whatsapp-cloud.client.js';
 import {
   normalizeIndonesianPhone,
   getCurrentWibWeeklyPeriod,
+  getTimeHorizonInfo,
 } from '../contact-sanitizer.util.js';
 import {
   WhatsAppBriefHelperService,
@@ -74,7 +75,7 @@ export class WhatsAppBotSessionService implements OnModuleDestroy {
     private readonly redisService: RedisService,
     private readonly waClient: WhatsAppCloudClient,
     private readonly helper: WhatsAppBriefHelperService
-  ) {}
+  ) { }
 
   onModuleDestroy() {
     for (const timer of this.debounceTimers.values()) {
@@ -573,22 +574,26 @@ export class WhatsAppBotSessionService implements OnModuleDestroy {
       return;
     }
 
+    const horizonInfo = getTimeHorizonInfo(BriefUrgencyLevel.NORMAL);
     const summaryLines = [
       `Halo Bapak/Ibu *${draft.tenantName}*, bahan konten Anda telah kami tampung:`,
       `• 📝 Catatan Topik: _"${combinedTopic}"_`,
       `• 📷 Foto Kegiatan: *${photoCount} file*`,
       `• 📄 Dokumen Lampiran: *${docCount} file*`,
       `• 📊 Sisa Jatah Minggu Ini: *${quota.weeklyRemaining} dari ${quota.weeklyLimit} request*`,
+      horizonInfo.isAfterCutoff
+        ? `• 🗓️ Waktu Masuk: *Di luar jam kerja (>= 17:00 WIB) — Dijadwalkan produksi besok pagi*`
+        : `• ⏱️ Waktu Masuk: *Jam kerja aktif — Diproses untuk siap tayang hari ini*`,
       '',
       '💡 *Masih ada kalimat/foto tambahan?* Langsung kirim lagi di bawah ini, sistem otomatis menggabungkannya.',
-      'Jika sudah lengkap semua, pilih tingkat urgensi untuk diteruskan ke Tim Redaksi:',
+      'Jika sudah lengkap semua, silakan tekan tombol kirim untuk diteruskan ke meja pengerjaan redaksi:',
     ].join('\n');
 
     await this.waClient.sendInteractiveButtons(
       draft.phoneE164,
       summaryLines,
       [
-        { id: 'BRIEF_SUBMIT_URGENT', title: '🔴 Kirim Mendesak' },
+        { id: 'BRIEF_SUBMIT_URGENT', title: '⚡ Kirim Mendesak' },
         { id: 'BRIEF_SUBMIT_NORMAL', title: '🟢 Kirim Biasa' },
         { id: 'BRIEF_CANCEL', title: '❌ Batal' },
       ],
@@ -768,22 +773,24 @@ export class WhatsAppBotSessionService implements OnModuleDestroy {
           ? `• 📊 Pemakaian Jatah Minggu Ini: *${quota.weeklyUsed} dari ${quota.weeklyLimit} request* (Sisa: *${quota.weeklyRemaining} request*)`
           : `• 🗓️ Jatah request minggu ini (*${quota.weeklyLimit}/${quota.weeklyLimit}*) telah penuh. Request ini diamankan untuk antrean prioritas Senin depan.`;
 
+      const horizonInfo = getTimeHorizonInfo(clientUrgency);
+
       await this.waClient.sendInteractiveButtons(
         phoneE164,
         [
           `✅ *Request Resmi Diterima: #${createdBrief.briefCode}*`,
-          `• Sinyal Urgensi: *${clientUrgency === 'URGENT' ? '🔴 Mendesak (Hari Ini)' : '🟢 Biasa'}*`,
-          `• Status Saat Ini: *Menunggu Diproses Tim Redaksi*`,
+          `• Target Produksi: *${horizonInfo.badgeLabel}*`,
+          horizonInfo.statusLine,
           quotaNotice,
           '',
-          '🔒 *Sesi pengiriman bahan selesai.* Kami akan mengirimkan pratinjau Artikel, Poster, dan Caption ke WhatsApp ini setelah selesai diracik. Sambil menunggu, Anda bebas mengakses menu lain:',
+          '🔒 *Bahan kegiatan Anda telah diamankan.* Tim Redaksi segera menyusun naskah berita, poster visual, dan caption media sosial untuk Anda tinjau sebelum tayang. Sambil menunggu, silakan pilih menu layanan:',
         ].join('\n'),
         [
           { id: 'MENU_CHECK_STATUS', title: '📊 Cek Status' },
           { id: 'MENU_LATEST_LINKS', title: '🔗 Arsip Konten' },
           { id: 'MENU_OPEN_MAIN', title: '📋 Menu Utama' },
         ],
-        `Tiket #${createdBrief.briefCode} Terdaftar`,
+        `Tiket #${createdBrief.briefCode} Diproses`,
         'Asisten Redaksi Polaris'
       );
       return;
@@ -1048,6 +1055,7 @@ export class WhatsAppBotSessionService implements OnModuleDestroy {
         : `Kiriman ${draft.items.length} file lampiran kegiatan dari ${tenant.fullName}`;
 
     const limits = await this.helper.getTenantConfiguredLimits(tenant.id);
+    const horizonInfo = getTimeHorizonInfo(clientUrgency);
 
     const createdBrief = await withTenantContext(tenant.id, async (tx) => {
       const [insertedBrief] = await tx
@@ -1059,6 +1067,7 @@ export class WhatsAppBotSessionService implements OnModuleDestroy {
           status: 'SUBMITTED',
           clientUrgency,
           operatorPriority: clientUrgency,
+          targetWindow: horizonInfo.target,
           topicSummary,
           weeklyQuotaPeriod,
           weeklyRequestLimit: limits.weeklyRequestLimit,
@@ -1068,22 +1077,25 @@ export class WhatsAppBotSessionService implements OnModuleDestroy {
         .returning();
 
       for (const item of draft.items) {
-        await tx.insert(contentBriefMessages).values({
-          briefId: insertedBrief.id,
-          tenantId: tenant.id,
-          direction: 'INBOUND',
-          messageType: item.messageType,
-          waMessageId: item.waMessageId,
-          textBody: item.textBody ?? null,
-          mediaR2Url: item.mediaR2Url ?? null,
-          mediaCdnUrl: item.mediaCdnUrl ?? null,
-          mediaMimeType: item.mediaMimeType ?? null,
-          mediaFileName: item.mediaFileName ?? null,
-          mediaFileSizeBytes: item.mediaFileSizeBytes ?? null,
-          revisionRound: 0,
-          targetComponents: [],
-          isInternalFault: false,
-        });
+        await tx
+          .insert(contentBriefMessages)
+          .values({
+            briefId: insertedBrief.id,
+            tenantId: tenant.id,
+            direction: 'INBOUND',
+            messageType: item.messageType,
+            waMessageId: item.waMessageId,
+            textBody: item.textBody ?? null,
+            mediaR2Url: item.mediaR2Url ?? null,
+            mediaCdnUrl: item.mediaCdnUrl ?? null,
+            mediaMimeType: item.mediaMimeType ?? null,
+            mediaFileName: item.mediaFileName ?? null,
+            mediaFileSizeBytes: item.mediaFileSizeBytes ?? null,
+            revisionRound: 0,
+            targetComponents: [],
+            isInternalFault: false,
+          })
+          .onConflictDoNothing();
       }
 
       return insertedBrief;
@@ -1155,22 +1167,25 @@ export class WhatsAppBotSessionService implements OnModuleDestroy {
     const nextStatusAfterReply = hasPendingRevisionWork ? 'REVISION_REQUESTED' : 'IN_PROGRESS';
 
     await withTenantContext(tenant.id, async (tx) => {
-      await tx.insert(contentBriefMessages).values({
-        briefId: brief.id,
-        tenantId: tenant.id,
-        direction: 'INBOUND',
-        messageType: input.itemType,
-        waMessageId: input.wamid,
-        textBody: input.extractedText || null,
-        mediaR2Url: uploaded.r2StorageUrl ?? null,
-        mediaCdnUrl: uploaded.cdnPublicUrl ?? null,
-        mediaMimeType: uploaded.mimeType ?? null,
-        mediaFileName: uploaded.fileName ?? null,
-        mediaFileSizeBytes: uploaded.fileSizeBytes ?? null,
-        revisionRound: brief.revisionUsed,
-        targetComponents: [],
-        isInternalFault: false,
-      });
+      await tx
+        .insert(contentBriefMessages)
+        .values({
+          briefId: brief.id,
+          tenantId: tenant.id,
+          direction: 'INBOUND',
+          messageType: input.itemType,
+          waMessageId: input.wamid,
+          textBody: input.extractedText || null,
+          mediaR2Url: uploaded.r2StorageUrl ?? null,
+          mediaCdnUrl: uploaded.cdnPublicUrl ?? null,
+          mediaMimeType: uploaded.mimeType ?? null,
+          mediaFileName: uploaded.fileName ?? null,
+          mediaFileSizeBytes: uploaded.fileSizeBytes ?? null,
+          revisionRound: brief.revisionUsed,
+          targetComponents: [],
+          isInternalFault: false,
+        })
+        .onConflictDoNothing();
 
       await tx
         .update(contentBriefs)
@@ -1379,35 +1394,41 @@ export class WhatsAppBotSessionService implements OnModuleDestroy {
       if (mediaItems.length > 0) {
         for (let idx = 0; idx < mediaItems.length; idx++) {
           const m = mediaItems[idx];
-          await tx.insert(contentBriefMessages).values({
+          await tx
+            .insert(contentBriefMessages)
+            .values({
+              briefId: brief.id,
+              tenantId: tenant.id,
+              direction: 'INBOUND',
+              messageType: m.messageType,
+              waMessageId: m.waMessageId,
+              textBody: idx === 0 ? combinedRevisionText : m.textBody || null,
+              mediaR2Url: m.mediaR2Url ?? null,
+              mediaCdnUrl: m.mediaCdnUrl ?? null,
+              mediaMimeType: m.mediaMimeType ?? null,
+              mediaFileName: m.mediaFileName ?? null,
+              mediaFileSizeBytes: m.mediaFileSizeBytes ?? null,
+              revisionRound: nextRound,
+              targetComponents: comps,
+              isInternalFault: false,
+            })
+            .onConflictDoNothing();
+        }
+      } else {
+        await tx
+          .insert(contentBriefMessages)
+          .values({
             briefId: brief.id,
             tenantId: tenant.id,
             direction: 'INBOUND',
-            messageType: m.messageType,
-            waMessageId: m.waMessageId,
-            textBody: idx === 0 ? combinedRevisionText : m.textBody || null,
-            mediaR2Url: m.mediaR2Url ?? null,
-            mediaCdnUrl: m.mediaCdnUrl ?? null,
-            mediaMimeType: m.mediaMimeType ?? null,
-            mediaFileName: m.mediaFileName ?? null,
-            mediaFileSizeBytes: m.mediaFileSizeBytes ?? null,
+            messageType: 'TEXT',
+            waMessageId: items[0].waMessageId,
+            textBody: combinedRevisionText,
             revisionRound: nextRound,
             targetComponents: comps,
             isInternalFault: false,
-          });
-        }
-      } else {
-        await tx.insert(contentBriefMessages).values({
-          briefId: brief.id,
-          tenantId: tenant.id,
-          direction: 'INBOUND',
-          messageType: 'TEXT',
-          waMessageId: items[0].waMessageId,
-          textBody: combinedRevisionText,
-          revisionRound: nextRound,
-          targetComponents: comps,
-          isInternalFault: false,
-        });
+          })
+          .onConflictDoNothing();
       }
 
       await tx
@@ -1561,11 +1582,11 @@ export class WhatsAppBotSessionService implements OnModuleDestroy {
     const briefLines =
       recentBriefs.length > 0
         ? recentBriefs
-            .map(
-              (b) =>
-                `• *#${b.briefCode}* — Status: *${b.status}* (Revisi: ${b.revisionUsed}/${b.revisionLimit})`
-            )
-            .join('\n')
+          .map((b) => {
+            const h = getTimeHorizonInfo(b.clientUrgency as any, b.createdAt);
+            return `• *#${b.briefCode}* — ${h.shortLabel} (*${b.status}*, Rev: ${b.revisionUsed}/${b.revisionLimit})`;
+          })
+          .join('\n')
         : '• Belum ada tiket request aktif.';
 
     await this.waClient.sendInteractiveButtons(
@@ -1908,12 +1929,14 @@ export class WhatsAppBotSessionService implements OnModuleDestroy {
     }
     buttons.push({ id: 'MENU_OPEN_MAIN', title: '📋 Menu Utama' });
 
+    const horizon = getTimeHorizonInfo(brief.clientUrgency as any, brief.createdAt);
+
     await this.waClient.sendInteractiveButtons(
       phoneE164,
       [
         `📋 *Detail Tiket Request #${brief.briefCode}*`,
+        `• Target: *${horizon.badgeLabel}*`,
         `• Status: *${brief.status}*`,
-        `• Prioritas: *${brief.clientUrgency === 'URGENT' ? '🔴 Mendesak' : '🟢 Normal'}*`,
         `• Revisi: *${brief.revisionUsed} dari ${brief.revisionLimit} putaran*`,
         '',
         `*Catatan Topik:*`,
@@ -2034,9 +2057,9 @@ export class WhatsAppBotSessionService implements OnModuleDestroy {
           `• Status: *⏳ Draf Siap Tindak Lanjut*`,
           linkedBrief
             ? `• Tiket Terkait: *#${linkedBrief.briefCode}* (Sisa Revisi: *${Math.max(
-                0,
-                linkedBrief.revisionLimit - linkedBrief.revisionUsed
-              )}x*)`
+              0,
+              linkedBrief.revisionLimit - linkedBrief.revisionUsed
+            )}x*)`
             : '',
           '',
           '*Ringkasan Naskah Draf:*',
@@ -2210,6 +2233,7 @@ export class WhatsAppBotSessionService implements OnModuleDestroy {
             clientUrgency: 'NORMAL',
             operatorPriority: 'NORMAL',
             topicSummary: input.extractedText || `Diskusi Redaksi — ${tenant.fullName}`,
+            targetWindow: getTimeHorizonInfo('NORMAL').target,
             weeklyQuotaPeriod: getCurrentWibWeeklyPeriod(),
             weeklyRequestLimit: limits.weeklyRequestLimit,
             revisionUsed: 0,
@@ -2221,22 +2245,25 @@ export class WhatsAppBotSessionService implements OnModuleDestroy {
     }
 
     await withTenantContext(tenant.id, async (tx) => {
-      await tx.insert(contentBriefMessages).values({
-        briefId: activeBrief.id,
-        tenantId: tenant.id,
-        direction: 'INBOUND',
-        messageType: input.itemType,
-        waMessageId: input.wamid,
-        textBody: input.extractedText || null,
-        mediaR2Url: uploaded.r2StorageUrl ?? null,
-        mediaCdnUrl: uploaded.cdnPublicUrl ?? null,
-        mediaMimeType: uploaded.mimeType ?? null,
-        mediaFileName: uploaded.fileName ?? null,
-        mediaFileSizeBytes: uploaded.fileSizeBytes ?? null,
-        revisionRound: activeBrief.revisionUsed,
-        targetComponents: [],
-        isInternalFault: false,
-      });
+      await tx
+        .insert(contentBriefMessages)
+        .values({
+          briefId: activeBrief.id,
+          tenantId: tenant.id,
+          direction: 'INBOUND',
+          messageType: input.itemType,
+          waMessageId: input.wamid,
+          textBody: input.extractedText || null,
+          mediaR2Url: uploaded.r2StorageUrl ?? null,
+          mediaCdnUrl: uploaded.cdnPublicUrl ?? null,
+          mediaMimeType: uploaded.mimeType ?? null,
+          mediaFileName: uploaded.fileName ?? null,
+          mediaFileSizeBytes: uploaded.fileSizeBytes ?? null,
+          revisionRound: activeBrief.revisionUsed,
+          targetComponents: [],
+          isInternalFault: false,
+        })
+        .onConflictDoNothing();
 
       await tx
         .update(contentBriefs)
@@ -2317,10 +2344,10 @@ export class WhatsAppBotSessionService implements OnModuleDestroy {
 
     const activeTicketLines = pendingReviewBrief
       ? [
-          '',
-          `📌 *Tiket Menunggu Tinjauan Anda:*`,
-          `• *#${pendingReviewBrief.briefCode}* (Sisa revisi: *${Math.max(0, pendingReviewBrief.revisionLimit - pendingReviewBrief.revisionUsed)}/${pendingReviewBrief.revisionLimit}*)`,
-        ]
+        '',
+        `📌 *Tiket Menunggu Tinjauan Anda:*`,
+        `• *#${pendingReviewBrief.briefCode}* (Sisa revisi: *${Math.max(0, pendingReviewBrief.revisionLimit - pendingReviewBrief.revisionUsed)}/${pendingReviewBrief.revisionLimit}*)`,
+      ]
       : [];
 
     const body = [
@@ -2335,17 +2362,17 @@ export class WhatsAppBotSessionService implements OnModuleDestroy {
     const serviceRows = [
       ...(pendingReviewBrief && pendingReviewBrief.revisionUsed < pendingReviewBrief.revisionLimit
         ? [
-            {
-              id: `REV_START:${pendingReviewBrief.id}`,
-              title: `✏️ Revisi #${pendingReviewBrief.briefCode.slice(-4)}`,
-              description: `Ajukan perbaikan untuk tiket #${pendingReviewBrief.briefCode} yang sedang ditinjau`,
-            },
-            {
-              id: `REV_APPROVE:${pendingReviewBrief.id}`,
-              title: `✅ Setujui #${pendingReviewBrief.briefCode.slice(-4)}`,
-              description: `Setujui & tayangkan konten pada tiket #${pendingReviewBrief.briefCode}`,
-            },
-          ]
+          {
+            id: `REV_START:${pendingReviewBrief.id}`,
+            title: `✏️ Revisi #${pendingReviewBrief.briefCode.slice(-4)}`,
+            description: `Ajukan perbaikan untuk tiket #${pendingReviewBrief.briefCode} yang sedang ditinjau`,
+          },
+          {
+            id: `REV_APPROVE:${pendingReviewBrief.id}`,
+            title: `✅ Setujui #${pendingReviewBrief.briefCode.slice(-4)}`,
+            description: `Setujui & tayangkan konten pada tiket #${pendingReviewBrief.briefCode}`,
+          },
+        ]
         : []),
       {
         id: 'MENU_NEW_BRIEF',

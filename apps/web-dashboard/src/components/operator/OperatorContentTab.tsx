@@ -218,9 +218,17 @@ export function OperatorContentTab({
                   >
                     Putaran Revisi: {activeBrief.revisionUsed}/{activeBrief.revisionLimit}
                   </span>
-                  {activeBrief.clientUrgency === 'URGENT' && (
+                  {activeBrief.clientUrgency === 'URGENT' || activeBrief.targetWindow === 'TODAY_PRIORITY' ? (
                     <span className="px-2 py-0.5 rounded-full text-[10px] font-black bg-rose-600 text-white flex items-center gap-1">
-                      <Flame className="w-3 h-3" /> MENDESAK
+                      <Flame className="w-3 h-3" /> ⚡ PRIORITAS HARI INI
+                    </span>
+                  ) : activeBrief.targetWindow === 'NEXT_DAY_MORNING' ? (
+                    <span className="px-2 py-0.5 rounded-full text-[10px] font-black bg-slate-700 text-slate-200 flex items-center gap-1">
+                      <Clock className="w-3 h-3" /> 🗓️ TARGET BESOK PAGI
+                    </span>
+                  ) : (
+                    <span className="px-2 py-0.5 rounded-full text-[10px] font-black bg-indigo-600 text-white flex items-center gap-1">
+                      <CheckCircle2 className="w-3 h-3" /> 🟢 TAYANG HARI INI
                     </span>
                   )}
                 </div>

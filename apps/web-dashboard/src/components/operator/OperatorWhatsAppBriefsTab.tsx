@@ -158,6 +158,39 @@ function getStatusBadgeConfig(status: ContentBriefItem['status']) {
   }
 }
 
+function getTargetHorizonBadge(urgency: 'URGENT' | 'NORMAL', createdAtIso: string) {
+  try {
+    const d = new Date(createdAtIso);
+    // Hitung jam dalam zona WIB (UTC+7)
+    const wibHours = (d.getUTCHours() + 7) % 24;
+    if (wibHours >= 17 || wibHours < 7) {
+      return {
+        label: '🗓️ TARGET BESOK PAGI',
+        cls: 'bg-slate-100 text-slate-700 dark:bg-slate-850 dark:text-slate-300 border-slate-300 dark:border-slate-700',
+        hint: 'Masuk malam hari (≥ 17:00 WIB), dijadwalkan mulai pukul 08:00 besok pagi.',
+      };
+    }
+    if (urgency === 'URGENT') {
+      return {
+        label: '⚡ PRIORITAS HARI INI',
+        cls: 'bg-rose-100 text-rose-800 dark:bg-rose-950/60 dark:text-rose-300 border-rose-300 dark:border-rose-700',
+        hint: 'Breaking News / Topik hangat, diprioritaskan selesai hari ini.',
+      };
+    }
+    return {
+      label: '🟢 TAYANG HARI INI',
+      cls: 'bg-indigo-100 text-indigo-800 dark:bg-indigo-950/60 dark:text-indigo-300 border-indigo-300 dark:border-indigo-700',
+      hint: 'Masuk jam kerja reguler, ditargetkan siap tayang hari ini.',
+    };
+  } catch {
+    return {
+      label: urgency === 'URGENT' ? '⚡ MENDESAK' : '🟢 BIASA',
+      cls: 'bg-slate-100 text-slate-700 border-slate-300',
+      hint: '',
+    };
+  }
+}
+
 function cleanSummaryDisplay(summary: string): string {
   if (!summary) return '';
   // Bersihkan sapaan berulang di awal jika masih ada
@@ -177,7 +210,7 @@ export function OperatorWhatsAppBriefsTab({
   const [weeklyQuota, setWeeklyQuota] = useState<TenantWeeklyBriefQuota | null>(null);
   const [loading, setLoading] = useState(true);
   const [selectedBriefId, setSelectedBriefId] = useState<string | null>(null);
-  const [statusFilter, setStatusFilter] = useState<'ALL' | 'ACTIVE' | 'REVISION' | 'DONE'>('ALL');
+  const [statusFilter, setStatusFilter] = useState<'ALL' | 'ACTIVE' | 'PRIORITY' | 'REVISION' | 'DONE'>('ALL');
   const [searchQuery, setSearchQuery] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
   const ITEMS_PER_PAGE = 8;
@@ -239,6 +272,10 @@ export function OperatorWhatsAppBriefsTab({
   const filteredBriefs = briefs.filter((b) => {
     if (statusFilter === 'ACTIVE') {
       if (['PUBLISHED', 'APPROVED', 'REJECTED'].includes(b.status)) return false;
+    } else if (statusFilter === 'PRIORITY') {
+      if (['PUBLISHED', 'APPROVED', 'REJECTED'].includes(b.status)) return false;
+      const h = getTargetHorizonBadge(b.clientUrgency, b.createdAt);
+      if (b.clientUrgency !== 'URGENT' && h.label !== '⚡ PRIORITAS HARI INI') return false;
     } else if (statusFilter === 'REVISION') {
       if (b.status !== 'REVISION_REQUESTED' && (!b.revisionUsed || b.revisionUsed <= 0)) return false;
     } else if (statusFilter === 'DONE') {
@@ -537,7 +574,7 @@ export function OperatorWhatsAppBriefsTab({
                 Daftar Tiket ({filteredBriefs.length})
               </span>
               <div className="flex items-center gap-1 bg-slate-100 dark:bg-slate-900 p-0.5 rounded-lg">
-                {(['ALL', 'ACTIVE', 'REVISION', 'DONE'] as const).map((f) => (
+                {(['ALL', 'ACTIVE', 'PRIORITY', 'REVISION', 'DONE'] as const).map((f) => (
                   <button
                     key={f}
                     type="button"
@@ -555,6 +592,8 @@ export function OperatorWhatsAppBriefsTab({
                       ? 'Semua'
                       : f === 'ACTIVE'
                       ? 'Aktif'
+                      : f === 'PRIORITY'
+                      ? '⚡ Prioritas'
                       : f === 'REVISION'
                       ? 'Revisi'
                       : 'Selesai'}
@@ -613,6 +652,7 @@ export function OperatorWhatsAppBriefsTab({
               paginatedBriefs.map((item) => {
                 const isSelected = selectedBrief?.id === item.id;
                 const badge = getStatusBadgeConfig(item.status);
+                const horizonBadge = getTargetHorizonBadge(item.clientUrgency, item.createdAt);
                 const mediaCount = item.messages.filter(
                   (m) => m.direction === 'INBOUND' && (m.messageType === 'IMAGE' || m.messageType === 'DOCUMENT')
                 ).length;
@@ -633,15 +673,13 @@ export function OperatorWhatsAppBriefsTab({
                     }`}
                   >
                     <div className="flex items-center justify-between gap-2">
-                      <div className="flex items-center gap-1.5">
+                      <div className="flex items-center gap-1.5 flex-wrap">
                         <span className="font-mono text-xs font-black text-indigo-600 dark:text-indigo-400">
                           #{item.briefCode}
                         </span>
-                        {item.clientUrgency === 'URGENT' && (
-                          <span className="px-1.5 py-0.5 rounded text-[9.5px] font-black bg-rose-500 text-white flex items-center gap-0.5">
-                            <Flame className="w-2.5 h-2.5" /> MENDESAK
-                          </span>
-                        )}
+                        <span className={`px-1.5 py-0.5 rounded text-[9px] font-black border ${horizonBadge.cls}`}>
+                          {horizonBadge.label}
+                        </span>
                       </div>
                       <span className={`px-2 py-0.5 rounded-full text-[9.5px] font-bold border ${badge.cls}`}>
                         {badge.label}
@@ -898,36 +936,49 @@ export function OperatorWhatsAppBriefsTab({
                     </span>
                   </div>
 
-                  {selectedBrief.status === 'SUBMITTED' && (
-                    <div className="flex items-center gap-2 flex-wrap">
-                      <button
-                        type="button"
-                        disabled={acceptingBrief}
-                        onClick={() => handleAcceptBrief('URGENT')}
-                        className="px-3 py-1.5 rounded-xl bg-rose-600 hover:bg-rose-700 text-white text-[11px] font-bold transition flex items-center gap-1 cursor-pointer disabled:opacity-50"
-                      >
-                        <Flame className="w-3.5 h-3.5" />
-                        <span>Terima (Prioritas Mendesak)</span>
-                      </button>
-                      <button
-                        type="button"
-                        disabled={acceptingBrief}
-                        onClick={() => handleAcceptBrief('NORMAL')}
-                        className="px-3 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-[11px] font-bold transition flex items-center gap-1 cursor-pointer disabled:opacity-50"
-                      >
-                        <CheckCircle2 className="w-3.5 h-3.5" />
-                        <span>Terima (Jadwal Normal)</span>
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => setShowRejectBox((prev) => !prev)}
-                        className="px-3 py-1.5 rounded-xl border border-rose-200 dark:border-rose-800 text-rose-600 dark:text-rose-400 hover:bg-rose-50 text-[11px] font-bold transition flex items-center gap-1 cursor-pointer"
-                      >
-                        <XCircle className="w-3.5 h-3.5" />
-                        <span>Tolak (Tanpa Potong Kuota)</span>
-                      </button>
-                    </div>
-                  )}
+                  {selectedBrief.status === 'SUBMITTED' && (() => {
+                    const selectedHorizon = getTargetHorizonBadge(
+                      selectedBrief.clientUrgency,
+                      selectedBrief.createdAt
+                    );
+                    return (
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <div
+                          className={`px-2.5 py-1 rounded-xl text-[10.5px] font-black border ${selectedHorizon.cls}`}
+                          title={selectedHorizon.hint}
+                        >
+                          {selectedHorizon.label}
+                        </div>
+                        <button
+                          type="button"
+                          disabled={acceptingBrief}
+                          onClick={() => handleAcceptBrief(selectedBrief.clientUrgency)}
+                          className={`px-3.5 py-1.5 rounded-xl text-white text-[11px] font-bold transition flex items-center gap-1.5 cursor-pointer disabled:opacity-50 shadow-xs ${
+                            selectedBrief.clientUrgency === 'URGENT'
+                              ? 'bg-rose-600 hover:bg-rose-700'
+                              : 'bg-indigo-600 hover:bg-indigo-700'
+                          }`}
+                        >
+                          <CheckCircle2 className="w-3.5 h-3.5" />
+                          <span>
+                            {acceptingBrief
+                              ? 'Menerima Tiket...'
+                              : selectedBrief.clientUrgency === 'URGENT'
+                              ? 'Terima & Kerjakan Prioritas Hari Ini'
+                              : 'Terima & Mulai Pengerjaan'}
+                          </span>
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setShowRejectBox((prev) => !prev)}
+                          className="px-3 py-1.5 rounded-xl border border-rose-200 dark:border-rose-800 text-rose-600 dark:text-rose-400 hover:bg-rose-50 text-[11px] font-bold transition flex items-center gap-1 cursor-pointer"
+                        >
+                          <XCircle className="w-3.5 h-3.5" />
+                          <span>Tolak (Tanpa Potong Kuota)</span>
+                        </button>
+                      </div>
+                    );
+                  })()}
                 </div>
 
                 {/* KOTAK INPUT PENOLAKAN TIKET */}

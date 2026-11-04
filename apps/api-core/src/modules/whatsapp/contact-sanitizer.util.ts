@@ -55,6 +55,81 @@ export function getCurrentWibWeeklyPeriod(referenceDate: Date = new Date()): str
   return `${isoYear}-W${String(weekNumber).padStart(2, '0')}`;
 }
 
+export type TimeHorizonTarget = 'TODAY_PRIORITY' | 'TODAY_REGULAR' | 'NEXT_DAY_MORNING';
+
+export interface TimeHorizonInfo {
+  target: TimeHorizonTarget;
+  shortLabel: string;
+  badgeLabel: string;
+  wibHours: number;
+  isAfterCutoff: boolean;
+  statusLine: string;
+  slaDescription: string;
+}
+
+/**
+ * Menghitung jam WIB (UTC+7) dari suatu tanggal UTC/ISO.
+ */
+export function getWibHours(referenceDate: Date = new Date()): number {
+  const wibOffsetMs = 7 * 60 * 60 * 1000;
+  const wibDate = new Date(referenceDate.getTime() + wibOffsetMs);
+  return wibDate.getUTCHours();
+}
+
+/**
+ * Menentukan target horizon pengerjaan berdasarkan waktu WIB dan sinyal urgensi:
+ * - Jika masuk di luar jam kerja (>= 17:00 WIB atau < 07:00 WIB) -> NEXT_DAY_MORNING
+ * - Jika masuk di jam kerja dan urgensi URGENT -> TODAY_PRIORITY
+ * - Jika masuk di jam kerja dan normal -> TODAY_REGULAR
+ */
+export function getTimeHorizonInfo(
+  urgency: 'URGENT' | 'NORMAL' = 'NORMAL',
+  referenceDate: Date = new Date()
+): TimeHorizonInfo {
+  const hours = getWibHours(referenceDate);
+  const isAfterCutoff = hours >= 17 || hours < 7;
+
+  if (isAfterCutoff) {
+    return {
+      target: 'NEXT_DAY_MORNING',
+      shortLabel: 'Target Besok Pagi',
+      badgeLabel: '🗓️ TARGET BESOK PAGI',
+      wibHours: hours,
+      isAfterCutoff: true,
+      statusLine:
+        '🗓️ *Status Pengerjaan:* Dijadwalkan untuk diproduksi pertama pada jam kerja redaksi besok pagi (mulai pukul 08:00 WIB).',
+      slaDescription:
+        'Bahan kegiatan Anda telah kami amankan dalam antrean produksi prioritas besok pagi.',
+    };
+  }
+
+  if (urgency === 'URGENT') {
+    return {
+      target: 'TODAY_PRIORITY',
+      shortLabel: 'Prioritas Hari Ini',
+      badgeLabel: '⚡ PRIORITAS HARI INI',
+      wibHours: hours,
+      isAfterCutoff: false,
+      statusLine:
+        '⚡ *Status Pengerjaan:* Dialokasikan ke Tim Editor Utama sebagai prioritas tayang hari ini.',
+      slaDescription:
+        'Tim kami sedang memprioritaskan peracikan naskah berita, poster visual, dan caption Anda untuk segera ditayangkan hari ini.',
+    };
+  }
+
+  return {
+    target: 'TODAY_REGULAR',
+    shortLabel: 'Tayang Hari Ini',
+    badgeLabel: '🟢 TAYANG HARI INI',
+    wibHours: hours,
+    isAfterCutoff: false,
+    statusLine:
+      '🟢 *Status Pengerjaan:* Sudah di meja pengerjaan Tim Redaksi untuk diproses tayang hari ini.',
+    slaDescription:
+      'Pratinjau draf artikel, poster visual, dan caption medsos akan kami kirimkan ke WhatsApp ini segera setelah siap ditinjau.',
+  };
+}
+
 export interface ContactLeakCheckResult {
   hasLeak: boolean;
   reason?: string;
