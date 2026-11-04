@@ -237,6 +237,7 @@ export class WhatsAppCloudClient {
 
   /**
    * Mengirim gambar poster disertai caption ke nomor WhatsApp tujuan.
+   * Mengonversi format .webp ke JPEG standar secara otomatis agar sesuai dengan spesifikasi Meta Cloud API.
    */
   public async sendImageMessage(
     toPhoneRaw: string,
@@ -248,6 +249,25 @@ export class WhatsAppCloudClient {
       return { delivered: false };
     }
 
+    let targetImageUrl = imageUrl.trim();
+
+    // Validasi protokol URL (Meta Cloud API menolak data URI)
+    if (!targetImageUrl.startsWith('http://') && !targetImageUrl.startsWith('https://')) {
+      this.logger.warn(
+        `[WhatsAppCloudClient] Melewati pengiriman gambar karena URL bukan HTTP(S): ${targetImageUrl.slice(0, 50)}`
+      );
+      return { delivered: false };
+    }
+
+    // Meta Cloud API hanya mendukung MIME image/jpeg dan image/png untuk pesan gambar.
+    // Jika gambar di-host di Cloudinary, terapkan transformasi dinamis f_jpg,q_auto agar disajikan sebagai JPEG asli.
+    if (targetImageUrl.includes('res.cloudinary.com')) {
+      targetImageUrl = targetImageUrl.replace(/\.webp($|\?)/i, '.jpg$1');
+      if (!targetImageUrl.includes('/f_jpg') && targetImageUrl.includes('/upload/')) {
+        targetImageUrl = targetImageUrl.replace('/upload/', '/upload/f_jpg,q_auto/');
+      }
+    }
+
     const endpoint = `https://graph.facebook.com/${this.apiVersion}/${this.phoneNumberId}/messages`;
     const payload = {
       messaging_product: 'whatsapp',
@@ -255,7 +275,7 @@ export class WhatsAppCloudClient {
       to: toPhone,
       type: 'image',
       image: {
-        link: imageUrl,
+        link: targetImageUrl,
         ...(captionText ? { caption: captionText.slice(0, 1024) } : {}),
       },
     };

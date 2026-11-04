@@ -827,6 +827,7 @@ export function OperatorContentTab({
               publishedUrl={publishedUrl}
               downloadingPoster={downloadingPoster}
               onDownloadPoster={onDownloadPoster}
+              regeneratingPoster={regeneratingPoster}
             />
           )}
 
@@ -848,16 +849,26 @@ export function OperatorContentTab({
                 {activeBrief && onSubmitBriefForWhatsAppReview && (
                   <button
                     type="button"
-                    disabled={submittingBriefReview}
+                    disabled={submittingBriefReview || !generatedResult.posterUrl || regeneratingPoster}
                     onClick={onSubmitBriefForWhatsAppReview}
-                    className="px-5 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-black transition flex items-center gap-2 cursor-pointer shadow-sm disabled:opacity-50"
+                    className={`px-5 py-2.5 rounded-xl text-xs font-black transition flex items-center gap-2 cursor-pointer shadow-sm ${
+                      generatedResult.posterUrl && !regeneratingPoster && !submittingBriefReview
+                        ? 'bg-indigo-600 hover:bg-indigo-700 text-white'
+                        : 'bg-slate-200 dark:bg-slate-800 text-slate-400 dark:text-slate-500 cursor-not-allowed opacity-80'
+                    }`}
                   >
                     {submittingBriefReview ? (
                       <RefreshCw className="w-4 h-4 animate-spin" />
+                    ) : regeneratingPoster || !generatedResult.posterUrl ? (
+                      <RefreshCw className="w-4 h-4 animate-spin text-amber-500" />
                     ) : (
                       <MessageCircle className="w-4 h-4" />
                     )}
-                    <span>Kirim Pratinjau Hasil ke WA Klien (#{activeBrief.briefCode})</span>
+                    <span>
+                      {regeneratingPoster || !generatedResult.posterUrl
+                        ? `Menunggu Poster Visual (#${activeBrief.briefCode})...`
+                        : `Kirim Pratinjau Hasil ke WA Klien (#${activeBrief.briefCode})`}
+                    </span>
                   </button>
                 )}
                 {selectedDewan.canDirectPublish ? (

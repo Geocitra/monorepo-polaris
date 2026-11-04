@@ -25,6 +25,7 @@ interface OperatorSocialDistributionTabProps {
   publishedUrl: string | null;
   downloadingPoster: boolean;
   onDownloadPoster: (customName?: string) => void;
+  regeneratingPoster?: boolean;
 }
 
 type SocialChannel = 'whatsapp' | 'instagram' | 'tiktok' | 'x' | 'threads';
@@ -35,6 +36,7 @@ export function OperatorSocialDistributionTab({
   publishedUrl,
   downloadingPoster,
   onDownloadPoster,
+  regeneratingPoster,
 }: OperatorSocialDistributionTabProps) {
   const [activeChannel, setActiveChannel] = useState<SocialChannel>('whatsapp');
 
@@ -51,6 +53,10 @@ export function OperatorSocialDistributionTab({
   const [showPackagePreview, setShowPackagePreview] = useState(false);
   const [copiedPackage, setCopiedPackage] = useState(false);
   const [copiedSingle, setCopiedSingle] = useState<string | null>(null);
+
+  const isPosterReady = Boolean(generatedResult.posterUrl && generatedResult.posterUrl.trim().length > 0);
+  const isPosterBusy = Boolean(regeneratingPoster);
+  const canDispatch = isPosterReady && !isPosterBusy && !isDispatching;
 
   const portalArticleUrl =
     publishedUrl ||
@@ -251,13 +257,27 @@ _Diproduksi oleh Tim Redaksi Polaris Media Studio via Bot Resmi_`;
             <button
               type="button"
               onClick={handleDispatchViaBot}
-              disabled={isDispatching}
-              className="px-5 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-black text-xs transition-all shadow-md shadow-emerald-600/25 flex items-center justify-center gap-2 cursor-pointer hover:scale-[1.02] disabled:opacity-60 disabled:cursor-not-allowed"
+              disabled={!canDispatch}
+              className={`px-5 py-2.5 rounded-xl font-black text-xs transition-all shadow-md flex items-center justify-center gap-2 cursor-pointer ${
+                canDispatch
+                  ? 'bg-emerald-600 hover:bg-emerald-700 text-white shadow-emerald-600/25 hover:scale-[1.02]'
+                  : 'bg-slate-200 dark:bg-slate-800 text-slate-400 dark:text-slate-500 cursor-not-allowed opacity-80'
+              }`}
             >
               {isDispatching ? (
                 <>
                   <Loader2 className="w-4 h-4 animate-spin" />
                   <span>Mengirim via Bot...</span>
+                </>
+              ) : isPosterBusy ? (
+                <>
+                  <Loader2 className="w-4 h-4 animate-spin text-amber-500" />
+                  <span>Merender Ulang Poster...</span>
+                </>
+              ) : !isPosterReady ? (
+                <>
+                  <Loader2 className="w-4 h-4 animate-spin text-amber-500" />
+                  <span>Menunggu Poster Visual...</span>
                 </>
               ) : (
                 <>
@@ -281,6 +301,16 @@ _Diproduksi oleh Tim Redaksi Polaris Media Studio via Bot Resmi_`;
             </button>
           </div>
         </div>
+
+        {/* Status Kunci Tombol jika Poster Belum Siap */}
+        {(!isPosterReady || isPosterBusy) && (
+          <div className="flex items-center gap-2.5 p-3 rounded-xl bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800/60 text-xs text-amber-900 dark:text-amber-200 font-medium">
+            <Loader2 className="w-4 h-4 animate-spin text-amber-600 shrink-0" />
+            <span>
+              <strong>Poster visual sedang diproses di latar belakang.</strong> Naskah dan caption sudah siap Anda tinjau/edit di tab bawah. Tombol kirim ke WhatsApp Dewan akan aktif otomatis begitu poster selesai dirender.
+            </span>
+          </div>
+        )}
 
         {/* Live Delivery Status Indicator */}
         {lastDispatchedAt && (

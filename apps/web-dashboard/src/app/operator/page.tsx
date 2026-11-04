@@ -104,6 +104,51 @@ export default function OperatorCockpitPage() {
     loadAssignments();
   }, []);
 
+  // Auto-polling background: jika naskah artikel selesai (progressive delivery) tetapi poster masih dalam proses render
+  useEffect(() => {
+    const pubId = generatedResult?.publication?.id;
+    const hasPoster = Boolean(generatedResult?.posterUrl && generatedResult.posterUrl.trim().length > 0);
+
+    if (!pubId || hasPoster || generatingContent) {
+      return;
+    }
+
+    let isSubscribed = true;
+    let pollCount = 0;
+    const maxPolls = 35; // 35 * 2.5s = ~85 detik pemantauan latar belakang
+
+    const intervalId = setInterval(async () => {
+      pollCount++;
+      if (pollCount > maxPolls || !isSubscribed) {
+        clearInterval(intervalId);
+        return;
+      }
+
+      try {
+        const detail = await AdminApiClient.request<any>(`/studio/articles/${pubId}`);
+        const posterUrl = detail?.asset?.cdnPublicUrl || detail?.asset?.r2StorageUrl;
+        if (posterUrl && isSubscribed) {
+          setGeneratedResult((prev) => {
+            if (!prev || prev.publication.id !== pubId) return prev;
+            return {
+              ...prev,
+              posterUrl,
+              socialPack: detail?.socialPack || prev.socialPack,
+            };
+          });
+          clearInterval(intervalId);
+        }
+      } catch {
+        // Retry polling diam-diam
+      }
+    }, 2500);
+
+    return () => {
+      isSubscribed = false;
+      clearInterval(intervalId);
+    };
+  }, [generatedResult?.publication?.id, generatedResult?.posterUrl, generatingContent]);
+
   const loadAssignments = async () => {
     try {
       setLoadingAssignments(true);
@@ -325,7 +370,7 @@ export default function OperatorCockpitPage() {
       let finalSocialPack: any = null;
 
       if (jobId && publicationId) {
-        for (let i = 0; i < 40; i++) {
+        for (let i = 0; i < 60; i++) {
           await new Promise((resolve) => setTimeout(resolve, 1500));
           try {
             const statusRes = await AdminApiClient.request<any>(`/studio/jobs/${jobId}`);
