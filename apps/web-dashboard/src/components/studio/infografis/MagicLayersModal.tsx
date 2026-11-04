@@ -1695,31 +1695,27 @@ export function extractInpaintBoundsFromManifest(
         h: h / mh,
         cardBg: layer.fill || '#FFFFFF',
       });
-    } else if (layer.kind === 'text' && layer.box?.fill) {
-      const p = layer.box.padding || { t: 0, r: 0, b: 0, l: 0 };
-      const left = Math.max(0, layer.x - p.l - 2);
-      const top = Math.max(0, layer.y - p.t - 2);
-      const w = Math.min(mw - left, layer.w + p.l + p.r + 4);
-      const h = Math.min(mh - top, layer.h + p.t + p.b + 4);
+    } else if (layer.kind === 'text') {
+      // INPAINT SEMUA TEKS: baik yang memiliki background box maupun teks mandiri (judul, kicker, kpi, desc, footer)
+      // agar ketika teks digeser ke tempat lain, latar belakang di bawahnya bersih tanpa teks ganda/bekas lama!
+      const p = layer.box?.padding || { t: 0, r: 0, b: 0, l: 0 };
+      const pad = 2;
+      const left = Math.max(0, layer.x - p.l - pad);
+      const top = Math.max(0, layer.y - p.t - pad);
+      const w = Math.min(mw - left, layer.w + p.l + p.r + pad * 2);
+      const h = Math.min(mh - top, layer.h + p.t + p.b + pad * 2);
 
       defs.push({
-        id: `inpaint_box_${layer.id}`,
+        id: `inpaint_text_${layer.id}`,
         name: layer.role,
         text: layer.text,
         x: left / mw,
         y: top / mh,
         w: w / mw,
         h: h / mh,
-        cardBg: layer.box.fill,
+        cardBg: layer.box?.fill || '#FFFFFF',
       });
     }
-  }
-
-  // Jika defs dari manifest kurang dari 3, lengkapi dengan archetype defs
-  const archToUse = (fallbackArchetype || 'INFOGRAPHIC_VISIONARY_TIMELINE') as PosterArchetype;
-  const fallbackDefs = getArchetypeComponentDefs(archToUse, naturalW, naturalH);
-  if (defs.length < 3) {
-    return fallbackDefs;
   }
 
   return defs;
@@ -2380,13 +2376,22 @@ export function MagicLayersModal({
       // ════════════════════════════════════════════════════════════════════════
       setPipelineStep(1);
       setPipelineStatusText('1/4 Menganalisis elemen visual & OCR teks asli dari poster...');
-      const layerData = await fetchPosterLayerData(imageUrl, publicationId, naturalW, naturalH, isForce);
-      const effectiveRawCanvasUrl =
+      let layerData = await fetchPosterLayerData(imageUrl, publicationId, naturalW, naturalH, isForce);
+      let effectiveRawCanvasUrl =
         rawCanvasUrl && rawCanvasUrl !== imageUrl
           ? rawCanvasUrl
           : layerData.rawCanvasUrl && layerData.rawCanvasUrl !== imageUrl
             ? layerData.rawCanvasUrl
             : undefined;
+
+      // Jika manifest belum ada di DB atau defective, paksa ekstrak dinamis via Vision AI
+      if (!layerData.manifest) {
+        setPipelineStatusText('1/4 Ekstraksi Vision AI dinamis: mendeteksi posisi & teks komponen asli...');
+        layerData = await fetchPosterLayerData(imageUrl, publicationId, naturalW, naturalH, true);
+        if (layerData.rawCanvasUrl && !effectiveRawCanvasUrl) {
+          effectiveRawCanvasUrl = layerData.rawCanvasUrl;
+        }
+      }
 
       if (layerData.manifest) {
         const manifest = layerData.manifest;
@@ -3906,22 +3911,7 @@ export function MagicLayersModal({
               </div>
             )}
 
-            {/* ─── BINGKAI SELEKSI UNGU KHAS CANVA (PERSIS GAMBAR 1) ─── */}
-            {isDecomposed && !isScanning && (
-              <div className="absolute inset-0 pointer-events-none border-2 border-dashed border-[#7D2AE8] z-20">
-                {/* 4 Handle Lingkaran di Sudut */}
-                <div className="absolute -top-2.5 -left-2.5 w-5 h-5 rounded-full bg-white border-2 border-[#7D2AE8] shadow-md pointer-events-auto cursor-nwse-resize" />
-                <div className="absolute -top-2.5 -right-2.5 w-5 h-5 rounded-full bg-white border-2 border-[#7D2AE8] shadow-md pointer-events-auto cursor-nesw-resize" />
-                <div className="absolute -bottom-2.5 -left-2.5 w-5 h-5 rounded-full bg-white border-2 border-[#7D2AE8] shadow-md pointer-events-auto cursor-nesw-resize" />
-                <div className="absolute -bottom-2.5 -right-2.5 w-5 h-5 rounded-full bg-white border-2 border-[#7D2AE8] shadow-md pointer-events-auto cursor-nwse-resize" />
-
-                {/* 4 Handle Pill di Sisi Tengah */}
-                <div className="absolute top-1/2 -left-2 -translate-y-1/2 w-3.5 h-6 rounded-full bg-white border-2 border-[#7D2AE8] shadow-md pointer-events-auto cursor-ew-resize" />
-                <div className="absolute top-1/2 -right-2 -translate-y-1/2 w-3.5 h-6 rounded-full bg-white border-2 border-[#7D2AE8] shadow-md pointer-events-auto cursor-ew-resize" />
-                <div className="absolute -top-2 left-1/2 -translate-x-1/2 w-6 h-3.5 rounded-full bg-white border-2 border-[#7D2AE8] shadow-md pointer-events-auto cursor-ns-resize" />
-                <div className="absolute -bottom-2 left-1/2 -translate-x-1/2 w-6 h-3.5 rounded-full bg-white border-2 border-[#7D2AE8] shadow-md pointer-events-auto cursor-ns-resize" />
-              </div>
-            )}
+            {/* Bingkai seleksi ditangani secara dinamis 1:1 oleh Fabric.js saat user memilih komponen */}
           </div>
         </main>
 

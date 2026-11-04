@@ -3,6 +3,21 @@ import * as fs from 'fs';
 import { openaiClient } from '@polaris/ai-engine';
 import type { PosterLayerManifest, PosterLayer } from '@polaris/storage';
 
+export interface ExtractedPosterElement {
+  id: string;
+  kind: 'frame' | 'text';
+  role: string;
+  name?: string;
+  text?: string;
+  box_2d: [number, number, number, number]; // [ymin, xmin, ymax, xmax] 0-1000
+  fill?: string;
+  textColor?: string;
+  fontSize?: number;
+  fontWeight?: string;
+  textAlign?: 'left' | 'center' | 'right';
+  bgFill?: string;
+}
+
 export interface ExtractedPosterContent {
   detectedArchetype:
     | 'INFOGRAPHIC_VISIONARY_TIMELINE'
@@ -12,6 +27,7 @@ export interface ExtractedPosterContent {
     | 'INFOGRAPHIC_RADIAL_CLOCK'
     | 'GENERIC_INFOGRAPHIC'
     | string;
+  elements?: ExtractedPosterElement[];
   topBar?: { left: string; right: string };
   kicker?: string;
   headline: string;
@@ -76,104 +92,112 @@ export class PosterVisionExtractorService {
     }
 
     const prompt = `Anda adalah Document Layout OCR & Visual Extractor AI tingkat mahir untuk poster/infografis editorial Polaris.
-Tugas Anda adalah membaca gambar poster ini dan mengekstrak SEMUA teks dan angka statistik yang BENAR-BENAR ADA di gambar poster secara 100% VERBATIM (PERSIS KATA PER KATA, HURUF BESAR/KECIL, DAN TANDA BACA ASLI).
-JANGAN PERNAH MENGARANG ATAU MENAMBAHKAN TEKS DUMMY!
+Tugas Anda adalah membaca gambar poster ini dan mendeteksi SEMUA elemen visual (kotak kartu/container frame dan teks) yang ADA SECARA NYATA pada gambar poster, beserta koordinat bounding box aslinya [ymin, xmin, ymax, xmax] (skala 0 sampai 1000).
 
-ATURAN STRUKTUR POSTER YANG SANGAT KRUSIAL:
-
-1. TOP BAR (Paling atas):
-   - Kiri: teks seperti "POLARIS // DAPIL JABAR"
-   - Kanan: teks seperti "DOKUMEN ADVOKASI PUBLIK"
-
-2. HEADER UTAMA:
-   - kicker: Kategori teks kecil di atas judul (misal: "DATA KEMISKINAN JABAR // ANALISIS SOSIAL"). Wajib pertahankan tanda "//".
-   - headline: Judul utama besar (misal: "KEMISKINAN DI KOTA BANDUNG MENURUN").
-   - deck: Paragraf pengantar / subjudul narasi di bawah judul (cetak miring/serif).
-
-3. BARIS KOTAK STATISTIK (SANGAT PENTING - WAJIB EKSTRAK SEMUANYA!):
-   - Terletak tepat di bawah narasi/judul, di atas foto / kolase gambar.
-   - Terdiri dari deretan horizontal 3 sampai 4 kotak statistik.
-   - Anda WAJIB mengekstrak SEMUA kotak statistik tersebut ke dalam array "stats"!
-   - Setiap kotak memiliki angka/persentase/rupiah ("value") dan label teks di bawahnya ("label").
-   - Contoh nyata yang WAJIB lengkap:
-     [
-       { "value": "7,8%", "label": "PERSENTASE PENDUDUK MISKIN" },
-       { "value": "RP 500 MILIAR", "label": "ANGGARAN PENANGANAN KEMISKINAN" },
-       { "value": "3 KECAMATAN", "label": "ZONA PRIORITAS PENANGANAN" },
-       { "value": "95%", "label": "TARGET PEMBERDAYAAN MASYARAKAT" }
-     ]
-   - PERINGATAN KERAS: JANGAN PERNAH memasukkan kotak angka statistik ke dalam field "banner"!
-
-4. PITA BANNER TENGAH (PETA JALAN / PILAR):
-   - Pita strip kecil berwarna merah/maroon yang berada DI TENGAH poster, persis di antara foto dan deretan kartu kolom bawah.
-   - Contoh teks banner yang benar: "PETA JALAN TARGET & REALISASI CAPAIAN" atau "PILAR AKSI & ADVOKASI BERKELANJUTAN".
-   - PERINGATAN KERAS: Pita banner HANYA berisi judul seksi tersebut, BUKAN angka statistik!
-
-5. DERETAN KARTU KONTEN:
-   - Anda WAJIB mengekstrak SEMUA kartu yang ada di poster (biasanya 4 atau 5 kartu, bisa berjejer horizontal di bawah atau bergelombang zigzag silang kanan-kiri).
-   - badge: teks penanda tahap/fase/dimensi (misal "DIMENSI 01", "FASE 01", "◆ 01", "TONGGAK 01", dst.).
-   - title: judul kartu tebal (misal "5 TAHUN TERAKHIR", "ANGGARAN RP 300 MILIAR", "12 KAWASAN RAWAN", "80% TARGET PEMULIHAN", "5,2% PENURUNAN ANGKA KEMISKINAN", dst.).
-   - desc: paragraf kalimat isi kartu secara lengkap tanpa terpotong.
-   - tag: tag kecil di dalam kartu jika ada (misal "✦ TAHAP 01", "✦ INDIKATOR 01", dst.).
-
-6. CLOSING & FOOTER:
-   - closing: satu kalimat penutup bergaris tebal di bawah kartu (misal: "Diperlukan transparansi dalam penggunaan anggaran untuk penanganan karhutla demi keberlanjutan lingkungan di Kota Bandung.").
-   - footer.signature: nama dewan/jabatan (misal "DR. JONANDA P. A. B // DPRD PROVINSI • DAPIL JABAR").
-   - footer.year: tahun (misal "2026").
-
-7. DETECTED ARCHETYPE (PILIH SALAH SATU YANG PALING TEPAT SECARA VISUAL):
-   - "INFOGRAPHIC_NARRATIVE_WAVE": Jika poster memiliki alur 4 KARTU BERGELOMBANG / ZIGZAG BERSILANG (staggered S-curve) di atas jalur pita merah/gelombang (kartu 1 di kanan atas "DIMENSI 01", kartu 2 di kiri tengah "DIMENSI 02", kartu 3 di kanan tengah "DIMENSI 03", kartu 4 di kiri bawah "DIMENSI 04").
-   - "INFOGRAPHIC_VISIONARY_TIMELINE": Jika poster memiliki garis timeline horizontal dengan titik-titik bulat (dots) di atas kartu FASE 01..05 di bagian bawah, dan pita banner PETA JALAN TARGET & REALISASI CAPAIAN.
-   - "INFOGRAPHIC_ADVOCACY_PILLARS": Jika poster memiliki deretan 5 pilar kartu tegak berdampingan di bagian bawah dengan badge pill merah tebal ◆ 01..05 dan tag ✦ INDIKATOR 01..05.
-   - "INFOGRAPHIC_CHRONICLE_GRID": Jika poster terbagi 2 sayap vertikal kiri-kanan (kiri masthead biografi/investigasi & foto besar, kanan modul-modul kartu kotak data).
-   - "INFOGRAPHIC_RADIAL_CLOCK": Jika poster memiliki struktur melingkar/jam dengan tonggak-tonggak (milestones) mengitari foto.
-   - "GENERIC_INFOGRAPHIC": Format infografis umum lainnya.
+PERINGATAN KERAS & ATURAN MUTLAK:
+1. 100% DINAMIS & VERBATIM: Deteksi HANYA apa yang ada di gambar poster! JANGAN MEMBUAT ELEMEN FIKTIF!
+   - Jika poster tidak memiliki garis timeline horisontal di bawah, JANGAN PERNAH MEMBUAT TIMELINE!
+   - JANGAN PERNAH menambahkan teks dummy seperti "PETA JALAN TARGET & REALISASI CAPAIAN" atau "+ TAHAP 01" jika tidak tertulis di gambar!
+   - Jika poster memiliki kartu vertikal di sebelah kanan (misal TONGGAK 01, TONGGAK 02, dsb.), deteksi posisi koordinat aslinya di sebelah kanan!
+   - Jika poster memiliki kartu bergelombang / zigzag bersilang (DIMENSI 01..04), deteksi posisi koordinat aslinya!
+2. DETEKSI SETIAP ELEMEN VISUAL KE DALAM ARRAY "elements":
+   Untuk setiap elemen (kotak kartu atau teks), berikan objek:
+   - id: string unik ("el_1", "el_2", ...)
+   - kind: "frame" (untuk kotak container / kartu) atau "text" (untuk teks)
+   - role: peran elemen (misal: "topbar", "kicker", "headline", "deck", "kpi-card", "kpi-val", "kpi-lbl", "card-box", "card-badge", "card-title", "card-desc", "synthesis-box", "synthesis-text", "footer-box", "signature", "year")
+   - text: teks persis kata per kata (hanya jika kind === "text")
+   - box_2d: [ymin, xmin, ymax, xmax] koordinat bounding box dalam skala normalisasi 0 sampai 1000
+   - fill: warna latar jika ada container frame (misal "#FFFFFF")
+   - textColor: warna teks hex (misal "#0F172A", "#EA580C", "#D7261E", "#334155")
+   - fontSize: estimasi ukuran font pt
+   - fontWeight: "bold" atau "normal"
+   - bgFill: warna latar badge teks jika teks memiliki latar tombol/pill sendiri (misal "#EA580C")
+3. JUGA EKSTRAK STRUKTUR RINGKASAN:
+   - detectedArchetype: "INFOGRAPHIC_NARRATIVE_WAVE" | "INFOGRAPHIC_VISIONARY_TIMELINE" | "INFOGRAPHIC_ADVOCACY_PILLARS" | "INFOGRAPHIC_CHRONICLE_GRID" | "INFOGRAPHIC_RADIAL_CLOCK" | "GENERIC_INFOGRAPHIC"
+   - topBar: { left, right }
+   - kicker, headline, deck
+   - stats: [ { value, label } ]
+   - banner: judul banner tengah JIKA ADA di poster (kosongkan jika tidak ada)
+   - cards: [ { badge, title, desc, tag } ]
+   - closing, footer: { signature, year }
 
 Format JSON yang wajib dihasilkan (hanya JSON murni):
 {
-  "detectedArchetype": "INFOGRAPHIC_VISIONARY_TIMELINE",
+  "detectedArchetype": "...",
+  "elements": [
+    {
+      "id": "e_1",
+      "kind": "frame",
+      "role": "card-box",
+      "box_2d": [ymin, xmin, ymax, xmax],
+      "fill": "#FFFFFF"
+    },
+    {
+      "id": "e_2",
+      "kind": "text",
+      "role": "headline",
+      "text": "...",
+      "box_2d": [ymin, xmin, ymax, xmax],
+      "textColor": "#0F172A",
+      "fontSize": 48,
+      "fontWeight": "bold"
+    }
+  ],
   "topBar": { "left": "...", "right": "..." },
   "kicker": "...",
   "headline": "...",
   "deck": "...",
-  "stats": [
-    { "value": "...", "label": "..." }
-  ],
-  "banner": "...",
-  "cards": [
-    { "badge": "...", "title": "...", "desc": "...", "tag": "..." }
-  ],
-  "closing": "...",
+  "stats": [ { "value": "...", "label": "..." } ],
+  "cards": [ { "badge": "...", "title": "...", "desc": "...", "tag": "..." } ],
   "footer": { "signature": "...", "year": "..." }
 }`;
 
-    const completion = await openaiClient.chat.completions.create({
-      model: 'gpt-4o-mini',
-      response_format: { type: 'json_object' },
-      messages: [
-        {
-          role: 'user',
-          content: [
-            { type: 'text', text: prompt },
-            { type: 'image_url', image_url: { url: targetDataUrl } },
-          ],
-        },
-      ],
-      temperature: 0.1,
-    });
+    let rawJson = '{}';
+    try {
+      const completion = await openaiClient.chat.completions.create({
+        model: 'gpt-4o',
+        response_format: { type: 'json_object' },
+        messages: [
+          {
+            role: 'user',
+            content: [
+              { type: 'text', text: prompt },
+              { type: 'image_url', image_url: { url: targetDataUrl } },
+            ],
+          },
+        ],
+        temperature: 0.1,
+      });
+      rawJson = completion.choices[0]?.message?.content || '{}';
+    } catch (gpt4Err) {
+      this.logger.warn(`[VisionExtractor] GPT-4o gagal, fallback ke GPT-4o-mini: ${gpt4Err}`);
+      const completion = await openaiClient.chat.completions.create({
+        model: 'gpt-4o-mini',
+        response_format: { type: 'json_object' },
+        messages: [
+          {
+            role: 'user',
+            content: [
+              { type: 'text', text: prompt },
+              { type: 'image_url', image_url: { url: targetDataUrl } },
+            ],
+          },
+        ],
+        temperature: 0.1,
+      });
+      rawJson = completion.choices[0]?.message?.content || '{}';
+    }
 
-    const rawJson = completion.choices[0]?.message?.content || '{}';
     const parsed: ExtractedPosterContent = JSON.parse(rawJson);
     this.logger.log(
-      `[VisionExtractor] Sukses mengekstrak poster: "${parsed.headline}", archetype=${parsed.detectedArchetype}, stats=${parsed.stats?.length || 0}, cards=${parsed.cards?.length || 0}`
+      `[VisionExtractor] Sukses mengekstrak poster: "${parsed.headline}", archetype=${parsed.detectedArchetype}, elements=${parsed.elements?.length || 0}, stats=${parsed.stats?.length || 0}, cards=${parsed.cards?.length || 0}`
     );
     return parsed;
   }
 
   /**
    * Mengubah konten hasil ekstraksi Vision AI menjadi PosterLayerManifest dengan koordinat piksel nyata.
-   * Mendukung penuh INFOGRAPHIC_NARRATIVE_WAVE, INFOGRAPHIC_ADVOCACY_PILLARS,
-   * INFOGRAPHIC_VISIONARY_TIMELINE, INFOGRAPHIC_CHRONICLE_GRID, dan INFOGRAPHIC_RADIAL_CLOCK.
+   * Prioritas 1: Menggunakan koordinat 2D nyata (box_2d) langsung dari Vision AI untuk akurasi dinamis 100%.
    */
   convertContentToManifest(
     content: ExtractedPosterContent,
@@ -181,6 +205,16 @@ Format JSON yang wajib dihasilkan (hanya JSON murni):
     height = 1350,
     fallbackArchetype?: string
   ): PosterLayerManifest {
+    // 1. PRIORITAS UTAMA: Jika Vision AI menghasilkan array elemen dinamis dengan koordinat 2D nyata (box_2d),
+    // bangun layer manifest secara 100% DINAMIS langsung dari posisi visual sebenarnya!
+    // Ini memastikan komponen mengikuti gambar secara akurat tanpa template statis.
+    if (content.elements && content.elements.length >= 3) {
+      this.logger.log(
+        `[VisionExtractor] Membangun manifest 100% DINAMIS dari ${content.elements.length} elemen visual nyata gambar.`
+      );
+      return this.buildDynamicManifestFromElements(content.elements, width, height, content);
+    }
+
     const cards = content.cards || [];
     let archetype = content.detectedArchetype || fallbackArchetype || 'INFOGRAPHIC_VISIONARY_TIMELINE';
 
@@ -237,6 +271,124 @@ Format JSON yang wajib dihasilkan (hanya JSON murni):
 
     // Default: INFOGRAPHIC_VISIONARY_TIMELINE
     return this.buildVisionaryTimelineManifest(content, width, height);
+  }
+
+  /**
+   * Archetype: DINAMIS 100% (Dynamic 2D Bounding Box Extraction)
+   * Mengubah elemen-elemen visual asli poster hasil deteksi Vision AI menjadi PosterLayerManifest
+   * dengan koordinat piksel nyata 1:1 mengikuti gambar aslinya.
+   * Tidak ada template statis, tidak ada koordinat hardcode, tidak ada teks fiktif.
+   */
+  private buildDynamicManifestFromElements(
+    elements: ExtractedPosterElement[],
+    width: number,
+    height: number,
+    content: ExtractedPosterContent
+  ): PosterLayerManifest {
+    const layers: PosterLayer[] = [];
+    let seq = 0;
+
+    const frameElements = elements.filter((e) => e.kind === 'frame');
+    const textElements = elements.filter((e) => e.kind === 'text');
+
+    const toPixels = (box_2d: [number, number, number, number]) => {
+      const ymin = Math.max(0, Math.min(1000, box_2d[0]));
+      const xmin = Math.max(0, Math.min(1000, box_2d[1]));
+      const ymax = Math.max(0, Math.min(1000, box_2d[2]));
+      const xmax = Math.max(0, Math.min(1000, box_2d[3]));
+
+      const x = Math.round((xmin / 1000) * width);
+      const y = Math.round((ymin / 1000) * height);
+      const w = Math.max(16, Math.round(((xmax - xmin) / 1000) * width));
+      const h = Math.max(14, Math.round(((ymax - ymin) / 1000) * height));
+      return { x, y, w, h };
+    };
+
+    // 1. Render Frame Layers (Latar Kartu, Kotak Metrik, Header Container)
+    for (const el of frameElements) {
+      if (!el.box_2d || el.box_2d.length < 4) continue;
+      const { x, y, w, h } = toPixels(el.box_2d);
+      if (w < 10 || h < 10) continue;
+
+      layers.push({
+        kind: 'frame',
+        id: el.id || `f_${seq++}`,
+        role: el.role || 'card-box',
+        x,
+        y,
+        w,
+        h,
+        fill: el.fill || '#FFFFFF',
+        radius: 4,
+        borders: {
+          top: { w: 1, color: '#E2E8F0' },
+          right: { w: 1, color: '#E2E8F0' },
+          bottom: { w: 1, color: '#E2E8F0' },
+          left: { w: 1, color: '#E2E8F0' },
+        },
+        shadow: { color: 'rgba(0,0,0,0.06)', offsetX: 0, offsetY: 2, blur: 8 },
+      });
+    }
+
+    // 2. Render Text Layers (Judul, Subjudul, Kartu, KPI, Footer)
+    for (const el of textElements) {
+      if (!el.box_2d || el.box_2d.length < 4 || !el.text?.trim()) continue;
+      const { x, y, w, h } = toPixels(el.box_2d);
+      if (w < 10 || h < 8) continue;
+
+      const isHeadline = el.role.includes('headline') || el.role.includes('title');
+      const isKpiVal = el.role.includes('kpi-val') || el.role.includes('stat-val');
+      const isDeck = el.role.includes('deck');
+      const isBadge = el.role.includes('badge') || Boolean(el.bgFill);
+
+      let fontFamily = "'Plus Jakarta Sans', sans-serif";
+      if (isHeadline) {
+        fontFamily = "'Bebas Neue', sans-serif";
+      } else if (isDeck) {
+        fontFamily = "'Playfair Display', serif";
+      }
+
+      const calculatedFontSize =
+        el.fontSize && el.fontSize > 6
+          ? el.fontSize
+          : isHeadline
+            ? 44
+            : isKpiVal
+              ? 28
+              : isDeck
+                ? 14
+                : 12.5;
+
+      layers.push({
+        kind: 'text',
+        id: el.id || `t_${seq++}`,
+        role: el.role || 'text',
+        text: el.text,
+        x,
+        y,
+        w,
+        h,
+        fontFamily,
+        fontSize: calculatedFontSize,
+        fontWeight: el.fontWeight || (isHeadline || isKpiVal || isBadge ? 'bold' : 'normal'),
+        fontStyle: isDeck ? 'italic' : 'normal',
+        color: el.textColor || '#0F172A',
+        textAlign: el.textAlign || (isKpiVal ? 'center' : 'left'),
+        lineHeightPx: Math.round(calculatedFontSize * 1.2),
+        letterSpacingPx: isHeadline ? 1.5 : 0.5,
+        box: el.bgFill
+          ? {
+              fill: el.bgFill,
+              radius: 3,
+              borders: { top: null, right: null, bottom: null, left: null },
+              shadow: null,
+              padding: { t: 4, r: 10, b: 4, l: 10 },
+            }
+          : null,
+      });
+    }
+
+    return { version: 1, width, height, layers };
   }
 
   /**
@@ -789,34 +941,36 @@ Format JSON yang wajib dihasilkan (hanya JSON murni):
     this.addMastheadHeaderLayers(layers, content, accentColor, headerW, 'vtimeline', () => seq++);
     this.addStatRowLayers(layers, content, accentColor, headerW, 'vtimeline-stat', () => seq++);
 
-    // Banner Bar Tag (Tengah)
-    const bannerText = content.banner || 'PETA JALAN TARGET & REALISASI CAPAIAN';
-    const bannerW = Math.min(520, Math.max(300, bannerText.length * 10 + 36));
-    layers.push({
-      kind: 'text',
-      id: `t_${seq++}`,
-      role: 'vtimeline-bar-tag',
-      text: bannerText,
-      x: 54,
-      y: 626,
-      w: bannerW,
-      h: 26,
-      fontFamily: "'Plus Jakarta Sans', sans-serif",
-      fontSize: 12,
-      fontWeight: '800',
-      fontStyle: 'normal',
-      color: '#FFFFFF',
-      textAlign: 'center',
-      lineHeightPx: 16,
-      letterSpacingPx: 1.5,
-      box: {
-        fill: accentColor,
-        radius: 4,
-        borders: { top: null, right: null, bottom: null, left: null },
-        shadow: { color: 'rgba(0,0,0,0.1)', offsetX: 0, offsetY: 2, blur: 8 },
-        padding: { t: 5, r: 16, b: 5, l: 16 },
-      },
-    });
+    // Banner Bar Tag (Tengah) - Hanya jika benar-benar ada di konten gambar poster
+    if (content.banner && content.banner.trim().length > 0) {
+      const bannerText = content.banner.trim();
+      const bannerW = Math.min(520, Math.max(300, bannerText.length * 10 + 36));
+      layers.push({
+        kind: 'text',
+        id: `t_${seq++}`,
+        role: 'vtimeline-bar-tag',
+        text: bannerText,
+        x: 54,
+        y: 626,
+        w: bannerW,
+        h: 26,
+        fontFamily: "'Plus Jakarta Sans', sans-serif",
+        fontSize: 12,
+        fontWeight: '800',
+        fontStyle: 'normal',
+        color: '#FFFFFF',
+        textAlign: 'center',
+        lineHeightPx: 16,
+        letterSpacingPx: 1.5,
+        box: {
+          fill: accentColor,
+          radius: 4,
+          borders: { top: null, right: null, bottom: null, left: null },
+          shadow: { color: 'rgba(0,0,0,0.1)', offsetX: 0, offsetY: 2, blur: 8 },
+          padding: { t: 5, r: 16, b: 5, l: 16 },
+        },
+      });
+    }
 
     // Steps Grid Container
     const cards = content.cards || [];

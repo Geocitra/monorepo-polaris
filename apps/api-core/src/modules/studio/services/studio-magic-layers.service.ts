@@ -585,9 +585,15 @@ export class StudioMagicLayersService {
             const m = parsed.layoutManifest;
             const isChromiumNative = parsed.renderer === 'chromium' || parsed.engine === 'ART_COLLAGE_INFOGRAPHIC_CHROMIUM';
 
-            // Deteksi korupsi manifest: jika archetype asli poster adalah INFOGRAPHIC_NARRATIVE_WAVE
-            // tetapi manifest berisi vtimeline-steps-grid atau vstep-, berarti manifest pernah tertimpa
-            // oleh bug extractor timeline lama!
+            // Deteksi korupsi manifest: jika manifest berisi vtimeline-steps-grid atau "PETA JALAN TARGET"
+            // padahal poster bukan topik peta jalan, atau jika archetype bukan visionary timeline tetapi tertimpa timeline!
+            const hasPoisonedTimeline =
+              m?.layers?.some((l: any) =>
+                l.role?.includes('vtimeline-steps-grid') ||
+                (l.text && l.text.includes('PETA JALAN TARGET')) ||
+                (l.role?.includes('vstep-metric-tag') && l.text?.includes('TAHAP'))
+              ) && !(parsed.archetype === 'INFOGRAPHIC_VISIONARY_TIMELINE' && (existingAsset?.promptUsed || '').toLowerCase().includes('peta jalan target'));
+
             const isCorruptedWave =
               parsed.archetype === 'INFOGRAPHIC_NARRATIVE_WAVE' &&
               m?.layers?.some((l: any) => l.role?.includes('vtimeline-steps-grid') || l.role?.includes('vstep-'));
@@ -598,7 +604,7 @@ export class StudioMagicLayersService {
             const hasBannerError = m?.layers?.some((l: any) =>
               l.text && /RP\s*\d+/i.test(l.text) && (l.role?.includes('bar-tag') || l.role?.includes('section-tag') || l.role?.includes('banner'))
             );
-            const isDefective = !m?.layers || m.layers.length < 4 || isCorruptedWave || (
+            const isDefective = !m?.layers || m.layers.length < 4 || isCorruptedWave || hasPoisonedTimeline || (
               !isChromiumNative && ((statLayers && statLayers.length < 2) || hasBannerError)
             );
 
@@ -611,7 +617,7 @@ export class StudioMagicLayersService {
                 detectedArchetype: parsed.archetype,
               };
             } else if (isDefective || params.forceReExtract) {
-              this.logger.warn(`[MagicLayers] Manifest lama/cacat terdeteksi (force=${params.forceReExtract}, corruptedWave=${isCorruptedWave}, statCount=${statLayers?.length}, bannerErr=${hasBannerError}). Menjalankan Vision AI ulang...`);
+              this.logger.warn(`[MagicLayers] Manifest lama/cacat terdeteksi (force=${params.forceReExtract}, corruptedWave=${isCorruptedWave}, poisonedTimeline=${hasPoisonedTimeline}, statCount=${statLayers?.length}, bannerErr=${hasBannerError}). Menjalankan Vision AI ulang...`);
             }
           } catch {}
         }
