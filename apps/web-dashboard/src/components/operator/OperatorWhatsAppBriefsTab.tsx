@@ -925,6 +925,22 @@ export function OperatorWhatsAppBriefsTab({
                   </div>
                 )}
 
+                {selectedBrief.status === 'QUEUED_NEXT_WEEK' && (
+                  <div className="p-3.5 rounded-xl bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800 text-amber-900 dark:text-amber-200 text-xs flex items-center justify-between gap-3">
+                    <div className="flex items-center gap-2">
+                      <Calendar className="w-4 h-4 text-amber-600 shrink-0" />
+                      <div>
+                        <div className="font-black text-amber-950 dark:text-amber-100">
+                          Tiket Masuk Antrean Prioritas Minggu Depan
+                        </div>
+                        <div className="text-[11px] text-amber-800/90 dark:text-amber-300/90">
+                          Klien mengirim topik ini saat kuota minggu berjalan telah penuh ({weeklyQuota?.weeklyLimit}/{weeklyQuota?.weeklyLimit}). Tiket ini tidak memotong kuota minggu berjalan dan dijadwalkan mulai diproduksi hari Senin.
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
                 {/* BARIS KONTROL PENERIMAAN / PENOLAKAN TIKET & STATUS KOMPONEN REVISI */}
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pt-2 border-t border-slate-100 dark:border-slate-800/80">
                   <div className="flex items-center gap-2 flex-wrap text-[11px]">
@@ -943,7 +959,7 @@ export function OperatorWhatsAppBriefsTab({
                     </span>
                   </div>
 
-                  {selectedBrief.status === 'SUBMITTED' && (() => {
+                  {(selectedBrief.status === 'SUBMITTED' || selectedBrief.status === 'QUEUED_NEXT_WEEK') && (() => {
                     const selectedHorizon = getTargetHorizonBadge(
                       selectedBrief.clientUrgency,
                       selectedBrief.createdAt
@@ -970,6 +986,8 @@ export function OperatorWhatsAppBriefsTab({
                           <span>
                             {acceptingBrief
                               ? 'Menerima Tiket...'
+                              : selectedBrief.status === 'QUEUED_NEXT_WEEK'
+                              ? 'Terima & Kerjakan Lebih Awal'
                               : selectedBrief.clientUrgency === 'URGENT'
                               ? 'Terima & Kerjakan Prioritas Hari Ini'
                               : 'Terima & Mulai Pengerjaan'}
