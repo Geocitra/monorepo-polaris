@@ -173,7 +173,6 @@ export class BillingService {
       throw new ForbiddenException('Signature webhook tidak valid. Potensi manipulasi data.');
     }
 
-    const orderId = payload.order_id;
     const transactionStatus = payload.transaction_status;
     const fraudStatus = payload.fraud_status;
 
