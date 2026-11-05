@@ -196,6 +196,8 @@ export class WhatsAppBriefHelperService implements OnModuleInit {
         CREATE INDEX IF NOT EXISTS idx_content_briefs_weekly_quota ON content_briefs(tenant_id, weekly_quota_period);
 
         ALTER TABLE content_briefs ADD COLUMN IF NOT EXISTS target_window VARCHAR(30) NOT NULL DEFAULT 'TODAY_REGULAR';
+        ALTER TABLE content_briefs ADD COLUMN IF NOT EXISTS quota_cost_deducted INTEGER NOT NULL DEFAULT 1;
+        ALTER TABLE content_briefs ADD COLUMN IF NOT EXISTS is_urgent_overquota BOOLEAN NOT NULL DEFAULT false;
 
         CREATE TABLE IF NOT EXISTS content_brief_messages (
           id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
