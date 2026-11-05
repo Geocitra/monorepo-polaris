@@ -137,83 +137,84 @@ async function runSeed() {
 
     console.log('\n[5/6] Seeding Dynamic Subscription Pricing Matrices (54 Active Matrices)...');
     await sql.unsafe(`
-      INSERT INTO subscription_price_matrices (legislative_level, plan_tier, billing_cycle, duration_days, amount_idr, is_active)
+      INSERT INTO subscription_price_matrices (legislative_level, plan_tier, billing_cycle, duration_days, amount_idr, quota_requests, is_active)
       VALUES
         -- 1. DPR RI
-        ('DPR_RI', 'STARTER', 'MONTHLY', 30, 3500000.00, true),
-        ('DPR_RI', 'STARTER', 'SEMESTER', 180, 18000000.00, true),
-        ('DPR_RI', 'STARTER', 'ANNUAL', 365, 32000000.00, true),
-        ('DPR_RI', 'PRO', 'MONTHLY', 30, 6000000.00, true),
-        ('DPR_RI', 'PRO', 'SEMESTER', 180, 30000000.00, true),
-        ('DPR_RI', 'PRO', 'ANNUAL', 365, 55000000.00, true),
+        ('DPR_RI', 'STARTER', 'MONTHLY', 30, 3500000.00, 12, true),
+        ('DPR_RI', 'STARTER', 'SEMESTER', 180, 18000000.00, 72, true),
+        ('DPR_RI', 'STARTER', 'ANNUAL', 365, 32000000.00, 144, true),
+        ('DPR_RI', 'PRO', 'MONTHLY', 30, 6000000.00, 12, true),
+        ('DPR_RI', 'PRO', 'SEMESTER', 180, 30000000.00, 72, true),
+        ('DPR_RI', 'PRO', 'ANNUAL', 365, 55000000.00, 144, true),
 
         -- 2. DPD RI
-        ('DPD_RI', 'STARTER', 'MONTHLY', 30, 3000000.00, true),
-        ('DPD_RI', 'STARTER', 'SEMESTER', 180, 15000000.00, true),
-        ('DPD_RI', 'STARTER', 'ANNUAL', 365, 28000000.00, true),
-        ('DPD_RI', 'PRO', 'MONTHLY', 30, 5000000.00, true),
-        ('DPD_RI', 'PRO', 'SEMESTER', 180, 25000000.00, true),
-        ('DPD_RI', 'PRO', 'ANNUAL', 365, 45000000.00, true),
+        ('DPD_RI', 'STARTER', 'MONTHLY', 30, 3000000.00, 12, true),
+        ('DPD_RI', 'STARTER', 'SEMESTER', 180, 15000000.00, 72, true),
+        ('DPD_RI', 'STARTER', 'ANNUAL', 365, 28000000.00, 144, true),
+        ('DPD_RI', 'PRO', 'MONTHLY', 30, 5000000.00, 12, true),
+        ('DPD_RI', 'PRO', 'SEMESTER', 180, 25000000.00, 72, true),
+        ('DPD_RI', 'PRO', 'ANNUAL', 365, 45000000.00, 144, true),
 
         -- 3. MPR RI
-        ('MPR_RI', 'STARTER', 'MONTHLY', 30, 3500000.00, true),
-        ('MPR_RI', 'STARTER', 'SEMESTER', 180, 18000000.00, true),
-        ('MPR_RI', 'STARTER', 'ANNUAL', 365, 32000000.00, true),
-        ('MPR_RI', 'PRO', 'MONTHLY', 30, 6000000.00, true),
-        ('MPR_RI', 'PRO', 'SEMESTER', 180, 30000000.00, true),
-        ('MPR_RI', 'PRO', 'ANNUAL', 365, 55000000.00, true),
+        ('MPR_RI', 'STARTER', 'MONTHLY', 30, 3500000.00, 12, true),
+        ('MPR_RI', 'STARTER', 'SEMESTER', 180, 18000000.00, 72, true),
+        ('MPR_RI', 'STARTER', 'ANNUAL', 365, 32000000.00, 144, true),
+        ('MPR_RI', 'PRO', 'MONTHLY', 30, 6000000.00, 12, true),
+        ('MPR_RI', 'PRO', 'SEMESTER', 180, 30000000.00, 72, true),
+        ('MPR_RI', 'PRO', 'ANNUAL', 365, 55000000.00, 144, true),
 
         -- 4. KEPALA DAERAH GUBERNUR
-        ('KEPALA_DAERAH_GUBERNUR', 'STARTER', 'MONTHLY', 30, 4000000.00, true),
-        ('KEPALA_DAERAH_GUBERNUR', 'STARTER', 'SEMESTER', 180, 20000000.00, true),
-        ('KEPALA_DAERAH_GUBERNUR', 'STARTER', 'ANNUAL', 365, 36000000.00, true),
-        ('KEPALA_DAERAH_GUBERNUR', 'PRO', 'MONTHLY', 30, 7500000.00, true),
-        ('KEPALA_DAERAH_GUBERNUR', 'PRO', 'SEMESTER', 180, 38000000.00, true),
-        ('KEPALA_DAERAH_GUBERNUR', 'PRO', 'ANNUAL', 365, 70000000.00, true),
+        ('KEPALA_DAERAH_GUBERNUR', 'STARTER', 'MONTHLY', 30, 4000000.00, 12, true),
+        ('KEPALA_DAERAH_GUBERNUR', 'STARTER', 'SEMESTER', 180, 20000000.00, 72, true),
+        ('KEPALA_DAERAH_GUBERNUR', 'STARTER', 'ANNUAL', 365, 36000000.00, 144, true),
+        ('KEPALA_DAERAH_GUBERNUR', 'PRO', 'MONTHLY', 30, 7500000.00, 12, true),
+        ('KEPALA_DAERAH_GUBERNUR', 'PRO', 'SEMESTER', 180, 38000000.00, 72, true),
+        ('KEPALA_DAERAH_GUBERNUR', 'PRO', 'ANNUAL', 365, 70000000.00, 144, true),
 
         -- 5. DPRD PROVINSI
-        ('DPRD_PROVINSI', 'STARTER', 'MONTHLY', 30, 2000000.00, true),
-        ('DPRD_PROVINSI', 'STARTER', 'SEMESTER', 180, 10000000.00, true),
-        ('DPRD_PROVINSI', 'STARTER', 'ANNUAL', 365, 18000000.00, true),
-        ('DPRD_PROVINSI', 'PRO', 'MONTHLY', 30, 3500000.00, true),
-        ('DPRD_PROVINSI', 'PRO', 'SEMESTER', 180, 18000000.00, true),
-        ('DPRD_PROVINSI', 'PRO', 'ANNUAL', 365, 32000000.00, true),
+        ('DPRD_PROVINSI', 'STARTER', 'MONTHLY', 30, 2000000.00, 12, true),
+        ('DPRD_PROVINSI', 'STARTER', 'SEMESTER', 180, 10000000.00, 72, true),
+        ('DPRD_PROVINSI', 'STARTER', 'ANNUAL', 365, 18000000.00, 144, true),
+        ('DPRD_PROVINSI', 'PRO', 'MONTHLY', 30, 3500000.00, 12, true),
+        ('DPRD_PROVINSI', 'PRO', 'SEMESTER', 180, 18000000.00, 72, true),
+        ('DPRD_PROVINSI', 'PRO', 'ANNUAL', 365, 32000000.00, 144, true),
 
         -- 6. KEPALA DAERAH WALIKOTA / BUPATI
-        ('KEPALA_DAERAH_WALIKOTA_BUPATI', 'STARTER', 'MONTHLY', 30, 2500000.00, true),
-        ('KEPALA_DAERAH_WALIKOTA_BUPATI', 'STARTER', 'SEMESTER', 180, 12500000.00, true),
-        ('KEPALA_DAERAH_WALIKOTA_BUPATI', 'STARTER', 'ANNUAL', 365, 22000000.00, true),
-        ('KEPALA_DAERAH_WALIKOTA_BUPATI', 'PRO', 'MONTHLY', 30, 4500000.00, true),
-        ('KEPALA_DAERAH_WALIKOTA_BUPATI', 'PRO', 'SEMESTER', 180, 22500000.00, true),
-        ('KEPALA_DAERAH_WALIKOTA_BUPATI', 'PRO', 'ANNUAL', 365, 40000000.00, true),
+        ('KEPALA_DAERAH_WALIKOTA_BUPATI', 'STARTER', 'MONTHLY', 30, 2500000.00, 12, true),
+        ('KEPALA_DAERAH_WALIKOTA_BUPATI', 'STARTER', 'SEMESTER', 180, 12500000.00, 72, true),
+        ('KEPALA_DAERAH_WALIKOTA_BUPATI', 'STARTER', 'ANNUAL', 365, 22000000.00, 144, true),
+        ('KEPALA_DAERAH_WALIKOTA_BUPATI', 'PRO', 'MONTHLY', 30, 4500000.00, 12, true),
+        ('KEPALA_DAERAH_WALIKOTA_BUPATI', 'PRO', 'SEMESTER', 180, 22500000.00, 72, true),
+        ('KEPALA_DAERAH_WALIKOTA_BUPATI', 'PRO', 'ANNUAL', 365, 40000000.00, 144, true),
 
         -- 7. DPRD KABUPATEN / KOTA
-        ('DPRD_KABUPATEN_KOTA', 'STARTER', 'MONTHLY', 30, 1500000.00, true),
-        ('DPRD_KABUPATEN_KOTA', 'STARTER', 'SEMESTER', 180, 7500000.00, true),
-        ('DPRD_KABUPATEN_KOTA', 'STARTER', 'ANNUAL', 365, 14000000.00, true),
-        ('DPRD_KABUPATEN_KOTA', 'PRO', 'MONTHLY', 30, 2500000.00, true),
-        ('DPRD_KABUPATEN_KOTA', 'PRO', 'SEMESTER', 180, 12500000.00, true),
-        ('DPRD_KABUPATEN_KOTA', 'PRO', 'ANNUAL', 365, 23000000.00, true),
+        ('DPRD_KABUPATEN_KOTA', 'STARTER', 'MONTHLY', 30, 1500000.00, 12, true),
+        ('DPRD_KABUPATEN_KOTA', 'STARTER', 'SEMESTER', 180, 7500000.00, 72, true),
+        ('DPRD_KABUPATEN_KOTA', 'STARTER', 'ANNUAL', 365, 14000000.00, 144, true),
+        ('DPRD_KABUPATEN_KOTA', 'PRO', 'MONTHLY', 30, 2500000.00, 12, true),
+        ('DPRD_KABUPATEN_KOTA', 'PRO', 'SEMESTER', 180, 12500000.00, 72, true),
+        ('DPRD_KABUPATEN_KOTA', 'PRO', 'ANNUAL', 365, 23000000.00, 144, true),
 
         -- 8. PEJABAT BIROKRAT DIRJEN / SEKJEN / OPD
-        ('PEJABAT_BIROKRAT_DIRJEN_SEKJEN_OPD', 'STARTER', 'MONTHLY', 30, 2000000.00, true),
-        ('PEJABAT_BIROKRAT_DIRJEN_SEKJEN_OPD', 'STARTER', 'SEMESTER', 180, 10000000.00, true),
-        ('PEJABAT_BIROKRAT_DIRJEN_SEKJEN_OPD', 'STARTER', 'ANNUAL', 365, 18000000.00, true),
-        ('PEJABAT_BIROKRAT_DIRJEN_SEKJEN_OPD', 'PRO', 'MONTHLY', 30, 3500000.00, true),
-        ('PEJABAT_BIROKRAT_DIRJEN_SEKJEN_OPD', 'PRO', 'SEMESTER', 180, 18000000.00, true),
-        ('PEJABAT_BIROKRAT_DIRJEN_SEKJEN_OPD', 'PRO', 'ANNUAL', 365, 32000000.00, true),
+        ('PEJABAT_BIROKRAT_DIRJEN_SEKJEN_OPD', 'STARTER', 'MONTHLY', 30, 2000000.00, 12, true),
+        ('PEJABAT_BIROKRAT_DIRJEN_SEKJEN_OPD', 'STARTER', 'SEMESTER', 180, 10000000.00, 72, true),
+        ('PEJABAT_BIROKRAT_DIRJEN_SEKJEN_OPD', 'STARTER', 'ANNUAL', 365, 18000000.00, 144, true),
+        ('PEJABAT_BIROKRAT_DIRJEN_SEKJEN_OPD', 'PRO', 'MONTHLY', 30, 3500000.00, 12, true),
+        ('PEJABAT_BIROKRAT_DIRJEN_SEKJEN_OPD', 'PRO', 'SEMESTER', 180, 18000000.00, 72, true),
+        ('PEJABAT_BIROKRAT_DIRJEN_SEKJEN_OPD', 'PRO', 'ANNUAL', 365, 32000000.00, 144, true),
 
         -- 9. PIMPINAN LEMBAGA / REKTOR / SWASTA
-        ('PIMPINAN_LEMBAGA_REKTOR_SWASTA', 'STARTER', 'MONTHLY', 30, 2000000.00, true),
-        ('PIMPINAN_LEMBAGA_REKTOR_SWASTA', 'STARTER', 'SEMESTER', 180, 10000000.00, true),
-        ('PIMPINAN_LEMBAGA_REKTOR_SWASTA', 'STARTER', 'ANNUAL', 365, 18000000.00, true),
-        ('PIMPINAN_LEMBAGA_REKTOR_SWASTA', 'PRO', 'MONTHLY', 30, 3500000.00, true),
-        ('PIMPINAN_LEMBAGA_REKTOR_SWASTA', 'PRO', 'SEMESTER', 180, 18000000.00, true),
-        ('PIMPINAN_LEMBAGA_REKTOR_SWASTA', 'PRO', 'ANNUAL', 365, 32000000.00, true)
+        ('PIMPINAN_LEMBAGA_REKTOR_SWASTA', 'STARTER', 'MONTHLY', 30, 2000000.00, 12, true),
+        ('PIMPINAN_LEMBAGA_REKTOR_SWASTA', 'STARTER', 'SEMESTER', 180, 10000000.00, 72, true),
+        ('PIMPINAN_LEMBAGA_REKTOR_SWASTA', 'STARTER', 'ANNUAL', 365, 18000000.00, 144, true),
+        ('PIMPINAN_LEMBAGA_REKTOR_SWASTA', 'PRO', 'MONTHLY', 30, 3500000.00, 12, true),
+        ('PIMPINAN_LEMBAGA_REKTOR_SWASTA', 'PRO', 'SEMESTER', 180, 18000000.00, 72, true),
+        ('PIMPINAN_LEMBAGA_REKTOR_SWASTA', 'PRO', 'ANNUAL', 365, 32000000.00, 144, true)
       ON CONFLICT (legislative_level, plan_tier, billing_cycle)
       DO UPDATE SET
         duration_days = EXCLUDED.duration_days,
         amount_idr = EXCLUDED.amount_idr,
+        quota_requests = EXCLUDED.quota_requests,
         is_active = EXCLUDED.is_active,
         updated_at = now();
     `);
@@ -279,6 +280,14 @@ async function runSeed() {
         INSERT INTO tenant_quota_ledgers (tenant_id, billing_cycle_month, article_limit, article_used, dalle_limit, dalle_used)
         VALUES ('${adminMember.id}', to_char(now(), 'YYYY-MM'), 0, 0, 0, 0)
         ON CONFLICT (tenant_id, billing_cycle_month) DO NOTHING;
+
+        INSERT INTO tenant_quota_wallets (tenant_id, total_quota_allocated, remaining_quota, weekly_allowance_limit, current_period_end)
+        VALUES ('${adminMember.id}', 144, 12, 3, now() + interval '365 days')
+        ON CONFLICT (tenant_id) DO NOTHING;
+
+        INSERT INTO tenant_quota_transactions (tenant_id, transaction_type, amount_delta, balance_after, notes)
+        VALUES ('${adminMember.id}', 'PACKAGE_PURCHASE', 12, 12, 'Inisialisasi paket akun demo PRO Annual')
+        ON CONFLICT DO NOTHING;
       `);
 
       const [portal] = await sql.unsafe(`SELECT id FROM portal_configs WHERE tenant_id = '${adminMember.id}' LIMIT 1;`);
@@ -331,6 +340,14 @@ async function runSeed() {
         INSERT INTO tenant_quota_ledgers (tenant_id, billing_cycle_month, article_limit, article_used, dalle_limit, dalle_used)
         VALUES ('${dewanMember.id}', to_char(now(), 'YYYY-MM'), 0, 0, 0, 0)
         ON CONFLICT (tenant_id, billing_cycle_month) DO NOTHING;
+
+        INSERT INTO tenant_quota_wallets (tenant_id, total_quota_allocated, remaining_quota, weekly_allowance_limit, current_period_end)
+        VALUES ('${dewanMember.id}', 144, 12, 3, now() + interval '365 days')
+        ON CONFLICT (tenant_id) DO NOTHING;
+
+        INSERT INTO tenant_quota_transactions (tenant_id, transaction_type, amount_delta, balance_after, notes)
+        VALUES ('${dewanMember.id}', 'PACKAGE_PURCHASE', 12, 12, 'Inisialisasi paket akun demo PRO Annual')
+        ON CONFLICT DO NOTHING;
       `);
 
       const [portalDewan] = await sql.unsafe(`SELECT id FROM portal_configs WHERE tenant_id = '${dewanMember.id}' LIMIT 1;`);
