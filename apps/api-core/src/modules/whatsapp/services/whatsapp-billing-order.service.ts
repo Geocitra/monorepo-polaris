@@ -1,5 +1,5 @@
 import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
-import { db, eq, and, desc, tenantMembers, subscriptionPriceMatrices } from '@polaris/database';
+import { db, eq, and, desc, tenantMembers, subscriptionPriceMatrices, subscriptions } from '@polaris/database';
 import { RedisService } from '../../redis/redis.service.js';
 import { WhatsAppCloudClient } from '../whatsapp-cloud.client.js';
 import { BillingService } from '../../billing/billing.service.js';
@@ -71,25 +71,57 @@ export class WhatsAppBillingOrderService implements OnModuleInit {
 
     if (!member) return [];
 
-    const matrices = await db
+    const [sub] = await db
+      .select({ planTier: subscriptions.planTier })
+      .from(subscriptions)
+      .where(eq(subscriptions.tenantId, tenantId))
+      .limit(1);
+
+    const activeTier = sub?.planTier || 'PRO';
+
+    let matrices = await db
       .select()
       .from(subscriptionPriceMatrices)
       .where(
         and(
           eq(subscriptionPriceMatrices.legislativeLevel, member.legislativeLevel),
+          eq(subscriptionPriceMatrices.planTier, activeTier),
           eq(subscriptionPriceMatrices.isActive, true)
         )
       )
       .orderBy(subscriptionPriceMatrices.durationDays);
 
-    return matrices.map((m) => {
-      let buttonTitle = '📦 1 Bulan (+12)';
+    if (matrices.length === 0) {
+      matrices = await db
+        .select()
+        .from(subscriptionPriceMatrices)
+        .where(
+          and(
+            eq(subscriptionPriceMatrices.legislativeLevel, member.legislativeLevel),
+            eq(subscriptionPriceMatrices.isActive, true)
+          )
+        )
+        .orderBy(subscriptionPriceMatrices.durationDays);
+    }
+
+    // Pastikan hanya 1 paket per durasi siklus (30 hari, 180 hari, 365 hari) agar tidak ada redundansi
+    const uniqueByDuration = new Map<number, (typeof matrices)[0]>();
+    for (const m of matrices) {
+      if (!uniqueByDuration.has(m.durationDays)) {
+        uniqueByDuration.set(m.durationDays, m);
+      }
+    }
+
+    const distinctMatrices = Array.from(uniqueByDuration.values()).slice(0, 3);
+
+    return distinctMatrices.map((m) => {
+      let buttonTitle = '1 Bulan (+12)';
       if (m.durationDays >= 365) {
-        buttonTitle = `👑 1 Thn (+${m.quotaRequests || 144})`;
+        buttonTitle = `1 Tahun (+${m.quotaRequests || 144})`;
       } else if (m.durationDays >= 180) {
-        buttonTitle = `⭐ 6 Bln (+${m.quotaRequests || 72})`;
+        buttonTitle = `6 Bulan (+${m.quotaRequests || 72})`;
       } else {
-        buttonTitle = `📦 1 Bln (+${m.quotaRequests || 12})`;
+        buttonTitle = `1 Bulan (+${m.quotaRequests || 12})`;
       }
 
       return {

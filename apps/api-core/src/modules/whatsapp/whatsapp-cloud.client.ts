@@ -127,13 +127,26 @@ export class WhatsAppCloudClient {
       return { delivered: false };
     }
 
-    const safeButtons = buttons.slice(0, 3).map((btn) => ({
-      type: 'reply',
-      reply: {
-        id: btn.id.slice(0, 256),
-        title: btn.title.slice(0, 20),
-      },
-    }));
+    const seenTitles = new Set<string>();
+    const safeButtons = buttons.slice(0, 3).map((btn, idx) => {
+      let title = btn.title ? btn.title.slice(0, 20).trim() : `Pilihan ${idx + 1}`;
+      if (!title) {
+        title = `Pilihan ${idx + 1}`;
+      }
+      if (seenTitles.has(title)) {
+        const suffix = ` (${idx + 1})`;
+        title = `${title.slice(0, 20 - suffix.length)}${suffix}`;
+      }
+      seenTitles.add(title);
+
+      return {
+        type: 'reply',
+        reply: {
+          id: btn.id.slice(0, 256),
+          title,
+        },
+      };
+    });
 
     const interactiveObj: Record<string, unknown> = {
       type: 'button',
