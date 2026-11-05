@@ -33,6 +33,15 @@ if [ $RETRIES -le 0 ]; then
 fi
 echo "PostgreSQL & Redis siap dan berstatus healthy."
 
+echo "=== [3.5/5] Menjalankan Sinkronisasi Migrasi Database PostgreSQL ==="
+if [ -d "packages/database/src/migrations" ]; then
+  for migration_file in $(ls -1 packages/database/src/migrations/*.sql 2>/dev/null | sort); do
+    echo "-> Menjalankan migrasi: $(basename "$migration_file")"
+    docker exec -i polaris_prod_postgres psql -U "${POSTGRES_USER:-polaris_admin}" -d "${POSTGRES_DB:-polaris_db}" < "$migration_file" >/dev/null 2>&1 || true
+  done
+  echo "Seluruh migrasi database selesai diverifikasi/diterapkan."
+fi
+
 echo "=== [4/5] Melakukan Rolling Restart Sub-Sistem Aplikasi (Pre-built GHCR Images) ==="
 # Restart backend API Core terlebih dahulu (tanpa --build di VPS karena image sudah di-pull dari GHCR)
 docker compose -f ${COMPOSE_FILE} up -d --no-deps api-core

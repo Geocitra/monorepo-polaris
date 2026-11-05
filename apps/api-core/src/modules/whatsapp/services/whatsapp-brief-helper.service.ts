@@ -199,6 +199,45 @@ export class WhatsAppBriefHelperService implements OnModuleInit {
         ALTER TABLE content_briefs ADD COLUMN IF NOT EXISTS quota_cost_deducted INTEGER NOT NULL DEFAULT 1;
         ALTER TABLE content_briefs ADD COLUMN IF NOT EXISTS is_urgent_overquota BOOLEAN NOT NULL DEFAULT false;
 
+        DO $$ BEGIN
+          CREATE TYPE quota_transaction_type_enum AS ENUM (
+            'PACKAGE_PURCHASE', 'REGULAR_CONSUME', 'URGENT_SURGE_CONSUME',
+            'REFUND_CANCELLED', 'REFUND_REJECTED', 'EXPIRED_FLUSH', 'ADMIN_ADJUSTMENT'
+          );
+        EXCEPTION WHEN duplicate_object THEN NULL;
+        END $$;
+
+        CREATE TABLE IF NOT EXISTS tenant_quota_wallets (
+          id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+          tenant_id UUID NOT NULL UNIQUE REFERENCES tenant_members(id) ON DELETE CASCADE,
+          total_quota_allocated INTEGER NOT NULL DEFAULT 12,
+          remaining_quota INTEGER NOT NULL DEFAULT 0,
+          weekly_allowance_limit INTEGER NOT NULL DEFAULT 3,
+          current_period_end TIMESTAMPTZ,
+          created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+          updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
+        );
+
+        CREATE INDEX IF NOT EXISTS idx_quota_wallet_tenant ON tenant_quota_wallets(tenant_id);
+
+        CREATE TABLE IF NOT EXISTS tenant_quota_transactions (
+          id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+          tenant_id UUID NOT NULL REFERENCES tenant_members(id) ON DELETE CASCADE,
+          brief_id UUID REFERENCES content_briefs(id) ON DELETE SET NULL,
+          invoice_id UUID REFERENCES invoice_transactions(id) ON DELETE SET NULL,
+          reference_code VARCHAR(100),
+          transaction_type quota_transaction_type_enum NOT NULL,
+          amount_delta INTEGER NOT NULL,
+          balance_after INTEGER NOT NULL,
+          notes TEXT,
+          created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+        );
+
+        CREATE INDEX IF NOT EXISTS idx_quota_tx_tenant_created ON tenant_quota_transactions(tenant_id, created_at DESC);
+        CREATE INDEX IF NOT EXISTS idx_quota_tx_brief ON tenant_quota_transactions(brief_id);
+
+        ALTER TABLE subscription_price_matrices ADD COLUMN IF NOT EXISTS quota_requests INTEGER NOT NULL DEFAULT 12;
+
         CREATE TABLE IF NOT EXISTS content_brief_messages (
           id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
           brief_id UUID NOT NULL REFERENCES content_briefs(id) ON DELETE CASCADE,
