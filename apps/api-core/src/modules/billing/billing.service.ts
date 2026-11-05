@@ -152,6 +152,15 @@ export class BillingService {
    * Menangani notifikasi webhook resmi dari Midtrans secara Idempotent.
    */
   async handleMidtransWebhook(payload: Record<string, any>): Promise<{ status: string }> {
+    const orderId = payload.order_id || '';
+
+    // Deteksi uji coba ping koneksi dari Midtrans Dashboard (Test notification URL)
+    const isTestPing = !orderId || orderId.toLowerCase().includes('test') || orderId.toLowerCase().includes('sample') || orderId.toLowerCase().includes('dummy');
+    if (isTestPing) {
+      this.logger.log(`[Webhook Test Ping] Uji coba koneksi Notification URL dari Midtrans Dashboard diterima (${orderId || 'PING'}).`);
+      return { status: 'TEST_NOTIFICATION_ACCEPTED' };
+    }
+
     const signatureKey = payload.signature_key;
     if (!signatureKey) {
       throw new ForbiddenException('Payload webhook tidak memiliki signature_key.');
