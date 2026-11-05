@@ -86,7 +86,8 @@ export interface ContentBriefItem {
     | 'REVISION_REQUESTED'
     | 'APPROVED'
     | 'PUBLISHED'
-    | 'REJECTED';
+    | 'REJECTED'
+    | 'CANCELLED';
   clientUrgency: 'URGENT' | 'NORMAL';
   operatorPriority: 'URGENT' | 'NORMAL';
   targetWindow?: 'TODAY_PRIORITY' | 'TODAY_REGULAR' | 'NEXT_DAY_MORNING';
@@ -106,6 +107,8 @@ export interface ContentBriefItem {
   operatorNotes: string | null;
   createdAt: string;
   updatedAt: string;
+  quotaCostDeducted?: number;
+  isUrgentOverquota?: boolean;
   messages: BriefMessageItem[];
 }
 
@@ -116,6 +119,10 @@ export interface TenantWeeklyBriefQuota {
   weeklyUsed: number;
   weeklyRemaining: number;
   queuedNextWeekCount: number;
+  totalQuotaAllocated?: number;
+  remainingQuota?: number;
+  currentPeriodEnd?: string | null;
+  isPeriodExpired?: boolean;
 }
 
 export interface TenantContextData {

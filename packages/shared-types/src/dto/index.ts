@@ -17,6 +17,7 @@ import {
   PortalTemplateId,
   PortalSectionType,
   PortalDocumentType,
+  QuotaTransactionType,
 } from '../enums/index.js';
 
 // ==========================================
@@ -112,6 +113,9 @@ export interface QuotaBalanceDto {
   articleRemaining?: number;
   dalleLimit?: number;
   dalleRemaining?: number;
+  totalQuotaAllocated?: number;
+  remainingQuota?: number;
+  weeklyAllowanceLimit?: number;
 }
 
 export interface CyclePriceItemDto {
@@ -582,6 +586,8 @@ export interface ContentBriefDto {
   topicSummary: string;
   weeklyQuotaPeriod: string;
   weeklyRequestLimit: number;
+  quotaCostDeducted: number;
+  isUrgentOverquota: boolean;
   revisionUsed: number;
   revisionLimit: number;
   articleStatus: string;
@@ -604,6 +610,34 @@ export interface TenantWeeklyBriefQuotaDto {
   weeklyLimit: number;
   weeklyUsed: number;
   weeklyRemaining: number;
+  totalQuotaAllocated: number;
+  remainingQuota: number;
+  currentPeriodEnd: string | null;
+  isPeriodExpired: boolean;
   queuedNextWeekCount: number;
 }
 
+
+
+export interface TenantQuotaTransactionDto {
+  id: string;
+  tenantId: string;
+  briefId?: string | null;
+  invoiceId?: string | null;
+  referenceCode?: string | null;
+  transactionType: QuotaTransactionType;
+  amountDelta: number;
+  balanceAfter: number;
+  notes?: string | null;
+  createdAt: string;
+}
+
+export interface TenantQuotaWalletDto {
+  tenantId: string;
+  totalQuotaAllocated: number;
+  remainingQuota: number;
+  weeklyAllowanceLimit: number;
+  currentPeriodEnd: string | null;
+  isExpired: boolean;
+  updatedAt: string;
+}

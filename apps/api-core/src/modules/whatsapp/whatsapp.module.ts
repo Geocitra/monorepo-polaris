@@ -6,6 +6,7 @@ import { WhatsAppBriefHelperService } from './services/whatsapp-brief-helper.ser
 import { WhatsAppBotSessionService } from './services/whatsapp-bot-session.service.js';
 import { WhatsAppOperatorBrokerService } from './services/whatsapp-operator-broker.service.js';
 import { WhatsAppPublicReviewService } from './services/whatsapp-public-review.service.js';
+import { WhatsAppBillingOrderService } from './services/whatsapp-billing-order.service.js';
 import { RedisModule } from '../redis/redis.module.js';
 
 @Module({
@@ -16,9 +17,10 @@ import { RedisModule } from '../redis/redis.module.js';
     WhatsAppBotSessionService,
     WhatsAppOperatorBrokerService,
     WhatsAppPublicReviewService,
+    WhatsAppBillingOrderService,
     WhatsAppService,
     WhatsAppCloudClient,
   ],
-  exports: [WhatsAppService, WhatsAppCloudClient],
+  exports: [WhatsAppService, WhatsAppCloudClient, WhatsAppBillingOrderService],
 })
 export class WhatsAppModule {}

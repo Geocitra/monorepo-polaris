@@ -79,6 +79,18 @@ DO $$ BEGIN
   CREATE TYPE issue_category_enum AS ENUM ('INFRASTRUKTUR', 'PERTANIAN', 'PENDIDIKAN', 'KESEHATAN', 'BANSOS_UMKM', 'LAINNYA');
 EXCEPTION WHEN duplicate_object THEN null; END $$;
 
+DO $$ BEGIN
+  CREATE TYPE quota_transaction_type_enum AS ENUM (
+    'PACKAGE_PURCHASE',
+    'REGULAR_CONSUME',
+    'URGENT_SURGE_CONSUME',
+    'REFUND_CANCELLED',
+    'REFUND_REJECTED',
+    'EXPIRED_FLUSH',
+    'ADMIN_ADJUSTMENT'
+  );
+EXCEPTION WHEN duplicate_object THEN null; END $$;
+
 -- 3. BOUNDED CONTEXT: IDENTITY & ELECTORAL
 CREATE TABLE IF NOT EXISTS system_admins (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -174,6 +186,22 @@ CREATE TABLE IF NOT EXISTS subscriptions (
   updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
+CREATE TABLE IF NOT EXISTS subscription_price_matrices (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  legislative_level legislative_level_enum NOT NULL,
+  plan_tier plan_tier_enum NOT NULL,
+  billing_cycle VARCHAR(20) NOT NULL,
+  duration_days INTEGER NOT NULL,
+  quota_requests INTEGER NOT NULL DEFAULT 12,
+  amount_idr NUMERIC(12, 2) NOT NULL,
+  is_active BOOLEAN NOT NULL DEFAULT true,
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  CONSTRAINT unq_level_tier_cycle UNIQUE (legislative_level, plan_tier, billing_cycle)
+);
+
+CREATE INDEX IF NOT EXISTS idx_price_matrix_lookup 
+  ON subscription_price_matrices (legislative_level, plan_tier, billing_cycle, is_active);
+
 CREATE TABLE IF NOT EXISTS invoice_transactions (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   subscription_id UUID NOT NULL REFERENCES subscriptions(id) ON DELETE CASCADE,
@@ -243,7 +271,6 @@ CREATE INDEX IF NOT EXISTS idx_recon_batch_date_status
 CREATE INDEX IF NOT EXISTS idx_recon_discrepancy_batch_res 
   ON reconciliation_discrepancies (batch_id, resolution_status);
 
-
 CREATE TABLE IF NOT EXISTS tenant_quota_ledgers (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   tenant_id UUID NOT NULL REFERENCES tenant_members(id) ON DELETE CASCADE,
@@ -258,6 +285,39 @@ CREATE TABLE IF NOT EXISTS tenant_quota_ledgers (
   updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
   CONSTRAINT unq_tenant_month UNIQUE (tenant_id, billing_cycle_month)
 );
+
+CREATE TABLE IF NOT EXISTS tenant_quota_wallets (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  tenant_id UUID NOT NULL UNIQUE REFERENCES tenant_members(id) ON DELETE CASCADE,
+  total_quota_allocated INTEGER NOT NULL DEFAULT 12,
+  remaining_quota INTEGER NOT NULL DEFAULT 0,
+  weekly_allowance_limit INTEGER NOT NULL DEFAULT 3,
+  current_period_end TIMESTAMPTZ,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+CREATE INDEX IF NOT EXISTS idx_quota_wallet_tenant 
+  ON tenant_quota_wallets (tenant_id);
+
+CREATE TABLE IF NOT EXISTS tenant_quota_transactions (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  tenant_id UUID NOT NULL REFERENCES tenant_members(id) ON DELETE CASCADE,
+  brief_id UUID REFERENCES content_briefs(id) ON DELETE SET NULL,
+  invoice_id UUID REFERENCES invoice_transactions(id) ON DELETE SET NULL,
+  reference_code VARCHAR(100),
+  transaction_type quota_transaction_type_enum NOT NULL,
+  amount_delta INTEGER NOT NULL,
+  balance_after INTEGER NOT NULL,
+  notes TEXT,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+CREATE INDEX IF NOT EXISTS idx_quota_tx_tenant_created 
+  ON tenant_quota_transactions (tenant_id, created_at DESC);
+
+CREATE INDEX IF NOT EXISTS idx_quota_tx_brief 
+  ON tenant_quota_transactions (brief_id);
 
 -- 5. BOUNDED CONTEXT: CMS & MICROSITE
 CREATE TABLE IF NOT EXISTS portal_configs (
@@ -586,6 +646,8 @@ CREATE TABLE IF NOT EXISTS content_briefs (
   topic_summary TEXT NOT NULL,
   weekly_quota_period VARCHAR(15) NOT NULL,
   weekly_request_limit INT NOT NULL DEFAULT 3,
+  quota_cost_deducted INT NOT NULL DEFAULT 1,
+  is_urgent_overquota BOOLEAN NOT NULL DEFAULT false,
   revision_used INT NOT NULL DEFAULT 0,
   revision_limit INT NOT NULL DEFAULT 3,
   article_status VARCHAR(20) NOT NULL DEFAULT 'PENDING',
@@ -629,5 +691,3 @@ CREATE TABLE IF NOT EXISTS content_brief_messages (
 );
 
 CREATE INDEX IF NOT EXISTS idx_content_brief_messages_brief ON content_brief_messages(brief_id, created_at ASC);
-
-

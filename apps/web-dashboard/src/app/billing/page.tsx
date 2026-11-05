@@ -9,6 +9,7 @@ import { useToast } from '@/components/ui/toast';
 import { ExpiryAlertModal } from '@/components/billing/ExpiryAlertModal';
 import { PaymentSuccessModal, PaymentSuccessDetails } from '@/components/billing/PaymentSuccessModal';
 import { PricingPlanGrid } from '@/components/billing/PricingPlanGrid';
+import { QuotaSpeedometerCard } from '@/components/billing/QuotaSpeedometerCard';
 import { formatDateIndonesian } from '@/lib/utils';
 import {
   ShieldCheck,
@@ -290,8 +291,22 @@ export default function BillingPage() {
             </div>
           </div>
 
+          {/* SPEEDOMETER KUOTA REQUEST (MODEL KUOTA INTERNET) */}
+          <QuotaSpeedometerCard
+            totalQuotaAllocated={billing?.quota?.totalQuotaAllocated ?? 12}
+            remainingQuota={billing?.quota?.remainingQuota ?? 12}
+            weeklyAllowanceLimit={billing?.quota?.weeklyAllowanceLimit ?? 3}
+            weeklyUsed={billing?.quota?.weeklyUsed ?? 0}
+            currentPeriodEnd={currentPeriodEnd}
+            isSubActive={isSubActive}
+            onTopUpClick={() => {
+              const el = document.getElementById('pricing-grid-section');
+              el?.scrollIntoView({ behavior: 'smooth' });
+            }}
+          />
+
           {/* 2. UNIFIED SUBSCRIPTION HUB (3D TENSOR PRICING GRID) */}
-          <div className="bg-white dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 rounded-3xl p-6 sm:p-8 shadow-xs">
+          <div id="pricing-grid-section" className="bg-white dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 rounded-3xl p-6 sm:p-8 shadow-xs">
             <PricingPlanGrid
               selectedCycle={selectedCycle}
               onCycleChange={setSelectedCycle}

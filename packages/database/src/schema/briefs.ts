@@ -39,6 +39,8 @@ export const contentBriefs = pgTable('content_briefs', {
   topicSummary: text('topic_summary').notNull(),
   weeklyQuotaPeriod: varchar('weekly_quota_period', { length: 15 }).notNull(),
   weeklyRequestLimit: integer('weekly_request_limit').default(3).notNull(),
+  quotaCostDeducted: integer('quota_cost_deducted').default(1).notNull(),
+  isUrgentOverquota: boolean('is_urgent_overquota').default(false).notNull(),
   revisionUsed: integer('revision_used').default(0).notNull(),
   revisionLimit: integer('revision_limit').default(3).notNull(),
   articleStatus: varchar('article_status', { length: 20 }).default('PENDING').notNull(),

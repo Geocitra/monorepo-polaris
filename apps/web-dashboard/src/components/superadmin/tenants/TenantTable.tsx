@@ -14,6 +14,7 @@ import {
   KeyRound,
   Copy,
   Lock,
+  Zap,
 } from 'lucide-react';
 import { TenantRow } from '../types';
 import { PaginationControls } from '../common/PaginationControls';
@@ -261,6 +262,13 @@ export function TenantTable({
                           : 'Tidak ada batas'}
                       </span>
                     </div>
+
+                    {t.remainingQuota !== undefined && t.remainingQuota !== null && (
+                      <div className="flex items-center gap-1.5 text-[10.5px] font-bold text-indigo-600 dark:text-indigo-400 mt-1 font-mono">
+                        <span className="h-1.5 w-1.5 rounded-full bg-indigo-500 shrink-0" />
+                        <span>Kuota: {t.remainingQuota} / {t.totalQuotaAllocated || 12}</span>
+                      </div>
+                    )}
                   </td>
 
                   {/* 6. TINDAKAN SUPERADMIN */}

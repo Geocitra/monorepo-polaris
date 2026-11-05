@@ -115,6 +115,33 @@ async function runMigration() {
       DO $$ BEGIN
         CREATE TYPE inquiry_status_enum AS ENUM ('NEW_LEAD', 'MEETING_SCHEDULED', 'PROPOSAL_SENT', 'DEAL_CONVERTED', 'REJECTED_DROPPED');
       EXCEPTION WHEN duplicate_object THEN null; END $$;
+
+      DO $$ BEGIN
+        CREATE TYPE content_brief_status_enum AS ENUM (
+          'DRAFT', 'SUBMITTED', 'ACCEPTED', 'QUEUED_NEXT_WEEK', 'IN_PROGRESS', 
+          'NEED_CLARIFICATION', 'READY_FOR_REVIEW', 'REVISION_REQUESTED', 
+          'APPROVED', 'PUBLISHED', 'REJECTED', 'CANCELLED', 'CLOSED_UNPUBLISHED'
+        );
+      EXCEPTION WHEN duplicate_object THEN null; END $$;
+
+      DO $$ BEGIN
+        CREATE TYPE brief_urgency_level_enum AS ENUM ('NORMAL', 'URGENT');
+      EXCEPTION WHEN duplicate_object THEN null; END $$;
+
+      DO $$ BEGIN
+        CREATE TYPE brief_message_direction_enum AS ENUM ('INBOUND', 'OUTBOUND');
+      EXCEPTION WHEN duplicate_object THEN null; END $$;
+
+      DO $$ BEGIN
+        CREATE TYPE brief_message_type_enum AS ENUM ('TEXT', 'IMAGE', 'DOCUMENT', 'INTERACTIVE', 'SYSTEM');
+      EXCEPTION WHEN duplicate_object THEN null; END $$;
+
+      DO $$ BEGIN
+        CREATE TYPE quota_transaction_type_enum AS ENUM (
+          'PACKAGE_PURCHASE', 'REGULAR_CONSUME', 'URGENT_SURGE_CONSUME', 
+          'REFUND_CANCELLED', 'REFUND_REJECTED', 'EXPIRED_FLUSH', 'ADMIN_ADJUSTMENT'
+        );
+      EXCEPTION WHEN duplicate_object THEN null; END $$;
     `;
     await sql.unsafe(enumsSql);
     console.log('  -> Global ENUM types verified.');
@@ -240,10 +267,13 @@ async function runMigration() {
         billing_cycle VARCHAR(20) NOT NULL,
         duration_days INTEGER NOT NULL,
         amount_idr NUMERIC(12, 2) NOT NULL,
+        quota_requests INTEGER NOT NULL DEFAULT 12,
         is_active BOOLEAN NOT NULL DEFAULT true,
         updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
         CONSTRAINT unq_level_tier_cycle UNIQUE (legislative_level, plan_tier, billing_cycle)
       );
+
+      ALTER TABLE subscription_price_matrices ADD COLUMN IF NOT EXISTS quota_requests INTEGER NOT NULL DEFAULT 12;
 
       CREATE TABLE IF NOT EXISTS subscriptions (
         id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -515,6 +545,83 @@ async function runMigration() {
         created_at TIMESTAMPTZ NOT NULL DEFAULT now()
       );
 
+      -- 4b. Content Briefs Intake Broker & Quota Wallets
+      CREATE TABLE IF NOT EXISTS content_briefs (
+        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        brief_code VARCHAR(30) NOT NULL UNIQUE,
+        tenant_id UUID NOT NULL REFERENCES tenant_members(id) ON DELETE CASCADE,
+        assigned_operator_id UUID REFERENCES system_admins(id) ON DELETE SET NULL,
+        status content_brief_status_enum NOT NULL DEFAULT 'SUBMITTED',
+        client_urgency brief_urgency_level_enum NOT NULL DEFAULT 'NORMAL',
+        operator_priority brief_urgency_level_enum NOT NULL DEFAULT 'NORMAL',
+        target_window VARCHAR(30) NOT NULL DEFAULT 'TODAY_REGULAR',
+        topic_summary TEXT NOT NULL,
+        weekly_quota_period VARCHAR(15) NOT NULL,
+        weekly_request_limit INT NOT NULL DEFAULT 3,
+        quota_cost_deducted INT NOT NULL DEFAULT 1,
+        is_urgent_overquota BOOLEAN NOT NULL DEFAULT false,
+        revision_used INT NOT NULL DEFAULT 0,
+        revision_limit INT NOT NULL DEFAULT 3,
+        article_status VARCHAR(20) NOT NULL DEFAULT 'PENDING',
+        image_status VARCHAR(20) NOT NULL DEFAULT 'PENDING',
+        caption_status VARCHAR(20) NOT NULL DEFAULT 'PENDING',
+        linked_publication_id UUID REFERENCES content_publications(id) ON DELETE SET NULL,
+        review_token_hash VARCHAR(128) UNIQUE,
+        review_token_expires_at TIMESTAMPTZ,
+        accepted_at TIMESTAMPTZ,
+        submitted_for_review_at TIMESTAMPTZ,
+        approved_at TIMESTAMPTZ,
+        published_at TIMESTAMPTZ,
+        operator_notes TEXT,
+        created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+        updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
+      );
+
+      CREATE TABLE IF NOT EXISTS content_brief_messages (
+        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        brief_id UUID NOT NULL REFERENCES content_briefs(id) ON DELETE CASCADE,
+        tenant_id UUID NOT NULL REFERENCES tenant_members(id) ON DELETE CASCADE,
+        sender_operator_id UUID REFERENCES system_admins(id) ON DELETE SET NULL,
+        direction brief_message_direction_enum NOT NULL,
+        message_type brief_message_type_enum NOT NULL,
+        wa_message_id VARCHAR(128) UNIQUE,
+        text_body TEXT,
+        media_r2_url TEXT,
+        media_cdn_url TEXT,
+        media_mime_type VARCHAR(100),
+        media_file_name VARCHAR(255),
+        media_file_size_bytes BIGINT,
+        revision_round INT NOT NULL DEFAULT 0,
+        target_components TEXT[] NOT NULL DEFAULT ARRAY[]::TEXT[],
+        is_internal_fault BOOLEAN NOT NULL DEFAULT false,
+        metadata JSONB,
+        created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+      );
+
+      CREATE TABLE IF NOT EXISTS tenant_quota_wallets (
+        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        tenant_id UUID NOT NULL UNIQUE REFERENCES tenant_members(id) ON DELETE CASCADE,
+        total_quota_allocated INTEGER NOT NULL DEFAULT 12,
+        remaining_quota INTEGER NOT NULL DEFAULT 0,
+        weekly_allowance_limit INTEGER NOT NULL DEFAULT 3,
+        current_period_end TIMESTAMPTZ,
+        created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+        updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
+      );
+
+      CREATE TABLE IF NOT EXISTS tenant_quota_transactions (
+        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        tenant_id UUID NOT NULL REFERENCES tenant_members(id) ON DELETE CASCADE,
+        brief_id UUID REFERENCES content_briefs(id) ON DELETE SET NULL,
+        invoice_id UUID REFERENCES invoice_transactions(id) ON DELETE SET NULL,
+        reference_code VARCHAR(100),
+        transaction_type quota_transaction_type_enum NOT NULL,
+        amount_delta INTEGER NOT NULL,
+        balance_after INTEGER NOT NULL,
+        notes TEXT,
+        created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+      );
+
       -- 5. Knowledge & Vector Grounding
       CREATE TABLE IF NOT EXISTS knowledge_documents (
         id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -717,6 +824,13 @@ async function runMigration() {
       CREATE INDEX IF NOT EXISTS idx_media_discourses_sector_region ON media_discourses (sector, region_scope, published_at DESC);
       CREATE INDEX IF NOT EXISTS idx_social_accounts_tenant ON connected_social_accounts (tenant_id, platform, status);
       CREATE INDEX IF NOT EXISTS idx_social_accounts_token_refresh ON connected_social_accounts (status, token_expires_at);
+      CREATE INDEX IF NOT EXISTS idx_content_briefs_tenant_status ON content_briefs(tenant_id, status, created_at DESC);
+      CREATE INDEX IF NOT EXISTS idx_content_briefs_operator_status ON content_briefs(assigned_operator_id, status, created_at DESC);
+      CREATE INDEX IF NOT EXISTS idx_content_briefs_weekly_quota ON content_briefs(tenant_id, weekly_quota_period);
+      CREATE INDEX IF NOT EXISTS idx_content_brief_messages_brief ON content_brief_messages(brief_id, created_at ASC);
+      CREATE INDEX IF NOT EXISTS idx_quota_wallet_tenant ON tenant_quota_wallets (tenant_id);
+      CREATE INDEX IF NOT EXISTS idx_quota_tx_tenant_created ON tenant_quota_transactions (tenant_id, created_at DESC);
+      CREATE INDEX IF NOT EXISTS idx_quota_tx_brief ON tenant_quota_transactions (brief_id);
     `;
     await sql.unsafe(indexSql);
 
@@ -758,6 +872,10 @@ async function runMigration() {
       ALTER TABLE member_writing_memories ENABLE ROW LEVEL SECURITY;
       ALTER TABLE connected_social_accounts ENABLE ROW LEVEL SECURITY;
       ALTER TABLE social_publishing_jobs ENABLE ROW LEVEL SECURITY;
+      ALTER TABLE content_briefs ENABLE ROW LEVEL SECURITY;
+      ALTER TABLE content_brief_messages ENABLE ROW LEVEL SECURITY;
+      ALTER TABLE tenant_quota_wallets ENABLE ROW LEVEL SECURITY;
+      ALTER TABLE tenant_quota_transactions ENABLE ROW LEVEL SECURITY;
     `;
     await sql.unsafe(rlsSql);
     console.log('  -> Row-Level Security policies & tenant isolation kernel active.');
@@ -774,6 +892,14 @@ async function runMigration() {
       const researchSql = fs.readFileSync(researchSqlPath, 'utf-8');
       await sql.unsafe(researchSql);
       console.log('  -> Research Engine schema applied.');
+    }
+
+    console.log('\n[5c/6] Applying Quota Ledger & Backfill Migrations...');
+    const quotaSqlPath = path.join(rootDir, 'packages/database/src/migrations/0017_quota_wallets_and_ledger.sql');
+    if (fs.existsSync(quotaSqlPath)) {
+      const quotaSql = fs.readFileSync(quotaSqlPath, 'utf-8');
+      await sql.unsafe(quotaSql);
+      console.log('  -> Quota Wallets & Backfill applied successfully.');
     }
 
     console.log('\n[6/6] Verifying Database Integrity & Tables Summary...');

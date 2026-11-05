@@ -10,6 +10,8 @@ import {
   subscriptions,
   invoiceTransactions,
   tenantQuotaLedgers,
+  tenantQuotaWallets,
+  tenantQuotaTransactions,
   tenantMembers,
   subscriptionPriceMatrices,
 } from '@polaris/database';
@@ -18,6 +20,7 @@ import {
   SubscriptionStatus,
   PaymentStatus,
   PlanTier,
+  QuotaTransactionType,
 } from '@polaris/shared-types';
 import { AiCostCalculator, EntitlementPolicy } from '@polaris/core-domain';
 import { CreateCheckoutDto, CheckoutResponseDto, BillingStatusDto } from './dto/billing.dto.js';
@@ -268,6 +271,7 @@ export class BillingService {
 
       let durationDays = 30;
       let targetPlanTier = sub.planTier;
+      let resolvedQuotaRequests: number | null = null;
 
       if (invoice.matrixId) {
         const [directMatrix] = await tx
@@ -279,6 +283,9 @@ export class BillingService {
         if (directMatrix) {
           durationDays = directMatrix.durationDays;
           targetPlanTier = directMatrix.planTier;
+          if (directMatrix.quotaRequests !== undefined && directMatrix.quotaRequests !== null) {
+            resolvedQuotaRequests = directMatrix.quotaRequests;
+          }
         }
       } else if (member) {
         const [matchedMatrix] = await tx
@@ -295,6 +302,9 @@ export class BillingService {
         if (matchedMatrix) {
           durationDays = matchedMatrix.durationDays;
           targetPlanTier = matchedMatrix.planTier;
+          if (matchedMatrix.quotaRequests !== undefined && matchedMatrix.quotaRequests !== null) {
+            resolvedQuotaRequests = matchedMatrix.quotaRequests;
+          }
         } else {
           // Fallback deterministik: Cari matriks aktif dengan nominal persis sama
           const [anyMatchedMatrix] = await tx
@@ -311,6 +321,9 @@ export class BillingService {
           if (anyMatchedMatrix) {
             durationDays = anyMatchedMatrix.durationDays;
             targetPlanTier = anyMatchedMatrix.planTier;
+            if (anyMatchedMatrix.quotaRequests !== undefined && anyMatchedMatrix.quotaRequests !== null) {
+              resolvedQuotaRequests = anyMatchedMatrix.quotaRequests;
+            }
             this.logger.warn(
               `[BillingService] Matriks level mismatch untuk nominal ${invoice.amountIdr} (Level Anggota: ${member.legislativeLevel}, Level Matriks: ${anyMatchedMatrix.legislativeLevel}). Menggunakan durasi sah ${durationDays} hari.`
             );
@@ -342,6 +355,68 @@ export class BillingService {
           updatedAt: now,
         })
         .where(eq(subscriptions.id, sub.id));
+
+      // 3b. Alokasi Kuota Internet Parlemen (Quota Wallet & Double-Entry Ledger)
+      const allocatedQuota =
+        resolvedQuotaRequests !== null
+          ? resolvedQuotaRequests
+          : durationDays >= 365
+          ? 144
+          : durationDays >= 180
+          ? 72
+          : 12;
+
+      const [existingWallet] = await tx
+        .select()
+        .from(tenantQuotaWallets)
+        .where(eq(tenantQuotaWallets.tenantId, sub.tenantId))
+        .for('update')
+        .limit(1);
+
+      let newAllocated: number;
+      let newRemaining: number;
+
+      if (existingWallet) {
+        newAllocated = existingWallet.totalQuotaAllocated + allocatedQuota;
+        newRemaining = existingWallet.remainingQuota + allocatedQuota;
+
+        await tx
+          .update(tenantQuotaWallets)
+          .set({
+            totalQuotaAllocated: newAllocated,
+            remainingQuota: newRemaining,
+            weeklyAllowanceLimit: 3,
+            currentPeriodEnd: periodEnd,
+            updatedAt: now,
+          })
+          .where(eq(tenantQuotaWallets.id, existingWallet.id));
+      } else {
+        newAllocated = allocatedQuota;
+        newRemaining = allocatedQuota;
+
+        await tx
+          .insert(tenantQuotaWallets)
+          .values({
+            tenantId: sub.tenantId,
+            totalQuotaAllocated: newAllocated,
+            remainingQuota: newRemaining,
+            weeklyAllowanceLimit: 3,
+            currentPeriodEnd: periodEnd,
+            createdAt: now,
+            updatedAt: now,
+          });
+      }
+
+      await tx.insert(tenantQuotaTransactions).values({
+        tenantId: sub.tenantId,
+        invoiceId: invoice.id,
+        referenceCode: invoice.invoiceNumber,
+        transactionType: QuotaTransactionType.PACKAGE_PURCHASE,
+        amountDelta: allocatedQuota,
+        balanceAfter: newRemaining,
+        notes: `Pelunasan lisensi Midtrans (${invoice.invoiceNumber})`,
+        createdAt: now,
+      });
 
       // 3. Inisialisasi Metered Ledger Baru Bulan Berjalan (Tanpa Kuota Fiktif)
       await tx
@@ -376,6 +451,14 @@ export class BillingService {
           step: 'Pembayaran Terverifikasi & Lisensi Aktif!',
           status: 'COMPLETED',
           resultUrl: '/billing',
+        });
+
+        await this.redisService.publish('billing:payment_settled', {
+          tenantId: sub.tenantId,
+          invoiceNumber: invoice.invoiceNumber,
+          amountIdr: invoice.amountIdr,
+          allocatedQuota,
+          newPeriodEnd: periodEnd.toISOString(),
         });
       }
 
@@ -457,6 +540,12 @@ export class BillingService {
     }
 
     const currentMonth = new Date().toISOString().slice(0, 7);
+
+    const [walletQuota] = await db
+      .select()
+      .from(tenantQuotaWallets)
+      .where(eq(tenantQuotaWallets.tenantId, tenantId))
+      .limit(1);
 
     const [quota] = await db
       .select()
@@ -702,7 +791,10 @@ export class BillingService {
         totalTokensConsumed: tokens,
         estimatedCostUsd: recordedCostUsd,
         estimatedCostIdr: costIdr,
-        isUnlimited: true,
+        isUnlimited: false,
+        totalQuotaAllocated: walletQuota?.totalQuotaAllocated || 12,
+        remainingQuota: walletQuota?.remainingQuota ?? 12,
+        weeklyAllowanceLimit: walletQuota?.weeklyAllowanceLimit || 3,
       },
       recentInvoice: lastInvoice
         ? {

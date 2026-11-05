@@ -27,6 +27,8 @@ import {
   getTimeHorizonInfo,
   isNewBriefExplicitTrigger,
 } from '../contact-sanitizer.util.js';
+import { QuotaWalletService } from '../../billing/quota-wallet.service.js';
+import { WhatsAppBillingOrderService } from './whatsapp-billing-order.service.js';
 import {
   WhatsAppBriefHelperService,
   DraftCartState,
@@ -82,7 +84,9 @@ export class WhatsAppBotSessionService implements OnModuleDestroy {
   constructor(
     private readonly redisService: RedisService,
     private readonly waClient: WhatsAppCloudClient,
-    private readonly helper: WhatsAppBriefHelperService
+    private readonly helper: WhatsAppBriefHelperService,
+    private readonly quotaWalletService: QuotaWalletService,
+    private readonly billingOrderService: WhatsAppBillingOrderService
   ) { }
 
   onModuleDestroy() {
@@ -240,8 +244,30 @@ export class WhatsAppBotSessionService implements OnModuleDestroy {
       }
 
       if (itemType === 'TEXT' && (lowerCmd === 'batal' || lowerCmd === 'cancel')) {
+        const draftKey = `whatsapp:draft:${tenant.id}`;
+        const existingDraft = await this.redisService.get<DraftCartState>(draftKey);
+        if (existingDraft && existingDraft.items.length > 0) {
+          this.clearTenantDebounceTimer(tenant.id);
+          await this.waClient.sendInteractiveButtons(
+            normalizedSender,
+            [
+              `⚠️ *Konfirmasi Pembatalan Pengiriman Bahan*`,
+              '',
+              `Apakah Bapak/Ibu yakin ingin membatalkan draf request ini?`,
+              `• Seluruh draf catatan & file lampiran sementara akan dibersihkan.`,
+              `• *Saldo kuota Anda 100% AMAN (TIDAK TERPOTONG).*`,
+            ].join('\n'),
+            [
+              { id: 'BRIEF_CANCEL_CONFIRMED', title: '🗑️ Ya, Hapus & Batal' },
+              { id: 'BRIEF_CANCEL_ABORTED', title: '🔙 Lanjut Kirim' },
+            ],
+            'Konfirmasi Pembatalan',
+            'Saldo kuota tidak akan terpotong'
+          );
+          return;
+        }
         this.clearTenantDebounceTimer(tenant.id);
-        await this.redisService.del(`whatsapp:draft:${tenant.id}`);
+        await this.redisService.del(draftKey);
         await this.redisService.del(sessionIntentKey);
         await this.waClient.sendInteractiveButtons(
           normalizedSender,
@@ -376,12 +402,49 @@ export class WhatsAppBotSessionService implements OnModuleDestroy {
       return;
     }
 
+    // 9b. Cek Sesi Pembelian Kuota WhatsApp Aktif
+    const buyIntentKey = `whatsapp:buy_intent:${tenant.id}`;
+    const activeBuySession = await this.redisService.get<any>(buyIntentKey);
+    if (activeBuySession && activeBuySession.state === 'AWAITING_PACKAGE_CHOICE') {
+      if (itemType === 'TEXT' && (lowerCmd === 'batal' || lowerCmd === 'cancel')) {
+        await this.billingOrderService.handleCancelBuy(tenant.id, normalizedSender);
+        return;
+      }
+      if (itemType === 'TEXT' && /^[1-9]$/.test(lowerCmd)) {
+        const handled = await this.billingOrderService.handlePackageSelection(
+          tenant,
+          normalizedSender,
+          lowerCmd
+        );
+        if (handled) return;
+      }
+      await this.redisService.del(buyIntentKey);
+    }
+
+    // 9c. Perintah Pembelian Kuota Langsung (Beli Kapan Saja)
+    if (
+      itemType === 'TEXT' &&
+      (lowerCmd === 'beli' ||
+        lowerCmd === 'topup' ||
+        lowerCmd === 'top up' ||
+        lowerCmd === 'beli kuota' ||
+        lowerCmd === 'tambah kuota' ||
+        lowerCmd === 'beli paket' ||
+        lowerCmd === 'isi kuota')
+    ) {
+      await this.billingOrderService.presentPackageCatalog(tenant, normalizedSender);
+      return;
+    }
+
     // 10. Perintah Cepat Teks, Pencarian Topik & Deteksi Sapaan Menu Utama
     if (
       itemType === 'TEXT' &&
       (lowerCmd === 'status' ||
         lowerCmd === 'cek status' ||
         lowerCmd === 'kuota' ||
+        lowerCmd === 'cek kuota' ||
+        lowerCmd === 'sisa kuota' ||
+        lowerCmd === 'info kuota' ||
         lowerCmd === 'tiket' ||
         lowerCmd === 'riwayat' ||
         lowerCmd === 'daftar tiket')
@@ -446,6 +509,26 @@ export class WhatsAppBotSessionService implements OnModuleDestroy {
     const existingDraft = await this.redisService.get<DraftCartState>(draftKey);
 
     if (itemType === 'TEXT' && (lowerCmd === 'batal' || lowerCmd === 'cancel')) {
+      if (existingDraft && existingDraft.items.length > 0) {
+        this.clearTenantDebounceTimer(tenant.id);
+        await this.waClient.sendInteractiveButtons(
+          normalizedSender,
+          [
+            `⚠️ *Konfirmasi Pembatalan Pengiriman Bahan*`,
+            '',
+            `Apakah Bapak/Ibu yakin ingin membatalkan draf request ini?`,
+            `• Seluruh draf catatan & file lampiran sementara akan dibersihkan.`,
+            `• *Saldo kuota Anda 100% AMAN (TIDAK TERPOTONG).*`,
+          ].join('\n'),
+          [
+            { id: 'BRIEF_CANCEL_CONFIRMED', title: '🗑️ Ya, Hapus & Batal' },
+            { id: 'BRIEF_CANCEL_ABORTED', title: '🔙 Lanjut Kirim' },
+          ],
+          'Konfirmasi Pembatalan',
+          'Saldo kuota tidak akan terpotong'
+        );
+        return;
+      }
       this.clearTenantDebounceTimer(tenant.id);
       await this.redisService.del(draftKey);
       await this.redisService.del(sessionIntentKey);
@@ -698,8 +781,8 @@ export class WhatsAppBotSessionService implements OnModuleDestroy {
         `⚠️ *Konfirmasi Konteks Tiket Aktif:*`,
         `Saat ini Anda masih memiliki tiket *#${pendingReviewBrief.briefCode}* yang sedang menunggu persetujuan/revisi (Sisa revisi: *${remRev}x*).`,
         '',
-        `• Jika pesan di atas adalah *Catatan Revisi untuk #${pendingReviewBrief.briefCode}*, tekan *✏️ Revisi #${pendingReviewBrief.briefCode.slice(-4)}* _(tidak memotong kuota mingguan)_.`,
-        `• Jika ini adalah *Request Topik Baru*, tekan *🟢 Kirim Topik Baru* _(Sisa kuota minggu ini: ${quota.weeklyRemaining}/${quota.weeklyLimit})_:`,
+        `• Jika pesan di atas adalah *Catatan Revisi untuk #${pendingReviewBrief.briefCode}*, tekan *✏️ Revisi #${pendingReviewBrief.briefCode.slice(-4)}* _(tidak memotong kuota)_.`,
+        `• Jika ini adalah *Request Topik Baru*, tekan *🟢 Kirim Topik Baru* _(Sisa jatah minggu ini: ${quota.weeklyRemaining}/${quota.weeklyLimit}, Kuota: ${quota.remainingQuota}/${quota.totalQuotaAllocated})_:`,
       ]
         .filter(Boolean)
         .join('\n');
@@ -713,7 +796,7 @@ export class WhatsAppBotSessionService implements OnModuleDestroy {
             title: `✏️ Revisi #${pendingReviewBrief.briefCode.slice(-4)}`,
           },
           { id: 'BRIEF_SUBMIT_NORMAL', title: '🟢 Kirim Topik Baru' },
-          { id: 'BRIEF_CANCEL', title: '❌ Batal' },
+          { id: 'BRIEF_CANCEL_ASK', title: '❌ Batalkan' },
         ],
         'Konfirmasi Revisi vs Topik Baru',
         'Masih ada tambahan? Langsung ketik lagi sebelum klik tombol'
@@ -723,44 +806,112 @@ export class WhatsAppBotSessionService implements OnModuleDestroy {
 
     const horizonInfo = getTimeHorizonInfo(BriefUrgencyLevel.NORMAL);
 
-    // KONDISI A: JATAH REQUEST MINGGU INI SUDAH PENUH (weeklyRemaining <= 0)
-    if (quota.weeklyRemaining <= 0) {
-      const afterHoursNote = horizonInfo.isAfterCutoff
-        ? `• 🌙 Waktu Masuk: *Di luar jam kerja (>= 17:00 WIB) — Target produksi besok pagi (08:00 WIB)*`
-        : `• ⏱️ Waktu Masuk: *Jam kerja aktif redaksi*`;
+    // KONDISI 1: KUOTA PAKET TELAH HABIS ATAU KEDALUWARSA (remainingQuota <= 0 ATAU isPeriodExpired)
+    if (quota.remainingQuota <= 0 || quota.isPeriodExpired) {
+      const expiryText = quota.isPeriodExpired
+        ? 'Masa aktif paket lisensi Anda telah berakhir.'
+        : `Saldo kuota request Anda telah habis (0 dari ${quota.totalQuotaAllocated} Request).`;
 
-      const overquotaSummary = [
+      const outOfQuotaSummary = [
         `Halo Bapak/Ibu *${draft.tenantName}*, bahan konten Anda telah terkumpul:`,
         `• 📝 Catatan Topik: _"${combinedTopic}"_`,
         photoCount > 0 ? `• 📷 Foto Kegiatan: *${photoCount} file*` : '',
         docCount > 0 ? `• 📄 Dokumen Lampiran: *${docCount} file*` : '',
-        afterHoursNote,
         '',
-        `⚠️ *PENTING: Jatah Request Minggu Ini Penuh (${quota.weeklyUsed}/${quota.weeklyLimit})*`,
-        `Jatah request reguler Anda untuk minggu ini (${quota.weeklyQuotaPeriod}) telah habis terpakai.`,
+        `🚫 *KUOTA REQUEST TIDAK MENCUKUPI*`,
+        expiryText,
         '',
-        `Pilihan pengiriman Anda:`,
-        `1️⃣ *Antrean Senin:* Bahan disimpan dan mulai dikerjakan hari Senin 00:00 WIB saat kuota mingguan di-reset (Rekomendasi).`,
-        `2️⃣ *Ajukan Darurat:* Ajukan langsung ke Editor Utama jika topik ini sangat penting / kegiatan hari ini.`,
+        'Untuk melanjutkan pengiriman bahan konten, silakan perpanjang atau top-up paket kuota Anda melalui portal dashboard atau hubungi Admin Polaris.',
       ]
         .filter(Boolean)
         .join('\n');
 
       await this.waClient.sendInteractiveButtons(
         draft.phoneE164,
-        overquotaSummary,
+        outOfQuotaSummary,
         [
-          { id: 'BRIEF_SUBMIT_QUEUED', title: '🗓️ Antrean Senin' },
-          { id: 'BRIEF_SUBMIT_URGENT_OVERQUOTA', title: '⚡ Ajukan Darurat' },
-          { id: 'BRIEF_CANCEL', title: '❌ Batalkan' },
+          { id: 'BRIEF_CANCEL_ASK', title: '❌ Batalkan Draft' },
+          { id: 'MENU_CHECK_STATUS', title: '📊 Cek Status' },
+          { id: 'MENU_OPEN_MAIN', title: '📋 Menu Utama' },
         ],
-        'Konfirmasi Kuota Penuh',
-        'Pilih Antrean Senin atau Ajukan Darurat'
+        'Kuota Tidak Mencukupi',
+        'Bahan tersimpan di draft sampai Anda batalkan'
       );
       return;
     }
 
-    // KONDISI B: JATAH REQUEST MINGGU INI MASIH ADA
+    // KONDISI 2: JATAH MINGGU INI PENUH (weeklyRemaining <= 0) TAPI KUOTA TOTAL MASIH ADA
+    if (quota.weeklyRemaining <= 0) {
+      const afterHoursNote = horizonInfo.isAfterCutoff
+        ? `• 🌙 Waktu Masuk: *Di luar jam kerja (>= 17:00 WIB) — Target produksi besok pagi (08:00 WIB)*`
+        : `• ⏱️ Waktu Masuk: *Jam kerja aktif redaksi*`;
+
+      // Sub-kondisi 2A: Kuota total tersisa >= 2 (bisa pilih Darurat biaya x2 atau Antrean Senin biaya x1)
+      if (quota.remainingQuota >= 2) {
+        const overquotaSummary = [
+          `Halo Bapak/Ibu *${draft.tenantName}*, bahan konten Anda telah terkumpul:`,
+          `• 📝 Catatan Topik: _"${combinedTopic}"_`,
+          photoCount > 0 ? `• 📷 Foto Kegiatan: *${photoCount} file*` : '',
+          docCount > 0 ? `• 📄 Dokumen Lampiran: *${docCount} file*` : '',
+          `• 💳 Saldo Kuota Total: *${quota.remainingQuota} dari ${quota.totalQuotaAllocated} Request*`,
+          afterHoursNote,
+          '',
+          `⚠️ *Jatah Request Minggu Ini Penuh (${quota.weeklyUsed}/${quota.weeklyLimit})*`,
+          `Jatah reguler Anda untuk minggu ini (${quota.weeklyQuotaPeriod}) telah habis.`,
+          '',
+          `Pilihan pengiriman Anda:`,
+          `1️⃣ *⚡ Darurat (Potong 2 Kuota):* Pengajuan darurat over-quota langsung ke Editor Utama hari ini.`,
+          `2️⃣ *🗓️ Antrean Senin (Potong 1 Kuota):* Disimpan aman, mulai diproduksi Senin 00:00 WIB saat jatah mingguan di-reset.`,
+        ]
+          .filter(Boolean)
+          .join('\n');
+
+        await this.waClient.sendInteractiveButtons(
+          draft.phoneE164,
+          overquotaSummary,
+          [
+            { id: 'BRIEF_SUBMIT_URGENT_OVERQUOTA', title: '⚡ Darurat (Potong 2)' },
+            { id: 'BRIEF_SUBMIT_QUEUED', title: '🗓️ Antrean Senin (1)' },
+            { id: 'BRIEF_CANCEL_ASK', title: '❌ Batalkan' },
+          ],
+          'Konfirmasi Kuota Over-Quota',
+          'Pilih Darurat (x2) atau Antrean Senin (x1)'
+        );
+        return;
+      }
+
+      // Sub-kondisi 2B: Kuota total tersisa hanya 1 (tidak cukup untuk Darurat yang butuh 2)
+      const criticalSummary = [
+        `Halo Bapak/Ibu *${draft.tenantName}*, bahan konten Anda telah terkumpul:`,
+        `• 📝 Catatan Topik: _"${combinedTopic}"_`,
+        photoCount > 0 ? `• 📷 Foto Kegiatan: *${photoCount} file*` : '',
+        docCount > 0 ? `• 📄 Dokumen Lampiran: *${docCount} file*` : '',
+        `• 💳 Saldo Kuota Tersisa: *1 Request* (Kritis)`,
+        afterHoursNote,
+        '',
+        `⚠️ *Jatah Minggu Ini Penuh (${quota.weeklyUsed}/${quota.weeklyLimit})*`,
+        `Karena saldo kuota Anda tersisa 1 Request, pengajuan Darurat (biaya 2 kuota) tidak dapat dipilih.`,
+        '',
+        `Bahan dapat diamankan di *Antrean Prioritas Senin Depan* (biaya 1 kuota saat diproses).`,
+      ]
+        .filter(Boolean)
+        .join('\n');
+
+      await this.waClient.sendInteractiveButtons(
+        draft.phoneE164,
+        criticalSummary,
+        [
+          { id: 'BRIEF_SUBMIT_QUEUED', title: '🗓️ Antrean Senin (1)' },
+          { id: 'BRIEF_CANCEL_ASK', title: '❌ Batalkan' },
+          { id: 'MENU_OPEN_MAIN', title: '📋 Menu Utama' },
+        ],
+        'Konfirmasi Antrean Senin',
+        'Saldo tersisa 1, hanya dapat memilih Antrean Senin'
+      );
+      return;
+    }
+
+    // KONDISI 3: JATAH REQUEST MINGGU INI MASIH ADA (weeklyRemaining > 0 & remainingQuota > 0)
     const afterHoursNotice = horizonInfo.isAfterCutoff
       ? `• 🌙 Waktu Masuk: *Di luar jam kerja (>= 17:00 WIB) — Dijadwalkan produksi besok pagi (mulai 08:00 WIB)*`
       : `• ⏱️ Waktu Masuk: *Jam kerja aktif — Diproses untuk siap tayang hari ini*`;
@@ -770,11 +921,13 @@ export class WhatsAppBotSessionService implements OnModuleDestroy {
       `• 📝 Catatan Topik: _"${combinedTopic}"_`,
       photoCount > 0 ? `• 📷 Foto Kegiatan: *${photoCount} file*` : '',
       docCount > 0 ? `• 📄 Dokumen Lampiran: *${docCount} file*` : '',
-      `• 📊 Sisa Jatah Minggu Ini: *${quota.weeklyRemaining} dari ${quota.weeklyLimit} request*`,
+      `• 📊 Jatah Minggu Ini: *${quota.weeklyRemaining} dari ${quota.weeklyLimit} request*`,
+      `• 💳 Saldo Total Paket: *${quota.remainingQuota} dari ${quota.totalQuotaAllocated} request*`,
+      `• 🏷️ Biaya Pengiriman: *1 Kuota*`,
       afterHoursNotice,
       '',
       '💡 *Masih ada kalimat/foto tambahan?* Langsung kirim lagi di bawah ini, sistem otomatis menggabungkannya.',
-      'Jika sudah lengkap semua, silakan tekan tombol kirim untuk diteruskan ke meja pengerjaan redaksi:',
+      'Jika sudah lengkap, silakan pilih opsi pengiriman:',
     ]
       .filter(Boolean)
       .join('\n');
@@ -783,9 +936,9 @@ export class WhatsAppBotSessionService implements OnModuleDestroy {
       draft.phoneE164,
       summaryLines,
       [
-        { id: 'BRIEF_SUBMIT_URGENT', title: '⚡ Kirim Mendesak' },
-        { id: 'BRIEF_SUBMIT_NORMAL', title: '🟢 Kirim Biasa' },
-        { id: 'BRIEF_CANCEL', title: '❌ Batal' },
+        { id: 'BRIEF_SUBMIT_NORMAL', title: '🟢 Kirim (Potong 1)' },
+        { id: 'BRIEF_SUBMIT_URGENT', title: '⚡ Prioritas (Potong 1)' },
+        { id: 'BRIEF_CANCEL_ASK', title: '❌ Batalkan' },
       ],
       'Konfirmasi Request Konten',
       'Kuota baru terpotong setelah Anda menekan tombol Kirim'
@@ -803,6 +956,16 @@ export class WhatsAppBotSessionService implements OnModuleDestroy {
     if (buttonId === 'MENU_OPEN_MAIN') {
       await this.redisService.del(`whatsapp:live_chat:${tenant.id}`);
       await this.sendMainMenuPrompt(tenant.id, tenant.fullName, phoneE164);
+      return;
+    }
+
+    if (buttonId === 'MENU_BUY_QUOTA') {
+      await this.billingOrderService.presentPackageCatalog(tenant, phoneE164);
+      return;
+    }
+
+    if (buttonId.startsWith('BUY_PKG:')) {
+      await this.billingOrderService.handlePackageSelection(tenant, phoneE164, buttonId);
       return;
     }
 
@@ -980,17 +1143,201 @@ export class WhatsAppBotSessionService implements OnModuleDestroy {
       return;
     }
 
-    if (buttonId === 'BRIEF_CANCEL') {
-      await this.redisService.del(draftKey);
-      await this.redisService.del(`whatsapp:session_intent:${tenant.id}`);
-      this.clearTenantDebounceTimer(tenant.id);
+    if (buttonId === 'BRIEF_CANCEL' || buttonId === 'BRIEF_CANCEL_ASK') {
+      const draft = await this.redisService.get<DraftCartState>(draftKey);
+      if (!draft || draft.items.length === 0) {
+        await this.redisService.del(draftKey);
+        await this.redisService.del(`whatsapp:session_intent:${tenant.id}`);
+        await this.waClient.sendInteractiveButtons(
+          phoneE164,
+          'Keranjang bahan Anda kosong. Apa yang ingin Anda lakukan selanjutnya?',
+          [
+            { id: 'MENU_NEW_BRIEF', title: '📝 Request Baru' },
+            { id: 'MENU_OPEN_MAIN', title: '📋 Menu Utama' },
+          ]
+        );
+        return;
+      }
+
       await this.waClient.sendInteractiveButtons(
         phoneE164,
-        '✅ Draft request topik telah dibatalkan. Apa yang ingin Anda lakukan selanjutnya?',
+        [
+          `⚠️ *Konfirmasi Pembatalan Pengiriman Bahan*`,
+          '',
+          `Apakah Bapak/Ibu yakin ingin membatalkan draf request ini?`,
+          `• Seluruh draf catatan & file lampiran sementara akan dibersihkan.`,
+          `• *Saldo kuota Anda 100% AMAN (TIDAK TERPOTONG).*`,
+        ].join('\n'),
+        [
+          { id: 'BRIEF_CANCEL_CONFIRMED', title: '🗑️ Ya, Hapus & Batal' },
+          { id: 'BRIEF_CANCEL_ABORTED', title: '🔙 Lanjut Kirim' },
+        ],
+        'Konfirmasi Pembatalan',
+        'Saldo kuota tidak akan terpotong'
+      );
+      return;
+    }
+
+    if (buttonId === 'BRIEF_CANCEL_CONFIRMED') {
+      this.clearTenantDebounceTimer(tenant.id);
+      await this.redisService.del(draftKey);
+      await this.redisService.del(`whatsapp:session_intent:${tenant.id}`);
+
+      const quota = await this.helper.getTenantWeeklyQuota(tenant.id);
+
+      await this.waClient.sendInteractiveButtons(
+        phoneE164,
+        [
+          `✅ *Draf Request Berhasil Dibatalkan*`,
+          '',
+          `Bahan telah dibersihkan dari keranjang sementara.`,
+          `• Saldo Kuota Total: *${quota.remainingQuota} dari ${quota.totalQuotaAllocated} Request*`,
+          `• Jatah Minggu Ini: *${quota.weeklyRemaining} dari ${quota.weeklyLimit} Request tersisa*`,
+          '',
+          'Silakan pilih menu di bawah jika ingin mengajukan request baru atau melihat status:',
+        ].join('\n'),
         [
           { id: 'MENU_NEW_BRIEF', title: '📝 Request Baru' },
+          { id: 'MENU_CHECK_STATUS', title: '📊 Cek Status' },
           { id: 'MENU_OPEN_MAIN', title: '📋 Menu Utama' },
-        ]
+        ],
+        'Draf Dibatalkan',
+        'Asisten Redaksi Polaris'
+      );
+      return;
+    }
+
+    if (buttonId === 'BRIEF_CANCEL_ABORTED') {
+      const draft = await this.redisService.get<DraftCartState>(draftKey);
+      if (draft && draft.items.length > 0) {
+        await this.sendDraftConfirmationPrompt(draft);
+      } else {
+        await this.sendMainMenuPrompt(tenant.id, tenant.fullName, phoneE164);
+      }
+      return;
+    }
+
+    // POINT OF NO RETURN: Pembatalan Tiket yang Sudah Disubmit (Sebelum Dikerjakan Operator)
+    if (buttonId.startsWith('BRIEF_TICKET_CANCEL:')) {
+      const targetBriefId = buttonId.slice('BRIEF_TICKET_CANCEL:'.length).trim();
+      const [brief] = await db
+        .select()
+        .from(contentBriefs)
+        .where(and(eq(contentBriefs.id, targetBriefId), eq(contentBriefs.tenantId, tenant.id)))
+        .limit(1);
+
+      if (!brief) {
+        await this.waClient.sendTextMessage(phoneE164, 'Tiket request tidak ditemukan.');
+        return;
+      }
+
+      // Check Point of No Return: jika sudah diterima operator atau dalam proses produksi
+      const lockedStatuses = ['ACCEPTED', 'IN_PROGRESS', 'READY_FOR_REVIEW', 'APPROVED', 'PUBLISHED', 'REJECTED', 'CANCELLED'];
+      if (lockedStatuses.includes(brief.status)) {
+        await this.waClient.sendInteractiveButtons(
+          phoneE164,
+          [
+            `⚠️ *Pembatalan Tidak Dapat Dilakukan*`,
+            '',
+            `Tiket *#${brief.briefCode}* saat ini berstatus *${brief.status}*.`,
+            `Materi sudah masuk ke tahap produksi oleh Tim Redaksi, sehingga kuota tidak dapat ditarik kembali.`,
+            '',
+            `💡 *Solusi:* Anda memiliki hak *${brief.revisionLimit - brief.revisionUsed}x revisi* setelah draf materi selesai diracik untuk disesuaikan dengan keinginan Anda.`,
+          ].join('\n'),
+          [
+            { id: `BRIEF_LOOKUP:${brief.id}`, title: '📋 Detail Tiket' },
+            { id: 'MENU_OPEN_MAIN', title: '📋 Menu Utama' },
+          ],
+          'Tiket Sedang Diproduksi',
+          'Point of No Return'
+        );
+        return;
+      }
+
+      // Tampilkan konfirmasi 2-step pembatalan tiket
+      await this.waClient.sendInteractiveButtons(
+        phoneE164,
+        [
+          `⚠️ *Konfirmasi Pembatalan Tiket #${brief.briefCode}*`,
+          '',
+          `Apakah Bapak/Ibu yakin membatalkan tiket ini?`,
+          `• Status saat ini: *${brief.status}* (Belum diproses operator)`,
+          `• Kuota yang akan dikembalikan: *+${brief.quotaCostDeducted || 1} Request* (100% utuh)`,
+        ].join('\n'),
+        [
+          { id: `BRIEF_TICKET_CONFIRM_CANCEL:${brief.id}`, title: '🗑️ Ya, Batalkan Tiket' },
+          { id: `BRIEF_LOOKUP:${brief.id}`, title: '🔙 Kembali' },
+        ],
+        'Konfirmasi Pembatalan Tiket',
+        'Kuota akan dikembalikan 100%'
+      );
+      return;
+    }
+
+    if (buttonId.startsWith('BRIEF_TICKET_CONFIRM_CANCEL:')) {
+      const targetBriefId = buttonId.slice('BRIEF_TICKET_CONFIRM_CANCEL:'.length).trim();
+      const [brief] = await db
+        .select()
+        .from(contentBriefs)
+        .where(and(eq(contentBriefs.id, targetBriefId), eq(contentBriefs.tenantId, tenant.id)))
+        .limit(1);
+
+      if (!brief) {
+        await this.waClient.sendTextMessage(phoneE164, 'Tiket request tidak ditemukan.');
+        return;
+      }
+
+      if (['ACCEPTED', 'IN_PROGRESS', 'READY_FOR_REVIEW', 'APPROVED', 'PUBLISHED'].includes(brief.status)) {
+        await this.waClient.sendInteractiveButtons(
+          phoneE164,
+          `⚠️ Tiket *#${brief.briefCode}* baru saja diambil oleh Tim Redaksi. Pembatalan otomatis ditutup karena proses produksi telah berjalan.`,
+          [
+            { id: `BRIEF_LOOKUP:${brief.id}`, title: '📋 Detail Tiket' },
+            { id: 'MENU_OPEN_MAIN', title: '📋 Menu Utama' },
+          ]
+        );
+        return;
+      }
+
+      if (brief.status === 'CANCELLED') {
+        await this.waClient.sendTextMessage(phoneE164, `Tiket #${brief.briefCode} sudah dibatalkan sebelumnya.`);
+        return;
+      }
+
+      // Update status tiket jadi CANCELLED
+      await db
+        .update(contentBriefs)
+        .set({
+          status: 'CANCELLED',
+          operatorNotes: 'Dibatalkan oleh klien via WhatsApp sebelum diambil operator',
+          updatedAt: new Date(),
+        })
+        .where(eq(contentBriefs.id, brief.id));
+
+      // Kembalikan kuota secara atomik
+      const refundResult = await this.quotaWalletService.refundQuota({
+        tenantId: tenant.id,
+        briefId: brief.id,
+        reason: 'Dibatalkan oleh klien via WhatsApp sebelum diambil operator',
+        isCancelledByClient: true,
+      });
+
+      await this.waClient.sendInteractiveButtons(
+        phoneE164,
+        [
+          `✅ *Tiket #${brief.briefCode} Berhasil Dibatalkan*`,
+          '',
+          `Tiket telah dibatalkan sebelum masuk produksi.`,
+          `• Kuota Dikembalikan: *+${refundResult.refundedCost} Request*`,
+          `• Saldo Kuota Aktif Anda: *${refundResult.remainingQuota} Request*`,
+        ].join('\n'),
+        [
+          { id: 'MENU_NEW_BRIEF', title: '📝 Request Baru' },
+          { id: 'MENU_CHECK_STATUS', title: '📊 Cek Status' },
+          { id: 'MENU_OPEN_MAIN', title: '📋 Menu Utama' },
+        ],
+        'Tiket Dibatalkan & Refund Sukses',
+        'Asisten Redaksi Polaris'
       );
       return;
     }
@@ -1015,10 +1362,27 @@ export class WhatsAppBotSessionService implements OnModuleDestroy {
         return;
       }
 
+      const quota = await this.helper.getTenantWeeklyQuota(tenant.id);
+      const isUrgentOverquota = buttonId === 'BRIEF_SUBMIT_URGENT_OVERQUOTA';
+      const requiredCost = isUrgentOverquota ? 2 : 1;
+
+      // Server-side guard: periksa saldo kuota
+      if (quota.remainingQuota < requiredCost || quota.isPeriodExpired) {
+        await this.waClient.sendInteractiveButtons(
+          phoneE164,
+          `🚫 *Saldo Kuota Tidak Mencukupi*\n\nPengajuan ini membutuhkan *${requiredCost} kuota*, namun saldo kuota aktif Anda tersisa *${quota.remainingQuota} request*.\n\nSilakan perpanjang atau top-up paket kuota Anda di dashboard.`,
+          [
+            { id: 'BRIEF_CANCEL_ASK', title: '❌ Batalkan Draft' },
+            { id: 'MENU_CHECK_STATUS', title: '📊 Cek Status' },
+            { id: 'MENU_OPEN_MAIN', title: '📋 Menu Utama' },
+          ]
+        );
+        return;
+      }
+
       await this.redisService.del(draftKey);
       await this.redisService.del(`whatsapp:session_intent:${tenant.id}`);
 
-      const quota = await this.helper.getTenantWeeklyQuota(tenant.id);
       const isUrgent =
         buttonId === 'BRIEF_SUBMIT_URGENT' || buttonId === 'BRIEF_SUBMIT_URGENT_OVERQUOTA';
       const clientUrgency = isUrgent ? BriefUrgencyLevel.URGENT : BriefUrgencyLevel.NORMAL;
@@ -1036,9 +1400,11 @@ export class WhatsAppBotSessionService implements OnModuleDestroy {
         tenant,
         draft,
         clientUrgency,
-        targetStatus
+        targetStatus,
+        isUrgentOverquota
       );
 
+      const walletAfter = await this.quotaWalletService.getTenantQuotaWallet(tenant.id);
       const horizonInfo = getTimeHorizonInfo(clientUrgency);
 
       // KASUS A: MASUK ANTREAN MINGGU DEPAN (KUOTA PENUH)
@@ -1049,10 +1415,12 @@ export class WhatsAppBotSessionService implements OnModuleDestroy {
           [
             `🗓️ *Request Diamankan: Antrean Minggu Depan #${createdBrief.briefCode}*`,
             `• Target Pengerjaan: *Senin Pukul 08:00 WIB*`,
-            `• Status Kuota Minggu Ini: *${quota.weeklyUsed}/${quota.weeklyLimit} (Penuh)*`,
+            `• Biaya Terpotong: *1 Kuota*`,
+            `• Sisa Saldo Total: *${walletAfter.remainingQuota} dari ${walletAfter.totalQuotaAllocated} Request*`,
+            `• Status Jatah Minggu Ini: *${quota.weeklyUsed}/${quota.weeklyLimit} (Penuh)*`,
             `• Antrean Minggu Depan Anda: *${nextWeekCount} tiket tersimpan*`,
             '',
-            '🔒 *Bahan kegiatan Anda telah aman tersimpan.* Karena jatah minggu ini telah penuh, Tim Redaksi akan langsung memproses tiket ini pada giliran pertama hari Senin pagi mendatang saat jatah kuota diperbarui.',
+            '🔒 *Bahan kegiatan Anda telah aman tersimpan.* Tim Redaksi akan langsung memproses tiket ini pada giliran pertama hari Senin pagi mendatang saat jatah mingguan diperbarui.',
           ].join('\n'),
           [
             { id: 'MENU_CHECK_STATUS', title: '📊 Cek Status' },
@@ -1062,21 +1430,24 @@ export class WhatsAppBotSessionService implements OnModuleDestroy {
           `Tiket #${createdBrief.briefCode} Masuk Antrean`,
           'Asisten Redaksi Polaris'
         );
+        await this.checkAndSendLowQuotaAlert(tenant, phoneE164, walletAfter);
         return;
       }
 
-      // KASUS B: PENGAJUAN DARURAT (OVER-QUOTA URGENT)
+      // KASUS B: PENGAJUAN DARURAT (OVER-QUOTA URGENT - BIAYA X2)
       if (buttonId === 'BRIEF_SUBMIT_URGENT_OVERQUOTA') {
         await this.waClient.sendInteractiveButtons(
           phoneE164,
           [
             `⚡ *Pengajuan Darurat Diterima: #${createdBrief.briefCode}*`,
             `• Status: *Prioritas Editor Utama (Over-Quota)*`,
+            `• Biaya Kuota: *2 Kuota Terpotong*`,
+            `• Sisa Saldo Total: *${walletAfter.remainingQuota} dari ${walletAfter.totalQuotaAllocated} Request*`,
             `• Target Produksi: *${horizonInfo.badgeLabel}*`,
             horizonInfo.statusLine,
-            `• Catatan Kuota: Jatah mingguan penuh (${quota.weeklyUsed}/${quota.weeklyLimit}). Permohonan darurat diajukan ke meja Editor.`,
+            `• Catatan: Jatah mingguan penuh (${quota.weeklyUsed}/${quota.weeklyLimit}). Darurat dialokasikan ke meja Editor.`,
             '',
-            '🔒 *Bahan kegiatan Anda telah diteruskan ke Editor Utama.* Tim kami akan meninjau ketersediaan slot darurat untuk peracikan konten Anda hari ini.',
+            '🔒 *Bahan kegiatan Anda telah diteruskan ke Editor Utama.* Tim kami segera memproses konten Anda untuk tayang hari ini.',
           ].join('\n'),
           [
             { id: 'MENU_CHECK_STATUS', title: '📊 Cek Status' },
@@ -1086,17 +1457,19 @@ export class WhatsAppBotSessionService implements OnModuleDestroy {
           `Tiket Darurat #${createdBrief.briefCode}`,
           'Asisten Redaksi Polaris'
         );
+        await this.checkAndSendLowQuotaAlert(tenant, phoneE164, walletAfter);
         return;
       }
 
-      // KASUS C: SUBMIT REGULER / URGENT NORMAL (KUOTA MASIH ADA)
-      const quotaNotice = `• 📊 Pemakaian Jatah Minggu Ini: *${quota.weeklyUsed + 1} dari ${quota.weeklyLimit} request* (Sisa: *${Math.max(0, quota.weeklyRemaining - 1)} request*)`;
+      // KASUS C: SUBMIT REGULER / URGENT NORMAL (KUOTA MASIH ADA - BIAYA 1 KUOTA)
+      const quotaNotice = `• 📊 Jatah Minggu Ini: *${quota.weeklyUsed + 1} dari ${quota.weeklyLimit} request*\n• 💳 Sisa Saldo Total: *${walletAfter.remainingQuota} dari ${walletAfter.totalQuotaAllocated} Request*`;
 
       await this.waClient.sendInteractiveButtons(
         phoneE164,
         [
           `✅ *Request Resmi Diterima: #${createdBrief.briefCode}*`,
           `• Target Produksi: *${horizonInfo.badgeLabel}*`,
+          `• Biaya Terpotong: *1 Kuota*`,
           horizonInfo.statusLine,
           quotaNotice,
           '',
@@ -1110,6 +1483,7 @@ export class WhatsAppBotSessionService implements OnModuleDestroy {
         `Tiket #${createdBrief.briefCode} Diproses`,
         'Asisten Redaksi Polaris'
       );
+      await this.checkAndSendLowQuotaAlert(tenant, phoneE164, walletAfter);
       return;
     }
 
@@ -1401,8 +1775,10 @@ export class WhatsAppBotSessionService implements OnModuleDestroy {
     tenant: { id: string; fullName: string },
     draft: DraftCartState,
     clientUrgency: BriefUrgencyLevel,
-    targetStatus: 'SUBMITTED' | 'QUEUED_NEXT_WEEK' = 'SUBMITTED'
+    targetStatus: 'SUBMITTED' | 'QUEUED_NEXT_WEEK' = 'SUBMITTED',
+    isUrgentOverquota = false
   ) {
+    const cost = isUrgentOverquota ? 2 : 1;
     const [assignment] = await db
       .select()
       .from(operatorTenantAssignments)
@@ -1449,6 +1825,8 @@ export class WhatsAppBotSessionService implements OnModuleDestroy {
           weeklyRequestLimit: limits.weeklyRequestLimit,
           revisionUsed: 0,
           revisionLimit: limits.revisionLimit,
+          quotaCostDeducted: cost,
+          isUrgentOverquota,
         })
         .returning();
 
@@ -1475,6 +1853,15 @@ export class WhatsAppBotSessionService implements OnModuleDestroy {
       }
 
       return insertedBrief;
+    });
+
+    // Pemotongan kuota secara atomik dengan Row-Level Lock & Immutable Ledger
+    await this.quotaWalletService.deductQuota({
+      tenantId: tenant.id,
+      cost,
+      briefId: createdBrief.id,
+      referenceCode: createdBrief.briefCode,
+      isUrgentOverquota,
     });
 
     const notifTitle =
@@ -1970,18 +2357,25 @@ export class WhatsAppBotSessionService implements OnModuleDestroy {
         ? recentBriefs
           .map((b) => {
             const h = getTimeHorizonInfo(b.clientUrgency as any, b.createdAt);
-            return `• *#${b.briefCode}* — ${h.shortLabel} (*${b.status}*, Rev: ${b.revisionUsed}/${b.revisionLimit})`;
+            const surgeBadge = b.isUrgentOverquota ? ' ⚡[Darurat x2]' : '';
+            return `• *#${b.briefCode}* — ${h.shortLabel} (*${b.status}*${surgeBadge}, Rev: ${b.revisionUsed}/${b.revisionLimit})`;
           })
           .join('\n')
         : '• Belum ada tiket request aktif.';
 
+    const expiryNote = quota.isPeriodExpired
+      ? '🔴 *Kedaluwarsa*'
+      : quota.currentPeriodEnd
+        ? `Aktif s/d ${new Date(quota.currentPeriodEnd).toLocaleDateString('id-ID')}`
+        : 'Aktif';
+
     await this.waClient.sendInteractiveButtons(
       phoneE164,
       [
-        `📊 *Status Layanan Redaksi — ${tenantName}*`,
-        `• Periode Minggu Ini: *${quota.weeklyQuotaPeriod}*`,
-        `• Jatah Terpakai: *${quota.weeklyUsed} dari ${quota.weeklyLimit} request*`,
-        `• Sisa Jatah Minggu Ini: *${quota.weeklyRemaining} request*`,
+        `📊 *Status Layanan & Kuota — ${tenantName}*`,
+        `• 💳 Saldo Kuota Total: *${quota.remainingQuota} dari ${quota.totalQuotaAllocated} Request*`,
+        `• 📊 Jatah Minggu Ini: *${quota.weeklyUsed} dari ${quota.weeklyLimit} Request* (Reset tiap Senin 00:00 WIB)`,
+        `• 🗓️ Masa Aktif Paket: *${expiryNote}*`,
         '',
         '*3 Request Terakhir:*',
         briefLines,
@@ -1991,7 +2385,7 @@ export class WhatsAppBotSessionService implements OnModuleDestroy {
         { id: 'MENU_LATEST_LINKS', title: '🔗 Link & Arsip' },
         { id: 'MENU_OPEN_MAIN', title: '📋 Menu Utama' },
       ],
-      'Status & Kuota Mingguan',
+      'Status Kuota & Layanan',
       'Asisten Redaksi Polaris'
     );
   }
@@ -2310,6 +2704,9 @@ export class WhatsAppBotSessionService implements OnModuleDestroy {
         { id: `REV_APPROVE:${brief.id}`, title: '✅ Setujui & Tayang' },
         { id: `REV_START:${brief.id}`, title: '✏️ Minta Revisi' }
       );
+    } else if (brief.status === 'SUBMITTED' || brief.status === 'QUEUED_NEXT_WEEK') {
+      // Tiket belum dikerjakan operator: boleh dibatalkan klien dan kuota direfund 100%
+      buttons.push({ id: `BRIEF_TICKET_CANCEL:${brief.id}`, title: '❌ Batalkan Tiket' });
     } else if (brief.linkedPublicationId) {
       buttons.push({ id: `PUB_DETAIL:${brief.linkedPublicationId}`, title: '📰 Buka Konten' });
     }
@@ -2775,6 +3172,11 @@ export class WhatsAppBotSessionService implements OnModuleDestroy {
         title: '📊 Status & Sisa Kuota',
         description: 'Lihat progres pengerjaan konten & sisa jatah minggu ini',
       },
+      {
+        id: 'MENU_BUY_QUOTA',
+        title: '💳 Beli / Top-Up Kuota',
+        description: 'Tambah kuota request & perpanjang masa aktif lisensi kapan saja',
+      },
     ];
 
     await this.waClient.sendInteractiveList(
@@ -2805,6 +3207,37 @@ export class WhatsAppBotSessionService implements OnModuleDestroy {
       'Asisten Redaksi Polaris',
       'Pilih menu tanpa menghilangkan proses yang berjalan'
     );
+  }
+
+  private async checkAndSendLowQuotaAlert(
+    tenant: { id: string; fullName: string },
+    phoneE164: string,
+    walletAfter: { remainingQuota: number; totalQuotaAllocated: number; currentPeriodEnd: Date | string | null; isExpired?: boolean }
+  ): Promise<void> {
+    if (walletAfter.remainingQuota <= 2 && !walletAfter.isExpired) {
+      const dateFormatted = walletAfter.currentPeriodEnd
+        ? new Date(walletAfter.currentPeriodEnd).toLocaleDateString('id-ID')
+        : '-';
+
+      await this.waClient.sendInteractiveButtons(
+        phoneE164,
+        [
+          `⚠️ *Pengingat Saldo Kuota Menipis*`,
+          ``,
+          `Bapak/Ibu *${tenant.fullName}*, saldo kuota request Anda tersisa *${walletAfter.remainingQuota} tiket* lagi.`,
+          `Masa aktif paket berjalan s.d. *${dateFormatted}*.`,
+          ``,
+          `Agar pengajuan liputan atau materi aspirasi berikutnya tidak terputus, Anda dapat menambah kuota sekarang. Saldo baru akan diakumulasikan dan masa aktif diperpanjang otomatis.`,
+        ].join('\n'),
+        [
+          { id: 'MENU_BUY_QUOTA', title: '💳 Beli Kuota Paket' },
+          { id: 'MENU_CHECK_STATUS', title: '📊 Cek Status' },
+          { id: 'MENU_OPEN_MAIN', title: '📋 Nanti Saja' },
+        ],
+        'Peringatan Sisa Kuota',
+        'Asisten Redaksi Polaris'
+      );
+    }
   }
 }
 

@@ -27,6 +27,7 @@ import {
   BriefUrgencyLevel,
 } from '@polaris/shared-types';
 import { RedisService } from '../../redis/redis.service.js';
+import { QuotaWalletService } from '../../billing/quota-wallet.service.js';
 import { WhatsAppCloudClient } from '../whatsapp-cloud.client.js';
 import {
   getCurrentWibWeeklyPeriod,
@@ -55,7 +56,8 @@ export class WhatsAppOperatorBrokerService {
   constructor(
     private readonly redisService: RedisService,
     private readonly waClient: WhatsAppCloudClient,
-    private readonly helper: WhatsAppBriefHelperService
+    private readonly helper: WhatsAppBriefHelperService,
+    private readonly quotaWalletService: QuotaWalletService
   ) {}
 
   public async listBriefsForOperator(
@@ -486,9 +488,16 @@ export class WhatsAppOperatorBrokerService {
       auditMeta,
     });
 
+        const refundResult = await this.quotaWalletService.refundQuota({
+      tenantId: row.brief.tenantId,
+      briefId: row.brief.id,
+      reason: dto.reason,
+      isCancelledByClient: false,
+    });
+
     await this.waClient.sendTextMessage(
       row.phoneNumber,
-      `ℹ️ *Informasi Tiket #${row.brief.briefCode}*\n\nMohon maaf, request ini belum dapat kami proses dengan catatan:\n_"${dto.reason}"_\n\n(Jatah request mingguan Anda *tidak terpotong*).`
+      `ℹ️ *Informasi Tiket #${row.brief.briefCode}*\n\nMohon maaf, request ini belum dapat kami proses dengan catatan:\n_"${dto.reason}"_\n\nSaldo kuota Anda sebesar *+${refundResult.refundedCost} Request* telah dikembalikan 100% ke akun Anda. Saldo sekarang: *${refundResult.remainingQuota} Request*.`
     );
 
     const msgs = await db

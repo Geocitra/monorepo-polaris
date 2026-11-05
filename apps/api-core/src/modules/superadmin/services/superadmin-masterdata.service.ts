@@ -174,10 +174,11 @@ export class SuperadminMasterDataService {
    */
   async updatePricingMatrix(id: string, dto: AdminUpdatePricingMatrixDto) {
     const updates: Record<string, any> = {
-      amountIdr: dto.amountIdr.toString(),
       updatedAt: new Date(),
     };
+    if (dto.amountIdr !== undefined) updates.amountIdr = dto.amountIdr.toString();
     if (dto.durationDays !== undefined) updates.durationDays = dto.durationDays;
+    if (dto.quotaRequests !== undefined) updates.quotaRequests = dto.quotaRequests;
     if (dto.isActive !== undefined) updates.isActive = dto.isActive;
 
     const [updated] = await db

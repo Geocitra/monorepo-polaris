@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useMemo } from 'react';
-import { Tag, Edit3, CheckCircle2, AlertCircle, X, RefreshCw, Filter, Layers } from 'lucide-react';
+import { Tag, Edit3, CheckCircle2, AlertCircle, X, RefreshCw, Filter, Layers, Zap } from 'lucide-react';
 import { AdminApiClient } from '@/lib/api-client';
 import { PricingMatrixRow } from '../types';
 
@@ -16,6 +16,7 @@ export function MasterPricingTab({ matrices, loading, onRefresh }: MasterPricing
   const [tierFilter, setTierFilter] = useState('ALL');
   const [editingItem, setEditingItem] = useState<PricingMatrixRow | null>(null);
   const [newAmount, setNewAmount] = useState<string>('');
+  const [newQuota, setNewQuota] = useState<string>('12');
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -30,6 +31,8 @@ export function MasterPricingTab({ matrices, loading, onRefresh }: MasterPricing
   const handleOpenEdit = (item: PricingMatrixRow) => {
     setEditingItem(item);
     setNewAmount(item.amountIdr.toString());
+    const defaultQuota = item.quotaRequests ?? (item.durationDays >= 365 ? 144 : item.durationDays >= 180 ? 72 : 12);
+    setNewQuota(defaultQuota.toString());
     setError(null);
   };
 
@@ -41,14 +44,19 @@ export function MasterPricingTab({ matrices, loading, onRefresh }: MasterPricing
 
     try {
       const amount = parseInt(newAmount.replace(/\D/g, ''), 10);
+      const quota = parseInt(newQuota, 10);
       if (isNaN(amount) || amount < 0) {
         throw new Error('Nominal tarif tidak valid.');
+      }
+      if (isNaN(quota) || quota < 1) {
+        throw new Error('Alokasi kuota request minimal 1 tiket brief.');
       }
 
       await AdminApiClient.request(`/admin/pricing-matrices/${editingItem.id}`, {
         method: 'PATCH',
         body: JSON.stringify({
           amountIdr: amount,
+          quotaRequests: quota,
         }),
       });
 
@@ -147,6 +155,7 @@ export function MasterPricingTab({ matrices, loading, onRefresh }: MasterPricing
                 <th className="py-3 px-4">Paket Tier</th>
                 <th className="py-3 px-4">Siklus Penagihan</th>
                 <th className="py-3 px-4">Durasi Hari</th>
+                <th className="py-3 px-4 text-center">Alokasi Kuota</th>
                 <th className="py-3 px-4 text-right">Tarif Resmi Lisensi</th>
                 <th className="py-3 px-4 text-center">Status</th>
                 <th className="py-3 px-4 text-right">Aksi</th>
@@ -197,6 +206,14 @@ export function MasterPricingTab({ matrices, loading, onRefresh }: MasterPricing
                     {m.durationDays} hari
                   </td>
 
+                  {/* Kuota Request */}
+                  <td className="py-3 px-4 text-center font-mono">
+                    <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-indigo-50 dark:bg-indigo-950/50 text-indigo-700 dark:text-indigo-300 font-bold text-xs border border-indigo-200 dark:border-indigo-800">
+                      <Zap className="w-3.5 h-3.5 text-indigo-500" />
+                      {m.quotaRequests ?? (m.durationDays >= 365 ? 144 : m.durationDays >= 180 ? 72 : 12)} Req
+                    </span>
+                  </td>
+
                   {/* Tarif Resmi */}
                   <td className="py-3 px-4 text-right font-mono font-bold text-slate-900 dark:text-white text-sm">
                     {formatRupiah(m.amountIdr)}
@@ -233,7 +250,7 @@ export function MasterPricingTab({ matrices, loading, onRefresh }: MasterPricing
 
               {filteredMatrices.length === 0 && !loading && (
                 <tr>
-                  <td colSpan={7} className="py-8 text-center text-slate-400 text-xs italic">
+                  <td colSpan={8} className="py-8 text-center text-slate-400 text-xs italic">
                     Tidak ada matriks harga yang sesuai filter.
                   </td>
                 </tr>
@@ -312,6 +329,30 @@ export function MasterPricingTab({ matrices, loading, onRefresh }: MasterPricing
                     = {formatRupiah(parseInt(newAmount, 10) || 0)}
                   </p>
                 )}
+              </div>
+
+              <div className="space-y-1.5">
+                <label className="text-xs font-semibold text-slate-700 dark:text-slate-300 flex items-center gap-1.5">
+                  <Zap className="w-3.5 h-3.5 text-indigo-600 dark:text-indigo-400" />
+                  Alokasi Kuota Request (Jumlah Brief)
+                </label>
+                <div className="relative">
+                  <input
+                    type="number"
+                    value={newQuota}
+                    onChange={(e) => setNewQuota(e.target.value)}
+                    required
+                    min={1}
+                    max={1000}
+                    className="w-full px-3.5 py-2.5 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl text-sm font-mono font-bold focus:outline-none focus:ring-2 focus:ring-indigo-500 text-slate-900 dark:text-white"
+                  />
+                  <span className="absolute right-3.5 top-1/2 -translate-y-1/2 text-xs font-bold text-slate-400">
+                    Tiket
+                  </span>
+                </div>
+                <p className="text-[11px] text-slate-500">
+                  Total kuota materi yang diberikan untuk satu paket lisensi ini (pacing mingguan rata-rata 1/4 kuota per minggu).
+                </p>
               </div>
 
               <div className="flex items-center justify-end gap-3 pt-3">

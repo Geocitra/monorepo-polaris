@@ -1,12 +1,16 @@
 import { Controller, Post, Get, Body, Param, HttpCode, HttpStatus } from '@nestjs/common';
 import { BillingService } from './billing.service.js';
+import { QuotaWalletService } from './quota-wallet.service.js';
 import { CreateCheckoutDto, CheckoutResponseDto, BillingStatusDto } from './dto/billing.dto.js';
 import { Public } from '../../common/decorators/public.decorator.js';
 import { CurrentTenant, AuthenticatedTenantPayload } from '../../common/decorators/current-tenant.decorator.js';
 
 @Controller('billing')
 export class BillingController {
-  constructor(private readonly billingService: BillingService) {}
+  constructor(
+    private readonly billingService: BillingService,
+    private readonly quotaWalletService: QuotaWalletService
+  ) {}
 
   @Post('checkout')
   @HttpCode(HttpStatus.OK)
@@ -23,6 +27,14 @@ export class BillingController {
     @CurrentTenant() user: AuthenticatedTenantPayload
   ): Promise<BillingStatusDto> {
     return await this.billingService.getBillingStatus(user.tenantId);
+  }
+
+  @Get('quota-transactions')
+  @HttpCode(HttpStatus.OK)
+  async getQuotaTransactions(
+    @CurrentTenant() user: AuthenticatedTenantPayload
+  ) {
+    return await this.quotaWalletService.getTransactionHistory(user.tenantId);
   }
 
   @Post('sync/:orderId')

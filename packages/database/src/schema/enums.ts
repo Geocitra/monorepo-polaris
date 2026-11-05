@@ -226,4 +226,14 @@ export const briefMessageTypeEnum = pgEnum('brief_message_type_enum', [
   'SYSTEM',
 ]);
 
+export const quotaTransactionTypeEnum = pgEnum('quota_transaction_type_enum', [
+  'PACKAGE_PURCHASE',
+  'REGULAR_CONSUME',
+  'URGENT_SURGE_CONSUME',
+  'REFUND_CANCELLED',
+  'REFUND_REJECTED',
+  'EXPIRED_FLUSH',
+  'ADMIN_ADJUSTMENT',
+]);
+
 

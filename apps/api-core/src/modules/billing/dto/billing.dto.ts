@@ -69,6 +69,9 @@ export interface BillingStatusDto {
     estimatedCostUsd: number;
     estimatedCostIdr: number;
     isUnlimited: boolean;
+    totalQuotaAllocated?: number;
+    remainingQuota?: number;
+    weeklyAllowanceLimit?: number;
   };
   recentInvoice?: RecentInvoiceSummaryDto | null;
   gatewayConfig?: {

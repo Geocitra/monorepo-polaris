@@ -7,6 +7,7 @@ export const subscriptionPriceMatrices = pgTable('subscription_price_matrices', 
   planTier: planTierEnum('plan_tier').notNull(),
   billingCycle: varchar('billing_cycle', { length: 20 }).notNull(), // 'MONTHLY', 'SEMESTER', 'ANNUAL'
   durationDays: integer('duration_days').notNull(),                 // 30, 180, 365
+  quotaRequests: integer('quota_requests').default(12).notNull(),   // 12 requests (monthly 3x4), 72 (semester), 144 (annual)
   amountIdr: numeric('amount_idr', { precision: 12, scale: 2 }).notNull(),
   isActive: boolean('is_active').default(true).notNull(),
   updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),

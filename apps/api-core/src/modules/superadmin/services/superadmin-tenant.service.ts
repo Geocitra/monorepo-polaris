@@ -16,6 +16,8 @@ import {
   subscriptionPriceMatrices,
   invoiceTransactions,
   tenantQuotaLedgers,
+  tenantQuotaWallets,
+  tenantQuotaTransactions,
   licenseInquiries,
   withTenantContext,
 } from '@polaris/database';
@@ -24,6 +26,7 @@ import {
   PlanTier,
   PaymentStatus,
   InquiryStatus,
+  QuotaTransactionType,
 } from '@polaris/shared-types';
 import { MidtransPaymentAdapter } from '@polaris/payment';
 import {
@@ -85,6 +88,9 @@ export class SuperadminTenantService {
         subscriptionStatus: subscriptions.status,
         planTier: subscriptions.planTier,
         periodEnd: subscriptions.currentPeriodEnd,
+        totalQuotaAllocated: tenantQuotaWallets.totalQuotaAllocated,
+        remainingQuota: tenantQuotaWallets.remainingQuota,
+        weeklyAllowanceLimit: tenantQuotaWallets.weeklyAllowanceLimit,
         dapilName: electoralDistricts.dapilName,
         provinceName: electoralDistricts.provinceName,
         commissionId: tenantMembers.commissionId,
@@ -92,6 +98,7 @@ export class SuperadminTenantService {
       })
       .from(tenantMembers)
       .leftJoin(subscriptions, eq(subscriptions.tenantId, tenantMembers.id))
+      .leftJoin(tenantQuotaWallets, eq(tenantQuotaWallets.tenantId, tenantMembers.id))
       .leftJoin(electoralDistricts, eq(electoralDistricts.id, tenantMembers.electoralDistrictId))
       .orderBy(desc(tenantMembers.createdAt));
 
@@ -182,7 +189,11 @@ export class SuperadminTenantService {
    */
   async grantManualLicense(tenantId: string, dto: ManualLicenseGrantDto) {
     const [member] = await db
-      .select({ id: tenantMembers.id, fullName: tenantMembers.fullName })
+      .select({
+        id: tenantMembers.id,
+        fullName: tenantMembers.fullName,
+        legislativeLevel: tenantMembers.legislativeLevel,
+      })
       .from(tenantMembers)
       .where(eq(tenantMembers.id, tenantId))
       .limit(1);
@@ -246,9 +257,85 @@ export class SuperadminTenantService {
       paidAt: now,
     });
 
+    // Alokasikan Kuota Request Internet ke tenantQuotaWallets
+    const durationDays = dto.additionalDays;
+    let addedQuota: number;
+
+    if (dto.customQuotaRequests !== undefined) {
+      addedQuota = dto.customQuotaRequests;
+    } else {
+      const [matchedMatrix] = await db
+        .select({ quotaRequests: subscriptionPriceMatrices.quotaRequests })
+        .from(subscriptionPriceMatrices)
+        .where(
+          and(
+            eq(subscriptionPriceMatrices.legislativeLevel, member.legislativeLevel),
+            eq(subscriptionPriceMatrices.planTier, dto.planTier || PlanTier.PRO),
+            eq(subscriptionPriceMatrices.durationDays, durationDays),
+            eq(subscriptionPriceMatrices.isActive, true)
+          )
+        )
+        .limit(1);
+
+      addedQuota =
+        matchedMatrix?.quotaRequests !== undefined
+          ? matchedMatrix.quotaRequests
+          : durationDays >= 365
+          ? 144
+          : durationDays >= 180
+          ? 72
+          : durationDays >= 30
+          ? 12
+          : Math.max(1, Math.round(durationDays * (12 / 30)));
+    }
+
+    const [existingWallet] = await db
+      .select()
+      .from(tenantQuotaWallets)
+      .where(eq(tenantQuotaWallets.tenantId, tenantId))
+      .limit(1);
+
+    const currentWalletRemaining = existingWallet?.remainingQuota || 0;
+    const currentWalletTotal = existingWallet?.totalQuotaAllocated || 0;
+    const newWalletRemaining = currentWalletRemaining + addedQuota;
+    const newWalletTotal = currentWalletTotal + addedQuota;
+
+    if (existingWallet) {
+      await db
+        .update(tenantQuotaWallets)
+        .set({
+          totalQuotaAllocated: newWalletTotal,
+          remainingQuota: newWalletRemaining,
+          currentPeriodEnd: newEnd,
+          updatedAt: now,
+        })
+        .where(eq(tenantQuotaWallets.id, existingWallet.id));
+    } else {
+      await db.insert(tenantQuotaWallets).values({
+        tenantId,
+        totalQuotaAllocated: addedQuota,
+        remainingQuota: addedQuota,
+        weeklyAllowanceLimit: 3,
+        currentPeriodEnd: newEnd,
+      });
+    }
+
+    // Catat mutasi di Buku Besar Kuota (Immutable Ledger)
+    await db.insert(tenantQuotaTransactions).values({
+      tenantId,
+      referenceCode: invNumber,
+      transactionType: QuotaTransactionType.PACKAGE_PURCHASE,
+      amountDelta: addedQuota,
+      balanceAfter: newWalletRemaining,
+      notes: `Aktivasi manual B2B SPK (+${dto.additionalDays} hari, +${addedQuota} kuota request)`,
+      createdAt: now,
+    });
+
     return {
-      message: `Lisensi berhasil diaktifkan/ditambahkan (+${dto.additionalDays} hari) s.d. ${newEnd.toLocaleDateString('id-ID')}.`,
+      message: `Lisensi & Kuota (+${addedQuota} request) berhasil diaktifkan (+${dto.additionalDays} hari) s.d. ${newEnd.toLocaleDateString('id-ID')}.`,
       validUntil: newEnd,
+      addedQuota,
+      remainingQuota: newWalletRemaining,
     };
   }
 
@@ -443,6 +530,54 @@ export class SuperadminTenantService {
           paymentMethod: 'SUPERADMIN_DIRECT_GRANT',
           paymentStatus: PaymentStatus.SETTLEMENT,
           paidAt: now,
+        });
+
+        // Cari alokasi kuota resmi dari subscription_price_matrices
+        const selectedCycle = (dto.billingCycle || 'SEMESTER').toUpperCase();
+        const [matrix] = await tx
+          .select({ quotaRequests: subscriptionPriceMatrices.quotaRequests })
+          .from(subscriptionPriceMatrices)
+          .where(
+            and(
+              eq(subscriptionPriceMatrices.legislativeLevel, dto.legislativeLevel),
+              eq(subscriptionPriceMatrices.planTier, dto.planTier || PlanTier.PRO),
+              eq(subscriptionPriceMatrices.billingCycle, selectedCycle),
+              eq(subscriptionPriceMatrices.isActive, true)
+            )
+          )
+          .limit(1);
+
+        const allocatedQuota =
+          matrix?.quotaRequests !== undefined
+            ? matrix.quotaRequests
+            : durationDays >= 365
+            ? 144
+            : durationDays >= 180
+            ? 72
+            : 12;
+
+        const periodEnd = new Date(now.getTime() + durationDays * 24 * 60 * 60 * 1000);
+
+        // Inisialisasi Dompet Kuota Internet Parlemen secara atomik
+        await tx.insert(tenantQuotaWallets).values({
+          tenantId: member.id,
+          totalQuotaAllocated: allocatedQuota,
+          remainingQuota: allocatedQuota,
+          weeklyAllowanceLimit: 3,
+          currentPeriodEnd: periodEnd,
+          createdAt: now,
+          updatedAt: now,
+        });
+
+        // Catat mutasi perdana di Buku Besar Kuota (Immutable Ledger)
+        await tx.insert(tenantQuotaTransactions).values({
+          tenantId: member.id,
+          referenceCode: invNumber,
+          transactionType: QuotaTransactionType.PACKAGE_PURCHASE,
+          amountDelta: allocatedQuota,
+          balanceAfter: allocatedQuota,
+          notes: `Aktivasi perdana Superadmin (+${allocatedQuota} kuota request, ${dto.planTier || 'PRO'} ${selectedCycle})`,
+          createdAt: now,
         });
       }
 

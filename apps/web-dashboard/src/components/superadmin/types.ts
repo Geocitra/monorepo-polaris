@@ -37,6 +37,9 @@ export interface TenantRow {
   subscriptionStatus: string | null;
   planTier: string | null;
   periodEnd: string | null;
+  totalQuotaAllocated?: number | null;
+  remainingQuota?: number | null;
+  weeklyAllowanceLimit?: number | null;
   dapilName: string | null;
   provinceName: string | null;
   commissionId: string | null;
@@ -49,6 +52,7 @@ export interface PricingMatrixRow {
   planTier: string;
   billingCycle: string;
   durationDays: number;
+  quotaRequests?: number;
   amountIdr: number;
   isActive: boolean;
   updatedAt: string;

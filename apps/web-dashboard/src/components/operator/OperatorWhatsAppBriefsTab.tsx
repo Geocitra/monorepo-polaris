@@ -145,9 +145,14 @@ function getStatusBadgeConfig(status: ContentBriefItem['status']) {
         label: '✅ Selesai & Tayang',
         cls: 'bg-emerald-100 text-emerald-900 dark:bg-emerald-950/60 dark:text-emerald-300 border-emerald-300 dark:border-emerald-700',
       };
+    case 'CANCELLED':
+      return {
+        label: '❌ Dibatalkan Klien',
+        cls: 'bg-rose-50 text-rose-700 dark:bg-rose-950/60 dark:text-rose-400 border-rose-200 dark:border-rose-800',
+      };
     case 'REJECTED':
       return {
-        label: '❌ Ditolak (Bebas Kuota)',
+        label: '❌ Ditolak (Refund Kuota)',
         cls: 'bg-slate-100 text-slate-500 dark:bg-slate-900 dark:text-slate-500 border-slate-300 dark:border-slate-800',
       };
     default:
@@ -515,9 +520,16 @@ export function OperatorWhatsAppBriefsTab({
               <Calendar className="w-3.5 h-3.5 text-indigo-500" />
               <span>Jatah Request Minggu Ini ({weeklyQuota?.weeklyQuotaPeriod || 'WIB'})</span>
             </span>
-            <span className="text-xs font-black text-indigo-600 dark:text-indigo-400">
-              {weeklyQuota ? `${weeklyQuota.weeklyUsed} / ${weeklyQuota.weeklyLimit}` : '0 / 3'} Terpakai
-            </span>
+            <div className="text-right">
+              <span className="text-xs font-black text-indigo-600 dark:text-indigo-400 block">
+                {weeklyQuota ? `${weeklyQuota.weeklyUsed} / ${weeklyQuota.weeklyLimit}` : '0 / 3'} Jatah Terpakai
+              </span>
+              {weeklyQuota?.remainingQuota !== undefined && (
+                <span className="text-[10px] font-bold text-slate-500 dark:text-slate-400 block">
+                  Saldo: {weeklyQuota.remainingQuota} / {weeklyQuota.totalQuotaAllocated} Request
+                </span>
+              )}
+            </div>
           </div>
 
           <div className="my-2.5 w-full bg-slate-100 dark:bg-slate-800 h-2 rounded-full overflow-hidden">
@@ -687,6 +699,11 @@ export function OperatorWhatsAppBriefsTab({
                         <span className={`px-1.5 py-0.5 rounded text-[9px] font-black border ${horizonBadge.cls}`}>
                           {horizonBadge.label}
                         </span>
+                        {item.isUrgentOverquota && (
+                          <span className="px-1.5 py-0.5 rounded text-[9px] font-black bg-amber-500 text-white border border-amber-600 shadow-xs flex items-center gap-0.5">
+                            ⚡ DARURAT (BIAYA X2)
+                          </span>
+                        )}
                       </div>
                       <span className={`px-2 py-0.5 rounded-full text-[9.5px] font-bold border ${badge.cls}`}>
                         {badge.label}
@@ -1013,7 +1030,7 @@ export function OperatorWhatsAppBriefsTab({
                     className="p-3.5 rounded-xl bg-rose-50/70 dark:bg-rose-950/30 border border-rose-200 dark:border-rose-800 space-y-2.5"
                   >
                     <label className="text-xs font-bold text-rose-900 dark:text-rose-200 block">
-                      Alasan Penolakan Tiket (Akan dikirimkan ke WhatsApp Klien &amp; Tidak Memotong Kuota Mingguan):
+                      Alasan Penolakan Tiket (Otomatis Refund +{selectedBrief.quotaCostDeducted || 1} Kuota ke Dompet Klien &amp; Notifikasi ke WhatsApp):
                     </label>
                     <div className="flex flex-col sm:flex-row gap-2">
                       <input

@@ -1,7 +1,8 @@
 import { pgTable, uuid, varchar, timestamp, numeric, integer, bigint, text, unique, index, date } from 'drizzle-orm/pg-core';
 import { tenantMembers } from './identity.js';
-import { subscriptionStatusEnum, planTierEnum, paymentStatusEnum } from './enums.js';
+import { subscriptionStatusEnum, planTierEnum, paymentStatusEnum, quotaTransactionTypeEnum } from './enums.js';
 import { subscriptionPriceMatrices } from './pricing-matrix.js';
+import { contentBriefs } from './briefs.js';
 
 export const subscriptions = pgTable('subscriptions', {
   id: uuid('id').defaultRandom().primaryKey(),
@@ -52,6 +53,33 @@ export const tenantQuotaLedgers = pgTable('tenant_quota_ledgers', {
   updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
 }, (t) => ({
   unqTenantMonth: unique().on(t.tenantId, t.billingCycleMonth),
+}));
+
+export const tenantQuotaWallets = pgTable('tenant_quota_wallets', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  tenantId: uuid('tenant_id').notNull().unique().references(() => tenantMembers.id, { onDelete: 'cascade' }),
+  totalQuotaAllocated: integer('total_quota_allocated').default(12).notNull(),
+  remainingQuota: integer('remaining_quota').default(0).notNull(),
+  weeklyAllowanceLimit: integer('weekly_allowance_limit').default(3).notNull(),
+  currentPeriodEnd: timestamp('current_period_end', { withTimezone: true }),
+  createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
+});
+
+export const tenantQuotaTransactions = pgTable('tenant_quota_transactions', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  tenantId: uuid('tenant_id').notNull().references(() => tenantMembers.id, { onDelete: 'cascade' }),
+  briefId: uuid('brief_id').references(() => contentBriefs.id, { onDelete: 'set null' }),
+  invoiceId: uuid('invoice_id').references(() => invoiceTransactions.id, { onDelete: 'set null' }),
+  referenceCode: varchar('reference_code', { length: 100 }), // Snapshot briefCode / invoiceNumber
+  transactionType: quotaTransactionTypeEnum('transaction_type').notNull(),
+  amountDelta: integer('amount_delta').notNull(), // +12, -1, -2, +1, +2
+  balanceAfter: integer('balance_after').notNull(),
+  notes: text('notes'),
+  createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+}, (t) => ({
+  idxQuotaTxTenantCreated: index('idx_quota_tx_tenant_created').on(t.tenantId, t.createdAt),
+  idxQuotaTxBrief: index('idx_quota_tx_brief').on(t.briefId),
 }));
 
 export const aiTraceLogs = pgTable('ai_trace_logs', {
@@ -134,4 +162,9 @@ export const reconciliationDiscrepancies = pgTable('reconciliation_discrepancies
   idxDiscrepancyBatchRes: index('idx_recon_discrepancy_batch_res').on(t.batchId, t.resolutionStatus),
   idxDiscrepancyGatewayOrder: index('idx_recon_discrepancy_gateway_order').on(t.gatewayOrderId),
 }));
+
+export type TenantQuotaWalletRecord = typeof tenantQuotaWallets.$inferSelect;
+export type NewTenantQuotaWalletRecord = typeof tenantQuotaWallets.$inferInsert;
+export type TenantQuotaTransactionRecord = typeof tenantQuotaTransactions.$inferSelect;
+export type NewTenantQuotaTransactionRecord = typeof tenantQuotaTransactions.$inferInsert;
 

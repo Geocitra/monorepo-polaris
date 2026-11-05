@@ -18,6 +18,7 @@ import {
   operatorAuditLogs,
   contentBriefs,
   contentBriefMessages,
+  tenantQuotaWallets,
   withTenantContext,
 } from '@polaris/database';
 import {
@@ -252,12 +253,29 @@ export class WhatsAppBriefHelperService implements OnModuleInit {
 
     const queuedNextWeekCount = rows.filter((r) => r.status === 'QUEUED_NEXT_WEEK').length;
 
+    const [wallet] = await db
+      .select()
+      .from(tenantQuotaWallets)
+      .where(eq(tenantQuotaWallets.tenantId, tenantId))
+      .limit(1);
+
+    const now = new Date();
+    const isPeriodExpired = wallet?.currentPeriodEnd ? new Date(wallet.currentPeriodEnd) <= now : false;
+    const remainingQuota = isPeriodExpired ? 0 : (wallet?.remainingQuota ?? 12);
+    const totalQuotaAllocated = wallet?.totalQuotaAllocated ?? 12;
+    const currentPeriodEnd = wallet?.currentPeriodEnd ? wallet.currentPeriodEnd.toISOString() : null;
+    const weeklyLimit = wallet?.weeklyAllowanceLimit || limits.weeklyRequestLimit;
+
     return {
       tenantId,
       weeklyQuotaPeriod: currentWeek,
-      weeklyLimit: limits.weeklyRequestLimit,
+      weeklyLimit,
       weeklyUsed,
-      weeklyRemaining: Math.max(0, limits.weeklyRequestLimit - weeklyUsed),
+      weeklyRemaining: Math.max(0, weeklyLimit - weeklyUsed),
+      totalQuotaAllocated,
+      remainingQuota,
+      currentPeriodEnd,
+      isPeriodExpired,
       queuedNextWeekCount,
     };
   }
@@ -452,6 +470,8 @@ export class WhatsAppBriefHelperService implements OnModuleInit {
       topicSummary: brief.topicSummary,
       weeklyQuotaPeriod: brief.weeklyQuotaPeriod,
       weeklyRequestLimit: brief.weeklyRequestLimit,
+      quotaCostDeducted: brief.quotaCostDeducted ?? 1,
+      isUrgentOverquota: brief.isUrgentOverquota ?? false,
       revisionUsed: brief.revisionUsed,
       revisionLimit: brief.revisionLimit,
       articleStatus: brief.articleStatus,

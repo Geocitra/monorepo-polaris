@@ -82,12 +82,19 @@ export function ManualLicenseModal({ tenant, onClose, onSuccess }: ManualLicense
               onChange={(e) => setAdditionalDays(Number(e.target.value))}
               className="w-full px-3 py-2.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900/60 text-slate-900 dark:text-white text-xs focus:outline-none focus:border-blue-500 font-bold"
             >
-              <option value={30}>1 Bulan (30 Hari) — Evaluasi / Uji Coba</option>
-              <option value={90}>3 Bulan (90 Hari) — Masa Sidang Singkat</option>
-              <option value={180}>6 Bulan (180 Hari) — Paket 1 Semester</option>
-              <option value={365}>1 Tahun Penuh (365 Hari) — Kontrak Tahunan</option>
-              <option value={1825}>5 Tahun (1.825 Hari) — Periode Jabatan DPR Penuh</option>
+              <option value={30}>1 Bulan (30 Hari) — Paket Standar (+12 Request)</option>
+              <option value={90}>3 Bulan (90 Hari) — Masa Sidang (+36 Request)</option>
+              <option value={180}>6 Bulan (180 Hari) — Paket 1 Semester (+72 Request)</option>
+              <option value={365}>1 Tahun Penuh (365 Hari) — Kontrak Tahunan (+144 Request)</option>
+              <option value={1825}>5 Tahun (1.825 Hari) — Periode Jabatan DPR Penuh (+720 Request)</option>
             </select>
+
+            <div className="mt-2 p-2.5 rounded-xl bg-indigo-50/70 dark:bg-indigo-950/40 border border-indigo-200/60 dark:border-indigo-800 flex items-center justify-between text-xs">
+              <span className="text-slate-600 dark:text-slate-300 font-medium">Alokasi Kuota Request Otomatis:</span>
+              <span className="font-mono font-black text-indigo-600 dark:text-indigo-400">
+                +{additionalDays >= 365 ? 144 : additionalDays >= 180 ? 72 : additionalDays >= 30 ? 12 : Math.max(1, Math.round(additionalDays * (12 / 30)))} Request
+              </span>
+            </div>
           </div>
 
           <div>

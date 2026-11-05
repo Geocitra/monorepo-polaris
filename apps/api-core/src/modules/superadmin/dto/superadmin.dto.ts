@@ -53,6 +53,10 @@ export class ManualLicenseGrantDto {
   @IsString()
   @IsOptional()
   referenceNumber?: string; // Nomor SPK / Invoice Offline
+
+  @IsNumber()
+  @IsOptional()
+  customQuotaRequests?: number;
 }
 
 export class CreatePartyDto {
@@ -233,13 +237,17 @@ export class AdminResetTenantPasswordDto {
 }
 
 export class AdminUpdatePricingMatrixDto {
+  @IsOptional()
   @IsNumber()
-  @IsNotEmpty()
-  amountIdr!: number;
+  amountIdr?: number;
 
   @IsOptional()
   @IsNumber()
   durationDays?: number;
+
+  @IsOptional()
+  @IsNumber()
+  quotaRequests?: number;
 
   @IsOptional()
   @IsBoolean()
