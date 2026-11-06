@@ -307,7 +307,6 @@ export function OperatorContentTab({
                       <span>Caption/WA ({activeBrief.captionStatus})</span>
                     </button>
                   )}
-                  </button>
                 </div>
               </div>
             </div>

@@ -733,6 +733,7 @@ export class WhatsAppOperatorBrokerService {
 
     const now = new Date();
     const nextStatus = shouldDirectPublish ? 'PUBLISHED' : 'READY_FOR_REVIEW';
+    const pkgType = (row.brief as any).packageType || 'FULL_CAMPAIGN';
 
     const updatedBrief = await withTenantContext(row.brief.tenantId, async (tx) => {
       if (shouldDirectPublish) {
@@ -754,7 +755,6 @@ export class WhatsAppOperatorBrokerService {
           .where(eq(contentPublications.id, publication.id));
       }
 
-      const pkgType = (row.brief as any).packageType || 'FULL_CAMPAIGN';
       const hasArticle = pkgType === 'FULL_CAMPAIGN' || pkgType === 'ARTICLE_ONLY';
       const hasImage = pkgType === 'FULL_CAMPAIGN' || pkgType === 'POSTER_ONLY' || pkgType === 'INFOGRAPHIC_ONLY';
       const hasCaption = pkgType === 'FULL_CAMPAIGN' || pkgType === 'ARTICLE_ONLY';
