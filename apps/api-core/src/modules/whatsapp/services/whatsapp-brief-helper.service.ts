@@ -646,5 +646,24 @@ export class WhatsAppBriefHelperService implements OnModuleInit {
 
     return { brief, publishedUrl };
   }
+
+  public getPackageTypeLabel(packageType: BriefPackageType | string): string {
+    switch (packageType) {
+      case BriefPackageType.ARTICLE_ONLY:
+        return '📝 Naskah Artikel Berita Saja';
+      case BriefPackageType.POSTER_ONLY:
+        return '🎨 Poster Visual Saja';
+      case BriefPackageType.INFOGRAPHIC_ONLY:
+        return '📊 Infografis Data Saja';
+      case BriefPackageType.FULL_CAMPAIGN:
+      default:
+        return '📦 Paket Lengkap (Artikel + Poster + Sosmed)';
+    }
+  }
+
+  public getPackageTypeBaseCost(packageType: BriefPackageType | string): number {
+    return packageType === BriefPackageType.FULL_CAMPAIGN ? 2 : 1;
+  }
 }
+
 
