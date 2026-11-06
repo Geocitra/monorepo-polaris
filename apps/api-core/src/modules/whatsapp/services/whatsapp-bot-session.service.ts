@@ -3832,4 +3832,3 @@ export class WhatsAppBotSessionService implements OnModuleDestroy {
   }
 }
 
-    
