@@ -35,7 +35,7 @@ import {
 interface OperatorWhatsAppBriefsTabProps {
   selectedDewan: AssignedTenant;
   onHydrateBriefToStudio: (payload: {
-    brief: ContentBriefItem;
+    brief: ContentBriefItem | null;
     topicPrompt: string;
     attachments: AttachedFileItem[];
   }) => void;
@@ -619,31 +619,7 @@ export function OperatorWhatsAppBriefsTab({
           selectedDewan={selectedDewan}
           onConvertToBrief={(topic) => {
             onHydrateBriefToStudio({
-              brief: {
-                id: `brief_live_${Date.now()}`,
-                briefCode: 'LIVE',
-                tenantId: selectedDewan.tenantId,
-                tenantFullName: selectedDewan.fullName,
-                tenantMaskedPhone: '',
-                assignedOperatorId: null,
-                status: 'SUBMITTED',
-                clientUrgency: 'NORMAL',
-                operatorPriority: 'NORMAL',
-                topicSummary: topic,
-                weeklyQuotaPeriod: '',
-                weeklyRequestLimit: 3,
-                revisionUsed: 0,
-                revisionLimit: 3,
-                articleStatus: 'PENDING',
-                posterStatus: 'PENDING',
-                captionStatus: 'PENDING',
-                isUrgentOverquota: false,
-                isOffHours: false,
-                reviewToken: '',
-                createdAt: new Date().toISOString(),
-                updatedAt: new Date().toISOString(),
-                messages: [],
-              },
+              brief: null,
               topicPrompt: topic,
               attachments: [],
             });

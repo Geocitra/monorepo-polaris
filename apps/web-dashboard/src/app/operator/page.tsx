@@ -844,7 +844,7 @@ export default function OperatorCockpitPage() {
                 setActiveBrief(brief);
                 setTopicInput(topicPrompt);
                 setAttachedFiles(attachments);
-                if (brief.linkedPublicationId) {
+                if (brief?.linkedPublicationId) {
                   // Jika tiket ini sudah memiliki draf publikasi (misal revisi atau draf lanjutan),
                   // muat langsung naskah dan poster sebelumnya ke kanvas studio agar operator tidak mengulang dari nol!
                   loadArticleToCanvas(brief.linkedPublicationId);
