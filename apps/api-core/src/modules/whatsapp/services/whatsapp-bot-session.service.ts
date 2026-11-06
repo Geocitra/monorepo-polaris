@@ -70,6 +70,7 @@ function formatSmartRowDesc(fullText: string, prefix = '', maxLen = 72): string 
 
 export interface SessionIntentState {
   mode: 'NEW_BRIEF' | 'REVISION' | 'CLARIFY';
+  step?: 'SELECTING_FORMAT' | 'AWAITING_MATERIALS';
   briefId?: string;
   briefCode?: string;
   packageType?: BriefPackageType;
@@ -234,19 +235,13 @@ export class WhatsAppBotSessionService implements OnModuleDestroy {
     const isExplicitNewBrief = isNewBriefExplicitTrigger(extractedText);
     const lowerCmd = extractedText.toLowerCase().trim();
 
-    // JIKA USER DALAM MODE DRAFT REQUEST BARU (Baik dari Tombol Menu Maupun Kalimat Eksplisit)
-    if (sessionIntent?.mode === 'NEW_BRIEF' || isExplicitNewBrief) {
-      if (!sessionIntent || sessionIntent.mode !== 'NEW_BRIEF') {
-        await this.redisService.set(
-          sessionIntentKey,
-          { mode: 'NEW_BRIEF', startedAtMs: Date.now() },
-          1800
-        );
-      }
+    // JIKA USER DALAM SESI REQUEST KONTEN BARU AKTIF
+    if (sessionIntent?.mode === 'NEW_BRIEF') {
+      const draftKey = `whatsapp:draft:${tenant.id}`;
+      const existingDraft = await this.redisService.get<DraftCartState>(draftKey);
 
+      // Handle Cancel / Batal
       if (itemType === 'TEXT' && (lowerCmd === 'batal' || lowerCmd === 'cancel')) {
-        const draftKey = `whatsapp:draft:${tenant.id}`;
-        const existingDraft = await this.redisService.get<DraftCartState>(draftKey);
         if (existingDraft && existingDraft.items.length > 0) {
           this.clearTenantDebounceTimer(tenant.id);
           await this.waClient.sendInteractiveButtons(
@@ -270,19 +265,56 @@ export class WhatsAppBotSessionService implements OnModuleDestroy {
         this.clearTenantDebounceTimer(tenant.id);
         await this.redisService.del(draftKey);
         await this.redisService.del(sessionIntentKey);
+        await this.sendMainMenuPrompt(tenant.id, tenant.fullName, normalizedSender);
+        return;
+      }
+
+      // SUB-FASE 1: USER SEDANG DI TAHAP PEMILIHAN FORMAT (SELECTING_FORMAT)
+      if (sessionIntent.step === 'SELECTING_FORMAT') {
+        if (itemType === 'TEXT') {
+          const trimmed = lowerCmd.trim();
+          let matchedFormat: string | null = null;
+          if (trimmed === '1' || trimmed === 'paket lengkap' || trimmed === 'lengkap' || trimmed === 'bundling') {
+            matchedFormat = 'SET_FORMAT:FULL_CAMPAIGN';
+          } else if (trimmed === '2' || trimmed === 'artikel' || trimmed === 'artikel saja' || trimmed === 'naskah') {
+            matchedFormat = 'SET_FORMAT:ARTICLE_ONLY';
+          } else if (trimmed === '3' || trimmed === 'poster' || trimmed === 'poster saja' || trimmed === 'gambar') {
+            matchedFormat = 'SET_FORMAT:POSTER_ONLY';
+          } else if (trimmed === '4' || trimmed === 'infografis' || trimmed === 'infografis data' || trimmed === 'infografik') {
+            matchedFormat = 'SET_FORMAT:INFOGRAPHIC_ONLY';
+          }
+
+          if (matchedFormat) {
+            this.clearTenantDebounceTimer(tenant.id);
+            await this.handleFormatSelection(tenant, normalizedSender, matchedFormat);
+            return;
+          }
+        }
+
+        // Teks apa pun yang diketik saat tahap pilih format TIDAK BOLEH ditampung sebagai bahan konten!
         await this.waClient.sendInteractiveButtons(
           normalizedSender,
-          '✅ Keranjang request topik telah dibatalkan. Silakan pilih menu layanan di bawah ini atau kirim topik baru kapan saja:',
           [
-            { id: 'MENU_NEW_BRIEF', title: '📝 Request Baru' },
-            { id: 'MENU_OPEN_MAIN', title: '📋 Menu Utama' },
-          ]
+            `Halo Bapak/Ibu *${tenant.fullName}*, mohon tentukan format konten yang ingin dibuat terlebih dahulu:`,
+            '',
+            '1️⃣ *Paket Lengkap* (Artikel + Poster + Sosmed)',
+            '2️⃣ *Naskah Artikel Saja*',
+            '3️⃣ *Poster Visual Saja*',
+            '4️⃣ *Infografis Data Saja*',
+            '',
+            '💡 _Silakan tekan tombol di bawah atau ketik nomor 1-4:_',
+          ].join('\n'),
+          [
+            { id: 'MENU_NEW_BRIEF', title: '📋 Pilih Format' },
+            { id: 'MENU_OPEN_MAIN', title: '❌ Batalkan / Menu' },
+          ],
+          'Pilih Format Konten',
+          'Tentukan format hasil sebelum kirim materi'
         );
         return;
       }
 
-      const draftKey = `whatsapp:draft:${tenant.id}`;
-      const existingDraft = await this.redisService.get<DraftCartState>(draftKey);
+      // SUB-FASE 2: USER SUDAH MEMILIH FORMAT & SEDANG MENGIRIM BAHAN (AWAITING_MATERIALS)
       if (
         itemType === 'TEXT' &&
         (lowerCmd === 'kirim' || lowerCmd === 'selesai') &&
@@ -294,33 +326,25 @@ export class WhatsAppBotSessionService implements OnModuleDestroy {
         return;
       }
 
-      // Socio-Engineering: Dukung respons teks langsung jika klien mengetik nomor/opsi format
-      if (itemType === 'TEXT') {
-        const trimmed = lowerCmd.trim();
-        let matchedAction: string | null = null;
-        const hasDraftItems = Boolean(existingDraft && existingDraft.items.length > 0);
-
-        if (trimmed === '1' || trimmed === 'paket lengkap' || trimmed === 'lengkap' || trimmed === 'bundling') {
-          matchedAction = hasDraftItems ? 'PKG_FULL_CAMPAIGN' : 'SET_FORMAT:FULL_CAMPAIGN';
-        } else if (trimmed === '2' || trimmed === 'artikel' || trimmed === 'artikel saja' || trimmed === 'naskah') {
-          matchedAction = hasDraftItems ? 'PKG_ARTICLE_ONLY' : 'SET_FORMAT:ARTICLE_ONLY';
-        } else if (trimmed === '3' || trimmed === 'poster' || trimmed === 'poster saja' || trimmed === 'gambar') {
-          matchedAction = hasDraftItems ? 'PKG_POSTER_ONLY' : 'SET_FORMAT:POSTER_ONLY';
-        } else if (trimmed === '4' || trimmed === 'infografis' || trimmed === 'infografis data' || trimmed === 'infografik') {
-          matchedAction = hasDraftItems ? 'PKG_INFOGRAPHIC_ONLY' : 'SET_FORMAT:INFOGRAPHIC_ONLY';
-        } else if (trimmed === 'darurat' || trimmed === 'urgent') {
-          matchedAction = 'SUBMIT_OVERQUOTA_URGENT';
-        } else if (trimmed === 'antrean' || trimmed === 'senin' || trimmed === 'antre') {
-          matchedAction = 'SUBMIT_OVERQUOTA_QUEUED';
-        }
-
-        if (matchedAction) {
-          this.clearTenantDebounceTimer(tenant.id);
-          await this.handleInteractiveButtonAction(tenant, normalizedSender, matchedAction);
-          return;
-        }
+      if (itemType === 'TEXT' && (lowerCmd === 'ganti format' || lowerCmd === 'ubah format')) {
+        this.clearTenantDebounceTimer(tenant.id);
+        await this.sendFormatSelectionPrompt(tenant, normalizedSender);
+        return;
       }
 
+      // Socio-Engineering: Jika user mengetik darurat/antrean saat konfirmasi over-quota
+      if (itemType === 'TEXT' && (lowerCmd === 'darurat' || lowerCmd === 'urgent')) {
+        this.clearTenantDebounceTimer(tenant.id);
+        await this.handleInteractiveButtonAction(tenant, normalizedSender, 'SUBMIT_OVERQUOTA_URGENT');
+        return;
+      }
+      if (itemType === 'TEXT' && (lowerCmd === 'antrean' || lowerCmd === 'senin' || lowerCmd === 'antre')) {
+        this.clearTenantDebounceTimer(tenant.id);
+        await this.handleInteractiveButtonAction(tenant, normalizedSender, 'SUBMIT_OVERQUOTA_QUEUED');
+        return;
+      }
+
+      // Tampung bahan brief (teks topik, foto, atau dokumen)
       await this.collectDraftItem(
         tenant,
         normalizedSender,
@@ -536,6 +560,7 @@ export class WhatsAppBotSessionService implements OnModuleDestroy {
     const draftKey = `whatsapp:draft:${tenant.id}`;
     const existingDraft = await this.redisService.get<DraftCartState>(draftKey);
 
+    // 11. Command Pembatalan Draf di Sesi Bebas
     if (itemType === 'TEXT' && (lowerCmd === 'batal' || lowerCmd === 'cancel')) {
       if (existingDraft && existingDraft.items.length > 0) {
         this.clearTenantDebounceTimer(tenant.id);
@@ -560,55 +585,90 @@ export class WhatsAppBotSessionService implements OnModuleDestroy {
       this.clearTenantDebounceTimer(tenant.id);
       await this.redisService.del(draftKey);
       await this.redisService.del(sessionIntentKey);
-      await this.waClient.sendInteractiveButtons(
-        normalizedSender,
-        '✅ Keranjang request topik telah dibatalkan. Silakan pilih menu layanan di bawah ini atau kirim topik baru kapan saja:',
-        [
-          { id: 'MENU_NEW_BRIEF', title: '📝 Request Baru' },
-          { id: 'MENU_OPEN_MAIN', title: '📋 Menu Utama' },
-        ]
-      );
-      return;
-    }
-
-    if (
-      itemType === 'TEXT' &&
-      (lowerCmd === 'kirim' || lowerCmd === 'selesai') &&
-      existingDraft &&
-      existingDraft.items.length > 0
-    ) {
-      this.clearTenantDebounceTimer(tenant.id);
-      await this.sendDraftConfirmationPrompt(existingDraft);
-      return;
-    }
-
-    // Jika keranjang masih kosong dan klien mengirim sapaan singkat ("halo", "hal", "halp", "p", "menu", dll.),
-    // langsung tampilkan Menu Utama Interaktif (List Drawer) tanpa menunggu debounce.
-    if (
-      itemType === 'TEXT' &&
-      (!existingDraft || existingDraft.items.length === 0) &&
-      this.isGreetingOrMenuCommand(extractedText)
-    ) {
       await this.sendMainMenuPrompt(tenant.id, tenant.fullName, normalizedSender);
       return;
     }
 
-    // Fallback: Kiriman bebas teks/gambar/dokumen diperlakukan sebagai bahan brief baru
-    await this.redisService.set(
-      sessionIntentKey,
-      { mode: 'NEW_BRIEF', startedAtMs: Date.now() },
-      1800
-    );
-    await this.collectDraftItem(
-      tenant,
-      normalizedSender,
-      wamid,
-      itemType,
-      extractedText,
-      mediaId,
-      rawMimeType,
-      rawFileName
-    );
+    // 12. Kalimat Eksplisit Permintaan Konten Baru (Misal: "buatkan rilis berita mengenai rapat kpu")
+    if (isExplicitNewBrief && itemType === 'TEXT') {
+      await this.redisService.set(
+        draftKey,
+        {
+          tenantId: tenant.id,
+          tenantName: tenant.fullName,
+          phoneE164: normalizedSender,
+          items: [
+            {
+              waMessageId: wamid,
+              messageType: 'TEXT',
+              textBody: extractedText,
+              createdAtIso: new Date().toISOString(),
+            },
+          ],
+          updatedAtMs: Date.now(),
+        },
+        SESSION_TTL_SECONDS
+      );
+      // Langsung arahkan ke pemilihan format sebelum konten bisa diproses!
+      await this.sendFormatSelectionPrompt(tenant, normalizedSender);
+      return;
+    }
+
+    // 13. Penanganan Pengiriman Berkas Gambar / Dokumen Tanpa Sesi Aktif
+    if (itemType === 'IMAGE' || itemType === 'DOCUMENT') {
+      let uploaded: {
+        r2StorageUrl?: string;
+        cdnPublicUrl?: string;
+        mimeType?: string;
+        fileSizeBytes?: number;
+        fileName?: string;
+      } = {};
+      if (mediaId) {
+        uploaded = await this.waClient.downloadMediaToR2(
+          mediaId,
+          tenant.id,
+          rawMimeType,
+          rawFileName
+        );
+      }
+
+      await this.redisService.set(
+        `whatsapp:staged_media:${tenant.id}`,
+        {
+          waMessageId: wamid,
+          messageType: itemType,
+          textBody: extractedText || undefined,
+          mediaR2Url: uploaded.r2StorageUrl,
+          mediaCdnUrl: uploaded.cdnPublicUrl,
+          mediaMimeType: uploaded.mimeType,
+          mediaFileName: uploaded.fileName,
+          mediaFileSizeBytes: uploaded.fileSizeBytes,
+          createdAtIso: new Date().toISOString(),
+        },
+        1800
+      );
+
+      await this.waClient.sendInteractiveButtons(
+        normalizedSender,
+        [
+          `Halo Bapak/Ibu *${tenant.fullName}*, kami menerima kiriman berkas Anda (${itemType === 'IMAGE' ? '📷 Foto Kegiatan' : '📄 Dokumen Lampiran'}).`,
+          '',
+          `Apakah berkas ini ingin diajukan sebagai *Request Konten Baru*?`,
+        ].join('\n'),
+        [
+          { id: 'MEDIA_NEW_BRIEF', title: '📝 Ya, Request Konten' },
+          { id: 'MENU_OPEN_MAIN', title: '📋 Menu Utama' },
+        ],
+        'Penerimaan Berkas',
+        'Tentukan tindakan untuk berkas Anda'
+      );
+      return;
+    }
+
+    // 14. DEFAULT STATE (IDLE): Semua pesan teks bebas (sapaan "halo", typo "hlo", tes, dll.)
+    // SELALU menampilkan Menu Utama tanpa pernah membuat draf liar atau memotong kuota!
+    this.clearTenantDebounceTimer(tenant.id);
+    await this.sendMainMenuPrompt(tenant.id, tenant.fullName, normalizedSender);
   }
 
   private async collectDraftItem(
@@ -1181,6 +1241,7 @@ export class WhatsAppBotSessionService implements OnModuleDestroy {
       `whatsapp:session_intent:${tenant.id}`,
       {
         mode: 'NEW_BRIEF',
+        step: 'SELECTING_FORMAT',
         startedAtMs: Date.now(),
       },
       1800
@@ -1358,6 +1419,7 @@ export class WhatsAppBotSessionService implements OnModuleDestroy {
       `whatsapp:session_intent:${tenant.id}`,
       {
         mode: 'NEW_BRIEF',
+        step: 'AWAITING_MATERIALS',
         packageType,
         startedAtMs: Date.now(),
       },
@@ -1418,8 +1480,29 @@ export class WhatsAppBotSessionService implements OnModuleDestroy {
     const draftKey = `whatsapp:draft:${tenant.id}`;
 
     if (buttonId === 'MENU_OPEN_MAIN') {
+      this.clearTenantDebounceTimer(tenant.id);
       await this.redisService.del(`whatsapp:live_chat:${tenant.id}`);
+      await this.redisService.del(`whatsapp:session_intent:${tenant.id}`);
+      await this.redisService.del(`whatsapp:staged_media:${tenant.id}`);
       await this.sendMainMenuPrompt(tenant.id, tenant.fullName, phoneE164);
+      return;
+    }
+
+    if (buttonId === 'MEDIA_NEW_BRIEF') {
+      const stagedKey = `whatsapp:staged_media:${tenant.id}`;
+      const staged = await this.redisService.get<DraftCartItem>(stagedKey);
+      if (staged) {
+        const draftState: DraftCartState = {
+          tenantId: tenant.id,
+          tenantName: tenant.fullName,
+          phoneE164,
+          items: [staged],
+          updatedAtMs: Date.now(),
+        };
+        await this.redisService.set(draftKey, draftState, SESSION_TTL_SECONDS);
+        await this.redisService.del(stagedKey);
+      }
+      await this.sendFormatSelectionPrompt(tenant, phoneE164);
       return;
     }
 
@@ -3676,8 +3759,13 @@ export class WhatsAppBotSessionService implements OnModuleDestroy {
       'hlp',
       'halo',
       'hallo',
+      'hlo',
+      'helo',
+      'hello',
       'hi',
       'hai',
+      'hei',
+      'hey',
       'p',
       'ping',
       'tes',
@@ -3692,11 +3780,16 @@ export class WhatsAppBotSessionService implements OnModuleDestroy {
       'siang',
       'sore',
       'malam',
+      'pagi min',
+      'siang min',
+      'sore min',
+      'malam min',
       'selamat pagi',
       'selamat siang',
       'selamat sore',
       'selamat malam',
       'assalamualaikum',
+      'assalamu alaikum',
       'permisi',
       'min',
       'admin',
