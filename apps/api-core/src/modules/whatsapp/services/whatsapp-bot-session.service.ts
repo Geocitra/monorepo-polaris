@@ -980,14 +980,6 @@ export class WhatsAppBotSessionService implements OnModuleDestroy {
       },
     ];
 
-    if (quota.remainingQuota >= 2) {
-      formatRows.push({
-        id: 'PKG_FULL_CAMPAIGN_URGENT',
-        title: '⚡ Bundling Prioritas',
-        description: 'Prioritas Editor Utama siap tayang hari ini (Biaya: 2 Kuota)',
-      });
-    }
-
     const sections: WhatsAppListSection[] = [
       {
         title: 'PILIH FORMAT KONTEN',
@@ -1447,10 +1439,6 @@ export class WhatsAppBotSessionService implements OnModuleDestroy {
       } else if (buttonId === 'PKG_INFOGRAPHIC_ONLY') {
         packageType = BriefPackageType.INFOGRAPHIC_ONLY;
         formatLabel = '📊 Infografis Data Saja';
-      } else if (buttonId === 'PKG_FULL_CAMPAIGN_URGENT') {
-        packageType = BriefPackageType.FULL_CAMPAIGN;
-        formatLabel = '⚡ Paket Lengkap (Prioritas Mendesak)';
-        isUrgent = true;
       } else if (buttonId === 'BRIEF_SUBMIT_URGENT') {
         packageType = BriefPackageType.FULL_CAMPAIGN;
         formatLabel = '⚡ Paket Lengkap (Prioritas Mendesak)';
