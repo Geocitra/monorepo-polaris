@@ -1172,6 +1172,243 @@ export class WhatsAppBotSessionService implements OnModuleDestroy {
     );
   }
 
+  private async sendFormatSelectionPrompt(
+    tenant: { id: string; fullName: string },
+    phoneE164: string
+  ): Promise<void> {
+    await this.redisService.del(`whatsapp:live_chat:${tenant.id}`);
+    await this.redisService.set(
+      `whatsapp:session_intent:${tenant.id}`,
+      {
+        mode: 'NEW_BRIEF',
+        startedAtMs: Date.now(),
+      },
+      1800
+    );
+    this.clearTenantDebounceTimer(tenant.id);
+
+    const quota = await this.helper.getTenantWeeklyQuota(tenant.id);
+    const horizonInfo = getTimeHorizonInfo(BriefUrgencyLevel.NORMAL);
+
+    // KASUS 1: SALDO TOTAL HABIS / EXPIRED
+    if (quota.remainingQuota < 1 || quota.isPeriodExpired) {
+      const expiryText = quota.isPeriodExpired
+        ? `Masa aktif paket lisensi Anda telah berakhir pada ${quota.periodEndIso ? new Date(quota.periodEndIso).toLocaleDateString('id-ID') : 'periode lalu'}.`
+        : `Saldo kuota request Anda telah habis (0 dari ${quota.totalQuotaAllocated} Request).`;
+
+      await this.waClient.sendInteractiveButtons(
+        phoneE164,
+        [
+          `🚫 *KUOTA REQUEST TIDAK MENCUKUPI*`,
+          expiryText,
+          '',
+          'Untuk melanjutkan pengajuan request konten baru, silakan lakukan top-up paket kuota Anda:',
+        ].join('\n'),
+        [
+          { id: 'MENU_BUY_QUOTA', title: '💳 Top-Up Kuota' },
+          { id: 'MENU_CHECK_STATUS', title: '📊 Cek Status' },
+          { id: 'MENU_OPEN_MAIN', title: '📋 Menu Utama' },
+        ],
+        'Kuota Tidak Mencukupi',
+        'Top-up kuota untuk membuat konten baru'
+      );
+      return;
+    }
+
+    // KASUS 2: JATAH MINGGU INI PENUH (weeklyRemaining <= 0), TETAPI SALDO TOTAL MASIH ADA
+    if (quota.weeklyRemaining <= 0) {
+      const overquotaBody = [
+        `⚠️ *Pemberitahuan Kuota: Jatah Minggu Ini Penuh (${quota.weeklyUsed}/${quota.weeklyLimit})*`,
+        '',
+        `Halo Bapak/Ibu *${tenant.fullName}*, seluruh jatah request konten Anda untuk minggu ini (${quota.weeklyQuotaPeriod}) telah terpakai.`,
+        '',
+        `📌 *Anda tetap dapat membuat request baru dari saldo kuota Anda (${quota.remainingQuota} tersisa):*`,
+        `• *⚡ Darurat:* Diproses hari ini oleh Editor Utama (Biaya kuota x2)`,
+        `• *🗓️ Antrean Senin:* Mulai diproduksi Senin 00:00 WIB (Biaya kuota normal)`,
+        '',
+        'Silakan pilih format konten yang ingin dibuat di bawah ini:',
+      ].join('\n');
+
+      const sections: WhatsAppListSection[] = [
+        {
+          title: 'PILIH FORMAT KONTEN',
+          rows: [
+            {
+              id: 'SET_FORMAT:FULL_CAMPAIGN',
+              title: '📦 Paket Lengkap',
+              description: 'Artikel + Poster + Sosmed (Senin: 2 | Darurat: 4 Kuota)',
+            },
+            {
+              id: 'SET_FORMAT:ARTICLE_ONLY',
+              title: '📝 Naskah Artikel Saja',
+              description: 'Siaran pers & naskah kebijakan (Senin: 1 | Darurat: 2 Kuota)',
+            },
+            {
+              id: 'SET_FORMAT:POSTER_ONLY',
+              title: '🎨 Poster Visual Saja',
+              description: 'Poster visual resmi (Senin: 1 | Darurat: 2 Kuota)',
+            },
+            {
+              id: 'SET_FORMAT:INFOGRAPHIC_ONLY',
+              title: '📊 Infografis Data Saja',
+              description: 'Infografis data & statistik (Senin: 1 | Darurat: 2 Kuota)',
+            },
+          ],
+        },
+        {
+          title: 'OPSI LAIN',
+          rows: [
+            {
+              id: 'MENU_OPEN_MAIN',
+              title: '❌ Batalkan / Menu Utama',
+              description: 'Kembali ke menu layanan utama',
+            },
+          ],
+        },
+      ];
+
+      await this.waClient.sendInteractiveList(
+        phoneE164,
+        overquotaBody,
+        '📋 Pilih Format',
+        sections,
+        'Jatah Mingguan Penuh',
+        'Pilih format konten yang diinginkan'
+      );
+      return;
+    }
+
+    // KASUS 3: JATAH MINGGU INI MASIH ADA (weeklyRemaining > 0)
+    const afterHoursNote = horizonInfo.isAfterCutoff
+      ? `• 🌙 Saat ini di luar jam operasional aktif (>= 17:00 WIB) — Target produksi besok pagi.`
+      : `• ⏱️ Jam operasional aktif redaksi — Target siap tayang hari ini.`;
+
+    const normalBody = [
+      `Halo Bapak/Ibu *${tenant.fullName}*, silakan tentukan format konten yang ingin Anda buat:`,
+      `• 📊 Sisa Jatah Minggu Ini: *${quota.weeklyRemaining} dari ${quota.weeklyLimit} request*`,
+      `• 💳 Saldo Total Paket: *${quota.remainingQuota} dari ${quota.totalQuotaAllocated} request*`,
+      afterHoursNote,
+      '',
+      'Silakan pilih format konten:',
+    ].join('\n');
+
+    const sections: WhatsAppListSection[] = [
+      {
+        title: 'PILIH FORMAT KONTEN',
+        rows: [
+          {
+            id: 'SET_FORMAT:FULL_CAMPAIGN',
+            title: '📦 Paket Lengkap (2)',
+            description: 'Artikel Berita + Poster Visual + Caption Sosmed (2 Kuota)',
+          },
+          {
+            id: 'SET_FORMAT:ARTICLE_ONLY',
+            title: '📝 Naskah Artikel (1)',
+            description: 'Rilis pers & naskah kebijakan mendalam (1 Kuota)',
+          },
+          {
+            id: 'SET_FORMAT:POSTER_ONLY',
+            title: '🎨 Poster Visual (1)',
+            description: 'Poster grafis resmi siap sebar di WA/Medsos (1 Kuota)',
+          },
+          {
+            id: 'SET_FORMAT:INFOGRAPHIC_ONLY',
+            title: '📊 Infografis Data (1)',
+            description: 'Visualisasi data statistik & regulasi informatif (1 Kuota)',
+          },
+        ],
+      },
+      {
+        title: 'OPSI LAIN',
+        rows: [
+          {
+            id: 'MENU_OPEN_MAIN',
+            title: '❌ Batalkan / Menu Utama',
+            description: 'Kembali ke menu layanan utama',
+          },
+        ],
+      },
+    ];
+
+    await this.waClient.sendInteractiveList(
+      phoneE164,
+      normalBody,
+      '📋 Pilih Format',
+      sections,
+      'Request Konten Baru',
+      'Pilih format konten yang diinginkan'
+    );
+  }
+
+  private async handleFormatSelection(
+    tenant: { id: string; fullName: string },
+    phoneE164: string,
+    buttonId: string
+  ): Promise<void> {
+    const rawPkg = buttonId.slice('SET_FORMAT:'.length).trim() as BriefPackageType;
+    const validPackages: BriefPackageType[] = [
+      BriefPackageType.FULL_CAMPAIGN,
+      BriefPackageType.ARTICLE_ONLY,
+      BriefPackageType.POSTER_ONLY,
+      BriefPackageType.INFOGRAPHIC_ONLY,
+    ];
+    const packageType = validPackages.includes(rawPkg) ? rawPkg : BriefPackageType.FULL_CAMPAIGN;
+
+    await this.redisService.set(
+      `whatsapp:session_intent:${tenant.id}`,
+      {
+        mode: 'NEW_BRIEF',
+        packageType,
+        startedAtMs: Date.now(),
+      },
+      1800
+    );
+
+    const draftKey = `whatsapp:draft:${tenant.id}`;
+    const existingDraft = await this.redisService.get<DraftCartState>(draftKey);
+    if (existingDraft) {
+      existingDraft.packageType = packageType;
+      await this.redisService.set(draftKey, existingDraft, SESSION_TTL_SECONDS);
+
+      // Jika draft sudah berisi bahan (misalnya dari pergantian format), langsung kirim konfirmasi baru!
+      if (existingDraft.items && existingDraft.items.length > 0) {
+        await this.sendDraftConfirmationPrompt(existingDraft);
+        return;
+      }
+    }
+
+    const quota = await this.helper.getTenantWeeklyQuota(tenant.id);
+    const baseCost = this.helper.getPackageTypeBaseCost(packageType);
+    const pkgLabel = this.helper.getPackageTypeLabel(packageType);
+
+    const costNote =
+      quota.weeklyRemaining <= 0
+        ? `• ⚠️ Jatah minggu ini penuh. Saat kirim nanti, Anda dapat memilih *⚡ Darurat (${baseCost * 2} Kuota)* atau *🗓️ Antrean Senin (${baseCost} Kuota)*.`
+        : `• 🏷️ Biaya Kuota: *${baseCost} Kuota* (Sisa jatah minggu ini: ${quota.weeklyRemaining} request)`;
+
+    await this.waClient.sendInteractiveButtons(
+      phoneE164,
+      [
+        `✅ *Format Dipilih: ${pkgLabel}*`,
+        costNote,
+        '',
+        `Silakan langsung kirimkan topik/isu atau foto/dokumen untuk materi *${pkgLabel}* Anda di bawah ini:`,
+        '1️⃣ *Pesan Teks* berisi pokok topik/isu atau arahan materi',
+        '2️⃣ *Foto Kegiatan* (bisa kirim beberapa foto sekaligus)',
+        '3️⃣ *Dokumen Pendukung* (PDF/Word bila ada)',
+        '',
+        '💡 _Anda bisa kirim bertahap, sistem otomatis menampung seluruh bahan kegiatan Anda._',
+      ].join('\n'),
+      [
+        { id: 'MENU_CHANGE_FORMAT', title: '🔄 Ganti Format' },
+        { id: 'BRIEF_CANCEL_ASK', title: '❌ Batalkan' },
+        { id: 'MENU_OPEN_MAIN', title: '📋 Menu Utama' },
+      ],
+      'Format Konten Terkunci',
+      'Asisten Redaksi Polaris'
+    );
+  }
+
   private async handleInteractiveButtonAction(
     tenant: { id: string; fullName: string; phoneNumber: string },
     phoneE164: string,
@@ -1622,9 +1859,9 @@ export class WhatsAppBotSessionService implements OnModuleDestroy {
       const clientUrgency = isUrgent ? BriefUrgencyLevel.URGENT : BriefUrgencyLevel.NORMAL;
 
       // Tentukan target status berdasarkan kuota & pilihan tombol
-      const isQueuedNextWeek =
-        buttonId === 'BRIEF_SUBMIT_QUEUED' ||
-        (quota.weeklyRemaining <= 0 && buttonId !== 'BRIEF_SUBMIT_URGENT_OVERQUOTA');
+      if (quota.weeklyRemaining <= 0 && !isUrgentOverquota) {
+        isQueuedNextWeek = true;
+      }
 
       const targetStatus: 'SUBMITTED' | 'QUEUED_NEXT_WEEK' = isQueuedNextWeek
         ? 'QUEUED_NEXT_WEEK'
@@ -3595,3 +3832,4 @@ export class WhatsAppBotSessionService implements OnModuleDestroy {
   }
 }
 
+    
