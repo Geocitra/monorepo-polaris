@@ -1193,7 +1193,7 @@ export class WhatsAppBotSessionService implements OnModuleDestroy {
     // KASUS 1: SALDO TOTAL HABIS / EXPIRED
     if (quota.remainingQuota < 1 || quota.isPeriodExpired) {
       const expiryText = quota.isPeriodExpired
-        ? `Masa aktif paket lisensi Anda telah berakhir pada ${quota.periodEndIso ? new Date(quota.periodEndIso).toLocaleDateString('id-ID') : 'periode lalu'}.`
+        ? `Masa aktif paket lisensi Anda telah berakhir pada ${quota.currentPeriodEnd ? new Date(quota.currentPeriodEnd).toLocaleDateString('id-ID') : 'periode lalu'}.`
         : `Saldo kuota request Anda telah habis (0 dari ${quota.totalQuotaAllocated} Request).`;
 
       await this.waClient.sendInteractiveButtons(
