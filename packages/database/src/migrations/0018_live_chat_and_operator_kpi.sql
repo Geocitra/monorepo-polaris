@@ -77,3 +77,4 @@ CREATE INDEX IF NOT EXISTS idx_live_chat_messages_session
 
 CREATE INDEX IF NOT EXISTS idx_live_chat_messages_tenant
   ON live_chat_messages (tenant_id);
+
