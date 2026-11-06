@@ -18,6 +18,8 @@ import {
   PortalSectionType,
   PortalDocumentType,
   QuotaTransactionType,
+  LiveChatSessionStatus,
+  LiveChatCsatRating,
 } from '../enums/index.js';
 
 // ==========================================
@@ -641,4 +643,77 @@ export interface TenantQuotaWalletDto {
   currentPeriodEnd: string | null;
   isExpired: boolean;
   updatedAt: string;
+}
+
+
+// ==========================================
+// 10. LIVE CHAT & OPERATOR KPI DTOs
+// ==========================================
+export interface LiveChatSessionDto {
+  id: string;
+  sessionCode: string;
+  tenantId: string;
+  tenantFullName?: string;
+  tenantPhoneNumber?: string;
+  assignedOperatorId: string | null;
+  assignedOperatorName?: string | null;
+  status: LiveChatSessionStatus;
+  isOffHours: boolean;
+  clientInitialTopic: string | null;
+  startedAt: string;
+  acceptedAt: string | null;
+  firstOperatorResponseAt: string | null;
+  endedAt: string | null;
+  lastMessageAt: string;
+  firstResponseSeconds: number | null;
+  totalDurationSeconds: number | null;
+  csatRating: LiveChatCsatRating | null;
+  csatFeedbackText: string | null;
+  convertedToBriefId: string | null;
+  createdAt: string;
+  updatedAt: string;
+  messages?: LiveChatMessageDto[];
+}
+
+export interface LiveChatMessageDto {
+  id: string;
+  sessionId: string;
+  tenantId: string;
+  senderType: 'CLIENT' | 'OPERATOR' | 'SYSTEM';
+  senderOperatorId?: string | null;
+  senderName?: string | null;
+  waMessageId?: string | null;
+  messageType: 'TEXT' | 'IMAGE' | 'DOCUMENT';
+  textBody?: string | null;
+  mediaR2Url?: string | null;
+  mediaCdnUrl?: string | null;
+  mediaMimeType?: string | null;
+  mediaFileName?: string | null;
+  createdAt: string;
+}
+
+export interface SendLiveChatMessageDto {
+  textBody: string;
+}
+
+export interface LiveChatCsatFeedbackDto {
+  rating: LiveChatCsatRating;
+  feedbackText?: string;
+}
+
+export interface OperatorKpiSummaryDto {
+  operatorId: string;
+  operatorName: string;
+  operatorEmail: string;
+  totalChatsHandled: number;
+  activeChatsCount: number;
+  avgFirstResponseSeconds: number;
+  avgChatDurationSeconds: number;
+  csatPositiveCount: number;
+  csatTotalRated: number;
+  csatPercentage: number;
+  totalBriefsHandled: number;
+  totalBriefsPublished: number;
+  avgHoursToPublish: number;
+  urgentSlaComplianceRate: number;
 }

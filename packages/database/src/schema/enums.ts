@@ -243,4 +243,17 @@ export const quotaTransactionTypeEnum = pgEnum('quota_transaction_type_enum', [
   'ADMIN_ADJUSTMENT',
 ]);
 
+export const liveChatSessionStatusEnum = pgEnum('live_chat_session_status_enum', [
+  'WAITING_OPERATOR',
+  'ACTIVE',
+  'AWAITING_FEEDBACK',
+  'CLOSED',
+  'TIMEOUT_CLOSED',
+]);
+
+export const liveChatCsatRatingEnum = pgEnum('live_chat_csat_rating_enum', [
+  'SATISFIED',
+  'DISSATISFIED',
+]);
+
 

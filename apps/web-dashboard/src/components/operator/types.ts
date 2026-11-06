@@ -158,6 +158,64 @@ export type OperatorTabType =
   | 'ASPIRASI'
   | 'COMMENTS';
 
+export interface LiveChatSessionItem {
+  id: string;
+  sessionCode: string;
+  tenantId: string;
+  tenantFullName: string;
+  tenantPhoneNumber: string;
+  assignedOperatorId: string | null;
+  assignedOperatorName: string | null;
+  status: 'WAITING_OPERATOR' | 'ACTIVE' | 'AWAITING_FEEDBACK' | 'CLOSED';
+  isOffHours: boolean;
+  clientInitialTopic: string | null;
+  startedAt: string;
+  acceptedAt: string | null;
+  firstOperatorResponseAt: string | null;
+  endedAt: string | null;
+  lastMessageAt: string;
+  firstResponseSeconds: number | null;
+  totalDurationSeconds: number | null;
+  csatRating: 'SATISFIED' | 'DISSATISFIED' | null;
+  csatFeedbackText: string | null;
+  convertedToBriefId: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface LiveChatMessageItem {
+  id: string;
+  sessionId: string;
+  tenantId: string;
+  senderType: 'CLIENT' | 'OPERATOR' | 'SYSTEM';
+  senderOperatorId: string | null;
+  senderName?: string;
+  waMessageId: string | null;
+  messageType: 'TEXT' | 'IMAGE' | 'DOCUMENT';
+  textBody: string | null;
+  mediaCdnUrl: string | null;
+  mediaMimeType: string | null;
+  mediaFileName: string | null;
+  createdAt: string;
+}
+
+export interface OperatorKpiSummaryItem {
+  operatorId: string;
+  operatorName: string;
+  operatorEmail: string;
+  totalChatsHandled: number;
+  activeChatsCount: number;
+  avgFirstResponseSeconds: number;
+  avgChatDurationSeconds: number;
+  csatPositiveCount: number;
+  csatTotalRated: number;
+  csatPercentage: number;
+  totalBriefsHandled: number;
+  totalBriefsPublished: number;
+  avgHoursToPublish: number;
+  urgentSlaComplianceRate: number;
+}
+
 export type OperatorViewMode = 'WORKSPACE' | 'DIRECTORY';
 
 export const DEFAULT_TOPICS = [

@@ -7,6 +7,8 @@ import { WhatsAppBotSessionService } from './services/whatsapp-bot-session.servi
 import { WhatsAppOperatorBrokerService } from './services/whatsapp-operator-broker.service.js';
 import { WhatsAppPublicReviewService } from './services/whatsapp-public-review.service.js';
 import { WhatsAppBillingOrderService } from './services/whatsapp-billing-order.service.js';
+import { WhatsAppLiveChatService } from './services/whatsapp-live-chat.service.js';
+import { OperatorKpiService } from './services/operator-kpi.service.js';
 import { RedisModule } from '../redis/redis.module.js';
 
 @Module({
@@ -18,9 +20,17 @@ import { RedisModule } from '../redis/redis.module.js';
     WhatsAppOperatorBrokerService,
     WhatsAppPublicReviewService,
     WhatsAppBillingOrderService,
+    WhatsAppLiveChatService,
+    OperatorKpiService,
     WhatsAppService,
     WhatsAppCloudClient,
   ],
-  exports: [WhatsAppService, WhatsAppCloudClient, WhatsAppBillingOrderService],
+  exports: [
+    WhatsAppService,
+    WhatsAppCloudClient,
+    WhatsAppBillingOrderService,
+    WhatsAppLiveChatService,
+    OperatorKpiService,
+  ],
 })
 export class WhatsAppModule {}

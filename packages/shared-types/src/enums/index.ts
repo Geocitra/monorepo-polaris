@@ -496,3 +496,16 @@ export enum WhatsAppActionCallback {
   MENU_OPEN_MAIN = 'MENU_OPEN_MAIN',
 }
 
+export enum LiveChatSessionStatus {
+  WAITING_OPERATOR = 'WAITING_OPERATOR',
+  ACTIVE = 'ACTIVE',
+  AWAITING_FEEDBACK = 'AWAITING_FEEDBACK',
+  CLOSED = 'CLOSED',
+  TIMEOUT_CLOSED = 'TIMEOUT_CLOSED',
+}
+
+export enum LiveChatCsatRating {
+  SATISFIED = 'SATISFIED',
+  DISSATISFIED = 'DISSATISFIED',
+}
+

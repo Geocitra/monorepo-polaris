@@ -23,6 +23,7 @@ import {
   Search,
 } from 'lucide-react';
 import { AdminApiClient } from '@/lib/api-client';
+import { OperatorLiveChatPanel } from './OperatorLiveChatPanel';
 import {
   AssignedTenant,
   AttachedFileItem,
@@ -214,6 +215,7 @@ export function OperatorWhatsAppBriefsTab({
   const [briefs, setBriefs] = useState<ContentBriefItem[]>([]);
   const [weeklyQuota, setWeeklyQuota] = useState<TenantWeeklyBriefQuota | null>(null);
   const [loading, setLoading] = useState(true);
+  const [activeSubTab, setActiveSubTab] = useState<'BRIEFS' | 'LIVE_CHAT'>('BRIEFS');
   const [selectedBriefId, setSelectedBriefId] = useState<string | null>(null);
   const [statusFilter, setStatusFilter] = useState<'ALL' | 'ACTIVE' | 'PRIORITY' | 'REVISION' | 'DONE'>('ALL');
   const [searchQuery, setSearchQuery] = useState('');
@@ -583,8 +585,73 @@ export function OperatorWhatsAppBriefsTab({
         </div>
       )}
 
-      {/* 2. MASTER-DETAIL LAYOUT: DAFTAR TIKET KIRI & THREAD PERCAKAPAN KANAN */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-5">
+      {/* 2. SUB-TAB SWITCHER: TIKET REQUEST KONTEN vs DISKUSI LANGSUNG (LIVE CHAT) */}
+      <div className="flex items-center gap-2 border-b border-slate-200 dark:border-slate-800 pb-3">
+        <button
+          type="button"
+          onClick={() => setActiveSubTab('BRIEFS')}
+          className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-black transition cursor-pointer ${
+            activeSubTab === 'BRIEFS'
+              ? 'bg-emerald-600 text-white shadow-xs'
+              : 'bg-slate-100 dark:bg-slate-800/80 text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-700'
+          }`}
+        >
+          <FileText className="w-3.5 h-3.5" />
+          <span>📝 Tiket Request Konten ({briefs.length})</span>
+        </button>
+
+        <button
+          type="button"
+          onClick={() => setActiveSubTab('LIVE_CHAT')}
+          className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-black transition cursor-pointer ${
+            activeSubTab === 'LIVE_CHAT'
+              ? 'bg-emerald-600 text-white shadow-xs'
+              : 'bg-slate-100 dark:bg-slate-800/80 text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-700'
+          }`}
+        >
+          <MessageCircle className="w-3.5 h-3.5" />
+          <span>💬 Diskusi Langsung (Live Chat)</span>
+        </button>
+      </div>
+
+      {activeSubTab === 'LIVE_CHAT' ? (
+        <OperatorLiveChatPanel
+          selectedDewan={selectedDewan}
+          onConvertToBrief={(topic) => {
+            onHydrateBriefToStudio({
+              brief: {
+                id: `brief_live_${Date.now()}`,
+                briefCode: 'LIVE',
+                tenantId: selectedDewan.tenantId,
+                tenantFullName: selectedDewan.fullName,
+                tenantMaskedPhone: '',
+                assignedOperatorId: null,
+                status: 'SUBMITTED',
+                clientUrgency: 'NORMAL',
+                operatorPriority: 'NORMAL',
+                topicSummary: topic,
+                weeklyQuotaPeriod: '',
+                weeklyRequestLimit: 3,
+                revisionUsed: 0,
+                revisionLimit: 3,
+                articleStatus: 'PENDING',
+                posterStatus: 'PENDING',
+                captionStatus: 'PENDING',
+                isUrgentOverquota: false,
+                isOffHours: false,
+                reviewToken: '',
+                createdAt: new Date().toISOString(),
+                updatedAt: new Date().toISOString(),
+                messages: [],
+              },
+              topicPrompt: topic,
+              attachments: [],
+            });
+          }}
+        />
+      ) : (
+        /* 3. MASTER-DETAIL LAYOUT: DAFTAR TIKET KIRI & THREAD PERCAKAPAN KANAN */
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-5">
         {/* KOLOM KIRI: DAFTAR TIKET BRIEF */}
         <div className="lg:col-span-4 bg-white dark:bg-[#0B0F19] rounded-2xl border border-slate-200 dark:border-slate-800 shadow-xs overflow-hidden flex flex-col">
           <div className="p-3.5 border-b border-slate-100 dark:border-slate-800 space-y-2.5">
@@ -1352,6 +1419,7 @@ export function OperatorWhatsAppBriefsTab({
           )}
         </div>
       </div>
+      )}
     </div>
   );
 }

@@ -18,7 +18,7 @@ import {
   contentBriefMessages,
   withTenantContext,
 } from '@polaris/database';
-import { BriefUrgencyLevel, BriefPackageType } from '@polaris/shared-types';
+import { BriefUrgencyLevel, BriefPackageType, LiveChatCsatRating } from '@polaris/shared-types';
 import { RedisService } from '../../redis/redis.service.js';
 import { WhatsAppCloudClient, WhatsAppListSection } from '../whatsapp-cloud.client.js';
 import {
@@ -29,6 +29,7 @@ import {
 } from '../contact-sanitizer.util.js';
 import { QuotaWalletService } from '../../billing/quota-wallet.service.js';
 import { WhatsAppBillingOrderService } from './whatsapp-billing-order.service.js';
+import { WhatsAppLiveChatService } from './whatsapp-live-chat.service.js';
 import {
   WhatsAppBriefHelperService,
   DraftCartState,
@@ -69,7 +70,7 @@ function formatSmartRowDesc(fullText: string, prefix = '', maxLen = 72): string 
 }
 
 export interface SessionIntentState {
-  mode: 'NEW_BRIEF' | 'REVISION' | 'CLARIFY';
+  mode: 'NEW_BRIEF' | 'REVISION' | 'CLARIFY' | 'LIVE_CHAT';
   step?: 'SELECTING_FORMAT' | 'AWAITING_MATERIALS';
   briefId?: string;
   briefCode?: string;
@@ -88,7 +89,8 @@ export class WhatsAppBotSessionService implements OnModuleDestroy {
     private readonly waClient: WhatsAppCloudClient,
     private readonly helper: WhatsAppBriefHelperService,
     private readonly quotaWalletService: QuotaWalletService,
-    private readonly billingOrderService: WhatsAppBillingOrderService
+    private readonly billingOrderService: WhatsAppBillingOrderService,
+    private readonly liveChatService: WhatsAppLiveChatService
   ) { }
 
   onModuleDestroy() {
@@ -440,10 +442,23 @@ export class WhatsAppBotSessionService implements OnModuleDestroy {
       return;
     }
 
-    // 9. Cek Mode Diskusi Langsung (Live Relay Chat) dengan Editor
-    const liveChatActive = await this.redisService.get<string>(`whatsapp:live_chat:${tenant.id}`);
-    if (liveChatActive) {
-      await this.processClientLiveChatMessage(tenant, normalizedSender, {
+    // 9. Cek Mode Diskusi Langsung (Live Chat Session) dengan Editor Redaksi
+    if (sessionIntent?.mode === 'LIVE_CHAT') {
+      if (itemType === 'TEXT' && (lowerCmd === 'selesai' || lowerCmd === 'akhiri' || lowerCmd === 'tutup')) {
+        const sessionId = await this.redisService.get<string>(`whatsapp:live_chat_session:${tenant.id}`);
+        if (sessionId) {
+          await this.liveChatService.askSessionCompletion(sessionId);
+          return;
+        }
+      }
+      if (itemType === 'TEXT' && (lowerCmd === 'batal' || lowerCmd === 'cancel')) {
+        await this.redisService.del(`whatsapp:session_intent:${tenant.id}`);
+        await this.redisService.del(`whatsapp:live_chat_session:${tenant.id}`);
+        await this.sendMainMenuPrompt(tenant.id, tenant.fullName, normalizedSender);
+        return;
+      }
+
+      await this.liveChatService.handleClientIncomingMessage(tenant, normalizedSender, {
         wamid,
         itemType,
         extractedText,
@@ -1562,28 +1577,66 @@ export class WhatsAppBotSessionService implements OnModuleDestroy {
     }
 
     if (buttonId === 'MENU_LIVE_CHAT') {
-      await this.redisService.set(`whatsapp:live_chat:${tenant.id}`, 'ACTIVE', 3600);
+      const session = await this.liveChatService.requestOrGetActiveSession(tenant);
+      await this.redisService.set(
+        `whatsapp:session_intent:${tenant.id}`,
+        {
+          mode: 'LIVE_CHAT',
+          startedAtMs: Date.now(),
+        },
+        7200
+      );
+
+      const offHoursNote = session.isOffHours
+        ? '\n\n🌙 *Catatan Jam Kerja:* Meja Redaksi saat ini di luar jam operasional aktif (08:00 - 17:00 WIB). Pesan Anda tetap kami tampung dan akan dijawab pertama kali saat Redaksi buka besok pagi.'
+        : '';
+
       await this.waClient.sendInteractiveButtons(
         phoneE164,
         [
-          `💬 *Mode Diskusi Langsung dengan Tim Redaksi Aktif*`,
+          `💬 *Permintaan Diskusi Redaksi Diterima (#${session.sessionCode})*`,
           '',
-          `Halo Bapak/Ibu *${tenant.fullName}*, silakan tulis pesan, arahan sudut pandang (angle), atau pertanyaan Anda di bawah ini.`,
+          `Halo Bapak/Ibu *${tenant.fullName}*, Anda sedang kami hubungkan dengan Editor Redaksi. Mohon tunggu sebentar ya... 🙏`,
+          offHoursNote,
           '',
-          'Pesan Anda langsung diteruskan ke layar Editor Redaksi yang menangani profil Anda, dan balasan Editor akan masuk ke WhatsApp ini.',
-        ].join('\n'),
+          '💡 _Silakan langsung ketik pesan, pertanyaan, atau arahan materi Anda di chat ini._',
+          'Identitas & nomor Anda tetap terlindungi',
+        ].filter(Boolean).join('\n'),
         [
-          { id: 'LIVE_CHAT_END', title: '✅ Akhiri Diskusi' },
+          { id: `LIVE_CHAT_COMPLETED:${session.id}`, title: '✅ Selesai Diskusi' },
           { id: 'MENU_OPEN_MAIN', title: '📋 Menu Utama' },
         ],
         'Diskusi Tim Redaksi',
-        'Identitas & nomor Anda tetap terlindungi'
+        'Menunggu respons Editor'
       );
       return;
     }
 
+    if (buttonId.startsWith('LIVE_CHAT_COMPLETED:')) {
+      const targetSessionId = buttonId.slice('LIVE_CHAT_COMPLETED:'.length).trim();
+      await this.liveChatService.completeSessionAndTriggerCsat(targetSessionId);
+      return;
+    }
+
+    if (buttonId.startsWith('LIVE_CHAT_CONTINUE:')) {
+      await this.waClient.sendTextMessage(
+        phoneE164,
+        'Baik Bapak/Ibu, sesi diskusi tetap aktif. Silakan lanjutkan mengetik pesan Anda di bawah ini.'
+      );
+      return;
+    }
+
+    if (buttonId.startsWith('CSAT_RATING:')) {
+      const parts = buttonId.split(':');
+      const targetSessionId = parts[1];
+      const rating = parts[2] as LiveChatCsatRating;
+      await this.liveChatService.recordCsatFeedback(targetSessionId, rating);
+      return;
+    }
+
     if (buttonId === 'LIVE_CHAT_END') {
-      await this.redisService.del(`whatsapp:live_chat:${tenant.id}`);
+      await this.redisService.del(`whatsapp:session_intent:${tenant.id}`);
+      await this.redisService.del(`whatsapp:live_chat_session:${tenant.id}`);
       await this.waClient.sendInteractiveButtons(
         phoneE164,
         '✅ Sesi diskusi langsung dengan Tim Redaksi telah diakhiri. Silakan pilih layanan lainnya di bawah ini:',
@@ -3625,129 +3678,6 @@ export class WhatsAppBotSessionService implements OnModuleDestroy {
       'Publikasi Berhasil',
       'Portal Berita Resmi Polaris'
     );
-  }
-
-  private async processClientLiveChatMessage(
-    tenant: { id: string; fullName: string },
-    phoneE164: string,
-    input: {
-      wamid: string;
-      itemType: 'TEXT' | 'IMAGE' | 'DOCUMENT';
-      extractedText: string;
-      mediaId?: string;
-      rawMimeType?: string;
-      rawFileName?: string;
-    }
-  ): Promise<void> {
-    let [activeBrief] = await db
-      .select()
-      .from(contentBriefs)
-      .where(eq(contentBriefs.tenantId, tenant.id))
-      .orderBy(desc(contentBriefs.updatedAt))
-      .limit(1);
-
-    let uploaded: {
-      r2StorageUrl?: string;
-      cdnPublicUrl?: string;
-      mimeType?: string;
-      fileSizeBytes?: number;
-      fileName?: string;
-    } = {};
-
-    if (input.mediaId) {
-      uploaded = await this.waClient.downloadMediaToR2(
-        input.mediaId,
-        tenant.id,
-        input.rawMimeType,
-        input.rawFileName
-      );
-    }
-
-    if (!activeBrief) {
-      const [assignment] = await db
-        .select()
-        .from(operatorTenantAssignments)
-        .where(
-          and(
-            eq(operatorTenantAssignments.tenantId, tenant.id),
-            eq(operatorTenantAssignments.status, 'ACTIVE')
-          )
-        )
-        .orderBy(desc(operatorTenantAssignments.createdAt))
-        .limit(1);
-
-      const briefCode = await this.helper.generateUniqueBriefCode();
-      const limits = await this.helper.getTenantConfiguredLimits(tenant.id);
-
-      activeBrief = await withTenantContext(tenant.id, async (tx) => {
-        const [inserted] = await tx
-          .insert(contentBriefs)
-          .values({
-            briefCode,
-            tenantId: tenant.id,
-            assignedOperatorId: assignment?.operatorId ?? null,
-            status: 'SUBMITTED',
-            clientUrgency: 'NORMAL',
-            operatorPriority: 'NORMAL',
-            topicSummary: input.extractedText || `Diskusi Redaksi — ${tenant.fullName}`,
-            targetWindow: getTimeHorizonInfo('NORMAL').target,
-            weeklyQuotaPeriod: getCurrentWibWeeklyPeriod(),
-            weeklyRequestLimit: limits.weeklyRequestLimit,
-            revisionUsed: 0,
-            revisionLimit: limits.revisionLimit,
-          })
-          .returning();
-        return inserted;
-      });
-    }
-
-    await withTenantContext(tenant.id, async (tx) => {
-      await tx
-        .insert(contentBriefMessages)
-        .values({
-          briefId: activeBrief.id,
-          tenantId: tenant.id,
-          direction: 'INBOUND',
-          messageType: input.itemType,
-          waMessageId: input.wamid,
-          textBody: input.extractedText || null,
-          mediaR2Url: uploaded.r2StorageUrl ?? null,
-          mediaCdnUrl: uploaded.cdnPublicUrl ?? null,
-          mediaMimeType: uploaded.mimeType ?? null,
-          mediaFileName: uploaded.fileName ?? null,
-          mediaFileSizeBytes: uploaded.fileSizeBytes ?? null,
-          revisionRound: activeBrief.revisionUsed,
-          targetComponents: [],
-          isInternalFault: false,
-        })
-        .onConflictDoNothing();
-
-      await tx
-        .update(contentBriefs)
-        .set({ updatedAt: new Date() })
-        .where(eq(contentBriefs.id, activeBrief.id));
-    });
-
-    await this.waClient.sendInteractiveButtons(
-      phoneE164,
-      `✅ Pesan Anda telah diteruskan ke layar Editor Redaksi (Tiket *#${activeBrief.briefCode}*). Balasan Editor akan langsung tampil di chat ini.`,
-      [
-        { id: 'LIVE_CHAT_END', title: '✅ Akhiri Diskusi' },
-        { id: 'MENU_OPEN_MAIN', title: '📋 Menu Utama' },
-      ]
-    );
-
-    if (activeBrief.assignedOperatorId) {
-      await this.redisService.emitUserNotification(activeBrief.assignedOperatorId, {
-        id: `live_chat_${Date.now()}`,
-        title: `💬 Pesan Diskusi dari ${tenant.fullName}`,
-        message: input.extractedText
-          ? input.extractedText.slice(0, 120)
-          : 'Mengirim lampiran media pada sesi diskusi.',
-        category: 'ARTICLE',
-        link: '/operator/workspace',
-      });
-    }
   }
 
   private isGreetingOrMenuCommand(text: string): boolean {

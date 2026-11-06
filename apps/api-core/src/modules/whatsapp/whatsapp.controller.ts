@@ -28,6 +28,7 @@ import {
   PublicReviewRevisionDto,
   UpdateTenantBriefLimitsDto,
   DispatchPackageDto,
+  SendLiveChatMessageDto,
 } from './dto/whatsapp.dto.js';
 
 interface AuthenticatedRequest extends Request {
@@ -351,6 +352,113 @@ export class WhatsAppController {
     @Body() dto: PublicReviewRevisionDto
   ) {
     return await this.whatsappService.requestRevisionByToken(token, dto);
+  }
+
+  // =========================================================================
+  // 4. LIVE DISCUSSION (TWO-WAY CHAT) & OPERATOR KPI
+  // =========================================================================
+
+  /**
+   * GET /api/v1/whatsapp/live-chat/sessions
+   * Operator & Superadmin: Mengambil daftar sesi obrolan (antrean & aktif).
+   */
+  @UseGuards(AuthGuard)
+  @Get('live-chat/sessions')
+  async getLiveChatSessions(@Req() req: AuthenticatedRequest) {
+    this.assertOperatorOrSuperadmin(req);
+    const operatorId = req.user.operatorId || req.user.tenantId;
+    return await this.whatsappService.getOperatorLiveChatSessions(operatorId);
+  }
+
+  /**
+   * POST /api/v1/whatsapp/live-chat/sessions/:id/accept
+   * Operator: Mengklaim sesi antrean obrolan secara atomik.
+   */
+  @UseGuards(AuthGuard)
+  @Post('live-chat/sessions/:id/accept')
+  async acceptLiveChatSession(
+    @Param('id') sessionId: string,
+    @Req() req: AuthenticatedRequest
+  ) {
+    this.assertOperatorOrSuperadmin(req);
+    const operatorId = req.user.operatorId || req.user.tenantId;
+    const operatorName = (req.user as any).fullName || (req.user as any).name || req.user.email.split('@')[0];
+    return await this.whatsappService.acceptLiveChatSession(sessionId, {
+      id: operatorId,
+      name: operatorName,
+    });
+  }
+
+  /**
+   * GET /api/v1/whatsapp/live-chat/sessions/:id/messages
+   * Operator & Superadmin: Mengambil riwayat pesan untuk sebuah sesi obrolan.
+   */
+  @UseGuards(AuthGuard)
+  @Get('live-chat/sessions/:id/messages')
+  async getLiveChatSessionMessages(
+    @Param('id') sessionId: string,
+    @Req() req: AuthenticatedRequest
+  ) {
+    this.assertOperatorOrSuperadmin(req);
+    return await this.whatsappService.getLiveChatSessionMessages(sessionId);
+  }
+
+  /**
+   * POST /api/v1/whatsapp/live-chat/sessions/:id/messages
+   * Operator: Mengirim pesan balasan ke WhatsApp klien (dengan Broker Guard anti-leak).
+   */
+  @UseGuards(AuthGuard)
+  @Post('live-chat/sessions/:id/messages')
+  async sendOperatorLiveChatMessage(
+    @Param('id') sessionId: string,
+    @Body() dto: SendLiveChatMessageDto,
+    @Req() req: AuthenticatedRequest
+  ) {
+    this.assertOperatorOrSuperadmin(req);
+    const operatorId = req.user.operatorId || req.user.tenantId;
+    const operatorName = (req.user as any).fullName || (req.user as any).name || req.user.email.split('@')[0];
+    return await this.whatsappService.sendOperatorLiveChatMessage(sessionId, {
+      id: operatorId,
+      name: operatorName,
+    }, dto.textBody);
+  }
+
+  /**
+   * POST /api/v1/whatsapp/live-chat/sessions/:id/ask-completion
+   * Operator: Menanyakan ke WhatsApp klien apakah sesi diskusi sudah selesai atau masih lanjut.
+   */
+  @UseGuards(AuthGuard)
+  @Post('live-chat/sessions/:id/ask-completion')
+  async askLiveChatCompletion(
+    @Param('id') sessionId: string,
+    @Req() req: AuthenticatedRequest
+  ) {
+    this.assertOperatorOrSuperadmin(req);
+    return await this.whatsappService.askLiveChatCompletion(sessionId);
+  }
+
+  /**
+   * POST /api/v1/whatsapp/live-chat/sessions/:id/close
+   * Operator: Menutup sesi obrolan dan memicu survei kepuasan (CSAT) ke WhatsApp klien.
+   */
+  @UseGuards(AuthGuard)
+  @Post('live-chat/sessions/:id/close')
+  async closeLiveChatSession(
+    @Param('id') sessionId: string,
+    @Req() req: AuthenticatedRequest
+  ) {
+    this.assertOperatorOrSuperadmin(req);
+    return await this.whatsappService.closeLiveChatSession(sessionId);
+  }
+
+  /**
+   * GET /api/v1/whatsapp/kpi/operators
+   * Superadmin: Mendapatkan leaderboard metrik KPI operator (FRT, SLA, CSAT, Time to publish).
+   */
+  @UseGuards(AuthGuard, SuperadminGuard)
+  @Get('kpi/operators')
+  async getOperatorsKpiSummary(@Req() req: AuthenticatedRequest) {
+    return await this.whatsappService.getOperatorsKpiSummary();
   }
 
   private assertOperatorOrSuperadmin(req: AuthenticatedRequest): void {

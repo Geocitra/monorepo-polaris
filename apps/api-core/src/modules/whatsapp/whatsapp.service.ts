@@ -2,6 +2,9 @@ import { Injectable } from '@nestjs/common';
 import {
   ContentBriefDto,
   TenantWeeklyBriefQuotaDto,
+  LiveChatSessionDto,
+  LiveChatMessageDto,
+  OperatorKpiSummaryDto,
 } from '@polaris/shared-types';
 import {
   AcceptBriefDto,
@@ -20,14 +23,18 @@ import {
 import { WhatsAppBotSessionService } from './services/whatsapp-bot-session.service.js';
 import { WhatsAppOperatorBrokerService } from './services/whatsapp-operator-broker.service.js';
 import { WhatsAppPublicReviewService } from './services/whatsapp-public-review.service.js';
+import { WhatsAppLiveChatService } from './services/whatsapp-live-chat.service.js';
+import { OperatorKpiService } from './services/operator-kpi.service.js';
 
 /**
  * Facade Service untuk modul WhatsApp Intake & Blind Broker.
- * Mendelegasikan logika ke 4 sub-service modular sesuai Single Responsibility Principle (SRP):
+ * Mendelegasikan logika ke 6 sub-service modular sesuai Single Responsibility Principle (SRP):
  * 1. WhatsAppBriefHelperService    -> Skema DB, Kalkulasi Kuota Mingguan WIB, Sanitasi DTO, & Audit
  * 2. WhatsAppBotSessionService     -> State Machine Bot WA (Interactive List, Draft Debounce, Live Relay Chat)
  * 3. WhatsAppOperatorBrokerService -> Inbox Operator, Hydrate Studio Base64, Klarifikasi, & Pengiriman Review
  * 4. WhatsAppPublicReviewService   -> Magic Link Pratinjau Tanpa Login (/review-brief/[token])
+ * 5. WhatsAppLiveChatService       -> Two-way live discussion antara Klien WA dan Operator Cockpit
+ * 6. OperatorKpiService            -> Agregasi telemetri performa operator (FRT, Durasi, SLA, CSAT)
  */
 @Injectable()
 export class WhatsAppService {
@@ -35,7 +42,9 @@ export class WhatsAppService {
     private readonly helperService: WhatsAppBriefHelperService,
     private readonly botSessionService: WhatsAppBotSessionService,
     private readonly operatorBrokerService: WhatsAppOperatorBrokerService,
-    private readonly publicReviewService: WhatsAppPublicReviewService
+    private readonly publicReviewService: WhatsAppPublicReviewService,
+    private readonly liveChatService: WhatsAppLiveChatService,
+    private readonly operatorKpiService: OperatorKpiService
   ) { }
 
   // =========================================================================
@@ -232,5 +241,41 @@ export class WhatsAppService {
 
   public async requestRevisionByToken(rawToken: string, dto: PublicReviewRevisionDto) {
     return await this.publicReviewService.requestRevisionByToken(rawToken, dto);
+  }
+
+  // =========================================================================
+  // 4. LIVE DISCUSSION & OPERATOR KPI
+  // =========================================================================
+
+  public async getOperatorLiveChatSessions(operatorId?: string): Promise<LiveChatSessionDto[]> {
+    return await this.liveChatService.getOperatorSessions(operatorId);
+  }
+
+  public async acceptLiveChatSession(sessionId: string, operator: { id: string; name: string }) {
+    return await this.liveChatService.acceptSession(sessionId, operator);
+  }
+
+  public async getLiveChatSessionMessages(sessionId: string): Promise<LiveChatMessageDto[]> {
+    return await this.liveChatService.getSessionMessages(sessionId);
+  }
+
+  public async sendOperatorLiveChatMessage(
+    sessionId: string,
+    operator: { id: string; name: string },
+    textBody: string
+  ) {
+    return await this.liveChatService.sendOperatorMessage(sessionId, operator, textBody);
+  }
+
+  public async askLiveChatCompletion(sessionId: string) {
+    return await this.liveChatService.askSessionCompletion(sessionId);
+  }
+
+  public async closeLiveChatSession(sessionId: string) {
+    return await this.liveChatService.completeSessionAndTriggerCsat(sessionId);
+  }
+
+  public async getOperatorsKpiSummary(): Promise<OperatorKpiSummaryDto[]> {
+    return await this.operatorKpiService.getOperatorsKpiSummary();
   }
 }

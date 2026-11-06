@@ -12,7 +12,7 @@ import {
   MaxLength,
   ArrayNotEmpty,
 } from 'class-validator';
-import { BriefUrgencyLevel, BriefTargetComponent } from '@polaris/shared-types';
+import { BriefUrgencyLevel, BriefTargetComponent, LiveChatCsatRating } from '@polaris/shared-types';
 
 export class AcceptBriefDto {
   @IsOptional()
@@ -109,3 +109,20 @@ export class DispatchPackageDto {
 }
 
 
+
+export class SendLiveChatMessageDto {
+  @IsString()
+  @MinLength(1)
+  @MaxLength(2000)
+  textBody!: string;
+}
+
+export class LiveChatCsatFeedbackDto {
+  @IsEnum(LiveChatCsatRating)
+  rating!: LiveChatCsatRating;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(1000)
+  feedbackText?: string;
+}

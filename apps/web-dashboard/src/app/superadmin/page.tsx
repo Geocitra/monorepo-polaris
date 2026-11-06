@@ -8,6 +8,7 @@ import { DashboardStats, RecentTenant } from '@/components/superadmin/types';
 import { SuperadminKpiCards } from '@/components/superadmin/dashboard/SuperadminKpiCards';
 import { SuperadminLaunchpad } from '@/components/superadmin/dashboard/SuperadminLaunchpad';
 import { RecentTenantsTable } from '@/components/superadmin/dashboard/RecentTenantsTable';
+import { OperatorKpiLeaderboard } from '@/components/superadmin/dashboard/OperatorKpiLeaderboard';
 
 export default function SuperadminDashboardPage() {
   const [stats, setStats] = useState<DashboardStats | null>(null);
@@ -89,7 +90,10 @@ export default function SuperadminDashboardPage() {
       {/* 3. MODULAR QUICK OPERATIONS LAUNCHPAD */}
       <SuperadminLaunchpad />
 
-      {/* 4. MODULAR RECENT CLIENTS TABLE */}
+      {/* 4. MODULAR OPERATOR KPI & SLA SCORECARD */}
+      <OperatorKpiLeaderboard />
+
+      {/* 5. MODULAR RECENT CLIENTS TABLE */}
       <RecentTenantsTable
         tenants={recentTenants}
         onVerifyToggle={handleVerifyToggle}
