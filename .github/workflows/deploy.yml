@@ -80,6 +80,17 @@ jobs:
       - name: Checkout Repository
         uses: actions/checkout@v4
 
+      - name: Transfer Deployment Files to VPS
+        uses: appleboy/scp-action@v0.1.7
+        with:
+          host: ${{ secrets.PROD_SSH_HOST }}
+          username: ${{ secrets.PROD_SSH_USER }}
+          key: ${{ secrets.PROD_SSH_KEY }}
+          port: ${{ secrets.PROD_SSH_PORT || 22 }}
+          source: "docker-compose.prod.yml,scripts/deploy-production.sh,packages/database/src/migrations/*"
+          target: "/home/${{ secrets.PROD_SSH_USER }}/monorepo-polaris"
+          overwrite: true
+
       - name: Execute Remote Deployment via SSH
         uses: appleboy/ssh-action@v1.2.0
         with:
@@ -99,9 +110,10 @@ jobs:
             # 1. Login ke GHCR di server VPS
             echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
 
-            # 2. Sinkronkan file docker-compose.prod.yml & script terbaru
-            git fetch origin main
-            git reset --hard origin/main
+            # 2. Sinkronkan git jika koneksi VPS ke GitHub tersedia (force IPv4 & timeout proteksi)
+            git -c http.connectTimeout=10 -c http.lowSpeedLimit=1000 -c http.lowSpeedTime=10 fetch -4 origin main 2>/dev/null && git reset --hard origin/main 2>/dev/null || {
+              echo "ℹ️ Info: Git fetch dari VPS ke GitHub dilewati / timeout (menggunakan file deployment yang disinkronkan via SCP)."
+            }
 
             # 3. Jalankan script rolling deployment aman
             chmod +x ./scripts/deploy-production.sh
