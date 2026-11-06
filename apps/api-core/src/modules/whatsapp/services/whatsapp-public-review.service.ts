@@ -72,6 +72,7 @@ export class WhatsAppPublicReviewService {
       status: brief.status,
       targetWindow: brief.targetWindow,
       clientUrgency: brief.clientUrgency,
+      packageType: (brief as any).packageType || 'FULL_CAMPAIGN',
       revisionUsed: brief.revisionUsed,
       revisionLimit: brief.revisionLimit,
       revisionRemaining: Math.max(0, brief.revisionLimit - brief.revisionUsed),

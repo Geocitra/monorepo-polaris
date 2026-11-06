@@ -218,6 +218,23 @@ export function OperatorContentTab({
                   >
                     Putaran Revisi: {activeBrief.revisionUsed}/{activeBrief.revisionLimit}
                   </span>
+                  {activeBrief.packageType === 'POSTER_ONLY' ? (
+                    <span className="px-2 py-0.5 rounded-full text-[10px] font-black bg-purple-100 text-purple-900 dark:bg-purple-950 dark:text-purple-300 border border-purple-200">
+                      🎨 Poster Visual (1)
+                    </span>
+                  ) : activeBrief.packageType === 'INFOGRAPHIC_ONLY' ? (
+                    <span className="px-2 py-0.5 rounded-full text-[10px] font-black bg-emerald-100 text-emerald-900 dark:bg-emerald-950 dark:text-emerald-300 border border-emerald-200">
+                      📊 Infografis Data (1)
+                    </span>
+                  ) : activeBrief.packageType === 'ARTICLE_ONLY' ? (
+                    <span className="px-2 py-0.5 rounded-full text-[10px] font-black bg-blue-100 text-blue-900 dark:bg-blue-950 dark:text-blue-300 border border-blue-200">
+                      📝 Artikel Saja (1)
+                    </span>
+                  ) : (
+                    <span className="px-2 py-0.5 rounded-full text-[10px] font-black bg-indigo-100 text-indigo-900 dark:bg-indigo-950 dark:text-indigo-300 border border-indigo-200">
+                      📦 Bundling (2)
+                    </span>
+                  )}
                   {activeBrief.clientUrgency === 'URGENT' || activeBrief.targetWindow === 'TODAY_PRIORITY' ? (
                     <span className="px-2 py-0.5 rounded-full text-[10px] font-black bg-rose-600 text-white flex items-center gap-1">
                       <Flame className="w-3 h-3" /> ⚡ PRIORITAS HARI INI
@@ -240,49 +257,56 @@ export function OperatorContentTab({
                 {/* Target Komponen Revisi & Pintasan Tab Kanvas */}
                 <div className="flex items-center gap-2 flex-wrap pt-1">
                   <span className="text-[10px] font-bold text-slate-400">Pintasan Komponen:</span>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setResultTab('article');
-                      setIsEditingArticle(true);
-                    }}
-                    className={`px-2 py-0.5 rounded-lg text-[10px] font-bold transition flex items-center gap-1 cursor-pointer ${
-                      activeBrief.articleStatus === 'REVISION_REQUESTED'
-                        ? 'bg-rose-500 text-white hover:bg-rose-600 ring-2 ring-rose-400/40 animate-pulse'
-                        : 'bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 text-slate-700 dark:text-slate-300'
-                    }`}
-                    title="Buka & edit naskah artikel"
-                  >
-                    <FileText className="w-3 h-3" />
-                    <span>Artikel ({activeBrief.articleStatus})</span>
-                  </button>
+                  {activeBrief.packageType !== 'POSTER_ONLY' && activeBrief.packageType !== 'INFOGRAPHIC_ONLY' && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setResultTab('article');
+                        setIsEditingArticle(true);
+                      }}
+                      className={`px-2 py-0.5 rounded-lg text-[10px] font-bold transition flex items-center gap-1 cursor-pointer ${
+                        activeBrief.articleStatus === 'REVISION_REQUESTED'
+                          ? 'bg-rose-500 text-white hover:bg-rose-600 ring-2 ring-rose-400/40 animate-pulse'
+                          : 'bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 text-slate-700 dark:text-slate-300'
+                      }`}
+                      title="Buka & edit naskah artikel"
+                    >
+                      <FileText className="w-3 h-3" />
+                      <span>Artikel ({activeBrief.articleStatus})</span>
+                    </button>
+                  )}
 
-                  <button
-                    type="button"
-                    onClick={() => setResultTab('poster')}
-                    className={`px-2 py-0.5 rounded-lg text-[10px] font-bold transition flex items-center gap-1 cursor-pointer ${
-                      activeBrief.imageStatus === 'REVISION_REQUESTED'
-                        ? 'bg-rose-500 text-white hover:bg-rose-600 ring-2 ring-rose-400/40 animate-pulse'
-                        : 'bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 text-slate-700 dark:text-slate-300'
-                    }`}
-                    title="Buka poster untuk regenerasi gambar AI"
-                  >
-                    <ImageIcon className="w-3 h-3" />
-                    <span>Poster ({activeBrief.imageStatus})</span>
-                  </button>
+                  {activeBrief.packageType !== 'ARTICLE_ONLY' && (
+                    <button
+                      type="button"
+                      onClick={() => setResultTab('poster')}
+                      className={`px-2 py-0.5 rounded-lg text-[10px] font-bold transition flex items-center gap-1 cursor-pointer ${
+                        activeBrief.imageStatus === 'REVISION_REQUESTED'
+                          ? 'bg-rose-500 text-white hover:bg-rose-600 ring-2 ring-rose-400/40 animate-pulse'
+                          : 'bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 text-slate-700 dark:text-slate-300'
+                      }`}
+                      title="Buka visual untuk regenerasi gambar AI"
+                    >
+                      <ImageIcon className="w-3 h-3" />
+                      <span>{activeBrief.packageType === 'INFOGRAPHIC_ONLY' ? 'Infografis' : 'Poster'} ({activeBrief.imageStatus})</span>
+                    </button>
+                  )}
 
-                  <button
-                    type="button"
-                    onClick={() => setResultTab('social')}
-                    className={`px-2 py-0.5 rounded-lg text-[10px] font-bold transition flex items-center gap-1 cursor-pointer ${
-                      activeBrief.captionStatus === 'REVISION_REQUESTED'
-                        ? 'bg-rose-500 text-white hover:bg-rose-600 ring-2 ring-rose-400/40 animate-pulse'
-                        : 'bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 text-slate-700 dark:text-slate-300'
-                    }`}
-                    title="Buka distribusi pesan siaran WA & medsos"
-                  >
-                    <MessageCircle className="w-3 h-3" />
-                    <span>Caption/WA ({activeBrief.captionStatus})</span>
+                  {activeBrief.packageType !== 'POSTER_ONLY' && activeBrief.packageType !== 'INFOGRAPHIC_ONLY' && (
+                    <button
+                      type="button"
+                      onClick={() => setResultTab('social')}
+                      className={`px-2 py-0.5 rounded-lg text-[10px] font-bold transition flex items-center gap-1 cursor-pointer ${
+                        activeBrief.captionStatus === 'REVISION_REQUESTED'
+                          ? 'bg-rose-500 text-white hover:bg-rose-600 ring-2 ring-rose-400/40 animate-pulse'
+                          : 'bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 text-slate-700 dark:text-slate-300'
+                      }`}
+                      title="Buka distribusi pesan siaran WA & medsos"
+                    >
+                      <MessageCircle className="w-3 h-3" />
+                      <span>Caption/WA ({activeBrief.captionStatus})</span>
+                    </button>
+                  )}
                   </button>
                 </div>
               </div>
@@ -981,29 +1005,37 @@ export function OperatorContentTab({
 
               <div className="flex items-center gap-2 flex-wrap">
                 {activeBrief && onSubmitBriefForWhatsAppReview && (
-                  <button
-                    type="button"
-                    disabled={submittingBriefReview || !generatedResult.posterUrl || regeneratingPoster}
-                    onClick={onSubmitBriefForWhatsAppReview}
-                    className={`px-5 py-2.5 rounded-xl text-xs font-black transition flex items-center gap-2 cursor-pointer shadow-sm ${
-                      generatedResult.posterUrl && !regeneratingPoster && !submittingBriefReview
-                        ? 'bg-indigo-600 hover:bg-indigo-700 text-white'
-                        : 'bg-slate-200 dark:bg-slate-800 text-slate-400 dark:text-slate-500 cursor-not-allowed opacity-80'
-                    }`}
-                  >
-                    {submittingBriefReview ? (
-                      <RefreshCw className="w-4 h-4 animate-spin" />
-                    ) : regeneratingPoster || !generatedResult.posterUrl ? (
-                      <RefreshCw className="w-4 h-4 animate-spin text-amber-500" />
-                    ) : (
-                      <MessageCircle className="w-4 h-4" />
-                    )}
-                    <span>
-                      {regeneratingPoster || !generatedResult.posterUrl
-                        ? `Menunggu Poster Visual (#${activeBrief.briefCode})...`
-                        : `Kirim Pratinjau Hasil ke WA Klien (#${activeBrief.briefCode})`}
-                    </span>
-                  </button>
+                  (() => {
+                    const isArticleOnly = activeBrief.packageType === 'ARTICLE_ONLY';
+                    const hasRequiredAssets = isArticleOnly || Boolean(generatedResult.posterUrl);
+                    const isStillProcessing = isArticleOnly ? false : (regeneratingPoster || !generatedResult.posterUrl);
+
+                    return (
+                      <button
+                        type="button"
+                        disabled={submittingBriefReview || !hasRequiredAssets || regeneratingPoster}
+                        onClick={onSubmitBriefForWhatsAppReview}
+                        className={`px-5 py-2.5 rounded-xl text-xs font-black transition flex items-center gap-2 cursor-pointer shadow-sm ${
+                          hasRequiredAssets && !regeneratingPoster && !submittingBriefReview
+                            ? 'bg-indigo-600 hover:bg-indigo-700 text-white'
+                            : 'bg-slate-200 dark:bg-slate-800 text-slate-400 dark:text-slate-500 cursor-not-allowed opacity-80'
+                        }`}
+                      >
+                        {submittingBriefReview ? (
+                          <RefreshCw className="w-4 h-4 animate-spin" />
+                        ) : isStillProcessing ? (
+                          <RefreshCw className="w-4 h-4 animate-spin text-amber-500" />
+                        ) : (
+                          <MessageCircle className="w-4 h-4" />
+                        )}
+                        <span>
+                          {isStillProcessing
+                            ? `Menunggu Poster Visual (#${activeBrief.briefCode})...`
+                            : `Kirim Pratinjau Hasil ke WA Klien (#${activeBrief.briefCode})`}
+                        </span>
+                      </button>
+                    );
+                  })()
                 )}
                 {selectedDewan.canDirectPublish ? (
                   generatedResult.publication.status !== 'PUBLISHED' ? (

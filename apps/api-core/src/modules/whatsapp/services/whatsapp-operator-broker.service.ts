@@ -754,14 +754,19 @@ export class WhatsAppOperatorBrokerService {
           .where(eq(contentPublications.id, publication.id));
       }
 
+      const pkgType = (row.brief as any).packageType || 'FULL_CAMPAIGN';
+      const hasArticle = pkgType === 'FULL_CAMPAIGN' || pkgType === 'ARTICLE_ONLY';
+      const hasImage = pkgType === 'FULL_CAMPAIGN' || pkgType === 'POSTER_ONLY' || pkgType === 'INFOGRAPHIC_ONLY';
+      const hasCaption = pkgType === 'FULL_CAMPAIGN' || pkgType === 'ARTICLE_ONLY';
+
       const [updated] = await tx
         .update(contentBriefs)
         .set({
           status: nextStatus,
           linkedPublicationId: publication.id,
-          articleStatus: shouldDirectPublish ? 'APPROVED' : 'PENDING',
-          imageStatus: shouldDirectPublish ? 'APPROVED' : 'PENDING',
-          captionStatus: shouldDirectPublish ? 'APPROVED' : 'PENDING',
+          articleStatus: hasArticle ? (shouldDirectPublish ? 'APPROVED' : 'PENDING') : 'NOT_APPLICABLE',
+          imageStatus: hasImage ? (shouldDirectPublish ? 'APPROVED' : 'PENDING') : 'NOT_APPLICABLE',
+          captionStatus: hasCaption ? (shouldDirectPublish ? 'APPROVED' : 'PENDING') : 'NOT_APPLICABLE',
           reviewTokenHash,
           reviewTokenExpiresAt,
           submittedForReviewAt: now,
@@ -770,6 +775,11 @@ export class WhatsAppOperatorBrokerService {
         })
         .where(eq(contentBriefs.id, briefId))
         .returning();
+
+      const outboundTargetComps: ('ARTICLE' | 'IMAGE' | 'CAPTION')[] = [];
+      if (hasArticle) outboundTargetComps.push('ARTICLE');
+      if (hasImage) outboundTargetComps.push('IMAGE');
+      if (hasCaption) outboundTargetComps.push('CAPTION');
 
       await tx.insert(contentBriefMessages).values({
         briefId,
@@ -780,7 +790,7 @@ export class WhatsAppOperatorBrokerService {
         textBody: dto.customNote || `Paket konten "${publication.title}" siap ditinjau.`,
         mediaCdnUrl: posterUrl,
         revisionRound: row.brief.revisionUsed,
-        targetComponents: ['ARTICLE', 'IMAGE', 'CAPTION'],
+        targetComponents: outboundTargetComps,
         isInternalFault: false,
       });
 
@@ -809,27 +819,42 @@ export class WhatsAppOperatorBrokerService {
     }
 
     const remainingRevs = Math.max(0, updatedBrief.revisionLimit - updatedBrief.revisionUsed);
+    const isVisualOnly = pkgType === 'POSTER_ONLY' || pkgType === 'INFOGRAPHIC_ONLY';
+    const isArticleOnly = pkgType === 'ARTICLE_ONLY';
+    const formatBadge =
+      pkgType === 'POSTER_ONLY'
+        ? '🎨 Poster Visual'
+        : pkgType === 'INFOGRAPHIC_ONLY'
+        ? '📊 Infografis Publik'
+        : pkgType === 'ARTICLE_ONLY'
+        ? '📝 Naskah Artikel'
+        : '📦 Paket Lengkap';
 
     if (shouldDirectPublish) {
       await this.waClient.sendTextMessage(
         row.phoneNumber,
         [
           `✅ *Konten Anda Telah Selesai & Tayang — #${row.brief.briefCode}*`,
+          `• 📦 Format: *${formatBadge}*`,
           `• 📰 Judul: *${publication.title}*`,
-          `• 🔗 Link Artikel: ${publication.canonicalUrl}`,
-          '',
-          '*Caption Media Sosial:*',
-          captionPreview.slice(0, 700),
-        ].join('\n')
+          publication.canonicalUrl ? `• 🔗 Link Publikasi: ${publication.canonicalUrl}` : '',
+          captionPreview && !isVisualOnly ? '\n*Caption Media Sosial:*' : '',
+          captionPreview && !isVisualOnly ? captionPreview.slice(0, 700) : '',
+        ].filter(Boolean).join('\n')
       );
     } else {
       await this.redisService.del(`whatsapp:rev_session:${row.brief.tenantId}`);
 
+      const linkLabel = isVisualOnly
+        ? 'Pratinjau Desain Visual (Tanpa Login)'
+        : 'Baca Naskah & Pratinjau (Tanpa Login)';
+
       const reviewBody = [
         `✨ *Konten Siap Ditinjau — #${row.brief.briefCode}*`,
+        `• 📦 Format: *${formatBadge}*`,
         `• 📰 Judul: *${publication.title}*`,
-        `• 💬 Ringkasan Caption: _"${captionPreview.slice(0, 280)}..."_`,
-        `• 🔗 Baca Artikel Lengkap (Tanpa Login): ${reviewUrl}`,
+        captionPreview && !isVisualOnly ? `• 💬 Ringkasan Caption: _"${captionPreview.slice(0, 280)}..."_` : '',
+        `• 🔗 ${linkLabel}: ${reviewUrl}`,
         remainingRevs > 0
           ? `• 🔄 Sisa Jatah Revisi: *${remainingRevs} dari ${updatedBrief.revisionLimit} putaran*`
           : `• 🔒 Jatah Revisi: *Telah terpakai penuh (${updatedBrief.revisionUsed}/${updatedBrief.revisionLimit} putaran)*`,

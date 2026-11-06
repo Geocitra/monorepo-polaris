@@ -25,6 +25,7 @@ import {
   ContentBriefDto,
   ContentBriefMessageDto,
   TenantWeeklyBriefQuotaDto,
+  BriefPackageType,
 } from '@polaris/shared-types';
 import { RedisService } from '../../redis/redis.service.js';
 import {
@@ -50,6 +51,7 @@ export interface DraftCartState {
   tenantName: string;
   phoneE164: string;
   items: DraftCartItem[];
+  packageType?: BriefPackageType;
   updatedAtMs: number;
 }
 
@@ -110,7 +112,7 @@ const NOISE_GREETING_TOKENS = new Set([
 export class WhatsAppBriefHelperService implements OnModuleInit {
   private readonly logger = new Logger(WhatsAppBriefHelperService.name);
 
-  constructor(private readonly redisService: RedisService) {}
+  constructor(private readonly redisService: RedisService) { }
 
   async onModuleInit() {
     await this.ensureBriefSchema();
@@ -200,6 +202,15 @@ export class WhatsAppBriefHelperService implements OnModuleInit {
         ALTER TABLE content_briefs ADD COLUMN IF NOT EXISTS is_urgent_overquota BOOLEAN NOT NULL DEFAULT false;
 
         DO $$ BEGIN
+          CREATE TYPE brief_package_type_enum AS ENUM (
+            'FULL_CAMPAIGN', 'ARTICLE_ONLY', 'POSTER_ONLY', 'INFOGRAPHIC_ONLY'
+          );
+        EXCEPTION WHEN duplicate_object THEN NULL;
+        END $$;
+
+        ALTER TABLE content_briefs ADD COLUMN IF NOT EXISTS package_type brief_package_type_enum NOT NULL DEFAULT 'FULL_CAMPAIGN';
+
+        DO $$ BEGIN
           CREATE TYPE quota_transaction_type_enum AS ENUM (
             'PACKAGE_PURCHASE', 'REGULAR_CONSUME', 'URGENT_SURGE_CONSUME',
             'REFUND_CANCELLED', 'REFUND_REJECTED', 'EXPIRED_FLUSH', 'ADMIN_ADJUSTMENT'
@@ -279,6 +290,7 @@ export class WhatsAppBriefHelperService implements OnModuleInit {
     const rows = await db
       .select({
         status: contentBriefs.status,
+        quotaCostDeducted: contentBriefs.quotaCostDeducted,
       })
       .from(contentBriefs)
       .where(
@@ -288,9 +300,9 @@ export class WhatsAppBriefHelperService implements OnModuleInit {
         )
       );
 
-    const weeklyUsed = rows.filter((r) =>
-      (QUOTA_CONSUMING_STATUSES as readonly string[]).includes(r.status)
-    ).length;
+    const weeklyUsed = rows
+      .filter((r) => (QUOTA_CONSUMING_STATUSES as readonly string[]).includes(r.status))
+      .reduce((acc, r) => acc + (r.quotaCostDeducted || 1), 0);
 
     const queuedNextWeekCount = rows.filter((r) => r.status === 'QUEUED_NEXT_WEEK').length;
 
@@ -505,6 +517,7 @@ export class WhatsAppBriefHelperService implements OnModuleInit {
       tenantMaskedPhone: maskClientPhoneNumber(rawPhone), // NOMOR ASLI TIDAK PERNAH DIEKSPOS KE OPERATOR
       assignedOperatorId: brief.assignedOperatorId,
       status: brief.status,
+      packageType: (brief as any).packageType || BriefPackageType.FULL_CAMPAIGN,
       clientUrgency: brief.clientUrgency,
       operatorPriority: brief.operatorPriority,
       targetWindow: ((brief as any).targetWindow || 'TODAY_REGULAR') as any,

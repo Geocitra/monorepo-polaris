@@ -435,6 +435,21 @@ export enum ContentBriefStatus {
   CLOSED_UNPUBLISHED = 'CLOSED_UNPUBLISHED',
 }
 
+export enum BriefPackageType {
+  FULL_CAMPAIGN = 'FULL_CAMPAIGN',
+  ARTICLE_ONLY = 'ARTICLE_ONLY',
+  POSTER_ONLY = 'POSTER_ONLY',
+  INFOGRAPHIC_ONLY = 'INFOGRAPHIC_ONLY',
+}
+
+export enum BriefComponentStatus {
+  PENDING = 'PENDING',
+  IN_PROGRESS = 'IN_PROGRESS',
+  READY = 'READY',
+  FAILED = 'FAILED',
+  NOT_APPLICABLE = 'NOT_APPLICABLE',
+}
+
 export enum BriefUrgencyLevel {
   NORMAL = 'NORMAL',
   URGENT = 'URGENT',

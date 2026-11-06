@@ -36,7 +36,7 @@ export class StudioGenerationProcessor {
       return;
     }
 
-    if (data.taskType === 'INFOGRAPHIC_ONLY') {
+    if (data.taskType === 'INFOGRAPHIC_ONLY' || data.taskType === 'POSTER_ONLY') {
       await StudioInfographicGenerationHandler.execute(
         job,
         this.aiEngine,

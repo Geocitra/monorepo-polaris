@@ -580,6 +580,7 @@ export interface ContentBriefDto {
   tenantMaskedPhone?: string;
   assignedOperatorId?: string | null;
   status: string;
+  packageType?: string;
   clientUrgency: 'NORMAL' | 'URGENT';
   operatorPriority: 'NORMAL' | 'URGENT';
   targetWindow?: 'TODAY_PRIORITY' | 'TODAY_REGULAR' | 'NEXT_DAY_MORNING';

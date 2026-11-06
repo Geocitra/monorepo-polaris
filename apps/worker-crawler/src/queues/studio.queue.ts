@@ -4,7 +4,7 @@ import { redisConnection } from '../config/redis.connection.js';
 export const STUDIO_GENERATION_QUEUE_NAME = 'studio-content-generation-queue';
 
 export interface StudioGenerationJobPayload {
-  taskType?: 'GENERATE_ARTICLE' | 'FULL_CAMPAIGN' | 'INFOGRAPHIC_ONLY' | 'ARTICLE_ONLY' | 'REGENERATE_POSTER';
+  taskType?: 'GENERATE_ARTICLE' | 'FULL_CAMPAIGN' | 'INFOGRAPHIC_ONLY' | 'ARTICLE_ONLY' | 'REGENERATE_POSTER' | 'POSTER_ONLY';
   jobId: string;
   tenantId: string;
   publicationId: string;

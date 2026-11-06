@@ -90,6 +90,7 @@ export interface ContentBriefItem {
     | 'CANCELLED';
   clientUrgency: 'URGENT' | 'NORMAL';
   operatorPriority: 'URGENT' | 'NORMAL';
+  packageType?: 'FULL_CAMPAIGN' | 'ARTICLE_ONLY' | 'POSTER_ONLY' | 'INFOGRAPHIC_ONLY';
   targetWindow?: 'TODAY_PRIORITY' | 'TODAY_REGULAR' | 'NEXT_DAY_MORNING';
   topicSummary: string;
   weeklyQuotaPeriod: string;

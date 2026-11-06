@@ -22,6 +22,7 @@ interface PublicReviewData {
   briefCode: string;
   tenantFullName: string;
   status: string;
+  packageType?: 'FULL_CAMPAIGN' | 'ARTICLE_ONLY' | 'POSTER_ONLY' | 'INFOGRAPHIC_ONLY';
   targetWindow?: 'TODAY_PRIORITY' | 'TODAY_REGULAR' | 'NEXT_DAY_MORNING';
   clientUrgency?: 'NORMAL' | 'URGENT';
   revisionUsed: number;
@@ -73,6 +74,16 @@ export default function PublicMagicReviewBriefPage() {
           `/whatsapp/public-review/${encodeURIComponent(token)}`
         );
         setData(res);
+        if (res.packageType === 'POSTER_ONLY' || res.packageType === 'INFOGRAPHIC_ONLY') {
+          setActiveTab('POSTER');
+          setSelectedComponents(['IMAGE']);
+        } else if (res.packageType === 'ARTICLE_ONLY') {
+          setActiveTab('ARTICLE');
+          setSelectedComponents(['ARTICLE']);
+        } else {
+          setActiveTab('ARTICLE');
+          setSelectedComponents(['ARTICLE']);
+        }
       } catch (err: any) {
         setError(err.message || 'Tautan pratinjau tidak ditemukan atau telah kedaluwarsa.');
       } finally {
@@ -191,6 +202,23 @@ export default function PublicMagicReviewBriefPage() {
               <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800 flex items-center gap-1">
                 <ShieldCheck className="w-3 h-3" /> Akses Cepat Tanpa Login
               </span>
+              {data.packageType === 'POSTER_ONLY' ? (
+                <span className="px-2.5 py-0.5 rounded-full text-[10px] font-black bg-purple-100 text-purple-900 dark:bg-purple-950/60 dark:text-purple-300 border border-purple-300 dark:border-purple-700">
+                  🎨 Poster Visual Saja
+                </span>
+              ) : data.packageType === 'INFOGRAPHIC_ONLY' ? (
+                <span className="px-2.5 py-0.5 rounded-full text-[10px] font-black bg-emerald-100 text-emerald-900 dark:bg-emerald-950/60 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-700">
+                  📊 Infografis Data Saja
+                </span>
+              ) : data.packageType === 'ARTICLE_ONLY' ? (
+                <span className="px-2.5 py-0.5 rounded-full text-[10px] font-black bg-blue-100 text-blue-900 dark:bg-blue-950/60 dark:text-blue-300 border border-blue-300 dark:border-blue-700">
+                  📝 Naskah Artikel Saja
+                </span>
+              ) : (
+                <span className="px-2.5 py-0.5 rounded-full text-[10px] font-black bg-indigo-100 text-indigo-900 dark:bg-indigo-950/60 dark:text-indigo-300 border border-indigo-300 dark:border-indigo-700">
+                  📦 Paket Lengkap (Artikel & Poster)
+                </span>
+              )}
               {data.targetWindow === 'TODAY_PRIORITY' || data.clientUrgency === 'URGENT' ? (
                 <span className="px-2.5 py-0.5 rounded-full text-[10px] font-black bg-rose-100 text-rose-800 dark:bg-rose-950/60 dark:text-rose-300 border border-rose-300 dark:border-rose-700">
                   ⚡ Prioritas Tayang Hari Ini
@@ -295,28 +323,42 @@ export default function PublicMagicReviewBriefPage() {
               <div className="flex flex-wrap gap-2">
                 {(
                   [
-                    { id: 'ARTICLE', label: '📰 Isi Naskah Artikel' },
-                    { id: 'IMAGE', label: '🖼️ Visual Poster' },
-                    { id: 'CAPTION', label: '💬 Caption Siap Sebar' },
+                    {
+                      id: 'ARTICLE',
+                      label: '📰 Isi Naskah Artikel',
+                      show: data.packageType !== 'POSTER_ONLY' && data.packageType !== 'INFOGRAPHIC_ONLY',
+                    },
+                    {
+                      id: 'IMAGE',
+                      label: data.packageType === 'INFOGRAPHIC_ONLY' ? '📊 Desain Infografis' : '🖼️ Visual Poster',
+                      show: data.packageType !== 'ARTICLE_ONLY',
+                    },
+                    {
+                      id: 'CAPTION',
+                      label: '💬 Caption Siap Sebar',
+                      show: data.packageType !== 'POSTER_ONLY' && data.packageType !== 'INFOGRAPHIC_ONLY',
+                    },
                   ] as const
-                ).map((item) => {
-                  const active = selectedComponents.includes(item.id);
-                  return (
-                    <button
-                      key={item.id}
-                      type="button"
-                      onClick={() => toggleComponent(item.id)}
-                      className={`px-3.5 py-2 rounded-xl text-xs font-bold border transition cursor-pointer ${
-                        active
-                          ? 'bg-indigo-600 text-white border-indigo-600'
-                          : 'bg-slate-50 dark:bg-slate-900 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-700'
-                      }`}
-                    >
-                      {active ? '✓ ' : ''}
-                      {item.label}
-                    </button>
-                  );
-                })}
+                )
+                  .filter((item) => item.show)
+                  .map((item) => {
+                    const active = selectedComponents.includes(item.id);
+                    return (
+                      <button
+                        key={item.id}
+                        type="button"
+                        onClick={() => toggleComponent(item.id)}
+                        className={`px-3.5 py-2 rounded-xl text-xs font-bold border transition cursor-pointer ${
+                          active
+                            ? 'bg-indigo-600 text-white border-indigo-600'
+                            : 'bg-slate-50 dark:bg-slate-900 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-700'
+                        }`}
+                      >
+                        {active ? '✓ ' : ''}
+                        {item.label}
+                      </button>
+                    );
+                  })}
               </div>
             </div>
 
@@ -346,47 +388,53 @@ export default function PublicMagicReviewBriefPage() {
           </form>
         )}
 
-        {/* TAB NAVIGASI 3 KOMPONEN PAKET */}
+        {/* TAB NAVIGASI */}
         <div className="bg-white dark:bg-[#0B0F19] rounded-2xl p-5 border border-slate-200 dark:border-slate-800 shadow-sm space-y-5">
           <div className="flex items-center gap-2 border-b border-slate-100 dark:border-slate-800 pb-3 overflow-x-auto">
-            <button
-              type="button"
-              onClick={() => setActiveTab('ARTICLE')}
-              className={`px-4 py-2 rounded-xl text-xs font-bold flex items-center gap-2 transition cursor-pointer ${
-                activeTab === 'ARTICLE'
-                  ? 'bg-indigo-600 text-white'
-                  : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800'
-              }`}
-            >
-              <FileText className="w-4 h-4" />
-              <span>Naskah Artikel Lengkap</span>
-            </button>
+            {data.packageType !== 'POSTER_ONLY' && data.packageType !== 'INFOGRAPHIC_ONLY' && (
+              <button
+                type="button"
+                onClick={() => setActiveTab('ARTICLE')}
+                className={`px-4 py-2 rounded-xl text-xs font-bold flex items-center gap-2 transition cursor-pointer ${
+                  activeTab === 'ARTICLE'
+                    ? 'bg-indigo-600 text-white'
+                    : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800'
+                }`}
+              >
+                <FileText className="w-4 h-4" />
+                <span>Naskah Artikel Lengkap</span>
+              </button>
+            )}
 
-            <button
-              type="button"
-              onClick={() => setActiveTab('POSTER')}
-              className={`px-4 py-2 rounded-xl text-xs font-bold flex items-center gap-2 transition cursor-pointer ${
-                activeTab === 'POSTER'
-                  ? 'bg-indigo-600 text-white'
-                  : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800'
-              }`}
-            >
-              <ImageIcon className="w-4 h-4" />
-              <span>Poster Visual</span>
-            </button>
+            {data.packageType !== 'ARTICLE_ONLY' && (
+              <button
+                type="button"
+                onClick={() => setActiveTab('POSTER')}
+                className={`px-4 py-2 rounded-xl text-xs font-bold flex items-center gap-2 transition cursor-pointer ${
+                  activeTab === 'POSTER'
+                    ? 'bg-indigo-600 text-white'
+                    : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800'
+                }`}
+              >
+                <ImageIcon className="w-4 h-4" />
+                <span>{data.packageType === 'INFOGRAPHIC_ONLY' ? 'Infografis Publik' : 'Poster Visual'}</span>
+              </button>
+            )}
 
-            <button
-              type="button"
-              onClick={() => setActiveTab('CAPTION')}
-              className={`px-4 py-2 rounded-xl text-xs font-bold flex items-center gap-2 transition cursor-pointer ${
-                activeTab === 'CAPTION'
-                  ? 'bg-indigo-600 text-white'
-                  : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800'
-              }`}
-            >
-              <MessageCircle className="w-4 h-4" />
-              <span>Teks Broadcast WA &amp; Caption IG</span>
-            </button>
+            {data.packageType !== 'POSTER_ONLY' && data.packageType !== 'INFOGRAPHIC_ONLY' && (
+              <button
+                type="button"
+                onClick={() => setActiveTab('CAPTION')}
+                className={`px-4 py-2 rounded-xl text-xs font-bold flex items-center gap-2 transition cursor-pointer ${
+                  activeTab === 'CAPTION'
+                    ? 'bg-indigo-600 text-white'
+                    : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800'
+                }`}
+              >
+                <MessageCircle className="w-4 h-4" />
+                <span>Teks Broadcast WA &amp; Caption IG</span>
+              </button>
+            )}
           </div>
 
           {activeTab === 'ARTICLE' && (

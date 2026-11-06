@@ -341,13 +341,26 @@ export default function OperatorCockpitPage() {
     const lengthWordMap = { SHORT: '750 kata', MEDIUM: '1.500 kata', LONG: '3.500 kata' };
     const styleCfg = WRITING_STYLES[selectedStyle];
 
+    const pkgType = activeBrief?.packageType || 'FULL_CAMPAIGN';
+    const isPosterOnly = pkgType === 'POSTER_ONLY';
+    const isInfographicOnly = pkgType === 'INFOGRAPHIC_ONLY';
+    const isArticleOnly = pkgType === 'ARTICLE_ONLY';
+
     try {
       const res = await AdminApiClient.request<any>('/studio/generate', {
         method: 'POST',
         body: JSON.stringify({
           topic: topicInput.trim(),
           briefId: activeBrief?.id,
-          generateDallePoster: true,
+          taskType: isInfographicOnly
+            ? 'INFOGRAPHIC_ONLY'
+            : isPosterOnly
+            ? 'POSTER_ONLY'
+            : isArticleOnly
+            ? 'ARTICLE_ONLY'
+            : 'FULL_CAMPAIGN',
+          style: isInfographicOnly ? 'infographic' : isPosterOnly ? 'poster' : undefined,
+          generateDallePoster: !isArticleOnly,
           writingStyle: selectedStyle,
           targetAudience: styleCfg.audience,
           toneOverride: styleCfg.tone,

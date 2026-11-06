@@ -696,6 +696,23 @@ export function OperatorWhatsAppBriefsTab({
                         <span className="font-mono text-xs font-black text-indigo-600 dark:text-indigo-400">
                           #{item.briefCode}
                         </span>
+                        {item.packageType === 'POSTER_ONLY' ? (
+                          <span className="px-1.5 py-0.5 rounded text-[9px] font-black bg-purple-100 text-purple-900 dark:bg-purple-950 dark:text-purple-300 border border-purple-200">
+                            🎨 Poster (1)
+                          </span>
+                        ) : item.packageType === 'INFOGRAPHIC_ONLY' ? (
+                          <span className="px-1.5 py-0.5 rounded text-[9px] font-black bg-emerald-100 text-emerald-900 dark:bg-emerald-950 dark:text-emerald-300 border border-emerald-200">
+                            📊 Infografis (1)
+                          </span>
+                        ) : item.packageType === 'ARTICLE_ONLY' ? (
+                          <span className="px-1.5 py-0.5 rounded text-[9px] font-black bg-blue-100 text-blue-900 dark:bg-blue-950 dark:text-blue-300 border border-blue-200">
+                            📝 Artikel (1)
+                          </span>
+                        ) : (
+                          <span className="px-1.5 py-0.5 rounded text-[9px] font-black bg-indigo-100 text-indigo-900 dark:bg-indigo-950 dark:text-indigo-300 border border-indigo-200">
+                            📦 Bundling (2)
+                          </span>
+                        )}
                         <span className={`px-1.5 py-0.5 rounded text-[9px] font-black border ${horizonBadge.cls}`}>
                           {horizonBadge.label}
                         </span>
@@ -793,6 +810,23 @@ export function OperatorWhatsAppBriefsTab({
                       >
                         {getStatusBadgeConfig(selectedBrief.status).label}
                       </span>
+                      {selectedBrief.packageType === 'POSTER_ONLY' ? (
+                        <span className="px-2.5 py-0.5 rounded-full text-[10px] font-black bg-purple-100 text-purple-900 dark:bg-purple-950 dark:text-purple-300 border border-purple-200">
+                          🎨 Poster Visual (1 Kuota)
+                        </span>
+                      ) : selectedBrief.packageType === 'INFOGRAPHIC_ONLY' ? (
+                        <span className="px-2.5 py-0.5 rounded-full text-[10px] font-black bg-emerald-100 text-emerald-900 dark:bg-emerald-950 dark:text-emerald-300 border border-emerald-200">
+                          📊 Infografis Data (1 Kuota)
+                        </span>
+                      ) : selectedBrief.packageType === 'ARTICLE_ONLY' ? (
+                        <span className="px-2.5 py-0.5 rounded-full text-[10px] font-black bg-blue-100 text-blue-900 dark:bg-blue-950 dark:text-blue-300 border border-blue-200">
+                          📝 Naskah Artikel (1 Kuota)
+                        </span>
+                      ) : (
+                        <span className="px-2.5 py-0.5 rounded-full text-[10px] font-black bg-indigo-100 text-indigo-900 dark:bg-indigo-950 dark:text-indigo-300 border border-indigo-200">
+                          📦 Paket Kampanye Lengkap (2 Kuota)
+                        </span>
+                      )}
                       <span
                         className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
                           selectedBrief.clientUrgency === 'URGENT'

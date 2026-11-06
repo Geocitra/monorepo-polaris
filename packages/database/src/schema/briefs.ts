@@ -13,6 +13,7 @@ import { tenantMembers, systemAdmins } from './identity.js';
 import { contentPublications } from './content.js';
 import {
   contentBriefStatusEnum,
+  briefPackageTypeEnum,
   briefUrgencyLevelEnum,
   briefMessageDirectionEnum,
   briefMessageTypeEnum,
@@ -33,6 +34,7 @@ export const contentBriefs = pgTable('content_briefs', {
     onDelete: 'set null',
   }),
   status: contentBriefStatusEnum('status').default('SUBMITTED').notNull(),
+  packageType: briefPackageTypeEnum('package_type').default('FULL_CAMPAIGN').notNull(),
   clientUrgency: briefUrgencyLevelEnum('client_urgency').default('NORMAL').notNull(),
   operatorPriority: briefUrgencyLevelEnum('operator_priority').default('NORMAL').notNull(),
   targetWindow: varchar('target_window', { length: 30 }).default('TODAY_REGULAR').notNull(),

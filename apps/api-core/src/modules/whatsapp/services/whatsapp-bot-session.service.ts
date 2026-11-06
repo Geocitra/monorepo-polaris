@@ -18,9 +18,9 @@ import {
   contentBriefMessages,
   withTenantContext,
 } from '@polaris/database';
-import { BriefUrgencyLevel } from '@polaris/shared-types';
+import { BriefUrgencyLevel, BriefPackageType } from '@polaris/shared-types';
 import { RedisService } from '../../redis/redis.service.js';
-import { WhatsAppCloudClient } from '../whatsapp-cloud.client.js';
+import { WhatsAppCloudClient, WhatsAppListSection } from '../whatsapp-cloud.client.js';
 import {
   normalizeIndonesianPhone,
   getCurrentWibWeeklyPeriod,
@@ -291,6 +291,27 @@ export class WhatsAppBotSessionService implements OnModuleDestroy {
         this.clearTenantDebounceTimer(tenant.id);
         await this.sendDraftConfirmationPrompt(existingDraft);
         return;
+      }
+
+      // Socio-Engineering: Dukung respons teks langsung jika klien mengetik nomor/opsi format
+      if (itemType === 'TEXT' && existingDraft && existingDraft.items.length > 0) {
+        const trimmed = lowerCmd.trim();
+        let matchedAction: string | null = null;
+        if (trimmed === '1' || trimmed === 'paket lengkap' || trimmed === 'lengkap' || trimmed === 'bundling') {
+          matchedAction = 'PKG_FULL_CAMPAIGN';
+        } else if (trimmed === '2' || trimmed === 'artikel' || trimmed === 'artikel saja' || trimmed === 'naskah') {
+          matchedAction = 'PKG_ARTICLE_ONLY';
+        } else if (trimmed === '3' || trimmed === 'poster' || trimmed === 'poster saja' || trimmed === 'gambar') {
+          matchedAction = 'PKG_POSTER_ONLY';
+        } else if (trimmed === '4' || trimmed === 'infografis' || trimmed === 'infografis data' || trimmed === 'infografik') {
+          matchedAction = 'PKG_INFOGRAPHIC_ONLY';
+        }
+
+        if (matchedAction) {
+          this.clearTenantDebounceTimer(tenant.id);
+          await this.handleInteractiveButtonAction(tenant, normalizedSender, matchedAction);
+          return;
+        }
       }
 
       await this.collectDraftItem(
@@ -923,25 +944,74 @@ export class WhatsAppBotSessionService implements OnModuleDestroy {
       docCount > 0 ? `• 📄 Dokumen Lampiran: *${docCount} file*` : '',
       `• 📊 Jatah Minggu Ini: *${quota.weeklyRemaining} dari ${quota.weeklyLimit} request*`,
       `• 💳 Saldo Total Paket: *${quota.remainingQuota} dari ${quota.totalQuotaAllocated} request*`,
-      `• 🏷️ Biaya Pengiriman: *1 Kuota*`,
+      `• 🏷️ Biaya Kuota: *1 Kuota (Format Satuan) / 2 Kuota (Paket Lengkap)*`,
       afterHoursNotice,
       '',
       '💡 *Masih ada kalimat/foto tambahan?* Langsung kirim lagi di bawah ini, sistem otomatis menggabungkannya.',
-      'Jika sudah lengkap, silakan pilih opsi pengiriman:',
+      'Jika sudah lengkap, silakan tekan tombol di bawah untuk memilih format konten yang diinginkan:',
     ]
       .filter(Boolean)
       .join('\n');
 
-    await this.waClient.sendInteractiveButtons(
+    const bundleDesc = quota.remainingQuota >= 2
+      ? 'Artikel + Poster Visual + Sosmed (Biaya: 2 Kuota)'
+      : 'Membutuhkan 2 kuota (Saldo tersisa 1)';
+
+    const formatRows = [
+      {
+        id: 'PKG_FULL_CAMPAIGN',
+        title: '📦 Paket Lengkap (2)',
+        description: bundleDesc.slice(0, 72),
+      },
+      {
+        id: 'PKG_ARTICLE_ONLY',
+        title: '📝 Naskah Artikel (1)',
+        description: 'Rilis pers & naskah kebijakan mendalam (Biaya: 1 Kuota)',
+      },
+      {
+        id: 'PKG_POSTER_ONLY',
+        title: '🎨 Poster Visual (1)',
+        description: 'Poster grafis resmi siap sebar di WA/grup (Biaya: 1 Kuota)',
+      },
+      {
+        id: 'PKG_INFOGRAPHIC_ONLY',
+        title: '📊 Infografis Data (1)',
+        description: 'Visualisasi data statistik & regulasi (Biaya: 1 Kuota)',
+      },
+    ];
+
+    if (quota.remainingQuota >= 2) {
+      formatRows.push({
+        id: 'PKG_FULL_CAMPAIGN_URGENT',
+        title: '⚡ Bundling Prioritas',
+        description: 'Prioritas Editor Utama siap tayang hari ini (Biaya: 2 Kuota)',
+      });
+    }
+
+    const sections: WhatsAppListSection[] = [
+      {
+        title: 'PILIH FORMAT KONTEN',
+        rows: formatRows,
+      },
+      {
+        title: 'OPSI LAIN',
+        rows: [
+          {
+            id: 'BRIEF_CANCEL_ASK',
+            title: '❌ Batalkan Draf',
+            description: 'Hapus seluruh catatan draf sementara (kuota 100% aman)',
+          },
+        ],
+      },
+    ];
+
+    await this.waClient.sendInteractiveList(
       draft.phoneE164,
       summaryLines,
-      [
-        { id: 'BRIEF_SUBMIT_NORMAL', title: '🟢 Kirim (Potong 1)' },
-        { id: 'BRIEF_SUBMIT_URGENT', title: '⚡ Prioritas (Potong 1)' },
-        { id: 'BRIEF_CANCEL_ASK', title: '❌ Batalkan' },
-      ],
+      '📋 Pilih Format',
+      sections,
       'Konfirmasi Request Konten',
-      'Kuota baru terpotong setelah Anda menekan tombol Kirim'
+      'Pilih format hasil yang diinginkan'
     );
   }
 
@@ -1342,12 +1412,14 @@ export class WhatsAppBotSessionService implements OnModuleDestroy {
       return;
     }
 
-    if (
+    const isSubmitAction =
+      buttonId.startsWith('PKG_') ||
       buttonId === 'BRIEF_SUBMIT_URGENT' ||
       buttonId === 'BRIEF_SUBMIT_NORMAL' ||
       buttonId === 'BRIEF_SUBMIT_QUEUED' ||
-      buttonId === 'BRIEF_SUBMIT_URGENT_OVERQUOTA'
-    ) {
+      buttonId === 'BRIEF_SUBMIT_URGENT_OVERQUOTA';
+
+    if (isSubmitAction) {
       const draft = await this.redisService.get<DraftCartState>(draftKey);
       if (!draft || draft.items.length === 0) {
         await this.waClient.sendInteractiveButtons(
@@ -1362,15 +1434,67 @@ export class WhatsAppBotSessionService implements OnModuleDestroy {
         return;
       }
 
+      let packageType: BriefPackageType = BriefPackageType.FULL_CAMPAIGN;
+      let formatLabel = '📦 Paket Lengkap (Artikel + Poster + Sosmed)';
+      let isUrgent = false;
+
+      if (buttonId === 'PKG_ARTICLE_ONLY') {
+        packageType = BriefPackageType.ARTICLE_ONLY;
+        formatLabel = '📝 Naskah Artikel Berita Saja';
+      } else if (buttonId === 'PKG_POSTER_ONLY') {
+        packageType = BriefPackageType.POSTER_ONLY;
+        formatLabel = '🎨 Poster Visual Saja';
+      } else if (buttonId === 'PKG_INFOGRAPHIC_ONLY') {
+        packageType = BriefPackageType.INFOGRAPHIC_ONLY;
+        formatLabel = '📊 Infografis Data Saja';
+      } else if (buttonId === 'PKG_FULL_CAMPAIGN_URGENT') {
+        packageType = BriefPackageType.FULL_CAMPAIGN;
+        formatLabel = '⚡ Paket Lengkap (Prioritas Mendesak)';
+        isUrgent = true;
+      } else if (buttonId === 'BRIEF_SUBMIT_URGENT') {
+        packageType = BriefPackageType.FULL_CAMPAIGN;
+        formatLabel = '⚡ Paket Lengkap (Prioritas Mendesak)';
+        isUrgent = true;
+      } else if (buttonId === 'BRIEF_SUBMIT_URGENT_OVERQUOTA') {
+        packageType = BriefPackageType.FULL_CAMPAIGN;
+        formatLabel = '⚡ Darurat Over-Quota';
+        isUrgent = true;
+      } else if (buttonId === 'BRIEF_SUBMIT_QUEUED') {
+        packageType = BriefPackageType.FULL_CAMPAIGN;
+        formatLabel = '🗓️ Antrean Senin (Paket Lengkap)';
+      }
+
       const quota = await this.helper.getTenantWeeklyQuota(tenant.id);
       const isUrgentOverquota = buttonId === 'BRIEF_SUBMIT_URGENT_OVERQUOTA';
-      const requiredCost = isUrgentOverquota ? 2 : 1;
+      const baseCost = packageType === BriefPackageType.FULL_CAMPAIGN ? 2 : 1;
+      const requiredCost = isUrgentOverquota ? baseCost * 2 : baseCost;
 
       // Server-side guard: periksa saldo kuota
       if (quota.remainingQuota < requiredCost || quota.isPeriodExpired) {
+        if (packageType === BriefPackageType.FULL_CAMPAIGN && quota.remainingQuota === 1 && !quota.isPeriodExpired) {
+          await this.waClient.sendInteractiveButtons(
+            phoneE164,
+            [
+              `⚠️ *Saldo Kuota Tersisa 1 Request*`,
+              '',
+              `Paket Lengkap membutuhkan *2 Kuota*, namun saldo aktif Anda saat ini tersisa *1 Request*.`,
+              '',
+              `💡 *Solusi:* Anda tetap dapat memilih salah satu format satuan dengan sisa 1 kuota Anda:`,
+            ].join('\n'),
+            [
+              { id: 'PKG_ARTICLE_ONLY', title: '📝 Artikel (1)' },
+              { id: 'PKG_POSTER_ONLY', title: '🎨 Poster (1)' },
+              { id: 'PKG_INFOGRAPHIC_ONLY', title: '📊 Infografis (1)' },
+            ],
+            'Format Satuan Tersedia',
+            'Sisa 1 Kuota Aktif'
+          );
+          return;
+        }
+
         await this.waClient.sendInteractiveButtons(
           phoneE164,
-          `🚫 *Saldo Kuota Tidak Mencukupi*\n\nPengajuan ini membutuhkan *${requiredCost} kuota*, namun saldo kuota aktif Anda tersisa *${quota.remainingQuota} request*.\n\nSilakan perpanjang atau top-up paket kuota Anda di dashboard.`,
+          `🚫 *Saldo Kuota Tidak Mencukupi*\n\nPengajuan format ini membutuhkan *${requiredCost} kuota*, namun saldo kuota aktif Anda tersisa *${quota.remainingQuota} request*.\n\nSilakan perpanjang atau top-up paket kuota Anda di dashboard.`,
           [
             { id: 'BRIEF_CANCEL_ASK', title: '❌ Batalkan Draft' },
             { id: 'MENU_CHECK_STATUS', title: '📊 Cek Status' },
@@ -1383,8 +1507,6 @@ export class WhatsAppBotSessionService implements OnModuleDestroy {
       await this.redisService.del(draftKey);
       await this.redisService.del(`whatsapp:session_intent:${tenant.id}`);
 
-      const isUrgent =
-        buttonId === 'BRIEF_SUBMIT_URGENT' || buttonId === 'BRIEF_SUBMIT_URGENT_OVERQUOTA';
       const clientUrgency = isUrgent ? BriefUrgencyLevel.URGENT : BriefUrgencyLevel.NORMAL;
 
       // Tentukan target status berdasarkan kuota & pilihan tombol
@@ -1401,7 +1523,9 @@ export class WhatsAppBotSessionService implements OnModuleDestroy {
         draft,
         clientUrgency,
         targetStatus,
-        isUrgentOverquota
+        isUrgentOverquota,
+        packageType,
+        requiredCost
       );
 
       const walletAfter = await this.quotaWalletService.getTenantQuotaWallet(tenant.id);
@@ -1414,8 +1538,9 @@ export class WhatsAppBotSessionService implements OnModuleDestroy {
           phoneE164,
           [
             `🗓️ *Request Diamankan: Antrean Minggu Depan #${createdBrief.briefCode}*`,
+            `• Format Konten: *${formatLabel}*`,
             `• Target Pengerjaan: *Senin Pukul 08:00 WIB*`,
-            `• Biaya Terpotong: *1 Kuota*`,
+            `• Biaya Terpotong: *${createdBrief.quotaCostDeducted} Kuota*`,
             `• Sisa Saldo Total: *${walletAfter.remainingQuota} dari ${walletAfter.totalQuotaAllocated} Request*`,
             `• Status Jatah Minggu Ini: *${quota.weeklyUsed}/${quota.weeklyLimit} (Penuh)*`,
             `• Antrean Minggu Depan Anda: *${nextWeekCount} tiket tersimpan*`,
@@ -1440,8 +1565,9 @@ export class WhatsAppBotSessionService implements OnModuleDestroy {
           phoneE164,
           [
             `⚡ *Pengajuan Darurat Diterima: #${createdBrief.briefCode}*`,
+            `• Format Konten: *${formatLabel}*`,
             `• Status: *Prioritas Editor Utama (Over-Quota)*`,
-            `• Biaya Kuota: *2 Kuota Terpotong*`,
+            `• Biaya Kuota: *${createdBrief.quotaCostDeducted} Kuota Terpotong*`,
             `• Sisa Saldo Total: *${walletAfter.remainingQuota} dari ${walletAfter.totalQuotaAllocated} Request*`,
             `• Target Produksi: *${horizonInfo.badgeLabel}*`,
             horizonInfo.statusLine,
@@ -1461,19 +1587,20 @@ export class WhatsAppBotSessionService implements OnModuleDestroy {
         return;
       }
 
-      // KASUS C: SUBMIT REGULER / URGENT NORMAL (KUOTA MASIH ADA - BIAYA 1 KUOTA)
-      const quotaNotice = `• 📊 Jatah Minggu Ini: *${quota.weeklyUsed + 1} dari ${quota.weeklyLimit} request*\n• 💳 Sisa Saldo Total: *${walletAfter.remainingQuota} dari ${walletAfter.totalQuotaAllocated} Request*`;
+      // KASUS C: SUBMIT REGULER / URGENT NORMAL
+      const quotaNotice = `• 📊 Jatah Minggu Ini: *${quota.weeklyUsed + createdBrief.quotaCostDeducted} dari ${quota.weeklyLimit} request*\n• 💳 Sisa Saldo Total: *${walletAfter.remainingQuota} dari ${walletAfter.totalQuotaAllocated} Request*`;
 
       await this.waClient.sendInteractiveButtons(
         phoneE164,
         [
           `✅ *Request Resmi Diterima: #${createdBrief.briefCode}*`,
+          `• Format Konten: *${formatLabel}*`,
           `• Target Produksi: *${horizonInfo.badgeLabel}*`,
-          `• Biaya Terpotong: *1 Kuota*`,
+          `• Biaya Terpotong: *${createdBrief.quotaCostDeducted} Kuota*`,
           horizonInfo.statusLine,
           quotaNotice,
           '',
-          '🔒 *Bahan kegiatan Anda telah diamankan.* Tim Redaksi segera menyusun naskah berita, poster visual, dan caption media sosial untuk Anda tinjau sebelum tayang. Sambil menunggu, silakan pilih menu layanan:',
+          '🔒 *Bahan kegiatan Anda telah diamankan.* Tim Redaksi segera menyusun materi sesuai format pilihan Anda untuk ditinjau sebelum tayang. Sambil menunggu, silakan pilih menu layanan:',
         ].join('\n'),
         [
           { id: 'MENU_CHECK_STATUS', title: '📊 Cek Status' },
@@ -1625,6 +1752,95 @@ export class WhatsAppBotSessionService implements OnModuleDestroy {
       }
 
       const remaining = brief.revisionLimit - brief.revisionUsed;
+      const pkgType = (brief as any).packageType || 'FULL_CAMPAIGN';
+
+      if (pkgType === 'POSTER_ONLY' || pkgType === 'INFOGRAPHIC_ONLY') {
+        const revSession: RevisionSessionState = {
+          briefId: brief.id,
+          briefCode: brief.briefCode,
+          tenantId: tenant.id,
+          targetComponents: ['IMAGE'],
+          createdAtMs: Date.now(),
+          updatedAtMs: Date.now(),
+          items: [],
+        };
+        await this.redisService.set(`whatsapp:rev_session:${tenant.id}`, revSession, SESSION_TTL_SECONDS);
+        await this.redisService.set(
+          `whatsapp:session_intent:${tenant.id}`,
+          {
+            mode: 'REVISION',
+            briefId: brief.id,
+            briefCode: brief.briefCode,
+            startedAtMs: Date.now(),
+          },
+          SESSION_TTL_SECONDS
+        );
+
+        const visualFormatName = pkgType === 'POSTER_ONLY' ? 'Poster Visual' : 'Infografis Publik';
+        await this.waClient.sendInteractiveButtons(
+          phoneE164,
+          [
+            `✏️ *Mode Catatan Revisi Aktif — #${brief.briefCode}*`,
+            `• 🎯 Format: *${visualFormatName}*`,
+            `• 🔄 Sisa Jatah Revisi: *${remaining} dari ${brief.revisionLimit} putaran*`,
+            '',
+            '*Cara Mengirim Catatan Revisi:*',
+            '1️⃣ Silakan ketik poin perbaikan visual atau kirim foto/dokumen referensi baru.',
+            '2️⃣ Setelah selesai mengetik, *tunggu sekitar 15 detik* hingga asisten menampilkan Rekap & Tombol Konfirmasi Kirim.',
+          ].join('\n'),
+          [
+            { id: `REV_CANCEL:${brief.id}`, title: '❌ Batalkan Revisi' },
+            { id: 'MENU_OPEN_MAIN', title: '📋 Menu Utama' },
+          ],
+          `Mode Revisi #${brief.briefCode}`,
+          'Sesi revisi aktif hingga Anda menekan Kirim Revisi'
+        );
+        return;
+      }
+
+      if (pkgType === 'ARTICLE_ONLY') {
+        const revSession: RevisionSessionState = {
+          briefId: brief.id,
+          briefCode: brief.briefCode,
+          tenantId: tenant.id,
+          targetComponents: ['ARTICLE', 'CAPTION'],
+          createdAtMs: Date.now(),
+          updatedAtMs: Date.now(),
+          items: [],
+        };
+        await this.redisService.set(`whatsapp:rev_session:${tenant.id}`, revSession, SESSION_TTL_SECONDS);
+        await this.redisService.set(
+          `whatsapp:session_intent:${tenant.id}`,
+          {
+            mode: 'REVISION',
+            briefId: brief.id,
+            briefCode: brief.briefCode,
+            startedAtMs: Date.now(),
+          },
+          SESSION_TTL_SECONDS
+        );
+
+        await this.waClient.sendInteractiveButtons(
+          phoneE164,
+          [
+            `✏️ *Mode Catatan Revisi Aktif — #${brief.briefCode}*`,
+            `• 🎯 Format: *Naskah Artikel*`,
+            `• 🔄 Sisa Jatah Revisi: *${remaining} dari ${brief.revisionLimit} putaran*`,
+            '',
+            '*Cara Mengirim Catatan Revisi:*',
+            '1️⃣ Silakan ketik poin-poin perbaikan naskah atau kirim data/kutipan tambahan.',
+            '2️⃣ Setelah selesai mengetik, *tunggu sekitar 15 detik* hingga asisten menampilkan Rekap & Tombol Konfirmasi Kirim.',
+          ].join('\n'),
+          [
+            { id: `REV_CANCEL:${brief.id}`, title: '❌ Batalkan Revisi' },
+            { id: 'MENU_OPEN_MAIN', title: '📋 Menu Utama' },
+          ],
+          `Mode Revisi #${brief.briefCode}`,
+          'Sesi revisi aktif hingga Anda menekan Kirim Revisi'
+        );
+        return;
+      }
+
       await this.waClient.sendInteractiveButtons(
         phoneE164,
         `Pilih bagian yang ingin direvisi untuk tiket *#${brief.briefCode}* (Sisa jatah revisi: *${remaining} dari ${brief.revisionLimit} putaran*):`,
@@ -1776,9 +1992,12 @@ export class WhatsAppBotSessionService implements OnModuleDestroy {
     draft: DraftCartState,
     clientUrgency: BriefUrgencyLevel,
     targetStatus: 'SUBMITTED' | 'QUEUED_NEXT_WEEK' = 'SUBMITTED',
-    isUrgentOverquota = false
+    isUrgentOverquota = false,
+    packageType: BriefPackageType = BriefPackageType.FULL_CAMPAIGN,
+    overrideCost?: number
   ) {
-    const cost = isUrgentOverquota ? 2 : 1;
+    const defaultBaseCost = packageType === BriefPackageType.FULL_CAMPAIGN ? 2 : 1;
+    const cost = overrideCost ?? (isUrgentOverquota ? defaultBaseCost * 2 : defaultBaseCost);
     const [assignment] = await db
       .select()
       .from(operatorTenantAssignments)
@@ -1809,6 +2028,20 @@ export class WhatsAppBotSessionService implements OnModuleDestroy {
     const limits = await this.helper.getTenantConfiguredLimits(tenant.id);
     const horizonInfo = getTimeHorizonInfo(clientUrgency);
 
+    let articleStatus = 'PENDING';
+    let imageStatus = 'PENDING';
+    let captionStatus = 'PENDING';
+
+    if (packageType === BriefPackageType.ARTICLE_ONLY) {
+      imageStatus = 'NOT_APPLICABLE';
+    } else if (packageType === BriefPackageType.POSTER_ONLY) {
+      articleStatus = 'NOT_APPLICABLE';
+      captionStatus = 'NOT_APPLICABLE';
+    } else if (packageType === BriefPackageType.INFOGRAPHIC_ONLY) {
+      articleStatus = 'NOT_APPLICABLE';
+      captionStatus = 'NOT_APPLICABLE';
+    }
+
     const createdBrief = await withTenantContext(tenant.id, async (tx) => {
       const [insertedBrief] = await tx
         .insert(contentBriefs)
@@ -1817,6 +2050,7 @@ export class WhatsAppBotSessionService implements OnModuleDestroy {
           tenantId: tenant.id,
           assignedOperatorId,
           status: targetStatus,
+          packageType,
           clientUrgency,
           operatorPriority: clientUrgency,
           targetWindow: horizonInfo.target,
@@ -1825,6 +2059,9 @@ export class WhatsAppBotSessionService implements OnModuleDestroy {
           weeklyRequestLimit: limits.weeklyRequestLimit,
           revisionUsed: 0,
           revisionLimit: limits.revisionLimit,
+          articleStatus,
+          imageStatus,
+          captionStatus,
           quotaCostDeducted: cost,
           isUrgentOverquota,
         })
@@ -2204,14 +2441,19 @@ export class WhatsAppBotSessionService implements OnModuleDestroy {
           .onConflictDoNothing();
       }
 
+      const pkgType = (brief as any).packageType || 'FULL_CAMPAIGN';
+      const hasArticle = pkgType === 'FULL_CAMPAIGN' || pkgType === 'ARTICLE_ONLY';
+      const hasImage = pkgType === 'FULL_CAMPAIGN' || pkgType === 'POSTER_ONLY' || pkgType === 'INFOGRAPHIC_ONLY';
+      const hasCaption = pkgType === 'FULL_CAMPAIGN' || pkgType === 'ARTICLE_ONLY';
+
       await tx
         .update(contentBriefs)
         .set({
           status: 'REVISION_REQUESTED',
           revisionUsed: nextRound,
-          articleStatus: comps.includes('ARTICLE') ? 'REVISION' : 'APPROVED',
-          imageStatus: comps.includes('IMAGE') ? 'REVISION' : 'APPROVED',
-          captionStatus: comps.includes('CAPTION') ? 'REVISION' : 'APPROVED',
+          articleStatus: hasArticle ? (comps.includes('ARTICLE') ? 'REVISION' : 'APPROVED') : 'NOT_APPLICABLE',
+          imageStatus: hasImage ? (comps.includes('IMAGE') ? 'REVISION' : 'APPROVED') : 'NOT_APPLICABLE',
+          captionStatus: hasCaption ? (comps.includes('CAPTION') ? 'REVISION' : 'APPROVED') : 'NOT_APPLICABLE',
           updatedAt: new Date(),
         })
         .where(eq(contentBriefs.id, brief.id));

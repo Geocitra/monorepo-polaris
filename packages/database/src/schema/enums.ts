@@ -208,6 +208,13 @@ export const contentBriefStatusEnum = pgEnum('content_brief_status_enum', [
   'CLOSED_UNPUBLISHED',
 ]);
 
+export const briefPackageTypeEnum = pgEnum('brief_package_type_enum', [
+  'FULL_CAMPAIGN',
+  'ARTICLE_ONLY',
+  'POSTER_ONLY',
+  'INFOGRAPHIC_ONLY',
+]);
+
 export const briefUrgencyLevelEnum = pgEnum('brief_urgency_level_enum', [
   'NORMAL',
   'URGENT',

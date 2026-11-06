@@ -65,7 +65,7 @@ export class GenerateArticleRequestDto {
 
   @IsOptional()
   @IsString()
-  taskType?: 'FULL_CAMPAIGN' | 'INFOGRAPHIC_ONLY' | 'ARTICLE_ONLY' | 'REGENERATE_POSTER';
+  taskType?: 'FULL_CAMPAIGN' | 'INFOGRAPHIC_ONLY' | 'ARTICLE_ONLY' | 'REGENERATE_POSTER' | 'POSTER_ONLY';
 
   @IsOptional()
   @IsString()
