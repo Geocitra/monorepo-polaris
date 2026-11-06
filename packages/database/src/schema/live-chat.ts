@@ -83,3 +83,4 @@ export type LiveChatSessionRecord = typeof liveChatSessions.$inferSelect;
 export type NewLiveChatSessionRecord = typeof liveChatSessions.$inferInsert;
 export type LiveChatMessageRecord = typeof liveChatMessages.$inferSelect;
 export type NewLiveChatMessageRecord = typeof liveChatMessages.$inferInsert;
+

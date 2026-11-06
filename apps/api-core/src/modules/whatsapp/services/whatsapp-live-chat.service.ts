@@ -622,3 +622,4 @@ export class WhatsAppLiveChatService {
     return `${prefix}-${nextNumber}`;
   }
 }
+
