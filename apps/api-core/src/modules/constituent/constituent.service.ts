@@ -31,7 +31,7 @@ export class ConstituentService {
   /**
    * Menjawab pertanyaan publik / warga dengan RAG Semantic Grounding Otentik.
    */
-  async askCivicAssistant(dto: AskCivicQuestionDto) {
+  async askCivicAssistant(dto: AskCivicQuestionDto, visitorIpHash?: string) {
     const cleanSubdomain = dto.subdomainSlug.toLowerCase().trim();
     const cleanQuestion = dto.question.trim();
 
@@ -117,6 +117,7 @@ export class ConstituentService {
         partyAffiliation: member?.party,
         dapilName,
         tenantId: portal.tenantId,
+        visitorIpHash,
       });
       finalAnswer = civicResult.answer;
     } catch (genErr: any) {

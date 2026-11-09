@@ -9,12 +9,16 @@ export class PublicChatService {
 
     constructor(private readonly aiEngine: OpenAIAIEngineAdapter) { }
 
-    async processVisitorMessage(dto: SendPublicChatDto): Promise<PublicChatResponseDto> {
+    async processVisitorMessage(
+        dto: SendPublicChatDto,
+        visitorIpHash?: string,
+    ): Promise<PublicChatResponseDto> {
         this.logger.log(`[PublicChat] Processing visitor message; length=${dto.message.length}`);
 
         const result = await this.aiEngine.generatePublicConcierge({
             userMessage: dto.message,
             history: dto.history,
+            visitorIpHash,
         });
 
         return {

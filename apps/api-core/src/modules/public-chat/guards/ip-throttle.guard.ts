@@ -26,6 +26,7 @@ export class IpThrottleGuard implements CanActivate {
         const response = httpContext.getResponse<Response>();
         const clientIp = this.extractClientIp(request);
         const ipHash = createHash('sha256').update(clientIp).digest('hex');
+        (request as any).visitorIpHash = ipHash;
         const redisKey = `ratelimit:public_chat:${ipHash}`;
 
         try {

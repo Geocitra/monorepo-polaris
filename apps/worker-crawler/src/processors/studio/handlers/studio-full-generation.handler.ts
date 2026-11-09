@@ -374,6 +374,28 @@ export class StudioFullGenerationHandler {
       }
 
       // -----------------------------------------------------------------------
+      // CHECKPOINT IDEMPOTENCY: Muat status tahapan publikasi agar BullMQ retry
+      // tidak mengeksekusi ulang Riset Otonom atau 5-Bab GPT-4o yang sudah selesai.
+      // -----------------------------------------------------------------------
+      const [existingPub] = await db
+        .select({
+          title: contentPublications.title,
+          excerpt: contentPublications.excerpt,
+          bodyContentMarkdown: contentPublications.bodyContentMarkdown,
+          wordCount: contentPublications.wordCount,
+          researchJobId: contentPublications.researchJobId,
+          generationCheckpoints: contentPublications.generationCheckpoints,
+        })
+        .from(contentPublications)
+        .where(eq(contentPublications.id, publicationId))
+        .limit(1);
+
+      const checkpoints: Record<string, any> =
+        existingPub?.generationCheckpoints && typeof existingPub.generationCheckpoints === 'object'
+          ? { ...(existingPub.generationCheckpoints as Record<string, any>) }
+          : {};
+
+      // -----------------------------------------------------------------------
       // LANGKAH 1B (20%-35%): Autonomous Research Pipeline (Planner, Multi-Source, Evidence Spans)
       // -----------------------------------------------------------------------
       await StudioContextHelper.emitProgress(
@@ -383,31 +405,54 @@ export class StudioFullGenerationHandler {
         'Menjalankan Riset Otonom & Pencarian Bukti Terverifikasi...'
       );
 
-      let researchJobId: string | undefined;
-      let groundedEvidenceText = '';
-      let evidenceMap = new Map<string, string>();
+      let researchJobId: string | undefined = checkpoints.researchJobId || existingPub?.researchJobId || undefined;
+      let groundedEvidenceText = typeof checkpoints.groundedEvidenceText === 'string' ? checkpoints.groundedEvidenceText : '';
+      let evidenceMap = new Map<string, string>(
+        Array.isArray(checkpoints.evidenceEntries) ? checkpoints.evidenceEntries : []
+      );
 
-      try {
-        const researchResult = await AutonomousResearchOrchestrator.executeResearchPipeline({
-          tenantId,
-          topic: data.topic,
-          userPrompt: data.prompt || data.topic,
-          targetRegion,
-          queryEmbedding: queryVector || undefined,
-          attachedDocuments: parsedDocuments,
-          providedUrls: data.externalUrls || data.referencedUrls || [],
-          onProgress: async (step, pct) => {
-            const scaledPct = Math.round(20 + (pct / 100) * 15);
-            await StudioContextHelper.emitProgress(tenantId, jobId, scaledPct, step);
-          },
-        });
-        researchJobId = researchResult.jobId;
-        groundedEvidenceText = researchResult.groundedContextText;
-        evidenceMap = researchResult.evidenceIdMap;
-      } catch (researchErr: any) {
-        console.warn(
-          `[StudioProcessor] Autonomous research error, fallback ke RAG dasar: ${researchErr.message}`
+      if (checkpoints.researchDone && groundedEvidenceText) {
+        console.log(
+          `[StudioProcessor] Checkpoint Riset Otonom ditemukan untuk PubID ${publicationId}; melewati eksekusi ulang riset.`
         );
+      } else {
+        try {
+          const researchResult = await AutonomousResearchOrchestrator.executeResearchPipeline({
+            tenantId,
+            topic: data.topic,
+            userPrompt: data.prompt || data.topic,
+            targetRegion,
+            queryEmbedding: queryVector || undefined,
+            attachedDocuments: parsedDocuments,
+            providedUrls: data.externalUrls || data.referencedUrls || [],
+            onProgress: async (step, pct) => {
+              const scaledPct = Math.round(20 + (pct / 100) * 15);
+              await StudioContextHelper.emitProgress(tenantId, jobId, scaledPct, step);
+            },
+          });
+          researchJobId = researchResult.jobId;
+          groundedEvidenceText = researchResult.groundedContextText;
+          evidenceMap = researchResult.evidenceIdMap;
+
+          checkpoints.researchDone = true;
+          checkpoints.researchJobId = researchJobId || null;
+          checkpoints.groundedEvidenceText = groundedEvidenceText.slice(0, 25000);
+          checkpoints.evidenceEntries = Array.from(evidenceMap.entries());
+
+          await db
+            .update(contentPublications)
+            .set({
+              researchJobId: researchJobId || null,
+              generationCheckpoints: checkpoints,
+              updatedAt: new Date(),
+            })
+            .where(eq(contentPublications.id, publicationId))
+            .catch(() => null);
+        } catch (researchErr: any) {
+          console.warn(
+            `[StudioProcessor] Autonomous research error, fallback ke RAG dasar: ${researchErr.message}`
+          );
+        }
       }
 
       const similarChunks = queryVector
@@ -442,176 +487,201 @@ export class StudioFullGenerationHandler {
         'Menyusun Naskah Kebijakan Modular Berantai...'
       );
 
-      const generatedArticle = await aiEngine.generateArticle({
-        topic: data.topic,
-        regionalContextData: contextPayload,
-        targetAudience: data.targetAudience,
-        targetLength: data.targetLength,
-        writingStyle: data.writingStyle,
-        framingStance: data.framingStance,
-        toneOverride: data.toneOverride,
-        tenantId,
-        onProgress: async (step, pct) => {
-          await StudioContextHelper.emitProgress(tenantId, jobId, pct, step);
-        },
-      });
-
-      // -----------------------------------------------------------------------
-      // LANGKAH 2B: Deterministic Quality Control Gate & BR-05 Self-Healing Gate
-      // -----------------------------------------------------------------------
-      const validEvidenceKeys = new Set(evidenceMap.keys());
-      let qcResult = DeterministicQualityGates.verifyCitationQualityControl(
-        generatedArticle.contentMarkdown,
-        validEvidenceKeys
+      const isArticleAlreadyCheckpointed = Boolean(
+        checkpoints.articleDone &&
+          existingPub?.bodyContentMarkdown &&
+          (existingPub.wordCount ?? 0) > 100
       );
 
-      // BR-05: Self-Healing Anti-Rogue Citation Gate
-      if (qcResult.rogueCitations && qcResult.rogueCitations.length > 0) {
-        console.warn(
-          `[StudioProcessor] Terdeteksi ${qcResult.rogueCitations.length} rogue citation fiktif: [${qcResult.rogueCitations.join(', ')}]. Menjalankan Self-Healing Citation Gate...`
-        );
-        let healedMarkdown = generatedArticle.contentMarkdown;
-        for (const rogueId of qcResult.rogueCitations) {
-          const escaped = rogueId.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-          const rogueRegex = new RegExp(`\\[(?:\\^|Bukti:?\\s*)?${escaped}\\]`, 'gi');
-          healedMarkdown = healedMarkdown.replace(rogueRegex, '');
-        }
-        healedMarkdown = healedMarkdown.replace(/[ \t]{2,}([.,;])/g, '$1');
-        generatedArticle.contentMarkdown = healedMarkdown;
+      const generatedArticle = isArticleAlreadyCheckpointed
+        ? {
+            title: existingPub!.title || data.topic,
+            excerpt: existingPub!.excerpt || '',
+            contentMarkdown: existingPub!.bodyContentMarkdown,
+            wordCount: existingPub!.wordCount || 0,
+            totalTokensUsed: 0,
+            canonicalTraceId: String(checkpoints.canonicalTraceId || `checkpoint-${publicationId}`),
+          }
+        : await aiEngine.generateArticle({
+            topic: data.topic,
+            regionalContextData: contextPayload,
+            targetAudience: data.targetAudience,
+            targetLength: data.targetLength,
+            writingStyle: data.writingStyle,
+            framingStance: data.framingStance,
+            toneOverride: data.toneOverride,
+            tenantId,
+            onProgress: async (step, pct) => {
+              await StudioContextHelper.emitProgress(tenantId, jobId, pct, step);
+            },
+          });
 
-        // Re-evaluasi QC setelah pembersihan deterministik
-        qcResult = DeterministicQualityGates.verifyCitationQualityControl(
+      if (!isArticleAlreadyCheckpointed) {
+        // -----------------------------------------------------------------------
+        // LANGKAH 2B: Deterministic Quality Control Gate & BR-05 Self-Healing Gate
+        // -----------------------------------------------------------------------
+        const validEvidenceKeys = new Set(evidenceMap.keys());
+        let qcResult = DeterministicQualityGates.verifyCitationQualityControl(
           generatedArticle.contentMarkdown,
           validEvidenceKeys
         );
-      }
 
-      if (researchJobId) {
+        // BR-05: Self-Healing Anti-Rogue Citation Gate
+        if (qcResult.rogueCitations && qcResult.rogueCitations.length > 0) {
+          console.warn(
+            `[StudioProcessor] Terdeteksi ${qcResult.rogueCitations.length} rogue citation fiktif: [${qcResult.rogueCitations.join(', ')}]. Menjalankan Self-Healing Citation Gate...`
+          );
+          let healedMarkdown = generatedArticle.contentMarkdown;
+          for (const rogueId of qcResult.rogueCitations) {
+            const escaped = rogueId.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+            const rogueRegex = new RegExp(`\\[(?:\\^|Bukti:?\\s*)?${escaped}\\]`, 'gi');
+            healedMarkdown = healedMarkdown.replace(rogueRegex, '');
+          }
+          healedMarkdown = healedMarkdown.replace(/[ \t]{2,}([.,;])/g, '$1');
+          generatedArticle.contentMarkdown = healedMarkdown;
+
+          // Re-evaluasi QC setelah pembersihan deterministik
+          qcResult = DeterministicQualityGates.verifyCitationQualityControl(
+            generatedArticle.contentMarkdown,
+            validEvidenceKeys
+          );
+        }
+
+        if (researchJobId) {
+          try {
+            await db
+              .update(researchJobs)
+              .set({
+                qcPassed: qcResult.qcPassed,
+                status: ResearchJobStatus.COMPLETED,
+                updatedAt: new Date(),
+              })
+              .where(eq(researchJobs.id, researchJobId));
+
+            await db.insert(researchOutputs).values({
+              researchJobId,
+              title: generatedArticle.title,
+              executiveSummary: generatedArticle.excerpt,
+              markdownBody: generatedArticle.contentMarkdown,
+              bibliographyJson: Array.from(evidenceMap.entries()).map(([token, spanId]) => ({
+                citationToken: token,
+                evidenceSpanId: spanId,
+              })),
+              qcReport: qcResult,
+            });
+          } catch (dbErr: any) {
+            console.warn(`[StudioProcessor] Gagal menyimpan research outputs: ${dbErr.message}`);
+          }
+        }
+
+        let socialPack = {
+          instagramCaption: '',
+          twitterThreads: [] as string[],
+          whatsappBroadcast: `*${generatedArticle.title}*\n\n${generatedArticle.excerpt}`,
+        };
         try {
-          await db
-            .update(researchJobs)
+          const generatedSocialPack = await aiEngine.generateSocialSnippets(
+            generatedArticle.contentMarkdown,
+            tenantId
+          );
+          socialPack = {
+            instagramCaption: generatedSocialPack.instagramCaption || '',
+            twitterThreads: generatedSocialPack.twitterThreads || [],
+            whatsappBroadcast:
+              generatedSocialPack.whatsappBroadcast || socialPack.whatsappBroadcast,
+          };
+        } catch (error: unknown) {
+          const message = error instanceof Error ? error.message : String(error);
+          console.warn(
+            `[StudioProcessor] Social pack gagal dibuat; memakai ringkasan artikel: ${message}`
+          );
+        }
+
+        // Commit naskah artikel sebelum operasi gambar opsional
+        await StudioContextHelper.emitProgress(
+          tenantId,
+          jobId,
+          69,
+          'Menyimpan naskah dan paket teks...'
+        );
+
+        // Self-healing sanitizer untuk rogue citations (Defect 6)
+        let finalMarkdown = generatedArticle.contentMarkdown;
+        if (qcResult.rogueCitations && qcResult.rogueCitations.length > 0) {
+          console.warn(
+            `[StudioProcessor] Menghapus ${qcResult.rogueCitations.length} rogue citation dari naskah: ${qcResult.rogueCitations.join(', ')}`
+          );
+          for (const rogueId of qcResult.rogueCitations) {
+            const rogueRegex = new RegExp(`\\[(?:\\^|Bukti:?\\s*)?${rogueId}\\]`, 'gi');
+            finalMarkdown = finalMarkdown.replace(rogueRegex, '');
+          }
+        }
+
+        checkpoints.articleDone = true;
+        checkpoints.socialDone = true;
+        checkpoints.canonicalTraceId = generatedArticle.canonicalTraceId;
+
+        await withTenantContext(tenantId, async (tx) => {
+          await tx
+            .update(contentPublications)
             .set({
-              qcPassed: qcResult.qcPassed,
-              status: ResearchJobStatus.COMPLETED,
+              title: generatedArticle.title,
+              excerpt: generatedArticle.excerpt,
+              bodyContentMarkdown: finalMarkdown,
+              wordCount: generatedArticle.wordCount,
+              status: ContentStatus.DRAFT,
+              researchJobId: researchJobId || null,
+              generationCheckpoints: checkpoints,
               updatedAt: new Date(),
             })
-            .where(eq(researchJobs.id, researchJobId));
+            .where(eq(contentPublications.id, publicationId));
 
-          await db.insert(researchOutputs).values({
-            researchJobId,
-            title: generatedArticle.title,
-            executiveSummary: generatedArticle.excerpt,
-            markdownBody: generatedArticle.contentMarkdown,
-            bibliographyJson: Array.from(evidenceMap.entries()).map(([token, spanId]) => ({
-              citationToken: token,
-              evidenceSpanId: spanId,
-            })),
-            qcReport: qcResult,
-          });
-        } catch (dbErr: any) {
-          console.warn(`[StudioProcessor] Gagal menyimpan research outputs: ${dbErr.message}`);
-        }
-      }
+          const currentMonth = new Date().toISOString().slice(0, 7);
 
-      let socialPack = {
-        instagramCaption: '',
-        twitterThreads: [] as string[],
-        whatsappBroadcast: `*${generatedArticle.title}*\n\n${generatedArticle.excerpt}`,
-      };
-      try {
-        const generatedSocialPack = await aiEngine.generateSocialSnippets(
-          generatedArticle.contentMarkdown,
-          tenantId
-        );
-        socialPack = {
-          instagramCaption: generatedSocialPack.instagramCaption || '',
-          twitterThreads: generatedSocialPack.twitterThreads || [],
-          whatsappBroadcast:
-            generatedSocialPack.whatsappBroadcast || socialPack.whatsappBroadcast,
-        };
-      } catch (error: unknown) {
-        const message = error instanceof Error ? error.message : String(error);
-        console.warn(
-          `[StudioProcessor] Social pack gagal dibuat; memakai ringkasan artikel: ${message}`
-        );
-      }
+          // Single Source of Truth: Token dan biaya IDR sudah dicatat secara atomik per-trace oleh AiTelemetryService.endTrace().
+          // Di sini kita hanya menaikkan counter kuota naskah (articleUsed + 1).
+          await tx
+            .insert(tenantQuotaLedgers)
+            .values({
+              tenantId,
+              billingCycleMonth: currentMonth,
+              articleLimit: 0,
+              articleUsed: 1,
+              dalleLimit: 0,
+              dalleUsed: 0,
+              totalTokensConsumed: 0,
+              estimatedCostUsd: '0.00000',
+            })
+            .onConflictDoUpdate({
+              target: [tenantQuotaLedgers.tenantId, tenantQuotaLedgers.billingCycleMonth],
+              set: {
+                articleUsed: sql`${tenantQuotaLedgers.articleUsed} + 1`,
+                updatedAt: new Date(),
+              },
+            });
 
-      // Commit naskah artikel sebelum operasi gambar opsional
-      await StudioContextHelper.emitProgress(
-        tenantId,
-        jobId,
-        69,
-        'Menyimpan naskah dan paket teks...'
-      );
-      const textCostUsd = AiCostCalculator.calculateCostUsd(generatedArticle.totalTokensUsed, 0);
-
-      // Self-healing sanitizer untuk rogue citations (Defect 6)
-      let finalMarkdown = generatedArticle.contentMarkdown;
-      if (qcResult.rogueCitations && qcResult.rogueCitations.length > 0) {
-        console.warn(
-          `[StudioProcessor] Menghapus ${qcResult.rogueCitations.length} rogue citation dari naskah: ${qcResult.rogueCitations.join(', ')}`
-        );
-        for (const rogueId of qcResult.rogueCitations) {
-          const rogueRegex = new RegExp(`\\[(?:\\^|Bukti:?\\s*)?${rogueId}\\]`, 'gi');
-          finalMarkdown = finalMarkdown.replace(rogueRegex, '');
-        }
-      }
-
-      await withTenantContext(tenantId, async (tx) => {
-        await tx
-          .update(contentPublications)
-          .set({
-            title: generatedArticle.title,
-            excerpt: generatedArticle.excerpt,
-            bodyContentMarkdown: finalMarkdown,
-            wordCount: generatedArticle.wordCount,
-            status: ContentStatus.DRAFT,
-            researchJobId: researchJobId || null,
-            updatedAt: new Date(),
-          })
-          .where(eq(contentPublications.id, publicationId));
-
-        const currentMonth = new Date().toISOString().slice(0, 7);
-
-        // Single Source of Truth: Token dan biaya USD sudah dicatat secara atomik per-trace oleh AiTelemetryService.endTrace().
-        // Di sini kita hanya menaikkan counter kuota naskah (articleUsed + 1).
-        await tx
-          .insert(tenantQuotaLedgers)
-          .values({
-            tenantId,
-            billingCycleMonth: currentMonth,
-            articleLimit: 0,
-            articleUsed: 1,
-            dalleLimit: 0,
-            dalleUsed: 0,
-            totalTokensConsumed: 0,
-            estimatedCostUsd: '0.00000',
-          })
-          .onConflictDoUpdate({
-            target: [tenantQuotaLedgers.tenantId, tenantQuotaLedgers.billingCycleMonth],
-            set: {
-              articleUsed: sql`${tenantQuotaLedgers.articleUsed} + 1`,
-              updatedAt: new Date(),
-            },
-          });
-
-        await tx
-          .insert(socialSyndicationPacks)
-          .values({
-            publicationId,
-            instagramCaption: socialPack.instagramCaption,
-            twitterThreads: socialPack.twitterThreads,
-            whatsappBroadcastText: socialPack.whatsappBroadcast,
-          })
-          .onConflictDoUpdate({
-            target: socialSyndicationPacks.publicationId,
-            set: {
+          await tx
+            .insert(socialSyndicationPacks)
+            .values({
+              publicationId,
               instagramCaption: socialPack.instagramCaption,
               twitterThreads: socialPack.twitterThreads,
               whatsappBroadcastText: socialPack.whatsappBroadcast,
-            },
-          });
-      });
+            })
+            .onConflictDoUpdate({
+              target: socialSyndicationPacks.publicationId,
+              set: {
+                instagramCaption: socialPack.instagramCaption,
+                twitterThreads: socialPack.twitterThreads,
+                whatsappBroadcastText: socialPack.whatsappBroadcast,
+              },
+            });
+        });
+      } else {
+        console.log(
+          `[StudioProcessor] Checkpoint Naskah 5-Bab ditemukan untuk PubID ${publicationId}; melewati sintesis ulang GPT-4o.`
+        );
+      }
 
       // PROGRESSIVE INSTANT DELIVERY: Naskah teks 100% siap di database!
       await StudioContextHelper.emitProgress(

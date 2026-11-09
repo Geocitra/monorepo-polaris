@@ -1,15 +1,20 @@
 'use client';
 
 import React from 'react';
-import { Cpu, DollarSign, Activity, Sparkles, ExternalLink } from 'lucide-react';
+import { Cpu, Coins, Activity, Sparkles, ExternalLink } from 'lucide-react';
 
 interface AiObservabilityKpisProps {
   summary?: {
     totalTokens: number;
-    totalCostUsd: number;
+    openaiTokens?: number;
+    geminiTokens?: number;
     totalCostIdr: number;
+    openaiCostIdr?: number;
+    geminiCostIdr?: number;
     totalGenerations: number;
+    totalImagesGenerated?: number;
     avgLatencySeconds: number;
+    liveFxRateIdr?: number;
   };
   langfuse?: {
     status: string;
@@ -32,7 +37,7 @@ export function AiObservabilityKpis({ summary, langfuse }: AiObservabilityKpisPr
           <div>
             <div className="flex items-center gap-2">
               <h2 className="text-base font-extrabold text-slate-900 dark:text-white leading-tight">
-                Langfuse LLM Telemetry & Cost Tracer
+                Langfuse LLM Telemetry & Dual-Provider Cost Tracer (Rupiah)
               </h2>
               <span
                 className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold border ${
@@ -72,7 +77,7 @@ export function AiObservabilityKpis({ summary, langfuse }: AiObservabilityKpisPr
 
       {/* 2. 4 METRIC KPI CARDS */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
-        {/* Token Terpakai */}
+        {/* Token Terpakai (OpenAI vs Gemini) */}
         <div className="p-4 sm:p-5 rounded-2xl bg-white dark:bg-[#0B0F17] border border-slate-200 dark:border-slate-800 shadow-xs space-y-1.5">
           <div className="flex items-center justify-between text-slate-500 dark:text-slate-400">
             <span className="text-[10px] font-bold uppercase tracking-wider">Total Token AI</span>
@@ -83,31 +88,33 @@ export function AiObservabilityKpis({ summary, langfuse }: AiObservabilityKpisPr
           <div className="text-2xl font-black text-slate-900 dark:text-white tracking-tight">
             {(summary?.totalTokens ?? 0).toLocaleString('id-ID')}
           </div>
-          <span className="text-[10px] text-slate-400 font-medium block">
-            Input & output tokens gabungan
+          <span className="text-[10px] text-slate-500 dark:text-slate-400 font-medium block">
+            OpenAI: {(summary?.openaiTokens ?? 0).toLocaleString('id-ID')} • Gemini:{' '}
+            {(summary?.geminiTokens ?? 0).toLocaleString('id-ID')}
           </span>
         </div>
 
-        {/* Estimasi Biaya USD & IDR */}
+        {/* Biaya API Rupiah (OpenAI vs Gemini) */}
         <div className="p-4 sm:p-5 rounded-2xl bg-white dark:bg-[#0B0F17] border border-slate-200 dark:border-slate-800 shadow-xs space-y-1.5">
           <div className="flex items-center justify-between text-slate-500 dark:text-slate-400">
-            <span className="text-[10px] font-bold uppercase tracking-wider">Estimasi Biaya API</span>
+            <span className="text-[10px] font-bold uppercase tracking-wider">Total Biaya API (Rp)</span>
             <div className="h-7 w-7 rounded-lg bg-emerald-50 text-emerald-600 dark:bg-emerald-950/50 dark:text-emerald-400 flex items-center justify-center">
-              <DollarSign className="h-3.5 w-3.5" />
+              <Coins className="h-3.5 w-3.5" />
             </div>
           </div>
           <div className="text-2xl font-black text-emerald-600 dark:text-emerald-400 tracking-tight">
-            ${Number(summary?.totalCostUsd ?? 0).toFixed(4)}
+            Rp {Math.round(summary?.totalCostIdr ?? 0).toLocaleString('id-ID')}
           </div>
           <span className="text-[10px] text-slate-500 dark:text-slate-400 font-medium block">
-            Setara Rp {(summary?.totalCostIdr ?? 0).toLocaleString('id-ID')}
+            OpenAI: Rp {Math.round(summary?.openaiCostIdr ?? 0).toLocaleString('id-ID')} • Gemini: Rp{' '}
+            {Math.round(summary?.geminiCostIdr ?? 0).toLocaleString('id-ID')}
           </span>
         </div>
 
         {/* Total Operasi Generasi */}
         <div className="p-4 sm:p-5 rounded-2xl bg-white dark:bg-[#0B0F17] border border-slate-200 dark:border-slate-800 shadow-xs space-y-1.5">
           <div className="flex items-center justify-between text-slate-500 dark:text-slate-400">
-            <span className="text-[10px] font-bold uppercase tracking-wider">Generasi Berhasil</span>
+            <span className="text-[10px] font-bold uppercase tracking-wider">Generasi & Visual</span>
             <div className="h-7 w-7 rounded-lg bg-purple-50 text-purple-600 dark:bg-purple-950/50 dark:text-purple-400 flex items-center justify-center">
               <Sparkles className="h-3.5 w-3.5" />
             </div>
@@ -116,7 +123,7 @@ export function AiObservabilityKpis({ summary, langfuse }: AiObservabilityKpisPr
             {(summary?.totalGenerations ?? 0).toLocaleString('id-ID')}
           </div>
           <span className="text-[10px] text-slate-400 font-medium block">
-            Total eksekusi AI terverifikasi
+            Termasuk {(summary?.totalImagesGenerated ?? 0).toLocaleString('id-ID')} render gambar AI
           </span>
         </div>
 

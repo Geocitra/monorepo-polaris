@@ -9,9 +9,32 @@ describe('TenantUsageLedger & AiCostCalculator', () => {
     const costUsd = AiCostCalculator.calculateCostUsd(100000, 2);
     expect(costUsd).toBe(1.36);
 
-    // Kurs 16.250 * 1.36 = 22.100
-    const costIdr = AiCostCalculator.toIdr(costUsd);
-    expect(costIdr).toBe(22100);
+    // Kurs eksplisit 16.250 * 1.36 = 22.100, serta kurs dinamis menghasilkan nilai > 0
+    const costIdrFixed = AiCostCalculator.toIdr(costUsd, 16250);
+    expect(costIdrFixed).toBe(22100);
+    const costIdrDynamic = AiCostCalculator.toIdr(costUsd);
+    expect(costIdrDynamic).toBeGreaterThan(20000);
+  });
+
+  it('harus memisahkan provider OPENAI vs GEMINI dan mengestimasi token Bahasa Indonesia BPE dengan akurat', () => {
+    expect(AiCostCalculator.resolveProvider('gpt-4o')).toBe('OPENAI');
+    expect(AiCostCalculator.resolveProvider('gemini-2.5-flash')).toBe('GEMINI');
+    expect(AiCostCalculator.resolveProvider('imagen-3.0-generate-002')).toBe('GEMINI');
+    expect(AiCostCalculator.resolveProvider('local-guardrail')).toBe('SYSTEM');
+
+    const textId = 'Pemerintah daerah mengalokasikan anggaran infrastruktur pertanian berkelanjutan';
+    const bpeTokens = AiCostCalculator.estimateIndonesianTokens(textId);
+    const naiveTokens = Math.ceil(textId.length / 4);
+    expect(bpeTokens).toBeGreaterThan(naiveTokens);
+
+    const geminiDetail = AiCostCalculator.calculateDetailedModelCostUsd({
+      model: 'gemini-2.5-flash',
+      inputTokens: 10000,
+      outputTokens: 2000,
+      fxRateIdr: 16300,
+    });
+    expect(geminiDetail.provider).toBe('GEMINI');
+    expect(geminiDetail.totalCostIdr).toBeGreaterThan(0);
   });
 
   it('harus menghitung biaya granular per model secara presisi (calculateModelCostUsd)', () => {
@@ -59,5 +82,7 @@ describe('TenantUsageLedger & AiCostCalculator', () => {
     ledger.recordDalleGeneration();
     expect(ledger.dalleUsed).toBe(1);
     expect(ledger.estimatedCostUsd).toBeGreaterThan(0);
+    expect(ledger.isUnlimited()).toBe(false);
+    expect(ledger.getArticleRemaining()).toBe(11);
   });
 });

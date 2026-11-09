@@ -20,6 +20,8 @@ import {
   QuotaTransactionType,
   LiveChatSessionStatus,
   LiveChatCsatRating,
+  AiProvider,
+  QuotaConsumptionChannel,
 } from '../enums/index.js';
 
 // ==========================================
@@ -118,6 +120,21 @@ export interface QuotaBalanceDto {
   totalQuotaAllocated?: number;
   remainingQuota?: number;
   weeklyAllowanceLimit?: number;
+  weeklyUsed?: number;
+  weeklyRemaining?: number;
+  isPeriodExpired?: boolean;
+  fxRateApplied?: number;
+  fxRateSource?: string;
+  openaiInputTokens?: number;
+  openaiOutputTokens?: number;
+  openaiTotalTokens?: number;
+  openaiImageCalls?: number;
+  openaiCostIdr?: number;
+  geminiInputTokens?: number;
+  geminiOutputTokens?: number;
+  geminiTotalTokens?: number;
+  geminiImageCalls?: number;
+  geminiCostIdr?: number;
 }
 
 export interface CyclePriceItemDto {
@@ -613,6 +630,8 @@ export interface TenantWeeklyBriefQuotaDto {
   weeklyLimit: number;
   weeklyUsed: number;
   weeklyRemaining: number;
+  whatsappWeeklyUsed?: number;
+  webStudioWeeklyUsed?: number;
   totalQuotaAllocated: number;
   remainingQuota: number;
   currentPeriodEnd: string | null;
@@ -626,7 +645,10 @@ export interface TenantQuotaTransactionDto {
   id: string;
   tenantId: string;
   briefId?: string | null;
+  publicationId?: string | null;
+  ledgerId?: string | null;
   invoiceId?: string | null;
+  channel?: QuotaConsumptionChannel | string | null;
   referenceCode?: string | null;
   transactionType: QuotaTransactionType;
   amountDelta: number;

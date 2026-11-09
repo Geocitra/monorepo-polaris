@@ -3,6 +3,7 @@ import * as path from 'path';
 import * as dotenv from 'dotenv';
 import { GoogleGenAI } from '@google/genai';
 import { googleGenAiClient } from '../client.js';
+import { AiTelemetryService } from '../telemetry/ai-telemetry.service.js';
 import type { ArtCollageCopy } from '../creative-poster/art-collage/art-collage.types.js';
 
 export interface Img2ImgPassOptions {
@@ -354,6 +355,15 @@ export class Img2ImgPassAdapter {
       const base64Draft = options.imageBuffer.toString('base64');
 
       for (const modelName of modelsToTry) {
+        const telemetry = AiTelemetryService.startTrace({
+          operation: 'poster-gemini-relayout-pass',
+          model: modelName,
+          tenantId: options.tenantId,
+          metadata: {
+            archetype: options.archetype || 'DEFAULT',
+            layoutVariant,
+          },
+        });
         try {
           console.log(
             `[GeminiRelayoutPass] Mengirim draf + transkrip anti-duplikasi ke ${modelName} untuk penyempurnaan layout...`
@@ -383,11 +393,20 @@ export class Img2ImgPassAdapter {
             } as any,
           });
 
+          const usage = AiTelemetryService.extractGeminiUsage(res, relayoutPrompt);
           const parts = res.candidates?.[0]?.content?.parts || [];
           for (const p of parts) {
             if (p.inlineData && p.inlineData.data) {
               const outBuffer = Buffer.from(p.inlineData.data, 'base64');
               if (outBuffer.length > 2048) {
+                await telemetry.endTrace({
+                  inputTokens: usage.inputTokens,
+                  outputTokens: usage.outputTokens,
+                  status: 'SUCCESS',
+                  actualModel: modelName,
+                  imageCalls: 1,
+                  outputPreview: { bytes: outBuffer.length, archetype: options.archetype },
+                });
                 console.log(
                   `[GeminiRelayoutPass] Berhasil menyempurnakan layout bebas duplikasi via ${modelName} (${outBuffer.length} bytes, ${Date.now() - startTime}ms)`
                 );
@@ -401,7 +420,21 @@ export class Img2ImgPassAdapter {
               }
             }
           }
+          await telemetry.endTrace({
+            inputTokens: usage.inputTokens,
+            outputTokens: usage.outputTokens,
+            status: 'FAILED',
+            actualModel: modelName,
+            errorMessage: 'Output gambar Gemini relayout kosong atau di bawah batas ukuran minimum.',
+          });
         } catch (gemErr: any) {
+          await telemetry.endTrace({
+            inputTokens: 0,
+            outputTokens: 0,
+            status: 'FAILED',
+            actualModel: modelName,
+            errorMessage: gemErr.message || String(gemErr),
+          });
           console.warn(
             `[GeminiRelayoutPass] Model ${modelName} gagal (${gemErr.message}), mencoba model berikutnya...`
           );

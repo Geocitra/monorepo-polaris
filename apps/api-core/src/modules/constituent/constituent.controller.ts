@@ -7,6 +7,7 @@ import {
   Param, 
   HttpCode, 
   HttpStatus, 
+  Req,
   UseGuards 
 } from '@nestjs/common';
 import { ConstituentService } from './constituent.service.js';
@@ -15,17 +16,18 @@ import { Public } from '../../common/decorators/public.decorator.js';
 import { CurrentTenant, AuthenticatedTenantPayload } from '../../common/decorators/current-tenant.decorator.js';
 import { SubscriptionGuard } from '../../common/guards/subscription.guard.js';
 import { TokenCircuitBreakerGuard } from '../../common/guards/token-circuit-breaker.guard.js';
+import { IpThrottleGuard } from '../public-chat/guards/ip-throttle.guard.js';
 
 @Controller('constituent')
 export class ConstituentController {
   constructor(private readonly constituentService: ConstituentService) {}
 
   @Public()
-  @UseGuards(TokenCircuitBreakerGuard)
+  @UseGuards(IpThrottleGuard, TokenCircuitBreakerGuard)
   @Post('ask')
   @HttpCode(HttpStatus.OK)
-  async askCivic(@Body() dto: AskCivicQuestionDto) {
-    return await this.constituentService.askCivicAssistant(dto);
+  async askCivic(@Body() dto: AskCivicQuestionDto, @Req() req?: any) {
+    return await this.constituentService.askCivicAssistant(dto, req?.visitorIpHash);
   }
 
   @Public()

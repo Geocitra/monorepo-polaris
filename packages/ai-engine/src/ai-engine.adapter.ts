@@ -41,6 +41,7 @@ export class OpenAIAIEngineAdapter implements ILLMProviderPort {
       const telemetry = AiTelemetryService.startTrace({
         operation: 'public-concierge-chat',
         model: 'heuristic-guardrail',
+        visitorIpHash: params.visitorIpHash,
         metadata: { rejectionReason: inspection.rejectionReason },
       });
 
@@ -64,6 +65,7 @@ export class OpenAIAIEngineAdapter implements ILLMProviderPort {
     const telemetry = AiTelemetryService.startTrace({
       operation: 'public-concierge-chat',
       model: 'gpt-4o-mini',
+      visitorIpHash: params.visitorIpHash,
       metadata: { rawInputLength: params.userMessage.length },
     });
 
@@ -200,7 +202,7 @@ export class OpenAIAIEngineAdapter implements ILLMProviderPort {
         }
 
         await telemetry.endTrace({
-          inputTokens: Math.max(1, Math.ceil(englishPrompt.length / 4)),
+          inputTokens: 0,
           outputTokens: 0,
           status: 'SUCCESS',
           actualModel: activeModel,
@@ -363,6 +365,7 @@ export class OpenAIAIEngineAdapter implements ILLMProviderPort {
       operation: 'generate-civic-answer-grounded',
       model: 'gpt-4o-mini',
       tenantId: params.tenantId,
+      visitorIpHash: params.visitorIpHash,
       metadata: { representative: params.representativeName, dapil: params.dapilName },
     });
 

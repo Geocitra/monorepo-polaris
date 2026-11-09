@@ -346,6 +346,8 @@ export class StudioInfographicGenerationHandler {
             topic: cleanPrompt,
             copy: artCollage.copy,
             layoutVariant: data.layoutVariant,
+            tenantId,
+            publicationId,
           });
 
           console.log(
@@ -425,6 +427,8 @@ export class StudioInfographicGenerationHandler {
                 topic: cleanPrompt,
                 copy: artCollage.copy,
                 layoutVariant: data.layoutVariant,
+                tenantId,
+                publicationId,
               });
 
               console.log(

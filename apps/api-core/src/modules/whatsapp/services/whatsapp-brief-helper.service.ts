@@ -19,6 +19,7 @@ import {
   contentBriefs,
   contentBriefMessages,
   tenantQuotaWallets,
+  tenantQuotaTransactions,
   withTenantContext,
 } from '@polaris/database';
 import {
@@ -247,6 +248,111 @@ export class WhatsAppBriefHelperService implements OnModuleInit {
         CREATE INDEX IF NOT EXISTS idx_quota_tx_tenant_created ON tenant_quota_transactions(tenant_id, created_at DESC);
         CREATE INDEX IF NOT EXISTS idx_quota_tx_brief ON tenant_quota_transactions(brief_id);
 
+        ALTER TABLE tenant_quota_transactions ADD COLUMN IF NOT EXISTS publication_id UUID REFERENCES content_publications(id) ON DELETE SET NULL;
+        ALTER TABLE tenant_quota_transactions ADD COLUMN IF NOT EXISTS ledger_id UUID REFERENCES tenant_quota_ledgers(id) ON DELETE SET NULL;
+        ALTER TABLE tenant_quota_transactions ADD COLUMN IF NOT EXISTS channel VARCHAR(30) NOT NULL DEFAULT 'WHATSAPP';
+        ALTER TABLE tenant_quota_transactions ADD COLUMN IF NOT EXISTS weekly_quota_period VARCHAR(15);
+        CREATE INDEX IF NOT EXISTS idx_quota_tx_publication ON tenant_quota_transactions(publication_id);
+        CREATE INDEX IF NOT EXISTS idx_quota_tx_ledger ON tenant_quota_transactions(ledger_id);
+        CREATE INDEX IF NOT EXISTS idx_quota_tx_tenant_week ON tenant_quota_transactions(tenant_id, weekly_quota_period);
+
+        ALTER TABLE content_publications ADD COLUMN IF NOT EXISTS revision_used INTEGER NOT NULL DEFAULT 0;
+        ALTER TABLE content_publications ADD COLUMN IF NOT EXISTS revision_limit INTEGER NOT NULL DEFAULT 3;
+        ALTER TABLE content_publications ADD COLUMN IF NOT EXISTS quota_cost_deducted INTEGER NOT NULL DEFAULT 1;
+        ALTER TABLE content_publications ADD COLUMN IF NOT EXISTS generation_checkpoints JSONB NOT NULL DEFAULT '{}'::jsonb;
+
+        ALTER TABLE tenant_quota_ledgers ADD COLUMN IF NOT EXISTS openai_input_tokens BIGINT NOT NULL DEFAULT 0;
+        ALTER TABLE tenant_quota_ledgers ADD COLUMN IF NOT EXISTS openai_output_tokens BIGINT NOT NULL DEFAULT 0;
+        ALTER TABLE tenant_quota_ledgers ADD COLUMN IF NOT EXISTS openai_total_tokens BIGINT NOT NULL DEFAULT 0;
+        ALTER TABLE tenant_quota_ledgers ADD COLUMN IF NOT EXISTS openai_image_calls INTEGER NOT NULL DEFAULT 0;
+        ALTER TABLE tenant_quota_ledgers ADD COLUMN IF NOT EXISTS openai_cost_idr BIGINT NOT NULL DEFAULT 0;
+        ALTER TABLE tenant_quota_ledgers ADD COLUMN IF NOT EXISTS gemini_input_tokens BIGINT NOT NULL DEFAULT 0;
+        ALTER TABLE tenant_quota_ledgers ADD COLUMN IF NOT EXISTS gemini_output_tokens BIGINT NOT NULL DEFAULT 0;
+        ALTER TABLE tenant_quota_ledgers ADD COLUMN IF NOT EXISTS gemini_total_tokens BIGINT NOT NULL DEFAULT 0;
+        ALTER TABLE tenant_quota_ledgers ADD COLUMN IF NOT EXISTS gemini_image_calls INTEGER NOT NULL DEFAULT 0;
+        ALTER TABLE tenant_quota_ledgers ADD COLUMN IF NOT EXISTS gemini_cost_idr BIGINT NOT NULL DEFAULT 0;
+        ALTER TABLE tenant_quota_ledgers ADD COLUMN IF NOT EXISTS total_cost_idr BIGINT NOT NULL DEFAULT 0;
+
+        CREATE TABLE IF NOT EXISTS ai_trace_logs (
+          id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+          trace_id VARCHAR(100) NOT NULL,
+          tenant_id UUID REFERENCES tenant_members(id) ON DELETE SET NULL,
+          publication_id UUID REFERENCES content_publications(id) ON DELETE SET NULL,
+          ledger_id UUID REFERENCES tenant_quota_ledgers(id) ON DELETE SET NULL,
+          provider VARCHAR(20) NOT NULL DEFAULT 'OPENAI',
+          operation VARCHAR(100) NOT NULL,
+          model VARCHAR(50) NOT NULL,
+          input_tokens INTEGER NOT NULL DEFAULT 0,
+          output_tokens INTEGER NOT NULL DEFAULT 0,
+          total_tokens INTEGER NOT NULL DEFAULT 0,
+          image_calls INTEGER NOT NULL DEFAULT 0,
+          latency_ms INTEGER NOT NULL DEFAULT 0,
+          cost_usd NUMERIC(10, 5) NOT NULL DEFAULT 0,
+          fx_rate_applied NUMERIC(10, 2) NOT NULL DEFAULT 16350.00,
+          cost_idr BIGINT NOT NULL DEFAULT 0,
+          visitor_ip_hash VARCHAR(64),
+          status VARCHAR(30) NOT NULL DEFAULT 'SUCCESS',
+          error_message TEXT,
+          created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+        );
+
+        ALTER TABLE ai_trace_logs ADD COLUMN IF NOT EXISTS publication_id UUID REFERENCES content_publications(id) ON DELETE SET NULL;
+        ALTER TABLE ai_trace_logs ADD COLUMN IF NOT EXISTS ledger_id UUID REFERENCES tenant_quota_ledgers(id) ON DELETE SET NULL;
+        ALTER TABLE ai_trace_logs ADD COLUMN IF NOT EXISTS provider VARCHAR(20) NOT NULL DEFAULT 'OPENAI';
+        ALTER TABLE ai_trace_logs ADD COLUMN IF NOT EXISTS image_calls INTEGER NOT NULL DEFAULT 0;
+        ALTER TABLE ai_trace_logs ADD COLUMN IF NOT EXISTS fx_rate_applied NUMERIC(10, 2) NOT NULL DEFAULT 16350.00;
+        ALTER TABLE ai_trace_logs ADD COLUMN IF NOT EXISTS cost_idr BIGINT NOT NULL DEFAULT 0;
+        ALTER TABLE ai_trace_logs ADD COLUMN IF NOT EXISTS visitor_ip_hash VARCHAR(64);
+
+        CREATE TABLE IF NOT EXISTS platform_token_pools (
+          id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+          provider VARCHAR(20) NOT NULL DEFAULT 'OPENAI',
+          total_budget_usd NUMERIC(10, 2) NOT NULL DEFAULT 61.16,
+          total_budget_idr BIGINT NOT NULL DEFAULT 1000000,
+          consumed_budget_idr BIGINT NOT NULL DEFAULT 0,
+          total_tokens_allocated BIGINT NOT NULL DEFAULT 10000000,
+          total_tokens_consumed BIGINT NOT NULL DEFAULT 0,
+          total_images_generated INTEGER NOT NULL DEFAULT 0,
+          alert_threshold_percent INTEGER NOT NULL DEFAULT 20,
+          circuit_state VARCHAR(20) NOT NULL DEFAULT 'CLOSED',
+          last_alert_sent_at TIMESTAMPTZ,
+          last_topup_date TIMESTAMPTZ DEFAULT now(),
+          updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
+        );
+
+        ALTER TABLE platform_token_pools ADD COLUMN IF NOT EXISTS provider VARCHAR(20) NOT NULL DEFAULT 'OPENAI';
+        ALTER TABLE platform_token_pools ADD COLUMN IF NOT EXISTS total_budget_idr BIGINT NOT NULL DEFAULT 1000000;
+        ALTER TABLE platform_token_pools ADD COLUMN IF NOT EXISTS consumed_budget_idr BIGINT NOT NULL DEFAULT 0;
+        ALTER TABLE platform_token_pools ADD COLUMN IF NOT EXISTS total_images_generated INTEGER NOT NULL DEFAULT 0;
+
+        DO $$ BEGIN
+          ALTER TABLE platform_token_pools ADD CONSTRAINT unq_platform_token_pools_provider UNIQUE (provider);
+        EXCEPTION WHEN duplicate_table OR duplicate_object THEN NULL;
+        END $$;
+
+        INSERT INTO platform_token_pools (provider, total_budget_usd, total_budget_idr, consumed_budget_idr, total_tokens_allocated, total_tokens_consumed, total_images_generated, alert_threshold_percent, circuit_state)
+        VALUES
+          ('OPENAI', 61.16, 1000000, 0, 10000000, 0, 0, 20, 'CLOSED'),
+          ('GEMINI', 61.16, 1000000, 0, 25000000, 0, 0, 20, 'CLOSED')
+        ON CONFLICT (provider) DO NOTHING;
+
+        CREATE TABLE IF NOT EXISTS platform_topup_histories (
+          id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+          pool_id UUID REFERENCES platform_token_pools(id) ON DELETE SET NULL,
+          provider VARCHAR(20) NOT NULL DEFAULT 'OPENAI',
+          amount_usd NUMERIC(10, 2) NOT NULL,
+          amount_idr NUMERIC(12, 2) NOT NULL,
+          fx_rate_applied NUMERIC(10, 2) NOT NULL DEFAULT 16350.00,
+          tokens_added BIGINT NOT NULL,
+          payment_reference VARCHAR(150) NOT NULL,
+          notes TEXT,
+          created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+        );
+
+        ALTER TABLE platform_topup_histories ADD COLUMN IF NOT EXISTS pool_id UUID REFERENCES platform_token_pools(id) ON DELETE SET NULL;
+        ALTER TABLE platform_topup_histories ADD COLUMN IF NOT EXISTS provider VARCHAR(20) NOT NULL DEFAULT 'OPENAI';
+        ALTER TABLE platform_topup_histories ADD COLUMN IF NOT EXISTS fx_rate_applied NUMERIC(10, 2) NOT NULL DEFAULT 16350.00;
+
         ALTER TABLE subscription_price_matrices ADD COLUMN IF NOT EXISTS quota_requests INTEGER NOT NULL DEFAULT 12;
 
         CREATE TABLE IF NOT EXISTS content_brief_messages (
@@ -300,11 +406,32 @@ export class WhatsAppBriefHelperService implements OnModuleInit {
         )
       );
 
-    const weeklyUsed = rows
+    const whatsappWeeklyUsed = rows
       .filter((r) => (QUOTA_CONSUMING_STATUSES as readonly string[]).includes(r.status))
       .reduce((acc, r) => acc + (r.quotaCostDeducted || 1), 0);
 
     const queuedNextWeekCount = rows.filter((r) => r.status === 'QUEUED_NEXT_WEEK').length;
+
+    const studioTxRows = await db
+      .select({
+        amountDelta: tenantQuotaTransactions.amountDelta,
+        briefId: tenantQuotaTransactions.briefId,
+        channel: tenantQuotaTransactions.channel,
+      })
+      .from(tenantQuotaTransactions)
+      .where(
+        and(
+          eq(tenantQuotaTransactions.tenantId, tenantId),
+          eq(tenantQuotaTransactions.weeklyQuotaPeriod, currentWeek)
+        )
+      );
+
+    const rawWebStudioDelta = studioTxRows
+      .filter((tx) => !tx.briefId && tx.channel === 'WEB_STUDIO')
+      .reduce((acc, tx) => acc + (-1 * (Number(tx.amountDelta) || 0)), 0);
+
+    const webStudioWeeklyUsed = Math.max(0, rawWebStudioDelta);
+    const weeklyUsed = whatsappWeeklyUsed + webStudioWeeklyUsed;
 
     const [wallet] = await db
       .select()
@@ -325,6 +452,8 @@ export class WhatsAppBriefHelperService implements OnModuleInit {
       weeklyLimit,
       weeklyUsed,
       weeklyRemaining: Math.max(0, weeklyLimit - weeklyUsed),
+      whatsappWeeklyUsed,
+      webStudioWeeklyUsed,
       totalQuotaAllocated,
       remainingQuota,
       currentPeriodEnd,

@@ -65,13 +65,15 @@ export class GenerateArticleRequestDto {
 
   @IsOptional()
   @IsString()
-  @IsOptional()
-  @IsString()
   taskType?: 'FULL_CAMPAIGN' | 'INFOGRAPHIC_ONLY' | 'ARTICLE_ONLY' | 'REGENERATE_POSTER' | 'POSTER_ONLY';
 
   @IsOptional()
   @IsString()
   briefId?: string;
+
+  @IsOptional()
+  @IsBoolean()
+  isUrgentOverquota?: boolean;
 
   @IsOptional()
   @IsString()

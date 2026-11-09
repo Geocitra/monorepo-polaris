@@ -1,4 +1,4 @@
-import { Body, Controller, HttpCode, HttpStatus, Post, UseGuards } from '@nestjs/common';
+import { Body, Controller, HttpCode, HttpStatus, Post, Req, UseGuards } from '@nestjs/common';
 import { Public } from '../../common/decorators/public.decorator.js';
 import { IpThrottleGuard } from './guards/ip-throttle.guard.js';
 import { TokenCircuitBreakerGuard } from '../../common/guards/token-circuit-breaker.guard.js';
@@ -14,7 +14,10 @@ export class PublicChatController {
     @UseGuards(IpThrottleGuard, TokenCircuitBreakerGuard)
     @Post()
     @HttpCode(HttpStatus.OK)
-    chatWithConcierge(@Body() dto: SendPublicChatDto): Promise<PublicChatResponseDto> {
-        return this.publicChatService.processVisitorMessage(dto);
+    chatWithConcierge(
+        @Body() dto: SendPublicChatDto,
+        @Req() req?: any,
+    ): Promise<PublicChatResponseDto> {
+        return this.publicChatService.processVisitorMessage(dto, req?.visitorIpHash);
     }
 }

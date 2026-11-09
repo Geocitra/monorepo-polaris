@@ -1,5 +1,6 @@
 import { GoogleGenAI } from '@google/genai';
 import { googleGenAiClient, openaiClient } from '../../client.js';
+import { AiTelemetryService } from '../../telemetry/ai-telemetry.service.js';
 import type { ArtCollageCopy } from '../art-collage/art-collage.types.js';
 import {
   db,
@@ -94,9 +95,11 @@ export class PosterVisionCritic {
     topic: string;
     copy: ArtCollageCopy;
     layoutVariant?: number;
+    tenantId?: string;
+    publicationId?: string;
   }): Promise<CriticEvaluationResult> {
     const startTime = Date.now();
-    const { imageBuffer, archetype, topic, layoutVariant = 0 } = params;
+    const { imageBuffer, archetype, topic, layoutVariant = 0, tenantId, publicationId } = params;
 
     const geminiApiKey =
       process.env.GEMINI_API_KEY ||
@@ -212,10 +215,17 @@ Return ONLY raw JSON (no markdown formatting, no code fence):
 
     // 1. Coba Gemini Vision terlebih dahulu
     if (geminiApiKey) {
+      const visionModel =
+        process.env.GEMINI_VISION_MODEL || process.env.GEMINI_TEXT_MODEL || 'gemini-3.8-flash';
+      const telemetry = AiTelemetryService.startTrace({
+        operation: 'poster-vision-critic',
+        model: visionModel,
+        tenantId,
+        publicationId,
+        inputPayload: { archetype, topic, layoutVariant },
+      });
       try {
         const client = googleGenAiClient || new GoogleGenAI({ apiKey: geminiApiKey });
-        const visionModel =
-          process.env.GEMINI_VISION_MODEL || process.env.GEMINI_TEXT_MODEL || 'gemini-3.8-flash';
         const res = await client.models.generateContent({
           model: visionModel,
           contents: [
@@ -237,6 +247,13 @@ Return ONLY raw JSON (no markdown formatting, no code fence):
         });
 
         const rawText = res.text || '';
+        const usage = AiTelemetryService.extractGeminiUsage(res, criticPrompt, rawText);
+        await telemetry.endTrace({
+          inputTokens: usage.inputTokens + 258,
+          outputTokens: usage.outputTokens,
+          status: 'SUCCESS',
+          outputSummary: rawText.slice(0, 200),
+        });
         const parsed = safeJsonParse(rawText);
 
         const durationMs = Date.now() - startTime;
@@ -280,12 +297,25 @@ Return ONLY raw JSON (no markdown formatting, no code fence):
           durationMs,
         };
       } catch (geminiErr: any) {
+        await telemetry.endTrace({
+          inputTokens: 0,
+          outputTokens: 0,
+          status: 'FAILED',
+          errorMessage: geminiErr?.message || 'Gemini vision critic failed',
+        });
         console.warn(`[PosterVisionCritic] Gemini vision audit gagal, mencoba fallback: ${geminiErr.message}`);
       }
     }
 
     // 2. Fallback OpenAI Vision jika Gemini gagal
     if (openaiClient) {
+      const telemetry = AiTelemetryService.startTrace({
+        operation: 'poster-vision-critic-fallback',
+        model: 'gpt-4o-mini',
+        tenantId,
+        publicationId,
+        inputPayload: { archetype, topic, layoutVariant },
+      });
       try {
         const completion = await openaiClient.chat.completions.create({
           model: 'gpt-4o-mini',
@@ -310,6 +340,12 @@ Return ONLY raw JSON (no markdown formatting, no code fence):
         });
 
         const rawContent = completion.choices[0]?.message?.content || '{}';
+        await telemetry.endTrace({
+          inputTokens: completion.usage?.prompt_tokens || 800,
+          outputTokens: completion.usage?.completion_tokens || 250,
+          status: 'SUCCESS',
+          outputSummary: rawContent.slice(0, 200),
+        });
         const parsed = safeJsonParse(rawContent);
         const durationMs = Date.now() - startTime;
         const score = Math.max(0, Math.min(100, Number(parsed.overallScore) || 85));

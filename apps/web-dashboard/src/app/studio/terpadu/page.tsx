@@ -12,6 +12,7 @@ import { Loader2, ArrowLeft, Sparkles, Clock, Plus, History, RotateCcw, Eye } fr
 
 import { CampaignForm, AttachedFileItem } from '@/components/studio/terpadu/CampaignForm';
 import { CampaignPreview } from '@/components/studio/terpadu/CampaignPreview';
+import { StudioQuotaStatusBar } from '@/components/studio/StudioQuotaStatusBar';
 import { TerpaduSessionDrawer, StudioSessionItem } from '@/components/studio/terpadu/TerpaduSessionDrawer';
 import type { StudioChatMessage } from '@/components/studio/terpadu/TerpaduChatCopilot';
 import { TerpaduVersionDrawer, StudioIteration } from '@/components/studio/terpadu/TerpaduVersionDrawer';
@@ -60,6 +61,7 @@ function KampanyeTerpaduContent() {
   const [previewVersion, setPreviewVersion] = useState<StudioIteration | null>(null);
   const [versionDrawerOpen, setVersionDrawerOpen] = useState(false);
   const [refining, setRefining] = useState(false);
+  const [isUrgentOverquota, setIsUrgentOverquota] = useState(false);
 
   const isUnpaid = billing?.subscriptionStatus !== 'ACTIVE';
 
@@ -319,6 +321,7 @@ function KampanyeTerpaduContent() {
           targetLength: lengthWordMap[selectedLength],
           writingStyle: selectedStyle,
           generateDallePoster: false,
+          isUrgentOverquota,
         }),
       });
 
@@ -566,6 +569,7 @@ function KampanyeTerpaduContent() {
           targetLength: lengthWordMap[selectedLength],
           writingStyle: selectedStyle,
           generateDallePoster: true,
+          isUrgentOverquota,
           attachments: attachedFiles.map((f) => ({
             name: f.name,
             type: f.type,
@@ -831,6 +835,13 @@ function KampanyeTerpaduContent() {
               </Button>
             </div>
           </div>
+
+          {/* BAR STATUS KUOTA PAKET & JATAH MINGGUAN OMNICHANNEL */}
+          <StudioQuotaStatusBar
+            quota={billing?.quota}
+            isUrgentOverquota={isUrgentOverquota}
+            onToggleUrgentOverquota={setIsUrgentOverquota}
+          />
 
           {/* BANNER NOTIFIKASI SAAT PRATINJAU VERSI LAMPAU */}
           {previewVersion && (

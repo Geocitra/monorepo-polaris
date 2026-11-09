@@ -124,4 +124,26 @@ describe('PlatformTokenPool Entity & State Machine (GRASP Information Expert)', 
     expect(() => pool.recordTopup(0, 1_000_000)).toThrow('[DomainInvariantError]');
     expect(() => pool.recordTopup(-10, 1_000_000)).toThrow('[DomainInvariantError]');
   });
+
+  it('harus mendukung pemisahan provider (OPENAI vs GEMINI) dan akuntansi berbasis Rupiah (IDR)', () => {
+    const geminiPool = new PlatformTokenPool({
+      id: 'pool-gemini',
+      provider: 'GEMINI',
+      totalBudgetIdr: 1_000_000,
+      consumedBudgetIdr: 250_000,
+      totalBudgetUsd: 61.35,
+      totalTokensAllocated: 10_000_000,
+      totalTokensConsumed: 1_500_000,
+      totalImagesGenerated: 15,
+      alertThresholdPercent: 20,
+    });
+
+    expect(geminiPool.provider).toBe('GEMINI');
+    expect(geminiPool.calculateRemainingIdr()).toBe(750_000);
+    expect(geminiPool.calculateRemainingPercentIdr()).toBe(75);
+
+    geminiPool.recordTopupIdr(500_000, 16300, 5_000_000);
+    expect(geminiPool.totalBudgetIdr).toBe(1_500_000);
+    expect(geminiPool.calculateRemainingIdr()).toBe(1_250_000);
+  });
 });

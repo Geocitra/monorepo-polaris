@@ -25,11 +25,16 @@ export interface QuotaSpeedometerCardProps {
   weeklyUsed?: number;
   currentPeriodEnd?: string | null;
   isSubActive: boolean;
+  openaiTotalTokens?: number;
+  openaiImagesUsed?: number;
+  geminiTotalTokens?: number;
+  geminiImagesUsed?: number;
   onTopUpClick?: () => void;
 }
 
 interface QuotaTransaction {
   id: string;
+  channel?: string;
   transactionType: string;
   amountDelta: number;
   balanceAfter: number;
@@ -45,6 +50,10 @@ export function QuotaSpeedometerCard({
   weeklyUsed = 0,
   currentPeriodEnd,
   isSubActive,
+  openaiTotalTokens = 0,
+  openaiImagesUsed = 0,
+  geminiTotalTokens = 0,
+  geminiImagesUsed = 0,
   onTopUpClick,
 }: QuotaSpeedometerCardProps) {
   const [historyModalOpen, setHistoryModalOpen] = useState(false);
@@ -117,7 +126,7 @@ export function QuotaSpeedometerCard({
               </span>
             </div>
             <p className="text-xs text-slate-500 dark:text-slate-400 font-medium mt-0.5">
-              Volume kuota request dapat dipakai untuk artikel kajian, poster infografis, dan caption media sosial.
+              Kuota terpadu untuk pengajuan via WhatsApp Bot maupun pembuatan langsung di Web Studio (Artikel, Infografis, & Poster).
             </p>
           </div>
         </div>
@@ -271,6 +280,47 @@ export function QuotaSpeedometerCard({
         </div>
       </div>
 
+      {/* 2B. RINCIAN KONSUMSI DUAL-AI (OPENAI VS GOOGLE GEMINI) */}
+      <div className="pt-4 border-t border-slate-100 dark:border-slate-800/80 grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+        <div className="p-3.5 rounded-2xl bg-emerald-50/40 dark:bg-emerald-950/20 border border-emerald-200/60 dark:border-emerald-900/50 flex items-center justify-between">
+          <div>
+            <span className="text-[10px] font-black uppercase tracking-wider text-emerald-700 dark:text-emerald-300 block">
+              Mesin OpenAI (GPT-4o & DALL-E 3)
+            </span>
+            <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">
+              Sintesis naskah kebijakan 5-bab, riset &amp; RAG
+            </p>
+          </div>
+          <div className="text-right font-mono">
+            <div className="text-sm font-black text-slate-900 dark:text-white">
+              {openaiTotalTokens.toLocaleString('id-ID')} tok
+            </div>
+            <div className="text-[10px] font-bold text-emerald-600 dark:text-emerald-400">
+              {openaiImagesUsed} visual DALL-E
+            </div>
+          </div>
+        </div>
+
+        <div className="p-3.5 rounded-2xl bg-indigo-50/40 dark:bg-indigo-950/20 border border-indigo-200/60 dark:border-indigo-900/50 flex items-center justify-between">
+          <div>
+            <span className="text-[10px] font-black uppercase tracking-wider text-indigo-700 dark:text-indigo-300 block">
+              Mesin Google Gemini (Flash & Imagen 3)
+            </span>
+            <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">
+              Ekstraksi bukti, OCR dokumen, kanvas infografis &amp; relayout
+            </p>
+          </div>
+          <div className="text-right font-mono">
+            <div className="text-sm font-black text-slate-900 dark:text-white">
+              {geminiTotalTokens.toLocaleString('id-ID')} tok
+            </div>
+            <div className="text-[10px] font-bold text-indigo-600 dark:text-indigo-400">
+              {geminiImagesUsed} visual Imagen
+            </div>
+          </div>
+        </div>
+      </div>
+
       {/* 3. MODAL BUKU BESAR RIWAYAT KUOTA (IMMUTABLE LEDGER) */}
       {historyModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs animate-in fade-in duration-150">
@@ -326,6 +376,11 @@ export function QuotaSpeedometerCard({
                             >
                               {badge.label}
                             </span>
+                            {tx.channel && (
+                              <span className="px-2 py-0.5 rounded-md text-[9.5px] font-bold uppercase bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300">
+                                {tx.channel === 'WEB_STUDIO' ? 'Web Studio' : tx.channel === 'WHATSAPP' ? 'WhatsApp' : tx.channel}
+                              </span>
+                            )}
                             {tx.referenceCode && (
                               <span className="font-mono text-[11px] font-bold text-slate-500 dark:text-slate-400">
                                 #{tx.referenceCode}

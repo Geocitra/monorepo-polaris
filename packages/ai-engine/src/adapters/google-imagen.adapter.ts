@@ -124,7 +124,7 @@ export class GoogleImagenAdapter {
       const forbiddenLayoutStr = forbiddenLayoutTerms.join(', ');
 
       let activeModel = preferredModel;
-      let usageTokens = { inputTokens: Math.max(1, Math.ceil(refinedPrompt.length / 4)), outputTokens: 0 };
+      let usageTokens = { inputTokens: 0, outputTokens: 0 };
 
       try {
         activeModel = studioImageModel;
@@ -244,7 +244,7 @@ export class GoogleImagenAdapter {
       mimeType: mime,
     });
 
-    let usageTokens = { inputTokens: Math.max(1, Math.ceil(params.prompt.length / 4)), outputTokens: 0 };
+    let usageTokens = { inputTokens: 0, outputTokens: 0 };
 
     // Jalur 1: Gemini multimodal image (prompt + referensi gaya opsional)
     const tryGemini = async (withReference: boolean) => {

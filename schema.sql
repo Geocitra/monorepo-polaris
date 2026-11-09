@@ -281,6 +281,17 @@ CREATE TABLE IF NOT EXISTS tenant_quota_ledgers (
   dalle_used INTEGER NOT NULL DEFAULT 0,
   total_tokens_consumed BIGINT NOT NULL DEFAULT 0,
   estimated_cost_usd NUMERIC(10, 4) NOT NULL DEFAULT 0.0000,
+  openai_input_tokens BIGINT NOT NULL DEFAULT 0,
+  openai_output_tokens BIGINT NOT NULL DEFAULT 0,
+  openai_total_tokens BIGINT NOT NULL DEFAULT 0,
+  openai_image_calls INTEGER NOT NULL DEFAULT 0,
+  openai_cost_idr BIGINT NOT NULL DEFAULT 0,
+  gemini_input_tokens BIGINT NOT NULL DEFAULT 0,
+  gemini_output_tokens BIGINT NOT NULL DEFAULT 0,
+  gemini_total_tokens BIGINT NOT NULL DEFAULT 0,
+  gemini_image_calls INTEGER NOT NULL DEFAULT 0,
+  gemini_cost_idr BIGINT NOT NULL DEFAULT 0,
+  total_cost_idr BIGINT NOT NULL DEFAULT 0,
   created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
   updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
   CONSTRAINT unq_tenant_month UNIQUE (tenant_id, billing_cycle_month)
@@ -299,25 +310,6 @@ CREATE TABLE IF NOT EXISTS tenant_quota_wallets (
 
 CREATE INDEX IF NOT EXISTS idx_quota_wallet_tenant 
   ON tenant_quota_wallets (tenant_id);
-
-CREATE TABLE IF NOT EXISTS tenant_quota_transactions (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  tenant_id UUID NOT NULL REFERENCES tenant_members(id) ON DELETE CASCADE,
-  brief_id UUID REFERENCES content_briefs(id) ON DELETE SET NULL,
-  invoice_id UUID REFERENCES invoice_transactions(id) ON DELETE SET NULL,
-  reference_code VARCHAR(100),
-  transaction_type quota_transaction_type_enum NOT NULL,
-  amount_delta INTEGER NOT NULL,
-  balance_after INTEGER NOT NULL,
-  notes TEXT,
-  created_at TIMESTAMPTZ NOT NULL DEFAULT now()
-);
-
-CREATE INDEX IF NOT EXISTS idx_quota_tx_tenant_created 
-  ON tenant_quota_transactions (tenant_id, created_at DESC);
-
-CREATE INDEX IF NOT EXISTS idx_quota_tx_brief 
-  ON tenant_quota_transactions (brief_id);
 
 -- 5. BOUNDED CONTEXT: CMS & MICROSITE
 CREATE TABLE IF NOT EXISTS portal_configs (
@@ -406,6 +398,10 @@ CREATE TABLE IF NOT EXISTS content_publications (
   research_job_id UUID REFERENCES research_jobs(id) ON DELETE SET NULL,
   created_by_operator_id UUID REFERENCES system_admins(id) ON DELETE SET NULL,
   created_context content_creation_context_enum NOT NULL DEFAULT 'MEMBER',
+  revision_used INTEGER NOT NULL DEFAULT 0,
+  revision_limit INTEGER NOT NULL DEFAULT 3,
+  quota_cost_deducted INTEGER NOT NULL DEFAULT 1,
+  generation_checkpoints JSONB NOT NULL DEFAULT '{}'::jsonb,
   published_at TIMESTAMPTZ,
   created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
   updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
@@ -694,3 +690,98 @@ CREATE TABLE IF NOT EXISTS content_brief_messages (
 );
 
 CREATE INDEX IF NOT EXISTS idx_content_brief_messages_brief ON content_brief_messages(brief_id, created_at ASC);
+
+-- 11. BOUNDED CONTEXT: OMNICHANNEL QUOTA LEDGER, AI TELEMETRY & DUAL-PROVIDER TOKEN POOLS (IDR)
+CREATE TABLE IF NOT EXISTS tenant_quota_transactions (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  tenant_id UUID NOT NULL REFERENCES tenant_members(id) ON DELETE CASCADE,
+  brief_id UUID REFERENCES content_briefs(id) ON DELETE SET NULL,
+  publication_id UUID REFERENCES content_publications(id) ON DELETE SET NULL,
+  ledger_id UUID REFERENCES tenant_quota_ledgers(id) ON DELETE SET NULL,
+  invoice_id UUID REFERENCES invoice_transactions(id) ON DELETE SET NULL,
+  channel VARCHAR(30) NOT NULL DEFAULT 'WHATSAPP',
+  weekly_quota_period VARCHAR(15),
+  reference_code VARCHAR(100),
+  transaction_type quota_transaction_type_enum NOT NULL,
+  amount_delta INTEGER NOT NULL,
+  balance_after INTEGER NOT NULL,
+  notes TEXT,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+CREATE INDEX IF NOT EXISTS idx_quota_tx_tenant_created 
+  ON tenant_quota_transactions (tenant_id, created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_quota_tx_brief 
+  ON tenant_quota_transactions (brief_id);
+CREATE INDEX IF NOT EXISTS idx_quota_tx_publication 
+  ON tenant_quota_transactions (publication_id);
+CREATE INDEX IF NOT EXISTS idx_quota_tx_ledger 
+  ON tenant_quota_transactions (ledger_id);
+CREATE INDEX IF NOT EXISTS idx_quota_tx_tenant_week 
+  ON tenant_quota_transactions (tenant_id, weekly_quota_period);
+
+CREATE TABLE IF NOT EXISTS ai_trace_logs (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  trace_id VARCHAR(100) NOT NULL,
+  tenant_id UUID REFERENCES tenant_members(id) ON DELETE SET NULL,
+  publication_id UUID REFERENCES content_publications(id) ON DELETE SET NULL,
+  ledger_id UUID REFERENCES tenant_quota_ledgers(id) ON DELETE SET NULL,
+  provider VARCHAR(20) NOT NULL DEFAULT 'OPENAI',
+  operation VARCHAR(100) NOT NULL,
+  model VARCHAR(50) NOT NULL,
+  input_tokens INTEGER NOT NULL DEFAULT 0,
+  output_tokens INTEGER NOT NULL DEFAULT 0,
+  total_tokens INTEGER NOT NULL DEFAULT 0,
+  image_calls INTEGER NOT NULL DEFAULT 0,
+  latency_ms INTEGER NOT NULL DEFAULT 0,
+  cost_usd NUMERIC(10, 5) NOT NULL DEFAULT 0,
+  fx_rate_applied NUMERIC(10, 2) NOT NULL DEFAULT 16350.00,
+  cost_idr BIGINT NOT NULL DEFAULT 0,
+  visitor_ip_hash VARCHAR(64),
+  status VARCHAR(30) NOT NULL DEFAULT 'SUCCESS',
+  error_message TEXT,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+CREATE INDEX IF NOT EXISTS idx_ai_trace_tenant_created 
+  ON ai_trace_logs (tenant_id, created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_ai_trace_provider_created 
+  ON ai_trace_logs (provider, created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_ai_trace_publication 
+  ON ai_trace_logs (publication_id);
+
+CREATE TABLE IF NOT EXISTS platform_token_pools (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  provider VARCHAR(20) NOT NULL UNIQUE DEFAULT 'OPENAI',
+  total_budget_usd NUMERIC(10, 2) NOT NULL DEFAULT 50.00,
+  total_budget_idr BIGINT NOT NULL DEFAULT 1000000,
+  consumed_budget_idr BIGINT NOT NULL DEFAULT 0,
+  total_tokens_allocated BIGINT NOT NULL DEFAULT 10000000,
+  total_tokens_consumed BIGINT NOT NULL DEFAULT 0,
+  total_images_generated INTEGER NOT NULL DEFAULT 0,
+  alert_threshold_percent INTEGER NOT NULL DEFAULT 20,
+  circuit_state VARCHAR(20) NOT NULL DEFAULT 'CLOSED',
+  last_alert_sent_at TIMESTAMPTZ,
+  last_topup_date TIMESTAMPTZ DEFAULT now(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+INSERT INTO platform_token_pools (provider, total_budget_usd, total_budget_idr, consumed_budget_idr, total_tokens_allocated, total_tokens_consumed, total_images_generated, alert_threshold_percent, circuit_state)
+VALUES
+  ('OPENAI', 61.16, 1000000, 0, 10000000, 0, 0, 20, 'CLOSED'),
+  ('GEMINI', 61.16, 1000000, 0, 25000000, 0, 0, 20, 'CLOSED')
+ON CONFLICT (provider) DO NOTHING;
+
+CREATE TABLE IF NOT EXISTS platform_topup_histories (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  pool_id UUID REFERENCES platform_token_pools(id) ON DELETE SET NULL,
+  provider VARCHAR(20) NOT NULL DEFAULT 'OPENAI',
+  amount_usd NUMERIC(10, 2) NOT NULL,
+  amount_idr NUMERIC(12, 2) NOT NULL,
+  fx_rate_applied NUMERIC(10, 2) NOT NULL DEFAULT 16350.00,
+  tokens_added BIGINT NOT NULL,
+  payment_reference VARCHAR(150) NOT NULL,
+  notes TEXT,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+

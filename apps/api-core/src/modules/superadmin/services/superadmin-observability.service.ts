@@ -1,23 +1,28 @@
 import { Injectable, BadRequestException, Optional, Logger } from '@nestjs/common';
-import { eq, desc, sql, and, inArray } from 'drizzle-orm';
+import { eq, desc, sql, inArray } from 'drizzle-orm';
 import {
   db,
   tenantMembers,
   subscriptions,
   tenantQuotaLedgers,
+  tenantQuotaWallets,
   aiTraceLogs,
   platformTokenPools,
   platformTopupHistories,
   contentPublications,
   mediaAssets,
 } from '@polaris/database';
-import { PlatformTokenPool, CircuitState } from '@polaris/core-domain';
+import {
+  PlatformTokenPool,
+  CircuitState,
+  PoolProvider,
+  AiCostCalculator,
+  DynamicExchangeRate,
+} from '@polaris/core-domain';
 import { AiTelemetryService } from '@polaris/ai-engine';
 import { TopupTokenPoolDto } from '../dto/superadmin.dto.js';
 import { TokenCircuitBreakerService } from '../../billing/token-circuit-breaker.service.js';
 import { SuperadminDashboardService } from './superadmin-dashboard.service.js';
-
-const USD_TO_IDR_RATE = 16250;
 
 @Injectable()
 export class SuperadminObservabilityService {
@@ -29,9 +34,62 @@ export class SuperadminObservabilityService {
   ) {}
 
   /**
-   * AI Observability & Langfuse Telemetry Stats (100% Real-Time Database & Telemetry Aggregation)
+   * Memastikan kedua Vault Provider ('OPENAI' & 'GEMINI') selalu ada di tabel platform_token_pools
+   */
+  private async ensureDualProviderPools(fxRate: number) {
+    const existing = await db.select().from(platformTokenPools);
+    const byProvider = new Map<string, typeof platformTokenPools.$inferSelect>();
+    for (const row of existing) {
+      byProvider.set(((row as any).provider || 'OPENAI').toUpperCase(), row);
+    }
+
+    const defaultBudgetIdr = 1_000_000;
+    const defaultBudgetUsd = Number((defaultBudgetIdr / fxRate).toFixed(2));
+
+    for (const prov of ['OPENAI', 'GEMINI'] as PoolProvider[]) {
+      if (!byProvider.has(prov)) {
+        try {
+          const [inserted] = await db
+            .insert(platformTokenPools)
+            .values({
+              provider: prov,
+              totalBudgetUsd: String(defaultBudgetUsd),
+              totalBudgetIdr: defaultBudgetIdr,
+              consumedBudgetIdr: 0,
+              totalTokensAllocated: prov === 'GEMINI' ? 25_000_000 : 10_000_000,
+              totalTokensConsumed: 0,
+              totalImagesGenerated: 0,
+              alertThresholdPercent: 20,
+              circuitState: 'CLOSED',
+            })
+            .onConflictDoNothing()
+            .returning();
+          if (inserted) {
+            byProvider.set(prov, inserted);
+          }
+        } catch {
+          // Abaikan bila terjadi race condition pada onConflict
+        }
+      }
+    }
+
+    if (byProvider.size < 2) {
+      const refreshed = await db.select().from(platformTokenPools);
+      for (const row of refreshed) {
+        byProvider.set(((row as any).provider || 'OPENAI').toUpperCase(), row);
+      }
+    }
+
+    return byProvider;
+  }
+
+  /**
+   * AI Observability & Langfuse Telemetry Stats (100% Real-Time Dual-Provider & Live IDR Aggregation)
    */
   async getAiObservability() {
+    const fxSnapshot = await DynamicExchangeRate.getLiveUsdToIdrSnapshot();
+    const fxRate = fxSnapshot.rateIdrPerUsd;
+
     const tenants = await db
       .select({
         id: tenantMembers.id,
@@ -43,6 +101,9 @@ export class SuperadminObservabilityService {
       })
       .from(tenantMembers)
       .leftJoin(subscriptions, eq(subscriptions.tenantId, tenantMembers.id));
+
+    const wallets = await db.select().from(tenantQuotaWallets);
+    const walletMap = new Map(wallets.map((w) => [w.tenantId, w]));
 
     const rlsCountsMap = new Map<string, { publications: number; media: number }>();
     let totalArticlesGen = 0;
@@ -59,6 +120,8 @@ export class SuperadminObservabilityService {
       .select({
         totalTokens: sql<number>`COALESCE(SUM(${aiTraceLogs.totalTokens}), 0)::bigint`,
         totalCostUsd: sql<number>`COALESCE(SUM(${aiTraceLogs.costUsd}), 0)::float`,
+        totalCostIdr: sql<number>`COALESCE(SUM(${aiTraceLogs.costIdr}), 0)::bigint`,
+        totalImageCalls: sql<number>`COALESCE(SUM(${aiTraceLogs.imageCalls}), 0)::int`,
         totalCalls: sql<number>`COUNT(*)::int`,
         successfulCalls: sql<number>`COUNT(*) FILTER (WHERE ${aiTraceLogs.status} = 'SUCCESS')::int`,
         avgLatencyMs: sql<number>`COALESCE(AVG(${aiTraceLogs.latencyMs}), 0)::float`,
@@ -69,37 +132,168 @@ export class SuperadminObservabilityService {
     const modelTraceRows = await db
       .select({
         model: aiTraceLogs.model,
+        provider: aiTraceLogs.provider,
+        inputTokens: sql<number>`COALESCE(SUM(${aiTraceLogs.inputTokens}), 0)::bigint`,
+        outputTokens: sql<number>`COALESCE(SUM(${aiTraceLogs.outputTokens}), 0)::bigint`,
         tokens: sql<number>`COALESCE(SUM(${aiTraceLogs.totalTokens}), 0)::bigint`,
+        imageCalls: sql<number>`COALESCE(SUM(${aiTraceLogs.imageCalls}), 0)::int`,
         calls: sql<number>`COUNT(*)::int`,
         successCalls: sql<number>`COUNT(*) FILTER (WHERE ${aiTraceLogs.status} = 'SUCCESS')::int`,
         costUsd: sql<number>`COALESCE(SUM(${aiTraceLogs.costUsd}), 0)::float`,
+        costIdr: sql<number>`COALESCE(SUM(${aiTraceLogs.costIdr}), 0)::bigint`,
         avgLatencyMs: sql<number>`COALESCE(AVG(${aiTraceLogs.latencyMs}), 0)::float`,
       })
       .from(aiTraceLogs)
-      .groupBy(aiTraceLogs.model);
+      .groupBy(aiTraceLogs.model, aiTraceLogs.provider);
 
-    // 3. Agregasi Per-Tenant Riil dari ai_trace_logs & tenant_quota_ledgers
-    const tenantTraceRows = await db
+    // Hitung agregat per Provider (OPENAI vs GEMINI) dari trace logs
+    const providerTraceSummary = {
+      OPENAI: {
+        inputTokens: 0,
+        outputTokens: 0,
+        totalTokens: 0,
+        imageCalls: 0,
+        calls: 0,
+        successCalls: 0,
+        costUsd: 0,
+        costIdr: 0,
+      },
+      GEMINI: {
+        inputTokens: 0,
+        outputTokens: 0,
+        totalTokens: 0,
+        imageCalls: 0,
+        calls: 0,
+        successCalls: 0,
+        costUsd: 0,
+        costIdr: 0,
+      },
+    };
+
+    for (const row of modelTraceRows) {
+      const resolvedProv = AiCostCalculator.resolveProvider(row.model || row.provider || '');
+      if (resolvedProv !== 'OPENAI' && resolvedProv !== 'GEMINI') continue;
+      const bucket = providerTraceSummary[resolvedProv];
+      const rowCostUsd = Number(row.costUsd || 0);
+      const rowCostIdr =
+        Number(row.costIdr || 0) > 0
+          ? Number(row.costIdr)
+          : AiCostCalculator.toIdr(rowCostUsd, fxRate);
+      const isImg = AiCostCalculator.isImageModel(row.model || '');
+      const imgCount =
+        Number(row.imageCalls || 0) > 0
+          ? Number(row.imageCalls)
+          : isImg
+            ? Number(row.successCalls || 0)
+            : 0;
+
+      bucket.inputTokens += Number(row.inputTokens || 0);
+      bucket.outputTokens += Number(row.outputTokens || 0);
+      bucket.totalTokens += Number(row.tokens || 0);
+      bucket.imageCalls += imgCount;
+      bucket.calls += Number(row.calls || 0);
+      bucket.successCalls += Number(row.successCalls || 0);
+      bucket.costUsd += rowCostUsd;
+      bucket.costIdr += rowCostIdr;
+    }
+
+    // 3. Agregasi Per-Tenant & Per-Provider Riil dari ai_trace_logs
+    const tenantProviderTraceRows = await db
       .select({
         tenantId: aiTraceLogs.tenantId,
+        model: aiTraceLogs.model,
+        provider: aiTraceLogs.provider,
+        inputTokens: sql<number>`COALESCE(SUM(${aiTraceLogs.inputTokens}), 0)::bigint`,
+        outputTokens: sql<number>`COALESCE(SUM(${aiTraceLogs.outputTokens}), 0)::bigint`,
         tokens: sql<number>`COALESCE(SUM(${aiTraceLogs.totalTokens}), 0)::bigint`,
+        imageCalls: sql<number>`COALESCE(SUM(${aiTraceLogs.imageCalls}), 0)::int`,
         costUsd: sql<number>`COALESCE(SUM(${aiTraceLogs.costUsd}), 0)::float`,
+        costIdr: sql<number>`COALESCE(SUM(${aiTraceLogs.costIdr}), 0)::bigint`,
         calls: sql<number>`COUNT(*)::int`,
+        successCalls: sql<number>`COUNT(*) FILTER (WHERE ${aiTraceLogs.status} = 'SUCCESS')::int`,
       })
       .from(aiTraceLogs)
       .where(sql`${aiTraceLogs.tenantId} IS NOT NULL`)
-      .groupBy(aiTraceLogs.tenantId);
+      .groupBy(aiTraceLogs.tenantId, aiTraceLogs.model, aiTraceLogs.provider);
 
-    const tenantTraceMap = new Map(
-      tenantTraceRows.map((r) => [
-        r.tenantId as string,
-        {
-          tokens: Number(r.tokens || 0),
-          costUsd: Number(r.costUsd || 0),
-          calls: Number(r.calls || 0),
-        },
-      ])
-    );
+    interface TenantProviderAccum {
+      tokens: number;
+      costUsd: number;
+      costIdr: number;
+      calls: number;
+      openaiInputTokens: number;
+      openaiOutputTokens: number;
+      openaiTotalTokens: number;
+      openaiImageCalls: number;
+      openaiCostIdr: number;
+      geminiInputTokens: number;
+      geminiOutputTokens: number;
+      geminiTotalTokens: number;
+      geminiImageCalls: number;
+      geminiCostIdr: number;
+    }
+
+    const tenantTraceMap = new Map<string, TenantProviderAccum>();
+    for (const r of tenantProviderTraceRows) {
+      const tid = r.tenantId as string;
+      if (!tid) continue;
+      let acc = tenantTraceMap.get(tid);
+      if (!acc) {
+        acc = {
+          tokens: 0,
+          costUsd: 0,
+          costIdr: 0,
+          calls: 0,
+          openaiInputTokens: 0,
+          openaiOutputTokens: 0,
+          openaiTotalTokens: 0,
+          openaiImageCalls: 0,
+          openaiCostIdr: 0,
+          geminiInputTokens: 0,
+          geminiOutputTokens: 0,
+          geminiTotalTokens: 0,
+          geminiImageCalls: 0,
+          geminiCostIdr: 0,
+        };
+        tenantTraceMap.set(tid, acc);
+      }
+
+      const prov = AiCostCalculator.resolveProvider(r.model || r.provider || '');
+      const inTok = Number(r.inputTokens || 0);
+      const outTok = Number(r.outputTokens || 0);
+      const totTok = Number(r.tokens || 0);
+      const cUsd = Number(r.costUsd || 0);
+      const cIdr =
+        Number(r.costIdr || 0) > 0
+          ? Number(r.costIdr)
+          : AiCostCalculator.toIdr(cUsd, fxRate);
+      const isImg = AiCostCalculator.isImageModel(r.model || '');
+      const imgCalls =
+        Number(r.imageCalls || 0) > 0
+          ? Number(r.imageCalls)
+          : isImg
+            ? Number(r.successCalls || 0)
+            : 0;
+
+      acc.tokens += totTok;
+      acc.costUsd += cUsd;
+      acc.costIdr += cIdr;
+      acc.calls += Number(r.calls || 0);
+
+      if (prov === 'GEMINI') {
+        acc.geminiInputTokens += inTok;
+        acc.geminiOutputTokens += outTok;
+        acc.geminiTotalTokens += totTok;
+        acc.geminiImageCalls += imgCalls;
+        acc.geminiCostIdr += cIdr;
+      } else if (prov === 'OPENAI') {
+        acc.openaiInputTokens += inTok;
+        acc.openaiOutputTokens += outTok;
+        acc.openaiTotalTokens += totTok;
+        acc.openaiImageCalls += imgCalls;
+        acc.openaiCostIdr += cIdr;
+      }
+    }
 
     const ledgerAggRows = await db
       .select({
@@ -110,6 +304,17 @@ export class SuperadminObservabilityService {
         dalleUsed: sql<number>`COALESCE(SUM(${tenantQuotaLedgers.dalleUsed}), 0)::int`,
         totalTokensConsumed: sql<number>`COALESCE(SUM(${tenantQuotaLedgers.totalTokensConsumed}), 0)::bigint`,
         estimatedCostUsd: sql<number>`COALESCE(SUM(${tenantQuotaLedgers.estimatedCostUsd}), 0)::float`,
+        openaiInputTokens: sql<number>`COALESCE(SUM(${tenantQuotaLedgers.openaiInputTokens}), 0)::bigint`,
+        openaiOutputTokens: sql<number>`COALESCE(SUM(${tenantQuotaLedgers.openaiOutputTokens}), 0)::bigint`,
+        openaiTotalTokens: sql<number>`COALESCE(SUM(${tenantQuotaLedgers.openaiTotalTokens}), 0)::bigint`,
+        openaiImageCalls: sql<number>`COALESCE(SUM(${tenantQuotaLedgers.openaiImageCalls}), 0)::int`,
+        openaiCostIdr: sql<number>`COALESCE(SUM(${tenantQuotaLedgers.openaiCostIdr}), 0)::bigint`,
+        geminiInputTokens: sql<number>`COALESCE(SUM(${tenantQuotaLedgers.geminiInputTokens}), 0)::bigint`,
+        geminiOutputTokens: sql<number>`COALESCE(SUM(${tenantQuotaLedgers.geminiOutputTokens}), 0)::bigint`,
+        geminiTotalTokens: sql<number>`COALESCE(SUM(${tenantQuotaLedgers.geminiTotalTokens}), 0)::bigint`,
+        geminiImageCalls: sql<number>`COALESCE(SUM(${tenantQuotaLedgers.geminiImageCalls}), 0)::int`,
+        geminiCostIdr: sql<number>`COALESCE(SUM(${tenantQuotaLedgers.geminiCostIdr}), 0)::bigint`,
+        totalCostIdr: sql<number>`COALESCE(SUM(${tenantQuotaLedgers.totalCostIdr}), 0)::bigint`,
       })
       .from(tenantQuotaLedgers)
       .groupBy(tenantQuotaLedgers.tenantId);
@@ -124,31 +329,125 @@ export class SuperadminObservabilityService {
           dalleUsed: Number(l.dalleUsed || 0),
           totalTokensConsumed: Number(l.totalTokensConsumed || 0),
           estimatedCostUsd: Number(l.estimatedCostUsd || 0),
+          openaiInputTokens: Number(l.openaiInputTokens || 0),
+          openaiOutputTokens: Number(l.openaiOutputTokens || 0),
+          openaiTotalTokens: Number(l.openaiTotalTokens || 0),
+          openaiImageCalls: Number(l.openaiImageCalls || 0),
+          openaiCostIdr: Number(l.openaiCostIdr || 0),
+          geminiInputTokens: Number(l.geminiInputTokens || 0),
+          geminiOutputTokens: Number(l.geminiOutputTokens || 0),
+          geminiTotalTokens: Number(l.geminiTotalTokens || 0),
+          geminiImageCalls: Number(l.geminiImageCalls || 0),
+          geminiCostIdr: Number(l.geminiCostIdr || 0),
+          totalCostIdr: Number(l.totalCostIdr || 0),
         },
-      ])
+      ]),
     );
 
-    const ledgerTotalTokens = ledgerAggRows.reduce((acc, l) => acc + Number(l.totalTokensConsumed || 0), 0);
-    const ledgerTotalCostUsd = ledgerAggRows.reduce((acc, l) => acc + Number(l.estimatedCostUsd || 0), 0);
+    const ledgerTotalTokens = ledgerAggRows.reduce(
+      (acc, l) => acc + Number(l.totalTokensConsumed || 0),
+      0,
+    );
+    const ledgerTotalCostUsd = ledgerAggRows.reduce(
+      (acc, l) => acc + Number(l.estimatedCostUsd || 0),
+      0,
+    );
+    const ledgerTotalCostIdr = ledgerAggRows.reduce(
+      (acc, l) => acc + Number(l.totalCostIdr || 0),
+      0,
+    );
 
     const totalTokens = Math.max(Number(globalTraceAgg?.totalTokens || 0), ledgerTotalTokens);
-    const rawTotalCostUsd = Math.max(Number(globalTraceAgg?.totalCostUsd || 0), ledgerTotalCostUsd);
+    const rawTotalCostUsd = Math.max(
+      Number(globalTraceAgg?.totalCostUsd || 0),
+      ledgerTotalCostUsd,
+    );
     const totalCostUsd = Number(rawTotalCostUsd.toFixed(4));
-    const totalCostIdr = Math.round(totalCostUsd * USD_TO_IDR_RATE);
-    const totalGenerations = Number(globalTraceAgg?.successfulCalls || 0) || (totalArticlesGen + totalDalleGen);
-    const avgLatencySeconds = Number(((Number(globalTraceAgg?.avgLatencyMs || 0)) / 1000).toFixed(2));
+    const traceCostIdr =
+      providerTraceSummary.OPENAI.costIdr + providerTraceSummary.GEMINI.costIdr;
+    const totalCostIdr = Math.max(
+      traceCostIdr,
+      ledgerTotalCostIdr,
+      AiCostCalculator.toIdr(totalCostUsd, fxRate),
+    );
+    const totalGenerations =
+      Number(globalTraceAgg?.successfulCalls || 0) || totalArticlesGen + totalDalleGen;
+    const avgLatencySeconds = Number(
+      (Number(globalTraceAgg?.avgLatencyMs || 0) / 1000).toFixed(2),
+    );
 
     const tenantBreakdowns = tenants.map((t) => {
       const ledger = ledgerMap.get(t.id);
       const traceStat = tenantTraceMap.get(t.id);
+      const wallet = walletMap.get(t.id);
       const rlsCounts = rlsCountsMap.get(t.id) || { publications: 0, media: 0 };
 
+      const walletAllocated = wallet?.totalQuotaAllocated || 12;
+      const walletRemaining =
+        wallet?.remainingQuota !== undefined ? wallet.remainingQuota : walletAllocated;
+      const weeklyLimit = wallet?.weeklyAllowanceLimit || 3;
+
       const usedArt = Math.max(ledger?.articleUsed ?? 0, rlsCounts.publications);
-      const limitArt = ledger?.articleLimit && ledger.articleLimit > 0 ? ledger.articleLimit : 30;
+      const limitArt = walletAllocated;
       const usedImg = Math.max(ledger?.dalleUsed ?? 0, rlsCounts.media);
-      const limitImg = ledger?.dalleLimit && ledger.dalleLimit > 0 ? ledger.dalleLimit : 30;
-      const tokens = Math.max(traceStat?.tokens ?? 0, ledger?.totalTokensConsumed ?? 0);
+      const limitImg = walletAllocated;
+
+      const openaiInputTokens = Math.max(
+        traceStat?.openaiInputTokens ?? 0,
+        ledger?.openaiInputTokens ?? 0,
+      );
+      const openaiOutputTokens = Math.max(
+        traceStat?.openaiOutputTokens ?? 0,
+        ledger?.openaiOutputTokens ?? 0,
+      );
+      const openaiTotalTokens = Math.max(
+        traceStat?.openaiTotalTokens ?? 0,
+        ledger?.openaiTotalTokens ?? 0,
+        openaiInputTokens + openaiOutputTokens,
+      );
+      const openaiImageCalls = Math.max(
+        traceStat?.openaiImageCalls ?? 0,
+        ledger?.openaiImageCalls ?? 0,
+      );
+      const openaiCostIdr = Math.max(
+        traceStat?.openaiCostIdr ?? 0,
+        ledger?.openaiCostIdr ?? 0,
+      );
+
+      const geminiInputTokens = Math.max(
+        traceStat?.geminiInputTokens ?? 0,
+        ledger?.geminiInputTokens ?? 0,
+      );
+      const geminiOutputTokens = Math.max(
+        traceStat?.geminiOutputTokens ?? 0,
+        ledger?.geminiOutputTokens ?? 0,
+      );
+      const geminiTotalTokens = Math.max(
+        traceStat?.geminiTotalTokens ?? 0,
+        ledger?.geminiTotalTokens ?? 0,
+        geminiInputTokens + geminiOutputTokens,
+      );
+      const geminiImageCalls = Math.max(
+        traceStat?.geminiImageCalls ?? 0,
+        ledger?.geminiImageCalls ?? 0,
+      );
+      const geminiCostIdr = Math.max(
+        traceStat?.geminiCostIdr ?? 0,
+        ledger?.geminiCostIdr ?? 0,
+      );
+
+      const tokens = Math.max(
+        traceStat?.tokens ?? 0,
+        ledger?.totalTokensConsumed ?? 0,
+        openaiTotalTokens + geminiTotalTokens,
+      );
       const costUsd = Math.max(traceStat?.costUsd ?? 0, ledger?.estimatedCostUsd ?? 0);
+      const estimatedCostIdr = Math.max(
+        openaiCostIdr + geminiCostIdr,
+        traceStat?.costIdr ?? 0,
+        ledger?.totalCostIdr ?? 0,
+        AiCostCalculator.toIdr(costUsd, fxRate),
+      );
 
       return {
         tenantId: t.id,
@@ -158,82 +457,167 @@ export class SuperadminObservabilityService {
         tier: t.planTier || 'STARTER',
         articlesUsed: usedArt,
         articlesLimit: limitArt,
-        articlesRemaining: Math.max(0, limitArt - usedArt),
+        articlesRemaining: walletRemaining,
         dalleUsed: usedImg,
         dalleLimit: limitImg,
-        dalleRemaining: Math.max(0, limitImg - usedImg),
+        dalleRemaining: walletRemaining,
+        totalQuotaAllocated: walletAllocated,
+        remainingQuota: walletRemaining,
+        weeklyAllowanceLimit: weeklyLimit,
         tokensConsumed: tokens,
         estimatedCostUsd: Number(costUsd.toFixed(4)),
+        estimatedCostIdr,
+        openaiInputTokens,
+        openaiOutputTokens,
+        openaiTotalTokens,
+        openaiImageCalls,
+        openaiCostIdr,
+        geminiInputTokens,
+        geminiOutputTokens,
+        geminiTotalTokens,
+        geminiImageCalls,
+        geminiCostIdr,
       };
     });
 
-    tenantBreakdowns.sort((a, b) => b.estimatedCostUsd - a.estimatedCostUsd || b.tokensConsumed - a.tokensConsumed);
+    tenantBreakdowns.sort(
+      (a, b) =>
+        b.estimatedCostIdr - a.estimatedCostIdr || b.tokensConsumed - a.tokensConsumed,
+    );
 
-    // 4. Platform Master Token Pool (OpenAI & Gemini Master Credit Pool)
-    let [masterPool] = await db.select().from(platformTokenPools).limit(1);
-    if (!masterPool) {
-      const [inserted] = await db
-        .insert(platformTokenPools)
-        .values({
-          totalBudgetUsd: '100.00',
-          totalTokensAllocated: 20000000,
-          totalTokensConsumed: totalTokens,
-          alertThresholdPercent: 20,
-        })
-        .returning();
-      masterPool = inserted;
-    } else if (totalTokens !== Number(masterPool.totalTokensConsumed || 0)) {
-      await db
-        .update(platformTokenPools)
-        .set({ totalTokensConsumed: totalTokens, updatedAt: new Date() })
-        .where(eq(platformTokenPools.id, masterPool.id));
-      masterPool.totalTokensConsumed = totalTokens;
-    }
-
+    // 4. Platform Dual-Provider Token Pools (OPENAI Vault & GEMINI Vault) dalam Rupiah (IDR)
+    const poolsMap = await this.ensureDualProviderPools(fxRate);
     const topups = await db
       .select()
       .from(platformTopupHistories)
       .orderBy(desc(platformTopupHistories.createdAt))
-      .limit(10);
+      .limit(20);
 
-    const totalBudgetUsd = Number(masterPool.totalBudgetUsd) || 100;
-    const poolEntity = new PlatformTokenPool({
-      id: masterPool.id,
-      totalBudgetUsd,
-      totalTokensAllocated: Number(masterPool.totalTokensAllocated) || 20000000,
-      totalTokensConsumed: totalTokens,
-      alertThresholdPercent: masterPool.alertThresholdPercent || 20,
-      circuitState: (masterPool.circuitState as CircuitState) || 'CLOSED',
-      lastAlertSentAt: masterPool.lastAlertSentAt,
-      lastTopupDate: masterPool.lastTopupDate,
-    });
-    const evalState = poolEntity.evaluateState(totalCostUsd);
+    const buildPoolView = (prov: PoolProvider) => {
+      const record = poolsMap.get(prov);
+      const provTrace = providerTraceSummary[prov];
+      const budgetIdr =
+        record && Number((record as any).totalBudgetIdr || 0) > 0
+          ? Number((record as any).totalBudgetIdr)
+          : record
+            ? Math.round(Number(record.totalBudgetUsd || 61.16) * fxRate)
+            : 1_000_000;
+      const budgetUsd = Number((budgetIdr / fxRate).toFixed(2));
+      const consumedIdr = Math.max(
+        Number((record as any)?.consumedBudgetIdr || 0),
+        provTrace.costIdr,
+      );
+      const consumedUsd = Number((consumedIdr / fxRate).toFixed(4));
+      const tokensConsumed = Math.max(
+        Number(record?.totalTokensConsumed || 0),
+        provTrace.totalTokens,
+      );
+      const imagesGenerated = Math.max(
+        Number((record as any)?.totalImagesGenerated || 0),
+        provTrace.imageCalls,
+      );
+      const tokensAllocated =
+        Number(record?.totalTokensAllocated || 0) ||
+        (prov === 'GEMINI' ? 25_000_000 : 10_000_000);
 
-    const consumedBudgetUsd = totalCostUsd;
-    const remainingBudgetUsd = evalState.remainingUsd;
-    const remainingBudgetIdr = Math.round(remainingBudgetUsd * USD_TO_IDR_RATE);
-    const percentRemaining = Math.round(evalState.percentRemaining);
-    const percentConsumed = Math.max(0, 100 - percentRemaining);
-    const isAlert = evalState.isWarning;
+      const entity = new PlatformTokenPool({
+        id: record?.id || `pool-${prov.toLowerCase()}`,
+        provider: prov,
+        totalBudgetUsd: budgetUsd,
+        totalBudgetIdr: budgetIdr,
+        consumedBudgetIdr: consumedIdr,
+        totalTokensAllocated: tokensAllocated,
+        totalTokensConsumed: tokensConsumed,
+        totalImagesGenerated: imagesGenerated,
+        alertThresholdPercent: record?.alertThresholdPercent || 20,
+        circuitState: (record?.circuitState as CircuitState) || 'CLOSED',
+        lastAlertSentAt: record?.lastAlertSentAt || null,
+        lastTopupDate: record?.lastTopupDate || null,
+      });
+
+      const evalState = entity.evaluateState(consumedUsd, consumedIdr);
+      const remainingIdr = evalState.remainingIdr;
+      const remainingUsd = evalState.remainingUsd;
+      const percentRemaining = Math.round(evalState.percentRemaining);
+      const percentConsumed = Math.max(0, 100 - percentRemaining);
+
+      const providerTopups = topups
+        .filter((t) => ((t as any).provider || 'OPENAI').toUpperCase() === prov)
+        .map((t) => ({
+          id: t.id,
+          provider: ((t as any).provider || 'OPENAI') as PoolProvider,
+          amountUsd: Number(t.amountUsd),
+          amountIdr: Number(t.amountIdr),
+          fxRateApplied: Number((t as any).fxRateApplied || fxRate),
+          tokensAdded: Number(t.tokensAdded || 0),
+          paymentReference: t.paymentReference,
+          notes: t.notes,
+          createdAt: t.createdAt,
+        }));
+
+      return {
+        id: record?.id || `pool-${prov.toLowerCase()}`,
+        provider: prov,
+        totalBudgetUsd: budgetUsd,
+        totalBudgetIdr: budgetIdr,
+        consumedBudgetUsd: consumedUsd,
+        consumedBudgetIdr: consumedIdr,
+        remainingBudgetUsd: remainingUsd,
+        remainingBudgetIdr: remainingIdr,
+        percentRemaining,
+        percentConsumed,
+        totalTokensAllocated: tokensAllocated,
+        totalTokensConsumed: tokensConsumed,
+        inputTokensConsumed: provTrace.inputTokens,
+        outputTokensConsumed: provTrace.outputTokens,
+        totalImagesGenerated: imagesGenerated,
+        totalApiCalls: provTrace.calls,
+        alertThresholdPercent: record?.alertThresholdPercent || 20,
+        circuitState: entity.circuitState,
+        isAlertActive: evalState.isWarning,
+        lastTopupDate: record?.lastTopupDate || null,
+        recentTopups: providerTopups,
+      };
+    };
+
+    const openaiPool = buildPoolView('OPENAI');
+    const geminiPool = buildPoolView('GEMINI');
+
+    const combinedBudgetIdr = openaiPool.totalBudgetIdr + geminiPool.totalBudgetIdr;
+    const combinedConsumedIdr = openaiPool.consumedBudgetIdr + geminiPool.consumedBudgetIdr;
+    const combinedRemainingIdr = openaiPool.remainingBudgetIdr + geminiPool.remainingBudgetIdr;
+    const combinedPercentRemaining =
+      combinedBudgetIdr > 0
+        ? Math.max(0, Math.min(100, Math.round((combinedRemainingIdr / combinedBudgetIdr) * 100)))
+        : 100;
 
     const masterPoolData = {
-      id: masterPool.id,
-      totalBudgetUsd,
-      totalBudgetIdr: Math.round(totalBudgetUsd * USD_TO_IDR_RATE),
-      consumedBudgetUsd,
-      consumedBudgetIdr: totalCostIdr,
-      remainingBudgetUsd,
-      remainingBudgetIdr,
-      percentRemaining,
-      percentConsumed,
+      id: openaiPool.id,
+      totalBudgetUsd: Number((openaiPool.totalBudgetUsd + geminiPool.totalBudgetUsd).toFixed(2)),
+      totalBudgetIdr: combinedBudgetIdr,
+      consumedBudgetUsd: Number(
+        (openaiPool.consumedBudgetUsd + geminiPool.consumedBudgetUsd).toFixed(4),
+      ),
+      consumedBudgetIdr: combinedConsumedIdr,
+      remainingBudgetUsd: Number(
+        (openaiPool.remainingBudgetUsd + geminiPool.remainingBudgetUsd).toFixed(2),
+      ),
+      remainingBudgetIdr: combinedRemainingIdr,
+      percentRemaining: combinedPercentRemaining,
+      percentConsumed: Math.max(0, 100 - combinedPercentRemaining),
       totalTokensConsumed: totalTokens,
-      alertThresholdPercent: masterPool.alertThresholdPercent || 20,
-      isAlertActive: isAlert,
-      lastTopupDate: masterPool.lastTopupDate,
+      alertThresholdPercent: 20,
+      isAlertActive: openaiPool.isAlertActive || geminiPool.isAlertActive,
+      lastTopupDate: openaiPool.lastTopupDate || geminiPool.lastTopupDate,
+      openaiPool,
+      geminiPool,
+      exchangeRate: fxSnapshot,
       recentTopups: topups.map((t) => ({
         id: t.id,
+        provider: ((t as any).provider || 'OPENAI') as PoolProvider,
         amountUsd: Number(t.amountUsd),
         amountIdr: Number(t.amountIdr),
+        fxRateApplied: Number((t as any).fxRateApplied || fxRate),
         tokensAdded: Number(t.tokensAdded || 0),
         paymentReference: t.paymentReference,
         notes: t.notes,
@@ -241,40 +625,92 @@ export class SuperadminObservabilityService {
       })),
     };
 
-    // 5. Kelompokkan Model Metrics dari data riil ai_trace_logs
+    // 5. Kelompokkan Model Metrics dari data riil ai_trace_logs (dengan pemisahan Provider & Biaya IDR)
     const bucketStats = {
-      flagship: { tokens: 0, calls: 0, success: 0, costUsd: 0, latencySum: 0 },
-      highSpeed: { tokens: 0, calls: 0, success: 0, costUsd: 0, latencySum: 0 },
-      visualDiffusion: { tokens: 0, calls: 0, success: 0, costUsd: 0, latencySum: 0 },
+      openaiFlagship: {
+        tokens: 0,
+        inputTokens: 0,
+        outputTokens: 0,
+        imageCalls: 0,
+        calls: 0,
+        success: 0,
+        costUsd: 0,
+        costIdr: 0,
+        latencySum: 0,
+      },
+      openaiFastAndImage: {
+        tokens: 0,
+        inputTokens: 0,
+        outputTokens: 0,
+        imageCalls: 0,
+        calls: 0,
+        success: 0,
+        costUsd: 0,
+        costIdr: 0,
+        latencySum: 0,
+      },
+      geminiTextAndVision: {
+        tokens: 0,
+        inputTokens: 0,
+        outputTokens: 0,
+        imageCalls: 0,
+        calls: 0,
+        success: 0,
+        costUsd: 0,
+        costIdr: 0,
+        latencySum: 0,
+      },
+      geminiImagenVisual: {
+        tokens: 0,
+        inputTokens: 0,
+        outputTokens: 0,
+        imageCalls: 0,
+        calls: 0,
+        success: 0,
+        costUsd: 0,
+        costIdr: 0,
+        latencySum: 0,
+      },
     };
 
     for (const row of modelTraceRows) {
       const m = (row.model || '').toLowerCase();
+      const prov = AiCostCalculator.resolveProvider(m);
+      if (prov === 'SYSTEM') continue;
+
       const calls = Number(row.calls || 0);
       const tokens = Number(row.tokens || 0);
+      const inTok = Number(row.inputTokens || 0);
+      const outTok = Number(row.outputTokens || 0);
       const success = Number(row.successCalls || 0);
       const costUsd = Number(row.costUsd || 0);
+      const costIdr =
+        Number(row.costIdr || 0) > 0
+          ? Number(row.costIdr)
+          : AiCostCalculator.toIdr(costUsd, fxRate);
       const avgLat = Number(row.avgLatencyMs || 0);
+      const isImg = AiCostCalculator.isImageModel(m);
+      const imgCalls =
+        Number(row.imageCalls || 0) > 0 ? Number(row.imageCalls) : isImg ? success : 0;
 
-      if (m.includes('image') || m.includes('dall-e') || m.includes('imagen')) {
-        bucketStats.visualDiffusion.tokens += tokens;
-        bucketStats.visualDiffusion.calls += calls;
-        bucketStats.visualDiffusion.success += success;
-        bucketStats.visualDiffusion.costUsd += costUsd;
-        bucketStats.visualDiffusion.latencySum += avgLat * calls;
-      } else if (m.includes('mini') || m.includes('embedding') || m.includes('flash')) {
-        bucketStats.highSpeed.tokens += tokens;
-        bucketStats.highSpeed.calls += calls;
-        bucketStats.highSpeed.success += success;
-        bucketStats.highSpeed.costUsd += costUsd;
-        bucketStats.highSpeed.latencySum += avgLat * calls;
-      } else {
-        bucketStats.flagship.tokens += tokens;
-        bucketStats.flagship.calls += calls;
-        bucketStats.flagship.success += success;
-        bucketStats.flagship.costUsd += costUsd;
-        bucketStats.flagship.latencySum += avgLat * calls;
-      }
+      const target =
+        prov === 'GEMINI'
+          ? isImg
+            ? bucketStats.geminiImagenVisual
+            : bucketStats.geminiTextAndVision
+          : m.includes('gpt-4o') && !m.includes('mini')
+            ? bucketStats.openaiFlagship
+            : bucketStats.openaiFastAndImage;
+
+      target.tokens += tokens;
+      target.inputTokens += inTok;
+      target.outputTokens += outTok;
+      target.imageCalls += imgCalls;
+      target.calls += calls;
+      target.success += success;
+      target.costUsd += costUsd;
+      target.costIdr += costIdr;
+      target.latencySum += avgLat * calls;
     }
 
     const formatQuality = (success: number, calls: number) =>
@@ -282,56 +718,116 @@ export class SuperadminObservabilityService {
 
     const modelMetrics = [
       {
-        model: 'GPT-4o (Flagship Reasoning)',
-        useCase: 'Sintesis Naskah Kebijakan 2-Stage, Ekstraksi Klaim Verbatim & Vision Blueprint',
-        tokens: bucketStats.flagship.tokens,
-        calls: bucketStats.flagship.calls,
-        costUsd: Number(bucketStats.flagship.costUsd.toFixed(4)),
+        provider: 'OPENAI',
+        model: 'OpenAI GPT-4o (Flagship Reasoning)',
+        useCase: 'Sintesis Naskah Kebijakan 5 Bab, Ekstraksi Klaim Verbatim & Vision OCR DataHub',
+        tokens: bucketStats.openaiFlagship.tokens,
+        inputTokens: bucketStats.openaiFlagship.inputTokens,
+        outputTokens: bucketStats.openaiFlagship.outputTokens,
+        imageCalls: bucketStats.openaiFlagship.imageCalls,
+        calls: bucketStats.openaiFlagship.calls,
+        costUsd: Number(bucketStats.openaiFlagship.costUsd.toFixed(4)),
+        costIdr: bucketStats.openaiFlagship.costIdr,
         avgLatencyMs:
-          bucketStats.flagship.calls > 0
-            ? Math.round(bucketStats.flagship.latencySum / bucketStats.flagship.calls)
-            : 0,
-        qualityScore: formatQuality(bucketStats.flagship.success, bucketStats.flagship.calls),
-      },
-      {
-        model: 'Gemini Imagen & DALL-E (Visual Engine)',
-        useCase: 'Kanvas Seni Kolase Poster, Infografis Legislatif & Ilustrasi Editorial',
-        tokens: bucketStats.visualDiffusion.tokens,
-        calls: bucketStats.visualDiffusion.calls,
-        costUsd: Number(bucketStats.visualDiffusion.costUsd.toFixed(4)),
-        avgLatencyMs:
-          bucketStats.visualDiffusion.calls > 0
-            ? Math.round(bucketStats.visualDiffusion.latencySum / bucketStats.visualDiffusion.calls)
+          bucketStats.openaiFlagship.calls > 0
+            ? Math.round(bucketStats.openaiFlagship.latencySum / bucketStats.openaiFlagship.calls)
             : 0,
         qualityScore: formatQuality(
-          bucketStats.visualDiffusion.success,
-          bucketStats.visualDiffusion.calls
+          bucketStats.openaiFlagship.success,
+          bucketStats.openaiFlagship.calls,
         ),
       },
       {
-        model: 'GPT-4o Mini & Gemini Flash (High Speed)',
-        useCase: 'Research Planner, Copywriter Poster, Vision Locator, OCR DataHub & RAG Embedding',
-        tokens: bucketStats.highSpeed.tokens,
-        calls: bucketStats.highSpeed.calls,
-        costUsd: Number(bucketStats.highSpeed.costUsd.toFixed(4)),
+        provider: 'OPENAI',
+        model: 'OpenAI GPT-4o Mini, Embedding & DALL-E',
+        useCase: 'Research Planner, Social Syndication, RAG Embedding, Civic Chat & Failover Poster',
+        tokens: bucketStats.openaiFastAndImage.tokens,
+        inputTokens: bucketStats.openaiFastAndImage.inputTokens,
+        outputTokens: bucketStats.openaiFastAndImage.outputTokens,
+        imageCalls: bucketStats.openaiFastAndImage.imageCalls,
+        calls: bucketStats.openaiFastAndImage.calls,
+        costUsd: Number(bucketStats.openaiFastAndImage.costUsd.toFixed(4)),
+        costIdr: bucketStats.openaiFastAndImage.costIdr,
         avgLatencyMs:
-          bucketStats.highSpeed.calls > 0
-            ? Math.round(bucketStats.highSpeed.latencySum / bucketStats.highSpeed.calls)
+          bucketStats.openaiFastAndImage.calls > 0
+            ? Math.round(
+                bucketStats.openaiFastAndImage.latencySum / bucketStats.openaiFastAndImage.calls,
+              )
             : 0,
-        qualityScore: formatQuality(bucketStats.highSpeed.success, bucketStats.highSpeed.calls),
+        qualityScore: formatQuality(
+          bucketStats.openaiFastAndImage.success,
+          bucketStats.openaiFastAndImage.calls,
+        ),
+      },
+      {
+        provider: 'GEMINI',
+        model: 'Google Gemini 3.8 Flash (Text & Vision)',
+        useCase: 'Art-Collage Copywriter, Vision Layout Locator, Scene Prompt Compiler & Refiner',
+        tokens: bucketStats.geminiTextAndVision.tokens,
+        inputTokens: bucketStats.geminiTextAndVision.inputTokens,
+        outputTokens: bucketStats.geminiTextAndVision.outputTokens,
+        imageCalls: bucketStats.geminiTextAndVision.imageCalls,
+        calls: bucketStats.geminiTextAndVision.calls,
+        costUsd: Number(bucketStats.geminiTextAndVision.costUsd.toFixed(4)),
+        costIdr: bucketStats.geminiTextAndVision.costIdr,
+        avgLatencyMs:
+          bucketStats.geminiTextAndVision.calls > 0
+            ? Math.round(
+                bucketStats.geminiTextAndVision.latencySum / bucketStats.geminiTextAndVision.calls,
+              )
+            : 0,
+        qualityScore: formatQuality(
+          bucketStats.geminiTextAndVision.success,
+          bucketStats.geminiTextAndVision.calls,
+        ),
+      },
+      {
+        provider: 'GEMINI',
+        model: 'Google Imagen 3 & Gemini Flash Image',
+        useCase: 'Kanvas Seni Kolase Poster, Relayout Infografis 4:5 & Ilustrasi Editorial',
+        tokens: bucketStats.geminiImagenVisual.tokens,
+        inputTokens: bucketStats.geminiImagenVisual.inputTokens,
+        outputTokens: bucketStats.geminiImagenVisual.outputTokens,
+        imageCalls: bucketStats.geminiImagenVisual.imageCalls,
+        calls: bucketStats.geminiImagenVisual.calls,
+        costUsd: Number(bucketStats.geminiImagenVisual.costUsd.toFixed(4)),
+        costIdr: bucketStats.geminiImagenVisual.costIdr,
+        avgLatencyMs:
+          bucketStats.geminiImagenVisual.calls > 0
+            ? Math.round(
+                bucketStats.geminiImagenVisual.latencySum / bucketStats.geminiImagenVisual.calls,
+              )
+            : 0,
+        qualityScore: formatQuality(
+          bucketStats.geminiImagenVisual.success,
+          bucketStats.geminiImagenVisual.calls,
+        ),
       },
     ];
 
     return {
+      exchangeRate: fxSnapshot,
       masterPool: masterPoolData,
+      providerPools: {
+        OPENAI: openaiPool,
+        GEMINI: geminiPool,
+      },
       summary: {
         totalTokens,
         totalCostUsd,
         totalCostIdr,
+        openaiTokens: openaiPool.totalTokensConsumed,
+        openaiImages: openaiPool.totalImagesGenerated,
+        openaiCostIdr: openaiPool.consumedBudgetIdr,
+        geminiTokens: geminiPool.totalTokensConsumed,
+        geminiImages: geminiPool.totalImagesGenerated,
+        geminiCostIdr: geminiPool.consumedBudgetIdr,
         totalGenerations,
         totalArticlesGenerated: totalArticlesGen,
         totalDalleGenerated: totalDalleGen,
         avgLatencySeconds,
+        fxRateApplied: fxRate,
+        fxRateSource: fxSnapshot.source,
       },
       langfuse: AiTelemetryService.getLangfuseStatus(),
       modelMetrics,
@@ -340,51 +836,65 @@ export class SuperadminObservabilityService {
   }
 
   /**
-   * Catat Top Up Master Saldo OpenAI Credit Pool
+   * Catat Top Up Saldo Deposit (OpenAI Vault atau Gemini Vault) dalam Rupiah (IDR)
    */
   async topupMasterTokenPool(dto: TopupTokenPoolDto) {
-    const amountUsd = Number(dto.amountUsd);
-    if (isNaN(amountUsd) || amountUsd <= 0) {
-      throw new BadRequestException('Nominal Top Up USD harus lebih dari 0.');
+    const fxSnapshot = await DynamicExchangeRate.getLiveUsdToIdrSnapshot();
+    const fxRate = fxSnapshot.rateIdrPerUsd;
+    const provider: PoolProvider =
+      dto.provider && dto.provider.toUpperCase() === 'GEMINI' ? 'GEMINI' : 'OPENAI';
+
+    const rawIdr = Number(dto.amountIdr || 0);
+    const rawUsd = Number(dto.amountUsd || 0);
+    const amountIdr = rawIdr > 0 ? Math.round(rawIdr) : Math.round(rawUsd * fxRate);
+    const amountUsd =
+      rawUsd > 0 ? Number(rawUsd.toFixed(2)) : Number((amountIdr / fxRate).toFixed(2));
+
+    if (!Number.isFinite(amountIdr) || amountIdr <= 0) {
+      throw new BadRequestException('Nominal Top Up Rupiah (IDR) harus lebih dari Rp 0.');
     }
 
-    const tokensAdded = Number(dto.tokensAdded) || 0;
-    const amountIdr = dto.amountIdr || Math.round(amountUsd * 16250);
+    // Estimasi kuota token setara berdasarkan tarif rata-rata provider bila tidak diisi manual
+    const defaultTokensPerIdr = provider === 'GEMINI' ? 25 : 10;
+    const tokensAdded =
+      Number(dto.tokensAdded) > 0
+        ? Math.round(Number(dto.tokensAdded))
+        : Math.round(amountIdr * defaultTokensPerIdr);
 
-    // 1. Simpan riwayat transaksi top up
-    const [history] = await db
-      .insert(platformTopupHistories)
-      .values({
-        amountUsd: String(amountUsd),
-        amountIdr: String(amountIdr),
-        tokensAdded,
-        paymentReference: dto.paymentReference || `OPENAI-TOPUP-${Date.now()}`,
-        notes: dto.notes || 'Top up deposit saldo OpenAI via Superadmin',
-      })
-      .returning();
+    const poolsMap = await this.ensureDualProviderPools(fxRate);
+    let pool = poolsMap.get(provider);
 
-    // 2. Update platform master pool
-    let [pool] = await db.select().from(platformTokenPools).limit(1);
     if (!pool) {
       const [newPool] = await db
         .insert(platformTokenPools)
         .values({
+          provider,
           totalBudgetUsd: String(amountUsd),
+          totalBudgetIdr: amountIdr,
+          consumedBudgetIdr: 0,
           totalTokensAllocated: tokensAdded,
           totalTokensConsumed: 0,
+          totalImagesGenerated: 0,
           alertThresholdPercent: 20,
+          circuitState: 'CLOSED',
           lastTopupDate: new Date(),
         })
         .returning();
       pool = newPool;
     } else {
-      const newBudget = Number(pool.totalBudgetUsd) + amountUsd;
-      const newTokens = Number(pool.totalTokensAllocated) + tokensAdded;
+      const currentBudgetIdr =
+        Number((pool as any).totalBudgetIdr || 0) > 0
+          ? Number((pool as any).totalBudgetIdr)
+          : Math.round(Number(pool.totalBudgetUsd || 0) * fxRate);
+      const newBudgetIdr = currentBudgetIdr + amountIdr;
+      const newBudgetUsd = Number((newBudgetIdr / fxRate).toFixed(2));
+      const newTokens = Number(pool.totalTokensAllocated || 0) + tokensAdded;
 
       const [updatedPool] = await db
         .update(platformTokenPools)
         .set({
-          totalBudgetUsd: String(newBudget),
+          totalBudgetUsd: String(newBudgetUsd),
+          totalBudgetIdr: newBudgetIdr,
           totalTokensAllocated: newTokens,
           circuitState: 'CLOSED',
           lastTopupDate: new Date(),
@@ -395,27 +905,47 @@ export class SuperadminObservabilityService {
       pool = updatedPool;
     }
 
-    // Reset status circuit breaker secara atomik di Redis & memori
+    const [history] = await db
+      .insert(platformTopupHistories)
+      .values({
+        poolId: pool.id,
+        provider,
+        amountUsd: String(amountUsd),
+        amountIdr: String(amountIdr),
+        fxRateApplied: fxRate.toFixed(2),
+        tokensAdded,
+        paymentReference: dto.paymentReference || `${provider}-TOPUP-${Date.now()}`,
+        notes:
+          dto.notes ||
+          `Top up deposit saldo ${provider === 'GEMINI' ? 'Google Gemini / Vertex AI' : 'OpenAI Platform'} via Superadmin`,
+      })
+      .returning();
+
     if (this.circuitBreakerService) {
-      await this.circuitBreakerService.resetCircuitOnTopup();
+      await this.circuitBreakerService.resetCircuitOnTopup(provider);
     }
 
     return {
       success: true,
-      message: `Berhasil mencatat top up deposit $${amountUsd} (Rp ${amountIdr.toLocaleString('id-ID')}). Sirkuit AI diaktifkan kembali.`,
+      message: `Berhasil mencatat top up deposit ${provider} sebesar Rp ${amountIdr.toLocaleString('id-ID')} (Kurs Live: Rp ${fxRate.toLocaleString('id-ID')}/USD). Sirkuit AI ${provider} aktif penuh.`,
       transaction: history,
       pool,
+      exchangeRate: fxSnapshot,
     };
   }
 
   /**
-   * Riwayat Trace AI Terkini (Langfuse Sync Logs)
+   * Riwayat Trace AI Terkini (Langfuse Sync Logs dengan Biaya IDR & Resolusi Provider)
    */
-  async getAiTraces(limit: number = 20, operation?: string, status?: string) {
+  async getAiTraces(limit: number = 30, operation?: string, status?: string) {
+    const fxSnapshot = await DynamicExchangeRate.getLiveUsdToIdrSnapshot();
+    const fxRate = fxSnapshot.rateIdrPerUsd;
+
     const rows = await db
       .select({
         id: aiTraceLogs.traceId,
         timestamp: aiTraceLogs.createdAt,
+        provider: aiTraceLogs.provider,
         operation: aiTraceLogs.operation,
         model: aiTraceLogs.model,
         tenantName: tenantMembers.fullName,
@@ -423,8 +953,11 @@ export class SuperadminObservabilityService {
         inputTokens: aiTraceLogs.inputTokens,
         outputTokens: aiTraceLogs.outputTokens,
         totalTokens: aiTraceLogs.totalTokens,
+        imageCalls: aiTraceLogs.imageCalls,
         latencyMs: aiTraceLogs.latencyMs,
         costUsd: sql<number>`${aiTraceLogs.costUsd}::float`,
+        fxRateApplied: sql<number>`${aiTraceLogs.fxRateApplied}::float`,
+        costIdr: aiTraceLogs.costIdr,
         status: aiTraceLogs.status,
       })
       .from(aiTraceLogs)
@@ -432,47 +965,49 @@ export class SuperadminObservabilityService {
       .orderBy(desc(aiTraceLogs.createdAt))
       .limit(limit);
 
-    return rows.map((r) => ({
-      ...r,
-      tenantName: r.tenantName || 'Superadmin / Dewan RI',
-      party: r.party || 'Fraksi Parlemen',
-      costUsd: Number(r.costUsd || 0),
-    }));
+    return rows.map((r) => {
+      const costUsd = Number(r.costUsd || 0);
+      const appliedRate = Number(r.fxRateApplied || 0) > 0 ? Number(r.fxRateApplied) : fxRate;
+      const recordedIdr = Number(r.costIdr || 0);
+      const costIdr =
+        recordedIdr > 0 ? recordedIdr : AiCostCalculator.toIdr(costUsd, appliedRate);
+      const resolvedProv = AiCostCalculator.resolveProvider(r.model || r.provider || '');
+
+      return {
+        ...r,
+        provider: resolvedProv,
+        tenantName: r.tenantName || 'Visitor Publik / Sistem',
+        party: r.party || 'Publik',
+        costUsd,
+        fxRateApplied: appliedRate,
+        costIdr,
+      };
+    });
   }
 
-  /**
-   * Alias getObservabilityMetrics untuk memenuhi kontrak Facade
-   */
   async getObservabilityMetrics(days: number = 7) {
     return await this.getAiObservability();
   }
 
-  /**
-   * Alias topupTokenPool untuk memenuhi kontrak Facade
-   */
   async topupTokenPool(dto: TopupTokenPoolDto) {
     return await this.topupMasterTokenPool(dto);
   }
 
-  /**
-   * Ambil data saldo Platform Token Pool
-   */
   async getTokenPool() {
-    const [pool] = await db.select().from(platformTokenPools).limit(1);
-    return pool || null;
+    const fxSnapshot = await DynamicExchangeRate.getLiveUsdToIdrSnapshot();
+    const poolsMap = await this.ensureDualProviderPools(fxSnapshot.rateIdrPerUsd);
+    return {
+      OPENAI: poolsMap.get('OPENAI') || null,
+      GEMINI: poolsMap.get('GEMINI') || null,
+      exchangeRate: fxSnapshot,
+    };
   }
 
-  /**
-   * Breakdown kuota AI per tenant
-   */
   async getTenantQuotaBreakdown(month?: string) {
     const stats = await this.getAiObservability();
     return stats.tenantBreakdowns || [];
   }
 
-  /**
-   * Riwayat transaksi topup deposit
-   */
   async getHistoricalTopups() {
     return await db
       .select()
@@ -481,9 +1016,6 @@ export class SuperadminObservabilityService {
       .limit(50);
   }
 
-  /**
-   * Ambil daftar publikasi & prompt AI lintas tenant untuk Ruang Monitoring AI 3D Superadmin
-   */
   async getAiPromptPayloads(limit: number = 30) {
     const pubs = await db
       .select({

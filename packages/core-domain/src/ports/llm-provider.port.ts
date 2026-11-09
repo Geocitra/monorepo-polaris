@@ -7,6 +7,7 @@ export interface GenerateArticleParams {
   targetAudience?: string;
   comparisonContextData?: string;
   tenantId?: string;
+  publicationId?: string;
   targetLength?: string;
   writingStyle?: string;
   framingStance?: string;
@@ -36,6 +37,7 @@ export interface GenerateCivicAnswerParams {
   partyAffiliation?: string | null;
   dapilName?: string | null;
   tenantId?: string;
+  visitorIpHash?: string;
 }
 
 export interface ConciergeChatTurn {
@@ -46,6 +48,7 @@ export interface ConciergeChatTurn {
 export interface GeneratePublicConciergeParams {
   userMessage: string;
   history?: ConciergeChatTurn[];
+  visitorIpHash?: string;
 }
 
 export interface GeneratedConciergeResult {

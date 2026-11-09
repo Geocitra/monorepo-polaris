@@ -31,6 +31,7 @@ import { InfographicVersionDrawer } from '@/components/studio/infografis/Infogra
 import { IterationStrip } from '@/components/studio/infografis/IterationStrip';
 import { InfographicCanvas } from '@/components/studio/infografis/InfographicCanvas';
 import { InfographicPromptBar } from '@/components/studio/infografis/InfographicPromptBar';
+import { StudioQuotaStatusBar } from '@/components/studio/StudioQuotaStatusBar';
 import { LockoutModal } from '@/components/studio/LockoutModal';
 
 const STORAGE_KEY = 'polaris_infographic_sessions_v1';
@@ -104,6 +105,7 @@ export default function InfografisStudioPage() {
   const [publishing, setPublishing] = useState(false);
   const [publishedUrl, setPublishedUrl] = useState<string | null>(null);
   const [lockoutModalOpen, setLockoutModalOpen] = useState(false);
+  const [isUrgentOverquota, setIsUrgentOverquota] = useState(false);
 
   // Multi-Sesi & Multi-Iterasi States
   const [sessions, setSessions] = useState<InfographicSession[]>(SEED_SESSIONS);
@@ -345,6 +347,7 @@ export default function InfografisStudioPage() {
           img2ImgDenoisingStrength: 0.18,
           compositionMode: includeUserPhoto ? 'FIGURE_CENTERPIECE' : 'PUBLIC_ADVOCACY',
           customPhotoUrl: profile?.photoUrl || (Array.isArray(profile?.photoGallery) && profile.photoGallery[0]) || undefined,
+          isUrgentOverquota,
         }),
       });
 
@@ -393,7 +396,7 @@ export default function InfografisStudioPage() {
             const parsed = JSON.parse(detail.asset.promptUsed);
             if (parsed?.archetype) detectedArchetype = parsed.archetype;
             if (!rawCanvasUrl && parsed?.rawCanvasUrl) rawCanvasUrl = parsed.rawCanvasUrl;
-          } catch {}
+          } catch { }
         }
       }
 
@@ -448,6 +451,9 @@ export default function InfografisStudioPage() {
         title: `Versi ${nextVersionNumber} Berhasil Dibuat!`,
         description: 'Visual baru telah dirender dan ditambahkan ke linimasa iterasi.',
       });
+
+      const updatedBilling = await ApiClient.request<any>('/billing/status').catch(() => null);
+      if (updatedBilling) setBilling(updatedBilling);
     } catch (err: any) {
       toast({
         type: 'error',
@@ -587,11 +593,11 @@ export default function InfografisStudioPage() {
             iterations: s.iterations.map((it) =>
               it.id === currentIteration.id
                 ? {
-                    ...it,
-                    isPublished: true,
-                    publishedUrl: finalUrl,
-                    publicationId: res?.publicationId || it.publicationId,
-                  }
+                  ...it,
+                  isPublished: true,
+                  publishedUrl: finalUrl,
+                  publicationId: res?.publicationId || it.publicationId,
+                }
                 : it
             ),
           };
@@ -708,6 +714,13 @@ export default function InfografisStudioPage() {
               </button>
             </div>
           </div>
+
+          {/* BAR STATUS KUOTA PAKET & JATAH MINGGUAN OMNICHANNEL */}
+          <StudioQuotaStatusBar
+            quota={billing?.quota}
+            isUrgentOverquota={isUrgentOverquota}
+            onToggleUrgentOverquota={setIsUrgentOverquota}
+          />
 
           {/* WARNING BANNER LISENSI */}
           {isUnpaid && (

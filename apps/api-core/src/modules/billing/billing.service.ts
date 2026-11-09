@@ -22,16 +22,20 @@ import {
   PlanTier,
   QuotaTransactionType,
 } from '@polaris/shared-types';
-import { AiCostCalculator, EntitlementPolicy } from '@polaris/core-domain';
+import { AiCostCalculator, DynamicExchangeRate, EntitlementPolicy } from '@polaris/core-domain';
 import { CreateCheckoutDto, CheckoutResponseDto, BillingStatusDto } from './dto/billing.dto.js';
 import { RedisService } from '../redis/redis.service.js';
+import { QuotaWalletService } from './quota-wallet.service.js';
 
 @Injectable()
 export class BillingService {
   private readonly logger = new Logger(BillingService.name);
   private readonly paymentGateway = new MidtransPaymentAdapter();
 
-  constructor(private readonly redisService?: RedisService) {}
+  constructor(
+    private readonly redisService?: RedisService,
+    private readonly quotaWalletService?: QuotaWalletService,
+  ) {}
 
   private getFallbackPrice(cycle?: string): { amountIdr: number; durationDays: number } {
     const key = (cycle || 'MONTHLY').toUpperCase();
@@ -548,12 +552,19 @@ export class BillingService {
     }
 
     const currentMonth = new Date().toISOString().slice(0, 7);
+    const fxSnapshot = await DynamicExchangeRate.getLiveUsdToIdrSnapshot();
 
-    const [walletQuota] = await db
-      .select()
-      .from(tenantQuotaWallets)
-      .where(eq(tenantQuotaWallets.tenantId, tenantId))
-      .limit(1);
+    const walletInfo = this.quotaWalletService
+      ? await this.quotaWalletService.getTenantQuotaWallet(tenantId)
+      : null;
+
+    const [walletQuota] = walletInfo
+      ? [walletInfo]
+      : await db
+          .select()
+          .from(tenantQuotaWallets)
+          .where(eq(tenantQuotaWallets.tenantId, tenantId))
+          .limit(1);
 
     const [quota] = await db
       .select()
@@ -586,7 +597,10 @@ export class BillingService {
     const articles = quota?.articleUsed || 0;
     const dalle = quota?.dalleUsed || 0;
     const recordedCostUsd = Number(quota?.estimatedCostUsd) || AiCostCalculator.calculateCostUsd(tokens, dalle);
-    const costIdr = AiCostCalculator.toIdr(recordedCostUsd);
+    const recordedCostIdr = Number((quota as any)?.totalCostIdr || 0);
+    const costIdr = recordedCostIdr > 0
+      ? recordedCostIdr
+      : AiCostCalculator.toIdr(recordedCostUsd, fxSnapshot.rateIdrPerUsd);
 
     const serverKey = process.env.MIDTRANS_SERVER_KEY || '';
     const isProd = process.env.MIDTRANS_IS_PRODUCTION !== undefined
@@ -692,9 +706,9 @@ export class BillingService {
           highlight,
           perks: [
             `+${p.durationDays} Hari Masa Aktif Penuh`,
-            'AI Unlimited (Naskah & Poster)',
+            `+${p.quotaRequests || (p.durationDays >= 365 ? 144 : p.durationDays >= 180 ? 72 : 12)} Kuota Request Materi (Naskah & Poster)`,
             p.planTier === 'STARTER' ? 'Portal Resmi Standar Parlemen' : 'Dukungan Custom Domain & Layout Tematik',
-            'Garansi Akumulasi Hari Tidak Hangus',
+            'Garansi Akumulasi Hari & Kuota Tidak Hangus',
           ],
         };
       });
@@ -746,21 +760,21 @@ export class BillingService {
         const perks = tier === PlanTier.STARTER
           ? [
               'Durasi Masa Aktif Penuh Sesuai Siklus',
-              'AI Unlimited (Naskah Legislasi & Poster Dapil)',
+              'Kuota Materi Terpadu (12 Request/Bln, Jatah 3x/Minggu, Gratis 3x Revisi)',
               'Tata Letak Standar Parlemen Saja (Default)',
               'Domain Resmi Bawaan (subdomain.polaris.id)',
               'Pembayaran Mandiri Cepat via VA Bank & QRIS',
-              'Garansi Akumulasi Sisa Hari Tidak Hangus',
+              'Garansi Akumulasi Sisa Hari & Kuota Tidak Hangus',
             ]
           : [
               'Durasi Masa Aktif Penuh Sesuai Siklus',
-              'AI Unlimited (Naskah Legislasi & Poster Dapil)',
+              'Kuota Materi Terpadu (12 Request/Bln, Jatah 3x/Minggu, Gratis 3x Revisi)',
               'Bebas Pilih Layout Tematik (Dark Modern, Bold Typography, Neon Glow, Creative Warm)',
               'Dukungan Custom Domain Pribadi (.id / .com)',
               'Fasilitasi Dokumen Administrasi SPK & Setwan',
               'Faktur Pajak Resmi Negara (PPN 11% & PPh Instansi)',
               'Prioritas Jalur Antrean Pemrosesan AI 24/7',
-              'Garansi Akumulasi Sisa Hari Tidak Hangus',
+              'Garansi Akumulasi Sisa Hari & Kuota Tidak Hangus',
             ];
 
         return {
@@ -781,6 +795,19 @@ export class BillingService {
       });
     }
 
+    const totalAllocated = walletQuota?.totalQuotaAllocated || 12;
+    const effectiveRemaining =
+      (walletQuota as any)?.effectiveRemaining !== undefined
+        ? (walletQuota as any).effectiveRemaining
+        : (walletQuota?.remainingQuota ?? 12);
+    const weeklyAllowanceLimit = walletQuota?.weeklyAllowanceLimit || 3;
+    const weeklyUsed = (walletQuota as any)?.weeklyUsed ?? 0;
+    const weeklyRemaining =
+      (walletQuota as any)?.weeklyRemaining !== undefined
+        ? (walletQuota as any).weeklyRemaining
+        : Math.max(0, weeklyAllowanceLimit - weeklyUsed);
+    const isPeriodExpired = Boolean((walletQuota as any)?.isExpired);
+
     return {
       subscriptionStatus: sub.status,
       planTier: sub.planTier,
@@ -790,19 +817,34 @@ export class BillingService {
       tierOfferings,
       quota: {
         billingMonth: currentMonth,
-        articleLimit: 0,
+        articleLimit: totalAllocated,
         articleUsed: articles,
-        articleRemaining: 9999,
-        dalleLimit: 0,
+        articleRemaining: effectiveRemaining,
+        dalleLimit: totalAllocated,
         dalleUsed: dalle,
-        dalleRemaining: 9999,
+        dalleRemaining: effectiveRemaining,
         totalTokensConsumed: tokens,
         estimatedCostUsd: recordedCostUsd,
         estimatedCostIdr: costIdr,
         isUnlimited: false,
-        totalQuotaAllocated: walletQuota?.totalQuotaAllocated || 12,
-        remainingQuota: walletQuota?.remainingQuota ?? 12,
-        weeklyAllowanceLimit: walletQuota?.weeklyAllowanceLimit || 3,
+        totalQuotaAllocated: totalAllocated,
+        remainingQuota: effectiveRemaining,
+        weeklyAllowanceLimit,
+        weeklyUsed,
+        weeklyRemaining,
+        isPeriodExpired,
+        fxRateApplied: fxSnapshot.rateIdrPerUsd,
+        fxRateSource: fxSnapshot.source,
+        openaiInputTokens: Number((quota as any)?.openaiInputTokens || 0),
+        openaiOutputTokens: Number((quota as any)?.openaiOutputTokens || 0),
+        openaiTotalTokens: Number((quota as any)?.openaiTotalTokens || 0),
+        openaiImageCalls: Number((quota as any)?.openaiImageCalls || 0),
+        openaiCostIdr: Number((quota as any)?.openaiCostIdr || 0),
+        geminiInputTokens: Number((quota as any)?.geminiInputTokens || 0),
+        geminiOutputTokens: Number((quota as any)?.geminiOutputTokens || 0),
+        geminiTotalTokens: Number((quota as any)?.geminiTotalTokens || 0),
+        geminiImageCalls: Number((quota as any)?.geminiImageCalls || 0),
+        geminiCostIdr: Number((quota as any)?.geminiCostIdr || 0),
       },
       recentInvoice: lastInvoice
         ? {

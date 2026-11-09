@@ -24,6 +24,7 @@ import { ArticleSessionDrawer } from '@/components/studio/artikel/ArticleSession
 import { ArticleReferencesCard } from '@/components/studio/artikel/ArticleReferencesCard';
 import { ArticleStudioHeader } from '@/components/studio/artikel/ArticleStudioHeader';
 import { ArticleIterationBanner } from '@/components/studio/artikel/ArticleIterationBanner';
+import { StudioQuotaStatusBar } from '@/components/studio/StudioQuotaStatusBar';
 import { useArticleSessionManager } from '@/components/studio/artikel/hooks/useArticleSessionManager';
 
 function AIArticleStudioContent() {
@@ -79,6 +80,7 @@ function AIArticleStudioContent() {
   // Omnichannel Export & Lockout Modals
   const [exportModalOpen, setExportModalOpen] = useState(false);
   const [lockoutModalOpen, setLockoutModalOpen] = useState(false);
+  const [isUrgentOverquota, setIsUrgentOverquota] = useState(false);
 
   // View Mode: 'DOCS' (Pratinjau Dokumen A4 Resmi) | 'EDIT' (Editor Interaktif TipTap)
   const [viewMode, setViewMode] = useState<'DOCS' | 'EDIT'>('DOCS');
@@ -169,6 +171,7 @@ function AIArticleStudioContent() {
           targetLength: lengthWordMap[selectedLength],
           writingStyle: selectedStyle,
           generateDallePoster: false,
+          isUrgentOverquota,
         }),
       });
 
@@ -221,6 +224,8 @@ function AIArticleStudioContent() {
           description: `Diselaraskan dengan gaya ${cfg.name} (${selectedLength}). Tersimpan di log riwayat.`,
         });
         setPromptInput('');
+        const updatedBilling = await ApiClient.request<any>('/billing/status').catch(() => null);
+        if (updatedBilling) setBilling(updatedBilling);
       }
     } catch (err: any) {
       toast({
@@ -314,6 +319,13 @@ function AIArticleStudioContent() {
             setViewMode={setViewMode}
             isWide={isWide}
             onToggleWide={toggleWide}
+          />
+
+          {/* BAR STATUS KUOTA PAKET & JATAH MINGGUAN OMNICHANNEL */}
+          <StudioQuotaStatusBar
+            quota={billing?.quota}
+            isUrgentOverquota={isUrgentOverquota}
+            onToggleUrgentOverquota={setIsUrgentOverquota}
           />
 
           {/* BANNER MODE PRATINJAU VERSI LAMPAU */}

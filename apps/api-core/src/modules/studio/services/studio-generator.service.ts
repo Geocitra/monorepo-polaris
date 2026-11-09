@@ -21,10 +21,16 @@ import {
   withTenantContext,
 } from '@polaris/database';
 import { ContentPublication } from '@polaris/core-domain';
-import { ContentStatus, SubscriptionStatus, ContentCreationContext } from '@polaris/shared-types';
+import {
+  ContentStatus,
+  SubscriptionStatus,
+  ContentCreationContext,
+  QuotaConsumptionChannel,
+} from '@polaris/shared-types';
 import { GenerateArticleRequestDto } from '../dto/studio.dto.js';
 import { RedisService } from '../../redis/redis.service.js';
 import { UrlScraperService } from '../url-scraper.service.js';
+import { QuotaWalletService } from '../../billing/quota-wallet.service.js';
 
 @Injectable()
 export class StudioGeneratorService implements OnModuleDestroy {
@@ -34,7 +40,8 @@ export class StudioGeneratorService implements OnModuleDestroy {
 
   constructor(
     private readonly redisService?: RedisService,
-    private readonly urlScraperService?: UrlScraperService
+    private readonly urlScraperService?: UrlScraperService,
+    private readonly quotaWalletService?: QuotaWalletService,
   ) {
     const redisUrl = process.env.REDIS_URL || 'redis://localhost:6379';
     this.redisClient = new Redis(redisUrl, { maxRetriesPerRequest: null });
@@ -201,6 +208,13 @@ export class StudioGeneratorService implements OnModuleDestroy {
             )
           );
 
+        if (existingBrief?.quotaCostDeducted) {
+          await tx
+            .update(contentPublications)
+            .set({ quotaCostDeducted: existingBrief.quotaCostDeducted })
+            .where(eq(contentPublications.id, created.id));
+        }
+
         if (previousPubId && previousPubId !== created.id) {
           const [oldPub] = await tx
             .select({ id: contentPublications.id, status: contentPublications.status })
@@ -223,6 +237,47 @@ export class StudioGeneratorService implements OnModuleDestroy {
 
       return created;
     });
+
+    // Penegakan Kuota Omnichannel: Jika dipicu langsung dari Web Studio (tanpa briefId WA),
+    // wajib memeriksa dan memotong kuota paket bulanan + jatah mingguan (3 request/minggu) secara atomik.
+    const isDirectWebStudio = !(dto.briefId && dto.briefId.trim());
+    let deductedFromWebStudio = false;
+    if (isDirectWebStudio && this.quotaWalletService) {
+      try {
+        const deductRes = await this.quotaWalletService.deductQuota({
+          tenantId,
+          cost: 1,
+          publicationId: publication.id,
+          referenceCode: `WEB-${publication.slug.slice(0, 36)}`,
+          isUrgentOverquota: Boolean(dto.isUrgentOverquota),
+          channel: QuotaConsumptionChannel.WEB_STUDIO,
+          enforceWeeklyPacing: true,
+          notes: `Generasi materi via Web Studio: "${dto.topic.slice(0, 60)}"`,
+        });
+        deductedFromWebStudio = true;
+        if (deductRes.costDeducted > 1) {
+          await withTenantContext(tenantId, (tx) =>
+            tx
+              .update(contentPublications)
+              .set({ quotaCostDeducted: deductRes.costDeducted })
+              .where(eq(contentPublications.id, publication.id)),
+          ).catch(() => {});
+        }
+      } catch (quotaErr) {
+        // Bersihkan placeholder publikasi apabila kuota tidak mencukupi / jatah mingguan penuh
+        await withTenantContext(tenantId, (tx) =>
+          tx
+            .delete(contentPublications)
+            .where(
+              and(
+                eq(contentPublications.id, publication.id),
+                eq(contentPublications.tenantId, tenantId),
+              ),
+            ),
+        ).catch(() => {});
+        throw quotaErr;
+      }
+    }
 
     // 4. Deteksi URL eksternal jika ada
     const detectedUrls = this.urlScraperService
@@ -291,6 +346,15 @@ export class StudioGeneratorService implements OnModuleDestroy {
     } catch (error: unknown) {
       const message = error instanceof Error ? error.message : String(error);
       this.logger.error(`Failed to enqueue studio job ${jobId}: ${message}`);
+      if (deductedFromWebStudio && this.quotaWalletService) {
+        await this.quotaWalletService
+          .refundQuota({
+            tenantId,
+            publicationId: publication.id,
+            reason: 'Pengembalian kuota otomatis karena kegagalan penjadwalan antrean Redis.',
+          })
+          .catch(() => {});
+      }
       await withTenantContext(tenantId, (tx) =>
         tx
           .update(contentPublications)
@@ -375,6 +439,8 @@ export class StudioGeneratorService implements OnModuleDestroy {
           id: contentPublications.id,
           title: contentPublications.title,
           bodyContentMarkdown: contentPublications.bodyContentMarkdown,
+          revisionUsed: contentPublications.revisionUsed,
+          revisionLimit: contentPublications.revisionLimit,
         })
         .from(contentPublications)
         .where(
@@ -392,6 +458,33 @@ export class StudioGeneratorService implements OnModuleDestroy {
         'Naskah artikel tidak ditemukan atau belum siap untuk dibuatkan poster.'
       );
     }
+
+    const revUsed = Number((article as any).revisionUsed ?? 0);
+    const revLimit = Number((article as any).revisionLimit ?? 3);
+    if (revUsed >= revLimit) {
+      throw new ForbiddenException({
+        statusCode: 403,
+        errorCode: 'REVISION_LIMIT_EXCEEDED',
+        message: `Batas revisi visual gratis (${revUsed}/${revLimit}) untuk materi ini telah habis. Silakan buat materi baru untuk men-generate poster baru.`,
+        revisionUsed: revUsed,
+        revisionLimit: revLimit,
+      });
+    }
+
+    await withTenantContext(tenantId, (tx) =>
+      tx
+        .update(contentPublications)
+        .set({
+          revisionUsed: revUsed + 1,
+          updatedAt: new Date(),
+        })
+        .where(
+          and(
+            eq(contentPublications.id, article.id),
+            eq(contentPublications.tenantId, tenantId),
+          ),
+        ),
+    );
 
     const jobId = randomUUID();
     try {

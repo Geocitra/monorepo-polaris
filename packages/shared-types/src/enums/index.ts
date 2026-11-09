@@ -509,3 +509,17 @@ export enum LiveChatCsatRating {
   DISSATISFIED = 'DISSATISFIED',
 }
 
+export enum AiProvider {
+  OPENAI = 'OPENAI',
+  GEMINI = 'GEMINI',
+  SYSTEM = 'SYSTEM',
+}
+
+export enum QuotaConsumptionChannel {
+  WHATSAPP = 'WHATSAPP',
+  WEB_STUDIO = 'WEB_STUDIO',
+  ADMIN = 'ADMIN',
+  SYSTEM = 'SYSTEM',
+}
+
+

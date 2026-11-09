@@ -141,13 +141,17 @@ export class CreateDapilDto {
 }
 
 export class TopupTokenPoolDto {
-  @IsNumber()
-  @IsNotEmpty()
-  amountUsd!: number;
+  @IsString()
+  @IsOptional()
+  provider?: 'OPENAI' | 'GEMINI';
 
   @IsNumber()
   @IsOptional()
   amountIdr?: number;
+
+  @IsNumber()
+  @IsOptional()
+  amountUsd?: number;
 
   @IsNumber()
   @IsOptional()
