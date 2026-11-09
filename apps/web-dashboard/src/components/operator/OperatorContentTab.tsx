@@ -88,7 +88,7 @@ interface OperatorContentTabProps {
   downloadingPoster: boolean;
   onDownloadPoster: () => void;
   regeneratingPoster: boolean;
-  onRegeneratePoster: () => void;
+  onRegeneratePoster: (customPrompt?: string) => void;
   copiedWa: boolean;
   onCopyWa: () => void;
   copiedIg: boolean;
@@ -168,6 +168,8 @@ export function OperatorContentTab({
 }: OperatorContentTabProps) {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [showPromptForm, setShowPromptForm] = React.useState(false);
+  const [showPosterPromptBox, setShowPosterPromptBox] = React.useState(false);
+  const [posterRevisionPrompt, setPosterRevisionPrompt] = React.useState('');
 
   const isRevisionMode = Boolean(
     activeBrief &&
@@ -921,7 +923,7 @@ export function OperatorContentTab({
                       </span>
                     </div>
 
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-2 flex-wrap">
                       <button
                         type="button"
                         disabled={downloadingPoster}
@@ -938,19 +940,96 @@ export function OperatorContentTab({
 
                       <button
                         type="button"
+                        onClick={() => setShowPosterPromptBox((prev) => !prev)}
+                        className={`px-3.5 py-1.5 rounded-xl border text-xs font-bold transition flex items-center gap-1.5 cursor-pointer shadow-2xs ${
+                          showPosterPromptBox
+                            ? 'bg-indigo-50 border-indigo-300 text-indigo-700 dark:bg-indigo-950/60 dark:border-indigo-700 dark:text-indigo-200'
+                            : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-200'
+                        }`}
+                      >
+                        <Sparkles className="w-3.5 h-3.5 text-indigo-500" />
+                        <span>{showPosterPromptBox ? 'Tutup Prompt Revisi' : 'Revisi dengan Prompt AI'}</span>
+                      </button>
+
+                      <button
+                        type="button"
                         disabled={regeneratingPoster}
-                        onClick={onRegeneratePoster}
+                        onClick={() => onRegeneratePoster()}
                         className="px-3.5 py-1.5 rounded-xl border border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800 text-xs font-bold text-slate-700 dark:text-slate-300 transition flex items-center gap-1.5 cursor-pointer"
+                        title="Buat ulang poster dengan variasi otomatis arketipe baru"
                       >
                         {regeneratingPoster ? (
                           <RefreshCw className="w-3.5 h-3.5 animate-spin text-indigo-500" />
                         ) : (
                           <RotateCcw className="w-3.5 h-3.5" />
                         )}
-                        <span>{regeneratingPoster ? 'Merender...' : 'Buat Ulang Poster'}</span>
+                        <span>{regeneratingPoster ? 'Merender...' : 'Variasi Baru Otomatis'}</span>
                       </button>
                     </div>
                   </div>
+
+                  {/* KOTAK PROMPTING REVISI POSTER AI */}
+                  {showPosterPromptBox && (
+                    <div className="p-4 rounded-2xl bg-indigo-50/70 dark:bg-indigo-950/40 border border-indigo-200 dark:border-indigo-800 space-y-3 animate-in slide-in-from-top-2">
+                      <div className="flex items-center justify-between gap-2 flex-wrap">
+                        <label className="text-xs font-bold text-indigo-950 dark:text-indigo-200 flex items-center gap-1.5">
+                          <Sparkles className="w-3.5 h-3.5 text-indigo-600" />
+                          <span>Instruksi Khusus Prompt Revisi Poster AI:</span>
+                        </label>
+                        {latestRevisionMsg?.textBody && (
+                          <button
+                            type="button"
+                            onClick={() => setPosterRevisionPrompt(latestRevisionMsg.textBody || '')}
+                            className="text-[11px] font-bold text-indigo-600 dark:text-indigo-400 hover:underline flex items-center gap-1 cursor-pointer"
+                          >
+                            <span>💡 Pakai Catatan Klien</span>
+                          </button>
+                        )}
+                      </div>
+
+                      <textarea
+                        rows={2}
+                        value={posterRevisionPrompt}
+                        onChange={(e) => setPosterRevisionPrompt(e.target.value)}
+                        placeholder="Contoh: Ubah palet warna dominan ke merah marun &amp; emas, pertegas infografis tabel, jangan sertakan foto tokoh..."
+                        className="w-full rounded-xl border border-indigo-300 dark:border-indigo-700 bg-white dark:bg-slate-900 p-3 text-xs text-slate-900 dark:text-white shadow-2xs focus:outline-hidden"
+                      />
+
+                      <div className="flex items-center justify-end gap-2">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setPosterRevisionPrompt('');
+                            setShowPosterPromptBox(false);
+                          }}
+                          className="px-3 py-1.5 rounded-lg border border-slate-200 dark:border-slate-700 text-xs text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 cursor-pointer"
+                        >
+                          Batal
+                        </button>
+                        <button
+                          type="button"
+                          disabled={regeneratingPoster || !posterRevisionPrompt.trim()}
+                          onClick={() => {
+                            onRegeneratePoster(posterRevisionPrompt);
+                            setShowPosterPromptBox(false);
+                          }}
+                          className="px-4 py-1.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold flex items-center gap-1.5 cursor-pointer disabled:opacity-50 shadow-xs"
+                        >
+                          {regeneratingPoster ? (
+                            <>
+                              <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+                              <span>Merender Poster AI...</span>
+                            </>
+                          ) : (
+                            <>
+                              <Sparkles className="w-3.5 h-3.5" />
+                              <span>Render Poster dengan Prompt Ini</span>
+                            </>
+                          )}
+                        </button>
+                      </div>
+                    </div>
+                  )}
 
                   <div className="flex justify-center p-4 bg-slate-100 dark:bg-slate-950 rounded-2xl border border-slate-200 dark:border-slate-800">
                     <img

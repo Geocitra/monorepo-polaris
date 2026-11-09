@@ -442,7 +442,7 @@ export class StudioGeneratorService implements OnModuleDestroy {
     };
   }
 
-  async regenerateArticlePoster(tenantId: string, articleId: string) {
+  async regenerateArticlePoster(tenantId: string, articleId: string, prompt?: string) {
     const article = await withTenantContext(tenantId, async (tx) => {
       const [record] = await tx
         .select({
@@ -506,6 +506,7 @@ export class StudioGeneratorService implements OnModuleDestroy {
           tenantId,
           publicationId: article.id,
           topic: article.title,
+          prompt: prompt?.trim() || undefined,
           generateDallePoster: true,
           channel: 'WEB_STUDIO',
           activityType: 'POSTER_REVISION',

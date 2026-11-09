@@ -569,13 +569,16 @@ export default function OperatorCockpitPage() {
     }
   };
 
-  const handleRegeneratePoster = async () => {
+  const handleRegeneratePoster = async (customPrompt?: string) => {
     if (!generatedResult?.publication?.id || regeneratingPoster) return;
     setRegeneratingPoster(true);
     try {
       const res = await AdminApiClient.request<any>(
         `/studio/articles/${generatedResult.publication.id}/poster/regenerate`,
-        { method: 'POST' }
+        {
+          method: 'POST',
+          body: customPrompt?.trim() ? JSON.stringify({ prompt: customPrompt.trim() }) : undefined,
+        }
       );
       const jobId = res?.jobId;
       if (jobId) {

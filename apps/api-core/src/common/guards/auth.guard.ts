@@ -73,8 +73,10 @@ export class AuthGuard implements CanActivate {
         }
 
         // Verifikasi penugasan aktif jika pemanggil adalah CONTENT_OPERATOR
+        // Kecualikan rute live-chat meja redaksi terpusat agar operator dapat melayani antrean bantuan tanpa terblokir konteks dewan aktif
         let canDirectPublish = false;
-        if (isOperatorRole && !isSuperadminRole) {
+        const isLiveChatRoute = reqPath.includes('/whatsapp/live-chat');
+        if (isOperatorRole && !isSuperadminRole && !isLiveChatRoute) {
           const [assignment] = await db
             .select()
             .from(operatorTenantAssignments)
@@ -93,7 +95,7 @@ export class AuthGuard implements CanActivate {
             );
           }
           canDirectPublish = assignment.canDirectPublish;
-        } else if (isSuperadminRole) {
+        } else if (isSuperadminRole || isLiveChatRoute) {
           canDirectPublish = true;
         }
 

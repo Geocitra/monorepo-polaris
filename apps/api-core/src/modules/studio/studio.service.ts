@@ -50,7 +50,7 @@ export class StudioService {
     private readonly generatorService: StudioGeneratorService,
     private readonly articleService: StudioArticleService,
     private readonly researchService: StudioResearchService,
-  ) {}
+  ) { }
 
   // --- Domain: Radar & Morning Briefing ---
   async getMorningBriefing(tenantId: string) {
@@ -74,8 +74,8 @@ export class StudioService {
     return await this.generatorService.getJobStatus(jobId, tenantId);
   }
 
-  async regenerateArticlePoster(tenantId: string, articleId: string) {
-    return await this.generatorService.regenerateArticlePoster(tenantId, articleId);
+  async regenerateArticlePoster(tenantId: string, articleId: string, prompt?: string) {
+    return await this.generatorService.regenerateArticlePoster(tenantId, articleId, prompt);
   }
 
   // --- Domain: Manajemen Artikel & Siklus Publikasi ---
@@ -234,7 +234,7 @@ export class StudioService {
     if (existingPublication) {
       const bodyContentMarkdown =
         existingPublication.bodyContentMarkdown &&
-        !existingPublication.bodyContentMarkdown.startsWith('# Sedang')
+          !existingPublication.bodyContentMarkdown.startsWith('# Sedang')
           ? existingPublication.bodyContentMarkdown
           : `# ${dto.title}\n\n![${dto.title}](${dto.imageUrl})\n\n${dto.caption || dto.prompt || 'Infografis visualisasi data capaian kebijakan dan akuntabilitas publik.'}\n\n*Dipublikasikan secara resmi melalui Studio Infografis POLARIS.*`;
 
@@ -442,7 +442,7 @@ export class StudioService {
       try {
         const parsed = JSON.parse(posterAsset.promptUsed);
         if (parsed.rawCanvasUrl) rawCanvasUrl = parsed.rawCanvasUrl;
-      } catch {}
+      } catch { }
     }
 
     return {

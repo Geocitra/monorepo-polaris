@@ -726,6 +726,22 @@ export function OperatorLiveChatPanel({
                     </div>
                   )}
 
+                  {actionFeedback?.type === 'error' && (
+                    <div className="mb-2 p-2 rounded-lg bg-rose-50 dark:bg-rose-950/60 border border-rose-300 text-rose-700 dark:text-rose-300 text-[11px] flex items-center justify-between">
+                      <div className="flex items-center gap-1.5">
+                        <AlertCircle className="w-3.5 h-3.5 shrink-0" />
+                        <span>{actionFeedback.text}</span>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => setActionFeedback(null)}
+                        className="text-[10px] underline hover:opacity-80 ml-2"
+                      >
+                        Tutup
+                      </button>
+                    </div>
+                  )}
+
                   <div className="flex items-center gap-2">
                     <input
                       type="text"

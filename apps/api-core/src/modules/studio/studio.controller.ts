@@ -159,9 +159,10 @@ export class StudioController {
   @HttpCode(HttpStatus.ACCEPTED)
   async regeneratePoster(
     @CurrentTenant() user: AuthenticatedTenantPayload,
-    @Param('id') id: string
+    @Param('id') id: string,
+    @Body() dto?: { prompt?: string }
   ) {
-    return await this.studioService.regenerateArticlePoster(user.tenantId, id);
+    return await this.studioService.regenerateArticlePoster(user.tenantId, id, dto?.prompt);
   }
 
   @Put('articles/:id')

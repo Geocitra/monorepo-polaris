@@ -331,12 +331,17 @@ export class AdminApiClient {
       } else if (response.status === 403 && typeof window !== 'undefined') {
         const user = this.getUser();
         if (user?.role === 'CONTENT_OPERATOR' || user?.role === 'SUPPORT_OPERATOR') {
-          // Jika akun adalah operator, arahkan ke cockpit operator
-          window.location.href = '/operator';
+          // Jika akun adalah operator dan berada di luar area operator, baru arahkan ke /operator.
+          // JANGAN lakukan hard-refresh jika sudah berada di halaman /operator agar state UI & toast error tetap tampil.
+          if (!window.location.pathname.startsWith('/operator')) {
+            window.location.href = '/operator';
+          }
         } else {
-          // Jika forbidden dan bukan operator yang valid, bersihkan sesi agar tidak terjebak loop
-          this.logout();
-          window.location.href = '/superadmin/login';
+          // Hanya logout jika berada di area superadmin
+          if (window.location.pathname.startsWith('/superadmin')) {
+            this.logout();
+            window.location.href = '/superadmin/login';
+          }
         }
       }
       const message = ApiClient['normalizeErrorMessage'](data, response.status);

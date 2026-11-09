@@ -108,6 +108,11 @@ export class StudioPosterRegenerationHandler {
         'Menghasilkan kanvas seni kolase baru...'
       );
 
+      const revisionPrompt = job.data.prompt?.trim();
+      const customGroundedEvidence = revisionPrompt
+        ? `[INSTRUKSI KHUSUS PROMPT REVISI POSTER DARI OPERATOR / KLIEN]:\n${revisionPrompt}`
+        : undefined;
+
       const posterResult = await StudioPosterSynthesizerService.synthesizePoster({
         tenantId,
         publicationId,
@@ -116,6 +121,7 @@ export class StudioPosterRegenerationHandler {
         articleTitle: article.title,
         articleExcerpt: article.excerpt || undefined,
         articleContent: article.content,
+        groundedEvidenceText: customGroundedEvidence,
         member,
         dapilName,
         forcedArchetype: job.data.forcedArchetype,

@@ -843,48 +843,40 @@ export function OperatorWhatsAppBriefsTab({
                 <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-3">
                   <div className="space-y-1">
                     <div className="flex items-center gap-2 flex-wrap">
-                      <span className="font-mono text-sm font-black text-indigo-600 dark:text-indigo-400">
+                      <span className="font-mono text-xs font-black text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-950/80 px-2 py-0.5 rounded-md border border-indigo-200 dark:border-indigo-800">
                         #{selectedBrief.briefCode}
                       </span>
-                      <span
-                        className={`px-2.5 py-0.5 rounded-full text-[10px] font-black border ${
-                          getStatusBadgeConfig(selectedBrief.status).cls
-                        }`}
-                      >
-                        {getStatusBadgeConfig(selectedBrief.status).label}
-                      </span>
+
                       {selectedBrief.packageType === 'POSTER_ONLY' ? (
-                        <span className="px-2.5 py-0.5 rounded-full text-[10px] font-black bg-purple-100 text-purple-900 dark:bg-purple-950 dark:text-purple-300 border border-purple-200">
+                        <span className="px-2.5 py-0.5 rounded-full text-[10.5px] font-bold bg-purple-50 text-purple-700 dark:bg-purple-950/60 dark:text-purple-300 border border-purple-200/80 dark:border-purple-800">
                           🎨 Poster Visual (1 Kuota)
                         </span>
                       ) : selectedBrief.packageType === 'INFOGRAPHIC_ONLY' ? (
-                        <span className="px-2.5 py-0.5 rounded-full text-[10px] font-black bg-emerald-100 text-emerald-900 dark:bg-emerald-950 dark:text-emerald-300 border border-emerald-200">
+                        <span className="px-2.5 py-0.5 rounded-full text-[10.5px] font-bold bg-emerald-50 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-300 border border-emerald-200/80 dark:border-emerald-800">
                           📊 Infografis Data (1 Kuota)
                         </span>
                       ) : selectedBrief.packageType === 'ARTICLE_ONLY' ? (
-                        <span className="px-2.5 py-0.5 rounded-full text-[10px] font-black bg-blue-100 text-blue-900 dark:bg-blue-950 dark:text-blue-300 border border-blue-200">
+                        <span className="px-2.5 py-0.5 rounded-full text-[10.5px] font-bold bg-blue-50 text-blue-700 dark:bg-blue-950/60 dark:text-blue-300 border border-blue-200/80 dark:border-blue-800">
                           📝 Naskah Artikel (1 Kuota)
                         </span>
                       ) : (
-                        <span className="px-2.5 py-0.5 rounded-full text-[10px] font-black bg-indigo-100 text-indigo-900 dark:bg-indigo-950 dark:text-indigo-300 border border-indigo-200">
+                        <span className="px-2.5 py-0.5 rounded-full text-[10.5px] font-bold bg-indigo-50 text-indigo-700 dark:bg-indigo-950/60 dark:text-indigo-300 border border-indigo-200/80 dark:border-indigo-800">
                           📦 Paket Kampanye Lengkap (2 Kuota)
                         </span>
                       )}
-                      <span
-                        className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
-                          selectedBrief.clientUrgency === 'URGENT'
-                            ? 'bg-rose-100 text-rose-800 dark:bg-rose-950/60 dark:text-rose-300'
-                            : 'bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300'
-                        }`}
-                      >
-                        Sinyal Klien: {selectedBrief.clientUrgency === 'URGENT' ? '🔴 Mendesak' : '🟢 Normal'}
-                      </span>
-                      <span className="text-[11px] text-slate-400 font-mono">
-                        WA Masked: {selectedBrief.tenantMaskedPhone}
+
+                      {selectedBrief.clientUrgency === 'URGENT' && (
+                        <span className="px-2 py-0.5 rounded-full text-[10px] font-black bg-rose-500 text-white animate-pulse">
+                          ⚡ Mendesak
+                        </span>
+                      )}
+
+                      <span className="text-[11px] text-slate-400 font-mono ml-auto">
+                        WA: {selectedBrief.tenantMaskedPhone}
                       </span>
                     </div>
 
-                    <h4 className="text-sm sm:text-base font-black text-slate-900 dark:text-white leading-snug pt-1">
+                    <h4 className="text-base font-black text-slate-900 dark:text-white leading-snug pt-1">
                       {selectedBrief.topicSummary}
                     </h4>
                   </div>
@@ -1037,18 +1029,24 @@ export function OperatorWhatsAppBriefsTab({
 
                 {/* BARIS KONTROL PENERIMAAN / PENOLAKAN TIKET & STATUS KOMPONEN REVISI */}
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pt-2 border-t border-slate-100 dark:border-slate-800/80">
-                  <div className="flex items-center gap-2 flex-wrap text-[11px]">
-                    <span className="font-bold text-slate-500">Status Komponen:</span>
-                    <span className="px-2 py-0.5 rounded bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 font-semibold">
-                      📰 Artikel: <strong>{selectedBrief.articleStatus}</strong>
-                    </span>
-                    <span className="px-2 py-0.5 rounded bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 font-semibold">
-                      🖼️ Poster: <strong>{selectedBrief.imageStatus}</strong>
-                    </span>
-                    <span className="px-2 py-0.5 rounded bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 font-semibold">
-                      💬 Caption: <strong>{selectedBrief.captionStatus}</strong>
-                    </span>
-                    <span className="px-2 py-0.5 rounded bg-amber-50 dark:bg-amber-950/40 text-amber-800 dark:text-amber-300 font-bold border border-amber-200 dark:border-amber-800">
+                  <div className="flex items-center gap-2 flex-wrap text-xs">
+                    <span className="font-bold text-slate-400">Komponen:</span>
+                    {selectedBrief.articleStatus !== 'NOT_APPLICABLE' && (
+                      <span className="px-2.5 py-1 rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 font-medium">
+                        📰 Naskah: <strong className="text-slate-900 dark:text-white font-bold">{selectedBrief.articleStatus}</strong>
+                      </span>
+                    )}
+                    {selectedBrief.imageStatus !== 'NOT_APPLICABLE' && (
+                      <span className="px-2.5 py-1 rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 font-medium">
+                        🖼️ Poster: <strong className="text-slate-900 dark:text-white font-bold">{selectedBrief.imageStatus}</strong>
+                      </span>
+                    )}
+                    {selectedBrief.captionStatus !== 'NOT_APPLICABLE' && (
+                      <span className="px-2.5 py-1 rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 font-medium">
+                        💬 Caption: <strong className="text-slate-900 dark:text-white font-bold">{selectedBrief.captionStatus}</strong>
+                      </span>
+                    )}
+                    <span className="px-2.5 py-1 rounded-lg bg-amber-50 dark:bg-amber-950/40 text-amber-800 dark:text-amber-300 font-bold border border-amber-200 dark:border-amber-800">
                       🔄 Putaran Revisi: {selectedBrief.revisionUsed} / {selectedBrief.revisionLimit}
                     </span>
                   </div>

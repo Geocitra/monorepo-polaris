@@ -297,10 +297,10 @@ export class WhatsAppLiveChatService {
     operator: { id: string; name: string },
     textBody: string
   ): Promise<LiveChatMessageRecord> {
-    const leakWarning = detectOperatorContactLeak(textBody);
-    if (leakWarning) {
+    const leakCheck = detectOperatorContactLeak(textBody);
+    if (leakCheck.hasLeak) {
       throw new ForbiddenException(
-        `Pesan diblokir oleh Broker Guard: ${leakWarning}. Dilarang mencantumkan nomor telepon, email, atau kontak pribadi.`
+        `Pesan diblokir oleh Broker Guard: ${leakCheck.reason || 'Dilarang mencantumkan kontak pribadi.'}`
       );
     }
 
@@ -330,10 +330,23 @@ export class WhatsAppLiveChatService {
 
     const normPhone = normalizeIndonesianPhone(tenant.phoneNumber);
 
-    // Kirim pesan ke WhatsApp Klien
-    await this.waClient.sendTextMessage(normPhone, textBody);
+    // Kirim pesan ke WhatsApp Klien via Meta Cloud API
+    const sent = await this.waClient.sendTextMessage(normPhone, textBody);
 
     const isFirstOperatorResponse = !session.firstOperatorResponseAt;
+
+    // Verifikasi validitas operator ID di tabel systemAdmins untuk foreign key
+    let verifiedOperatorId: string | null = null;
+    if (operator?.id) {
+      const [adminUser] = await db
+        .select({ id: systemAdmins.id })
+        .from(systemAdmins)
+        .where(eq(systemAdmins.id, operator.id))
+        .limit(1);
+      if (adminUser) {
+        verifiedOperatorId = adminUser.id;
+      }
+    }
 
     const [savedMsg] = await withTenantContext(session.tenantId, async (tx) => {
       const [msg] = await tx
@@ -342,7 +355,8 @@ export class WhatsAppLiveChatService {
           sessionId: session.id,
           tenantId: session.tenantId,
           senderType: 'OPERATOR',
-          senderOperatorId: operator.id,
+          senderOperatorId: verifiedOperatorId,
+          waMessageId: sent?.messageId || null,
           messageType: 'TEXT',
           textBody,
         })
@@ -371,7 +385,7 @@ export class WhatsAppLiveChatService {
       sessionId: session.id,
       messageId: savedMsg.id,
       senderType: 'OPERATOR',
-      senderOperatorId: operator.id,
+      senderOperatorId: verifiedOperatorId,
       textBody,
       createdAt: savedMsg.createdAt.toISOString(),
     }));
