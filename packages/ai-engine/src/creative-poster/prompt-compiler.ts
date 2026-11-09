@@ -587,6 +587,15 @@ Keluarkan output HANYA dalam format JSON murni:
 
     let englishPrompt = '';
 
+    const infographicZeroMandate = `
+[CRITICAL ZERO-TEXT / ZERO-WATERMARK / ZERO-CHART MANDATE]
+- DO NOT generate any text, letters, numbers, words, headlines, coordinate labels, percentage values, signs, or watermarks.
+- DO NOT generate any fake logos, emblems, or brand signatures.
+- DO NOT generate any charts, pie charts, donut charts, graphs, tables, or metric scorecard boxes!
+- Authentic real-world scene with natural environmental details and genuine documentary civic activities, workers, or farmers in the field.
+- Clean visual photograph ready for crisp editorial compositing.
+`.trim();
+
     const zeroMandate = `
 [CRITICAL ZERO-HUMAN / ZERO-TEXT / ZERO-COORDINATE MANDATE]
 - Absolutely ZERO human faces, ZERO portraits, ZERO people, ZERO politicians, and ZERO human silhouettes.
@@ -837,6 +846,116 @@ Atmospheric documentary civic infrastructure setting with authentic journalistic
 Top 20% and column margins preserved as clean off-white paper with clean, uncluttered, soft open space.
 
 ${zeroMandate}
+      `.trim();
+    } else if (blueprint.archetype === 'INFOGRAPHIC_CHRONICLE_GRID') {
+      // INFOGRAPHIC 02: KRONIK GRID TOKOH & SEJARAH
+      englishPrompt = `
+[ROLE & EDITORIAL CIVIC DOCUMENTARY ART DIRECTION]
+High-impact, realistic documentary photographic journalism capturing the real-world civic environment for: "${cleanTopic}".
+Authentic documentary photos of Indonesian regional infrastructure, community initiatives, public works, and local civic engagement.
+Rich natural cinematic lighting, authentic 35mm film documentary texture, deep tonal contrast, clear physical details.
+Full-frame organic photographic scene with realistic depth, suitable for archival documentary editorial cropping.
+
+${infographicZeroMandate}
+      `.trim();
+    } else if (blueprint.archetype === 'INFOGRAPHIC_ADVOCACY_PILLARS') {
+      // INFOGRAPHIC 04: 5 PILAR ADVOKASI AKAR RUMPUT
+      englishPrompt = `
+[ROLE & EDITORIAL ADVOCACY DOCUMENTARY ART DIRECTION]
+Warm, human-centered documentary photojournalism capturing civic advocacy, community empowerment, and public welfare regarding: "${cleanTopic}".
+Authentic Indonesian grassroots community scenes, dedicated public servants, social progress, and civic dialogue in natural daylight.
+Rich documentary realism, authentic warm color grading with vibrant green and orange earth tones, 35mm film texture.
+Full-frame realistic environment with natural organic textures.
+
+${infographicZeroMandate}
+      `.trim();
+    } else if (blueprint.archetype === 'INFOGRAPHIC_NARRATIVE_WAVE') {
+      // INFOGRAPHIC 01: PITA NARASI GELOMBANG
+      englishPrompt = `
+[ROLE & NARRATIVE EDITORIAL DOCUMENTARY ART DIRECTION]
+Evocative documentary editorial photography capturing multifaceted public progress and civic life concerning: "${cleanTopic}".
+Authentic environmental perspective showing community resilience, modern public facilities, and cultural civic engagement in Indonesia.
+Dramatic natural lighting, rich textures, expressive mood with deep shadows and clean highlights.
+Full-frame authentic photographic capture.
+
+${infographicZeroMandate}
+      `.trim();
+    } else if (blueprint.archetype === 'INFOGRAPHIC_RADIAL_CLOCK') {
+      // INFOGRAPHIC 03: JAM RADIAL TONGGAK WAKTU
+      englishPrompt = `
+[ROLE & HISTORICAL & CONTEMPORARY DOCUMENTARY ART DIRECTION]
+Rich archival and contemporary documentary photojournalism representing the timeline, history, and development of: "${cleanTopic}".
+Indonesian historical milestones, cultural heritage, and modern civic infrastructure photographed in authentic documentary style.
+Atmospheric warm vintage grading, tactile archival paper texture, dignified civic gravitas.
+Full-frame authentic documentary scene.
+
+${infographicZeroMandate}
+      `.trim();
+    } else if (blueprint.archetype === 'INFOGRAPHIC_VISIONARY_TIMELINE') {
+      // INFOGRAPHIC 05: TIMELINE PROFIL VISIONER
+      englishPrompt = `
+[ROLE & MODERN VISIONARY EDITORIAL ART DIRECTION]
+Sleek, high-profile modern civic documentary photograph capturing technological innovation and forward-looking public governance for: "${cleanTopic}".
+Modern Indonesian infrastructure, smart public utilities, architectural lines, and dynamic public innovation.
+Clean high-contrast lighting, crisp details, refined contemporary atmosphere with subtle glass and steel textures.
+Full-frame documentary realism.
+
+${infographicZeroMandate}
+      `.trim();
+    } else if (blueprint.archetype === 'INFOGRAPHIC_PUNK_ZINE') {
+      // INFOGRAPHIC 08: KOLASE ZINE ECO-PUNK
+      englishPrompt = `
+[ROLE & ECO-PUNK ZINE HALFTONE COLLAGE ART DIRECTION]
+Gritty eco-punk zine halftone collage with high-contrast industrial factory silhouette and ecological transition for: "${cleanTopic}".
+Halftone dot screen printing textures, bold pop-art risograph aesthetic, distressed industrial iconography, oil drum silhouette, clean open torn-paper panels in fluorescent acid lime and hot pink.
+Raw underground press documentary texture, striking visual contrast between industrial smoke and clean energy motifs (wind turbines, solar panels).
+Spacious uncluttered torn-paper negative space zones prepared for editorial typography.
+
+${infographicZeroMandate}
+      `.trim();
+    } else if (blueprint.archetype === 'INFOGRAPHIC_HERITAGE_EDITORIAL') {
+      // INFOGRAPHIC 09: WARISAN BUDAYA & LANGKAH EDUKASI
+      englishPrompt = `
+[ROLE & INDONESIAN CULTURAL HERITAGE EDITORIAL ART DIRECTION]
+Warm, authentic documentary photojournalism capturing traditional Indonesian cultural heritage, folk games, and community arts regarding: "${cleanTopic}".
+Rich natural woven linen paper texture, sweeping red-and-white Indonesian ribbon waves, authentic archival photo cutouts of traditional crafts or folk games.
+Natural daylight, soft warm shadows, dignified cultural gravitas with smooth rounded container negative space.
+Spacious off-white paper zones designed for structured educational cards and 4-step timeline.
+
+${infographicZeroMandate}
+      `.trim();
+    } else if (blueprint.archetype === 'INFOGRAPHIC_INDIGENOUS_ADVOCACY') {
+      // INFOGRAPHIC 10: ADVOKASI BUDAYA & SCRAPBOOK ORGANIK
+      englishPrompt = `
+[ROLE & INDIGENOUS ADVOCACY ORGANIC SCRAPBOOK ART DIRECTION]
+Evocative anthropological documentary photography celebrating Indonesian indigenous rights, cultural resilience, and grassroots community life for: "${cleanTopic}".
+Authentic community portraits, traditional woven fiber crafts (such as noken), thatched honai architecture, warm golden hour natural lighting.
+Organic scrapbook collage layout with natural fiber textures, earth tones, and warm ambient glow.
+Generous smooth negative space zones across the center-right and lower area for dialogue speech bubbles and advocacy facts.
+
+${infographicZeroMandate}
+      `.trim();
+    } else if (blueprint.archetype === 'INFOGRAPHIC_CLASSICAL_MONUMENT') {
+      // INFOGRAPHIC 11: ARSITEKTUR KLASIK & MONUMEN SEJARAH
+      englishPrompt = `
+[ROLE & CLASSICAL ARCHITECTURAL MONUMENT ART DIRECTION]
+Grand classical architectural antiquity and historic monument documentary photography capturing civilization heritage for: "${cleanTopic}".
+Majestic classical marble/sandstone architectural columns, ancient amphitheatre perspectives, heroic classical monument sculpture on the left, warm Mediterranean sunlight.
+Aged sandstone parchment textures with fine classical drafting lines and sweeping marble arch curves.
+Spacious smooth parchment negative space zones on the right and lower registers between architectural vignettes.
+
+${infographicZeroMandate}
+      `.trim();
+    } else if (blueprint.archetype === 'INFOGRAPHIC_RETRO_SUNBURST') {
+      // INFOGRAPHIC 12: KRONIK RETRO PANCARAN SURYA
+      englishPrompt = `
+[ROLE & VINTAGE RETRO SUNBURST HISTORICAL CHRONICLE ART DIRECTION]
+Vibrant vintage historical chronicle background with radiant warm orange-amber sunburst rays celebrating national awakening and public history for: "${cleanTopic}".
+Authentic aged newsprint texture with subtle batik watermarks, sepia archival photo frames of historical figures, nostalgic comic retro halftone grain.
+Warm nostalgic sepia and amber lighting, high editorial energy with clear horizontal narrative panels.
+Uncluttered warm cream parchment panels across center and lower registers ready for 3-column historical dossier.
+
+${infographicZeroMandate}
       `.trim();
     } else if (blueprint.archetype === 'TECHNICAL_GRID_CALLOUT') {
       // TPL-22: TECHNICAL BLUEPRINT & ARCHITECTURAL CALLOUT

@@ -24,6 +24,7 @@ import {
   SuperadminObservabilityService,
   SuperadminAuditService,
   SuperadminDomainService,
+  SuperadminAiCriticService,
 } from './services/index.js';
 import { PlatformSettingsService } from '../platform-settings/platform-settings.service.js';
 
@@ -38,6 +39,7 @@ import { PlatformSettingsService } from '../platform-settings/platform-settings.
  * - SuperadminObservabilityService (Langfuse AI Telemetri, Token Pool)
  * - SuperadminAuditService (Audit Log & Agregat Token Member)
  * - SuperadminDomainService (Manajemen Pengajuan Domain, Cek DNS, Approval)
+ * - SuperadminAiCriticService (AI Self-Critic & Learned Memory)
  * - PlatformSettingsService (Master Switch / Sakelar Fitur Global)
  */
 @Injectable()
@@ -53,6 +55,7 @@ export class SuperadminService {
     private readonly auditService: SuperadminAuditService,
     private readonly domainService: SuperadminDomainService,
     private readonly platformSettingsService: PlatformSettingsService,
+    private readonly aiCriticService: SuperadminAiCriticService,
   ) {}
 
   // --- Domain: Autentikasi Superadmin ---
@@ -119,8 +122,8 @@ export class SuperadminService {
     return await this.masterDataService.updateParty(partyId, dto);
   }
 
-  async getDapils() {
-    return await this.masterDataService.getDapils();
+  async getDapils(search?: string) {
+    return await this.masterDataService.getDapils(search);
   }
 
   async createDapil(dto: CreateDapilDto) {
@@ -162,24 +165,62 @@ export class SuperadminService {
     return await this.masterDataService.updatePricingMatrix(id, dto);
   }
 
-  // --- Domain: AI Observability & Saldo Token Pool ---
+  // --- Domain: Observabilitas AI & Token Pool ---
   async getAiObservability() {
     return await this.observabilityService.getAiObservability();
+  }
+
+  async getObservabilityMetrics(days: number = 7) {
+    return await this.observabilityService.getObservabilityMetrics(days);
+  }
+
+  async getAiTraces(limit: number = 20, operation?: string, status?: string) {
+    return await this.observabilityService.getAiTraces(limit, operation, status);
+  }
+
+  async getTokenPool() {
+    return await this.observabilityService.getTokenPool();
+  }
+
+  async topupTokenPool(dto: TopupTokenPoolDto) {
+    return await this.observabilityService.topupTokenPool(dto);
   }
 
   async topupMasterTokenPool(dto: TopupTokenPoolDto) {
     return await this.observabilityService.topupMasterTokenPool(dto);
   }
 
-  async getAiTraces(limit: number = 20) {
-    return await this.observabilityService.getAiTraces(limit);
+  async getTenantQuotaBreakdown(month?: string) {
+    return await this.observabilityService.getTenantQuotaBreakdown(month);
   }
 
-  // --- Domain: Audit Log & Aktivitas Anggota Dewan ---
+  async getHistoricalTopups() {
+    return await this.observabilityService.getHistoricalTopups();
+  }
+
+  async getAiPromptPayloads(limit: number = 30) {
+    return await this.observabilityService.getAiPromptPayloads(limit);
+  }
+
+  // --- Domain: Audit Log & Agregat Token Member ---
+  async getAuditLogs(query: {
+    tenantId?: string;
+    category?: string;
+    activityType?: string;
+    search?: string;
+    startDate?: string;
+    endDate?: string;
+    page?: number;
+    limit?: number;
+  }) {
+    return await this.auditService.getAuditLogs(query);
+  }
+
   async getMemberActivitySummary(query: {
     search?: string;
     dapilId?: string;
     party?: string;
+    legislativeLevel?: string;
     commissionId?: string;
     page?: number;
     limit?: number;
@@ -218,5 +259,22 @@ export class SuperadminService {
 
   async updatePlatformFeatureFlag(flagKey: string, enabled: boolean, updatedBy?: string) {
     return await this.platformSettingsService.updateFlag(flagKey, enabled, updatedBy);
+  }
+
+  // --- Domain: AI Self-Critic & Learned Memory ---
+  async getAiCriticLogs(query: { archetype?: string; page?: number; limit?: number }) {
+    return await this.aiCriticService.getLogs(query);
+  }
+
+  async getAiCriticStats() {
+    return await this.aiCriticService.getStats();
+  }
+
+  async getAiCriticMemories(archetype?: string) {
+    return await this.aiCriticService.getMemories(archetype);
+  }
+
+  async toggleAiCriticMemory(id: string) {
+    return await this.aiCriticService.toggleMemory(id);
   }
 }

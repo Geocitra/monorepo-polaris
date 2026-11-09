@@ -28,6 +28,8 @@ import {
   ArticleItem 
 } from '@/components/studio/library/ArticleTable';
 import { getPortalUrl } from '@/lib/urls';
+import { MagicLayersModal } from '@/components/studio/infografis/MagicLayersModal';
+import { Sparkles } from 'lucide-react';
 
 export default function ArticleLibraryPage() {
   const { toast } = useToast();
@@ -51,6 +53,7 @@ export default function ArticleLibraryPage() {
   const [isDeleting, setIsDeleting] = useState(false);
   const [visualPreviewItem, setVisualPreviewItem] = useState<ArticleItem | null>(null);
   const [copiedLink, setCopiedLink] = useState(false);
+  const [magicLayersItem, setMagicLayersItem] = useState<ArticleItem | null>(null);
 
   useEffect(() => {
     async function loadData() {
@@ -276,6 +279,7 @@ export default function ArticleLibraryPage() {
             onTogglePublish={handleTogglePublish}
             onDeleteArticle={(article) => setItemToDelete(article)}
             onViewVisual={(article) => setVisualPreviewItem(article)}
+            onMagicLayers={(article) => setMagicLayersItem(article)}
             totalArticlesCount={articles.length}
             currentPage={safeCurrentPage}
             totalPages={totalPages}
@@ -400,6 +404,20 @@ export default function ArticleLibraryPage() {
 
               <div className="flex items-center gap-2">
                 {visualPreviewItem.thumbnailUrl && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const it = visualPreviewItem;
+                      setVisualPreviewItem(null);
+                      setMagicLayersItem(it);
+                    }}
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-gradient-to-r from-purple-600 via-indigo-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 text-white font-extrabold text-xs shadow-xs transition-colors cursor-pointer"
+                  >
+                    <Sparkles className="w-3.5 h-3.5 text-purple-200" />
+                    <span>✨ Edit di Magic Layers</span>
+                  </button>
+                )}
+                {visualPreviewItem.thumbnailUrl && (
                   <a
                     href={visualPreviewItem.thumbnailUrl}
                     target="_blank"
@@ -426,6 +444,31 @@ export default function ArticleLibraryPage() {
           </div>
         )}
       </Modal>
+
+      {/* MODAL MAGIC LAYERS STUDIO */}
+      {magicLayersItem && magicLayersItem.thumbnailUrl && (
+        <MagicLayersModal
+          isOpen={Boolean(magicLayersItem)}
+          onClose={() => setMagicLayersItem(null)}
+          imageUrl={magicLayersItem.thumbnailUrl}
+          initialTitle={magicLayersItem.title}
+          initialSubtitle={magicLayersItem.excerpt || ''}
+          initialAuthor={profile?.fullName ? `${profile.fullName} • ${profile.partyAffiliation || ''}` : 'POLARIS GOV'}
+          aspectRatio="4:5"
+          onApplyChanges={async (newImageUrl, layersJson) => {
+            setArticles((prev) =>
+              prev.map((a) =>
+                a.id === magicLayersItem.id ? { ...a, thumbnailUrl: newImageUrl } : a
+              )
+            );
+            toast({
+              type: 'success',
+              title: 'Desain Berhasil Diperbarui',
+              description: 'Perubahan layer visual berhasil diterapkan pada konten ini.',
+            });
+          }}
+        />
+      )}
     </div>
   );
 }

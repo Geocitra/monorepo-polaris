@@ -36,11 +36,27 @@ export interface ArtCollageMutation {
   palette: ArtCollageInkPalette;
 }
 
+export interface ArtCollageChartSlice {
+  label: string;
+  percentage: number;
+}
+
+export interface ArtCollageChartData {
+  title: string;
+  type?: 'PIE' | 'DONUT';
+  centerDominantNumber?: string;
+  centerDominantLabel?: string;
+  slices: ArtCollageChartSlice[];
+}
+
 export interface ArtCollageCopy {
   kicker: string;
   headline: string;
   deck: string;
-  points: Array<{ label: string; text: string }>;
+  stats?: Array<{ value: string; label: string }>;
+  chart?: ArtCollageChartData;
+  sectionHeading?: string;
+  points: Array<{ label: string; text: string; metric?: string; badge?: string }>;
   closingLine: string;
   /** Deskripsi visual bahasa Inggris dari topik yang sama (dipakai Otak Visual). */
   visualSubject: string;

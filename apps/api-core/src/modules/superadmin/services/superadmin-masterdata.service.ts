@@ -1,5 +1,5 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
-import { eq, and } from 'drizzle-orm';
+import { eq, and, ilike } from 'drizzle-orm';
 import {
   db,
   masterPoliticalParties,
@@ -65,11 +65,12 @@ export class SuperadminMasterDataService {
   /**
    * Master Dapil KPU CRUD
    */
-  async getDapils() {
-    return await db
-      .select()
-      .from(electoralDistricts)
-      .orderBy(electoralDistricts.provinceName);
+  async getDapils(search?: string) {
+    let query = db.select().from(electoralDistricts).$dynamic();
+    if (search && search.trim()) {
+      query = query.where(ilike(electoralDistricts.dapilName, `%${search.trim()}%`));
+    }
+    return await query.orderBy(electoralDistricts.provinceName);
   }
 
   async createDapil(dto: CreateDapilDto) {

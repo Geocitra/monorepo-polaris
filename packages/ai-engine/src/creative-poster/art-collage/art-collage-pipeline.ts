@@ -1,20 +1,26 @@
 /**
- * Art-Collage Pipeline Orchestrator (ai-engine side)
+ * POLARIS Creative Poster Engine v2.0 - ART-COLLAGE POSTER PIPELINE
  *
- * 1. Pilih blueprint/arketipe (selector existing).
- * 2. Otak Teks  : copy poster + visualSubject dari topik yang sama.
- * 3. Mutasi     : anchor ruang teks + palet tinta (seeded).
- * 4. Otak Visual: kanvas kolase utuh (opsional + referensi gaya multimodal).
- * 5. Vision     : temukan kotak aman untuk teks di kanvas yang SUDAH jadi.
- *
- * Komposisi teks (Satori) + ink-blend (Sharp) dikerjakan di @polaris/storage.
+ * Alur terpadu:
+ * 1. Selector memilih archetype + blueprint referensi.
+ * 2. ArtCollageDirector:
+ *    - Sintesis copywriter kontekstual via LLM (headline, subhead, 3-5 points).
+ *    - Compile image prompt deterministik berbasis ART_COLLAGE_DNA + variasi mutasi.
+ *    - Membaca reference image (base64) dari disk jika ada.
+ * 3. Imagen 3 generate poster art utuh (kertas, subjek kolase, visual, margin kosong).
+ * 4. VisionLayoutLocator (Gemini Vision OCR):
+ *    - Menganalisis gambar hasil render, mendeteksi zona teks kosong, warna background lokal,
+ *      dan merekomendasikan koordinat box / layout Satori yang tepat.
+ * 5. Composite Satori Zero-Box (HTML/CSS) -> SVG -> PNG (transparan, tanpa border/kotak).
+ * 6. Sharp ink-blend overlay di atas base visual poster.
  */
 
-import * as fs from 'fs/promises';
-import * as path from 'path';
+import fs from 'node:fs/promises';
+import path from 'node:path';
 import { GoogleImagenAdapter } from '../../adapters/google-imagen.adapter.js';
 import { PosterBlueprintSelector } from '../selector.js';
 import type { CreativePosterArchetype } from '../types.js';
+import { isInfographicArchetype } from '@polaris/shared-types';
 import {
   ART_COLLAGE_DNA,
   compileArtCollageImagePrompt,
@@ -23,7 +29,7 @@ import {
   synthesizeArtCollageCopy,
 } from './art-collage-director.js';
 import { VisionLayoutLocator } from './vision-layout-locator.js';
-import type { ArtCollagePosterResult } from './art-collage.types.js';
+import type { ArtCollagePosterResult, ArtCollageCopy } from './art-collage.types.js';
 
 const REFERENCE_DIR_CANDIDATES = [
   process.env.POSTER_REFERENCE_DIR,
@@ -31,6 +37,13 @@ const REFERENCE_DIR_CANDIDATES = [
   path.resolve(process.cwd(), '../uploads/references/poster'),
   path.resolve(process.cwd(), '../../uploads/references/poster'),
   path.resolve(process.cwd(), '../../../uploads/references/poster'),
+  path.resolve(process.cwd(), 'uploads/references/infografis'),
+  path.resolve(process.cwd(), '../uploads/references/infografis'),
+  path.resolve(process.cwd(), '../../uploads/references/infografis'),
+  path.resolve(process.cwd(), '../../../uploads/references/infografis'),
+  path.resolve(process.cwd(), 'apps/web-dashboard/public/templates/infografis'),
+  path.resolve(process.cwd(), '../apps/web-dashboard/public/templates/infografis'),
+  path.resolve(process.cwd(), '../../apps/web-dashboard/public/templates/infografis'),
 ].filter((d): d is string => !!d);
 
 async function loadStyleReference(
@@ -63,27 +76,38 @@ export class ArtCollagePosterPipeline {
     tenantId?: string;
     /** Mis. jobId/publicationId: membuat mutasi reproducible untuk audit. */
     variationKey?: string;
+    isInfographic?: boolean;
+    candidateIndex?: number;
+    remedyPrompt?: string;
+    reuseCopy?: ArtCollageCopy;
   }): Promise<ArtCollagePosterResult> {
     const blueprint = await PosterBlueprintSelector.selectBestBlueprintAsync({
       topic: params.topic,
       forcedArchetype: params.forcedArchetype,
       excludeBlueprintId: params.excludeBlueprintId,
       forcedBrandHex: params.tenantBrandHex,
+      isInfographic: params.isInfographic,
     });
     const archetype = blueprint.archetype;
     const dna = ART_COLLAGE_DNA[archetype];
 
-    const seed = params.variationKey
-      ? seedFromString(`${params.variationKey}:${archetype}`)
-      : Math.floor(Math.random() * 2 ** 31);
+    const seedKey = params.candidateIndex && params.candidateIndex > 1
+      ? `${params.variationKey || Date.now()}:c${params.candidateIndex}:${archetype}`
+      : `${params.variationKey || Date.now()}:${archetype}`;
+    const seed = seedFromString(seedKey);
     const mutation = pickArtCollageMutation(archetype, seed);
 
+    const isInfographic = params.isInfographic || isInfographicArchetype(archetype);
+
     const [copy, styleReference] = await Promise.all([
-      synthesizeArtCollageCopy({
-        topic: params.topic,
-        groundedContext: params.groundedContextSummary,
-        tenantId: params.tenantId,
-      }),
+      params.reuseCopy
+        ? Promise.resolve(params.reuseCopy)
+        : synthesizeArtCollageCopy({
+            topic: params.topic,
+            groundedContext: params.groundedContextSummary,
+            archetype,
+            tenantId: params.tenantId,
+          }),
       loadStyleReference(blueprint.referenceFile),
     ]);
 
@@ -92,6 +116,7 @@ export class ArtCollagePosterPipeline {
       mutation,
       visualSubject: copy.visualSubject,
       withStyleReference: !!styleReference,
+      remedyPrompt: params.remedyPrompt,
     });
 
     const image = await this.imageAdapter.generateArtCollage({
@@ -107,6 +132,7 @@ export class ArtCollagePosterPipeline {
       anchor: mutation.anchor,
       paperTone: dna.paperTone,
       tenantId: params.tenantId,
+      isInfographic,
     });
 
     return {

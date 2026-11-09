@@ -17,6 +17,7 @@ import {
   Files,
   UserCheck,
   Sliders,
+  Sparkles,
 } from 'lucide-react';
 import { AdminApiClient } from '@/lib/api-client';
 import { cn } from '@/lib/utils';
@@ -31,6 +32,7 @@ const adminNavItems = [
   { name: 'Rekonsiliasi Kas Midtrans', href: '/superadmin/reconciliation', icon: Receipt },
   { name: 'Audit & Log Aktivitas', href: '/superadmin/activity-logs', icon: ShieldCheck },
   { name: 'Observabilitas AI & Token', href: '/superadmin/ai-monitoring', icon: Cpu },
+  { name: 'AI Self-Critic & Memory', href: '/superadmin/ai-critic', icon: Sparkles },
   { name: 'Master Data & Tarif', href: '/superadmin/master-data', icon: Database },
   { name: 'Pengaturan & Sakelar Fitur', href: '/superadmin/settings', icon: Sliders },
 ];

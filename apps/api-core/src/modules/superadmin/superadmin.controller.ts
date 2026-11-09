@@ -225,7 +225,54 @@ export class SuperadminController {
   }
 
   @UseGuards(SuperadminGuard)
+  @Get('ai-monitoring/tenants-breakdown')
+  @HttpCode(HttpStatus.OK)
+  async getTenantQuotaBreakdown(@Query('month') month?: string) {
+    return await this.superadminService.getTenantQuotaBreakdown(month);
+  }
+
+  @UseGuards(SuperadminGuard)
+  @Get('ai-monitoring/topup-history')
+  @HttpCode(HttpStatus.OK)
+  async getHistoricalTopups() {
+    return await this.superadminService.getHistoricalTopups();
+  }
+
+  @UseGuards(SuperadminGuard)
+  @Get('ai-monitoring/prompts')
+  @HttpCode(HttpStatus.OK)
+  async getAiPromptPayloads(@Query('limit') limit?: string) {
+    return await this.superadminService.getAiPromptPayloads(limit ? Number(limit) : 30);
+  }
+
+  @UseGuards(SuperadminGuard)
+  @Get('audit-logs')
+  @HttpCode(HttpStatus.OK)
+  async getAuditLogs(
+    @Query('tenantId') tenantId?: string,
+    @Query('category') category?: string,
+    @Query('activityType') activityType?: string,
+    @Query('search') search?: string,
+    @Query('startDate') startDate?: string,
+    @Query('endDate') endDate?: string,
+    @Query('page') page?: string,
+    @Query('limit') limit?: string,
+  ) {
+    return await this.superadminService.getAuditLogs({
+      tenantId,
+      category,
+      activityType,
+      search,
+      startDate,
+      endDate,
+      page: page ? Number(page) : 1,
+      limit: limit ? Number(limit) : 20,
+    });
+  }
+
+  @UseGuards(SuperadminGuard)
   @Get('members/activity-summary')
+  @Get('activity-summary')
   @HttpCode(HttpStatus.OK)
   async getMemberActivitySummary(
     @Query('search') search?: string,
@@ -314,5 +361,33 @@ export class SuperadminController {
   ) {
     const adminUser = req.user?.email || req.user?.fullName || 'SUPERADMIN';
     return await this.superadminService.updatePlatformFeatureFlag(flagKey, dto.enabled, adminUser);
+  }
+  // --- AI Self-Critic & Learned Memory Audit ---
+  @UseGuards(SuperadminGuard)
+  @Get('ai-critic/logs')
+  async getAiCriticLogs(
+    @Query('archetype') archetype?: string,
+    @Query('page') page?: number,
+    @Query('limit') limit?: number,
+  ) {
+    return await this.superadminService.getAiCriticLogs({ archetype, page, limit });
+  }
+
+  @UseGuards(SuperadminGuard)
+  @Get('ai-critic/stats')
+  async getAiCriticStats() {
+    return await this.superadminService.getAiCriticStats();
+  }
+
+  @UseGuards(SuperadminGuard)
+  @Get('ai-critic/memories')
+  async getAiCriticMemories(@Query('archetype') archetype?: string) {
+    return await this.superadminService.getAiCriticMemories(archetype);
+  }
+
+  @UseGuards(SuperadminGuard)
+  @Patch('ai-critic/memories/:id/toggle')
+  async toggleAiCriticMemory(@Param('id') id: string) {
+    return await this.superadminService.toggleAiCriticMemory(id);
   }
 }

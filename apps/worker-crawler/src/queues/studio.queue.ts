@@ -12,6 +12,7 @@ export interface StudioGenerationJobPayload {
   prompt?: string;
   headline?: string;
   forcedArchetype?: string;
+  layoutVariant?: number;
   targetAudience?: string;
   toneOverride?: string;
   comparisonRegion?: string;
@@ -21,6 +22,8 @@ export interface StudioGenerationJobPayload {
   aspectRatio?: string;
   includeUserPhoto?: boolean;
   compositionMode?: 'PUBLIC_ADVOCACY' | 'FIGURE_CENTERPIECE';
+  enableImg2ImgPass?: boolean;
+  img2ImgDenoisingStrength?: number;
   customPhotoUrl?: string;
   targetLength?: string;
   writingStyle?: string;

@@ -197,7 +197,7 @@ Kembalikan format JSON persis seperti ini (tanpa markdown backtick):
   "suggestedTitle": "Judul resmi yang rapi dan deskriptif"
 }`;
 
-    const modelName = process.env.GEMINI_TEXT_MODEL || 'gemini-2.5-flash';
+    const modelName = process.env.GEMINI_TEXT_MODEL || 'gemini-3.8-flash';
     const telemetry = AiTelemetryService.startTrace({
       operation: 'datahub-document-classifier',
       model: modelName,

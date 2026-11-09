@@ -231,9 +231,9 @@ export class StudioGeneratorService implements OnModuleDestroy {
     const allUrls = Array.from(new Set([...detectedUrls, ...(dto.externalUrls || [])]));
 
     // Pemetaan gaya visual dari UI ke Arketipe Desain POLARIS
-    let forcedArchetype: string | undefined = undefined;
-    if (dto.style === 'infographic') {
-      forcedArchetype = 'MODULAR_GRID_CARDS';
+    let forcedArchetype: string | undefined = dto.forcedArchetype;
+    if (!forcedArchetype && dto.style === 'infographic') {
+      forcedArchetype = undefined;
     } else if (dto.style === 'poster') {
       forcedArchetype = undefined;
     } else if (dto.style === 'photo') {
@@ -268,6 +268,9 @@ export class StudioGeneratorService implements OnModuleDestroy {
           style: dto.style,
           aspectRatio: dto.aspectRatio,
           forcedArchetype,
+          layoutVariant: dto.layoutVariant,
+          enableImg2ImgPass: dto.enableImg2ImgPass,
+          img2ImgDenoisingStrength: dto.img2ImgDenoisingStrength,
           includeUserPhoto: dto.includeUserPhoto,
           compositionMode: dto.compositionMode,
           customPhotoUrl: dto.customPhotoUrl,

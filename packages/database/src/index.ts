@@ -13,6 +13,7 @@ export * from './schema/social-distribution.js';
 export * from './schema/research.js';
 export * from './schema/datahub.js';
 export * from './schema/poster-blueprints.js';
+export * from './schema/ai-critic-logs.js';
 export * from './schema/platform-settings.js';
 export * from './schema/briefs.js';
 export * from './schema/live-chat.js';

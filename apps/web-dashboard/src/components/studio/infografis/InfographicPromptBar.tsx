@@ -16,6 +16,7 @@ import {
 } from 'lucide-react';
 import { VisualStyle, AspectRatio } from './InfographicTypes';
 import { Button } from '@/components/ui/button';
+import { InfographicTemplateSelector } from './InfographicTemplateSelector';
 
 interface InfographicPromptBarProps {
   prompt: string;
@@ -30,6 +31,10 @@ interface InfographicPromptBarProps {
   hasExistingIteration: boolean;
   includeUserPhoto?: boolean;
   onIncludeUserPhotoChange?: (val: boolean) => void;
+  selectedArchetype?: string;
+  onArchetypeChange?: (archetypeId: string) => void;
+  selectedLayoutVariant?: number | 'AUTO';
+  onLayoutVariantChange?: (variant: number | 'AUTO') => void;
   onRefinePrompt?: () => void;
   refiningPrompt?: boolean;
 }
@@ -40,7 +45,7 @@ const STYLE_OPTIONS = [
     name: 'Infografis Data',
     icon: BarChart3,
     desc: 'Statistik, perbandingan angka & ringkasan indikator kebijakan',
-    defaultRatio: '16:9' as AspectRatio,
+    defaultRatio: '4:5' as AspectRatio,
   },
   {
     id: 'poster' as VisualStyle,
@@ -85,6 +90,10 @@ export function InfographicPromptBar({
   hasExistingIteration,
   includeUserPhoto = false,
   onIncludeUserPhotoChange,
+  selectedArchetype = 'AUTO',
+  onArchetypeChange,
+  selectedLayoutVariant = 'AUTO',
+  onLayoutVariantChange,
   onRefinePrompt,
   refiningPrompt = false,
 }: InfographicPromptBarProps) {
@@ -92,8 +101,8 @@ export function InfographicPromptBar({
     onStyleChange(opt.id);
     if (opt.id === 'poster' && (selectedAspectRatio === '16:9' || selectedAspectRatio === '4:3')) {
       onAspectRatioChange('4:5');
-    } else if (opt.id === 'infographic' && (selectedAspectRatio === '4:5' || selectedAspectRatio === '3:4' || selectedAspectRatio === '9:16')) {
-      onAspectRatioChange('16:9');
+    } else if (opt.id === 'infographic' && selectedAspectRatio !== '4:5') {
+      onAspectRatioChange('4:5');
     }
   };
 
@@ -220,6 +229,17 @@ export function InfographicPromptBar({
             {includeUserPhoto ? 'Wajah Asli Aktif' : 'Tanpa Wajah'}
           </div>
         </div>
+      )}
+
+      {/* KATALOG 12 TEMPLATE INFOGRAFIS TERKURASI */}
+      {selectedStyle === 'infographic' && onArchetypeChange && (
+        <InfographicTemplateSelector
+          selectedArchetype={selectedArchetype}
+          onSelectArchetype={onArchetypeChange}
+          selectedLayoutVariant={selectedLayoutVariant}
+          onSelectLayoutVariant={onLayoutVariantChange}
+          disabled={loading}
+        />
       )}
 
       {/* INPUT FORM */}

@@ -23,6 +23,7 @@ import {
   ArtCollagePosterResult,
 } from './creative-poster/index.js';
 import { GoogleImagenAdapter } from './adapters/google-imagen.adapter.js';
+import { Img2ImgPassAdapter, Img2ImgPassOptions, Img2ImgPassResult } from './adapters/img2img-pass.adapter.js';
 import { getActiveImageProvider } from './config/image-provider.config.js';
 import { MasterEditorialSanitizer } from './master-editorial-sanitizer.js';
 
@@ -343,8 +344,16 @@ export class OpenAIAIEngineAdapter implements ILLMProviderPort {
     tenantBrandHex?: string;
     tenantId?: string;
     variationKey?: string;
+    isInfographic?: boolean;
+    candidateIndex?: number;
+    remedyPrompt?: string;
+    reuseCopy?: any;
   }): Promise<ArtCollagePosterResult> {
     return ArtCollagePosterPipeline.generate(params);
+  }
+
+  public async applyImg2ImgPass(params: Img2ImgPassOptions): Promise<Img2ImgPassResult> {
+    return Img2ImgPassAdapter.executePass(params);
   }
 
   public async generateCivicAnswer(

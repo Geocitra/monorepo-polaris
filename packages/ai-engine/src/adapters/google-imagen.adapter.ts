@@ -253,7 +253,7 @@ export class GoogleImagenAdapter {
         parts.push({ inlineData: { mimeType: params.styleReference.mimeType, data: params.styleReference.base64 } });
       }
       parts.push({
-        text: `CRITICAL INSTRUCTION: Do NOT render any text, words, letters, signatures, numbers, typography, headings, or captions anywhere on this image canvas. The artwork must be 100% clean and completely free of written text or signage. The clearing area must remain blank paper.\n\n${params.prompt}`,
+        text: `CRITICAL INSTRUCTION: Do NOT render any text, words, letters, signatures, numbers, typography, headings, or captions anywhere on this image canvas. DO NOT draw any frosted glass cards, blur rectangles, UI boxes, empty capsules, blank pillar shapes, timeline bars with dots, flowchart containers, blank chalkboards, or fake QR codes. DO NOT draw cartoons, anime, 3D CGI renders, vector clipart, sketches, or drawings. The visual must be a pure, high-quality scenic composition (realistic documentary photograph or scenic artwork matching the prompt). The clearing area must remain completely flat, plain, and clean.\n\n${params.prompt}`,
       });
       const res = await this.client!.models.generateContent({
         model: geminiModel,
@@ -299,7 +299,7 @@ export class GoogleImagenAdapter {
             aspectRatio: aspectRatio as any,
             outputMimeType: 'image/png',
             negativePrompt:
-              'text, letters, words, numbers, typography, captions, signage, labels, logo, emblem, watermark, signature, fake writing, gibberish text, politician, recognizable public figure',
+              'text, letters, words, numbers, typography, captions, signage, labels, logo, emblem, watermark, signature, fake writing, gibberish text, politician, recognizable public figure, cartoon, anime, 3d render, cgi, vector art, illustration, drawing, sketch, comics, clipart, line art, frosted glass cards, blur rectangles, ui boxes, empty capsules, blank pillars, timeline bars, charts, diagram boxes',
           },
         });
         const bytes = response.generatedImages?.[0]?.image?.imageBytes;

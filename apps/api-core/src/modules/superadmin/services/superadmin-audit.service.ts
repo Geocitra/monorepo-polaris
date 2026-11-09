@@ -1,5 +1,5 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
-import { sql, desc, eq, and } from 'drizzle-orm';
+import { sql, desc, eq, and, ilike } from 'drizzle-orm';
 import {
   db,
   tenantMembers,
@@ -279,6 +279,70 @@ export class SuperadminAuditService {
         metadata: log.metadata,
         createdAt: log.createdAt,
       })),
+      pagination: {
+        page,
+        limit,
+        totalItems,
+        totalPages: Math.ceil(totalItems / limit) || 1,
+      },
+    };
+  }
+
+  /**
+   * Global Audit Log Query untuk Facade Superadmin
+   */
+  async getAuditLogs(query: {
+    tenantId?: string;
+    category?: string;
+    activityType?: string;
+    search?: string;
+    startDate?: string;
+    endDate?: string;
+    page?: number;
+    limit?: number;
+  }) {
+    const page = Math.max(1, Number(query.page) || 1);
+    const limit = Math.max(1, Math.min(100, Number(query.limit) || 20));
+    const offset = (page - 1) * limit;
+
+    let baseQuery = db
+      .select({
+        id: tenantActivityLogs.id,
+        tenantId: tenantActivityLogs.tenantId,
+        tenantName: tenantMembers.fullName,
+        party: tenantMembers.partyAffiliation,
+        activityType: tenantActivityLogs.activityType,
+        category: tenantActivityLogs.category,
+        description: tenantActivityLogs.description,
+        ipAddress: tenantActivityLogs.ipAddress,
+        userAgent: tenantActivityLogs.userAgent,
+        metadata: tenantActivityLogs.metadata,
+        createdAt: tenantActivityLogs.createdAt,
+      })
+      .from(tenantActivityLogs)
+      .leftJoin(tenantMembers, eq(tenantMembers.id, tenantActivityLogs.tenantId))
+      .$dynamic();
+
+    const conditions = [];
+    if (query.tenantId) conditions.push(eq(tenantActivityLogs.tenantId, query.tenantId));
+    if (query.category && query.category !== 'ALL') conditions.push(eq(tenantActivityLogs.category, query.category));
+    if (query.activityType) conditions.push(eq(tenantActivityLogs.activityType, query.activityType));
+    if (query.search) conditions.push(ilike(tenantActivityLogs.description, `%${query.search}%`));
+
+    if (conditions.length > 0) {
+      baseQuery = baseQuery.where(and(...conditions));
+    }
+
+    const [totalRes] = await db
+      .select({ count: sql<number>`count(*)::int` })
+      .from(tenantActivityLogs)
+      .where(conditions.length > 0 ? and(...conditions) : undefined);
+
+    const items = await baseQuery.orderBy(desc(tenantActivityLogs.createdAt)).limit(limit).offset(offset);
+    const totalItems = totalRes?.count || 0;
+
+    return {
+      items,
       pagination: {
         page,
         limit,

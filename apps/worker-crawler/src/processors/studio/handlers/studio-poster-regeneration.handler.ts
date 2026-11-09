@@ -10,7 +10,11 @@ import {
   withTenantContext,
 } from '@polaris/database';
 import { OpenAIAIEngineAdapter } from '@polaris/ai-engine';
-import { CloudflareR2StorageAdapter, ChromiumPosterCompositor } from '@polaris/storage';
+import {
+  CloudflareR2StorageAdapter,
+  ChromiumPosterCompositor,
+  PosterAmbientBaker,
+} from '@polaris/storage';
 import { AssetType } from '@polaris/shared-types';
 import { AiCostCalculator } from '@polaris/core-domain';
 import { StudioGenerationJobPayload } from '../../../queues/studio.queue.js';
@@ -22,7 +26,8 @@ export class StudioPosterRegenerationHandler {
     aiEngine: OpenAIAIEngineAdapter,
     storageAdapter: CloudflareR2StorageAdapter
   ): Promise<void> {
-    const { tenantId, publicationId, jobId } = job.data;
+    const data = job.data;
+    const { tenantId, publicationId, jobId } = data;
 
     try {
       await StudioContextHelper.emitProgress(
@@ -117,7 +122,7 @@ export class StudioPosterRegenerationHandler {
 
       // 4. Generate Background Kolase Tanpa Teks via AI Engine
       const articleExcerpt = article.excerpt || '';
-      const articleSnippet = (article.content || '').slice(0, 1200);
+      const articleSnippet = (article.content || '').slice(0, 3800);
 
       const groundedContextSummary = [
         `JUDUL & RINGKASAN EKSEKUTIF ARTIKEL: ${article.title} — ${articleExcerpt}`,
@@ -163,15 +168,94 @@ export class StudioPosterRegenerationHandler {
         editionTag: roleIdentity.editionTag,
         textToneHint: artCollage.layout.textTone,
         archetype: artCollage.archetype,
+        layoutVariant: typeof job.data.layoutVariant === 'number' ? job.data.layoutVariant : Math.floor(Math.random() * 4),
       });
 
-      const posterBuffer = composed.buffer;
-      const posterSizeBytes = composed.sizeBytes;
+      let posterBuffer = composed.buffer;
+      let posterSizeBytes = composed.sizeBytes;
+      let img2ImgMetadata: Record<string, any> | null = null;
+
+      if (data.enableImg2ImgPass !== false) {
+        await StudioContextHelper.emitProgress(
+          tenantId,
+          jobId,
+          80,
+          'Mematangkan pencahayaan ambient & tekstur AI (Img2Img Pass-through)...'
+        );
+
+        try {
+          const passResult = await aiEngine.applyImg2ImgPass({
+            imageBuffer: posterBuffer,
+            sdxlInputBuffer: await PosterAmbientBaker.prepareSdxlInput(posterBuffer),
+            prompt: artCollage.imagePrompt || data.topic,
+            denoisingStrength: data.img2ImgDenoisingStrength || 0.18,
+            archetype: artCollage.archetype,
+            layoutVariant: data.layoutVariant,
+            copy: artCollage.copy,
+            signature: roleIdentity.signature,
+            headerTag: roleIdentity.headerTag,
+            editionTag: roleIdentity.editionTag,
+            palette: {
+              accentHex: artCollage.mutation.palette.accentHex,
+              secondaryHex: artCollage.mutation.palette.secondaryHex,
+            },
+            tenantId,
+          });
+
+          if (passResult.providerUsed !== 'skipped') {
+            posterBuffer = await PosterAmbientBaker.harmonizeDiffusedWithCrispDraft(posterBuffer, passResult.buffer);
+            posterSizeBytes = passResult.buffer.length;
+            img2ImgMetadata = {
+              providerUsed: passResult.providerUsed,
+              denoisingStrength: passResult.denoisingStrengthUsed,
+              durationMs: passResult.durationMs,
+              relayoutPrompt: passResult.compiledRelayoutPrompt,
+            };
+          } else {
+            const baked = await PosterAmbientBaker.bakeAmbientTexture({
+              imageBuffer: posterBuffer,
+              archetype: artCollage.archetype,
+            layoutVariant: data.layoutVariant,
+            copy: artCollage.copy,
+            signature: roleIdentity.signature,
+            headerTag: roleIdentity.headerTag,
+            editionTag: roleIdentity.editionTag,
+              strength: data.img2ImgDenoisingStrength || 0.15,
+            });
+            posterBuffer = baked;
+            posterSizeBytes = baked.length;
+            img2ImgMetadata = {
+              providerUsed: 'native-ambient-bake',
+              denoisingStrength: 0.15,
+            };
+          }
+        } catch (img2imgErr: any) {
+          console.warn('[StudioPosterRegen] Img2Img fallback: ' + img2imgErr.message);
+        }
+      }
+
+      let rawCanvasPublicUrl = '';
+      if (artCollage.imageBuffer && artCollage.imageBuffer.length > 0) {
+        const rawDestPath = `posters/${tenantId}/raw-canvas-${Date.now()}-${publicationId}.webp`;
+        try {
+          const rawUpload = await storageAdapter.uploadBuffer(artCollage.imageBuffer, {
+            destinationPath: rawDestPath,
+            contentType: 'image/webp',
+            contentLength: artCollage.imageBuffer.length,
+          });
+          rawCanvasPublicUrl = rawUpload.publicUrl;
+        } catch {}
+      }
+
       const promptUsedJson = JSON.stringify({
         engine: 'ART_COLLAGE_CHROMIUM',
         renderer: 'chromium',
+        img2ImgPass: img2ImgMetadata,
+        rawCanvasUrl: rawCanvasPublicUrl || undefined,
+        layoutManifest: composed.layoutManifest,
         blueprintId: artCollage.blueprintId,
         archetype: artCollage.archetype,
+        layoutVariant: typeof job.data.layoutVariant === 'number' ? job.data.layoutVariant : Math.floor(Math.random() * 4),
         referenceFile: artCollage.referenceFile,
         usedStyleReference: artCollage.usedStyleReference,
         mutation: artCollage.mutation,

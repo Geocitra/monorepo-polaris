@@ -1,5 +1,5 @@
 import { Injectable, BadRequestException, Optional, Logger } from '@nestjs/common';
-import { eq, desc, sql } from 'drizzle-orm';
+import { eq, desc, sql, and, inArray } from 'drizzle-orm';
 import {
   db,
   tenantMembers,
@@ -8,6 +8,8 @@ import {
   aiTraceLogs,
   platformTokenPools,
   platformTopupHistories,
+  contentPublications,
+  mediaAssets,
 } from '@polaris/database';
 import { PlatformTokenPool, CircuitState } from '@polaris/core-domain';
 import { AiTelemetryService } from '@polaris/ai-engine';
@@ -409,7 +411,7 @@ export class SuperadminObservabilityService {
   /**
    * Riwayat Trace AI Terkini (Langfuse Sync Logs)
    */
-  async getAiTraces(limit: number = 20) {
+  async getAiTraces(limit: number = 20, operation?: string, status?: string) {
     const rows = await db
       .select({
         id: aiTraceLogs.traceId,
@@ -436,5 +438,103 @@ export class SuperadminObservabilityService {
       party: r.party || 'Fraksi Parlemen',
       costUsd: Number(r.costUsd || 0),
     }));
+  }
+
+  /**
+   * Alias getObservabilityMetrics untuk memenuhi kontrak Facade
+   */
+  async getObservabilityMetrics(days: number = 7) {
+    return await this.getAiObservability();
+  }
+
+  /**
+   * Alias topupTokenPool untuk memenuhi kontrak Facade
+   */
+  async topupTokenPool(dto: TopupTokenPoolDto) {
+    return await this.topupMasterTokenPool(dto);
+  }
+
+  /**
+   * Ambil data saldo Platform Token Pool
+   */
+  async getTokenPool() {
+    const [pool] = await db.select().from(platformTokenPools).limit(1);
+    return pool || null;
+  }
+
+  /**
+   * Breakdown kuota AI per tenant
+   */
+  async getTenantQuotaBreakdown(month?: string) {
+    const stats = await this.getAiObservability();
+    return stats.tenantBreakdowns || [];
+  }
+
+  /**
+   * Riwayat transaksi topup deposit
+   */
+  async getHistoricalTopups() {
+    return await db
+      .select()
+      .from(platformTopupHistories)
+      .orderBy(desc(platformTopupHistories.createdAt))
+      .limit(50);
+  }
+
+  /**
+   * Ambil daftar publikasi & prompt AI lintas tenant untuk Ruang Monitoring AI 3D Superadmin
+   */
+  async getAiPromptPayloads(limit: number = 30) {
+    const pubs = await db
+      .select({
+        id: contentPublications.id,
+        tenantId: contentPublications.tenantId,
+        title: contentPublications.title,
+        excerpt: contentPublications.excerpt,
+        createdAt: contentPublications.createdAt,
+        tenantName: tenantMembers.fullName,
+        party: tenantMembers.partyAffiliation,
+      })
+      .from(contentPublications)
+      .leftJoin(tenantMembers, eq(tenantMembers.id, contentPublications.tenantId))
+      .orderBy(desc(contentPublications.createdAt))
+      .limit(limit);
+
+    const pubIds = pubs.map((p) => p.id);
+    const mediaMap = new Map<string, { url: string; promptUsed: string | null }>();
+
+    if (pubIds.length > 0) {
+      const medias = await db
+        .select({
+          publicationId: mediaAssets.publicationId,
+          cdnPublicUrl: mediaAssets.cdnPublicUrl,
+          promptUsed: mediaAssets.promptUsed,
+        })
+        .from(mediaAssets)
+        .where(inArray(mediaAssets.publicationId, pubIds));
+
+      for (const m of medias) {
+        if (!mediaMap.has(m.publicationId) || m.promptUsed) {
+          mediaMap.set(m.publicationId, {
+            url: m.cdnPublicUrl,
+            promptUsed: m.promptUsed || null,
+          });
+        }
+      }
+    }
+
+    return pubs.map((p) => {
+      const media = mediaMap.get(p.id);
+      return {
+        id: p.id,
+        title: p.title,
+        excerpt: p.excerpt,
+        createdAt: p.createdAt,
+        tenantName: p.tenantName || 'Anggota Dewan',
+        party: p.party || 'Fraksi',
+        imageUrl: media?.url || null,
+        promptUsed: media?.promptUsed || null,
+      };
+    });
   }
 }

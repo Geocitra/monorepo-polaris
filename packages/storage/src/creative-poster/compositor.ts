@@ -82,6 +82,7 @@ export class CreativePosterCompositor {
     } = options;
 
     // Otoritas Tunggal Warna
+    const backgroundDataUri = "data:image/png;base64," + backgroundBuffer.toString("base64");
     const effectiveColors: ResolvedColorTokens =
       options.resolvedColors ||
       resolveColorAuthority({
@@ -593,7 +594,8 @@ export class CreativePosterCompositor {
     if (
       compositionMode === 'FIGURE_CENTERPIECE' &&
       subjectPhotoBuffer &&
-      subjectPhotoBuffer.length > 0
+      subjectPhotoBuffer.length > 0 &&
+      !archetype.startsWith('INFOGRAPHIC_')
     ) {
       let targetW: number;
       let targetH: number;

@@ -384,11 +384,13 @@ export class StudioService {
 
     const pubIds = items.map((i) => i.id);
     const mediaMap = new Map<string, string>();
+    const promptMap = new Map<string, string | null>();
     if (pubIds.length > 0) {
       const medias = await db
         .select({
           publicationId: mediaAssets.publicationId,
           cdnPublicUrl: mediaAssets.cdnPublicUrl,
+          promptUsed: mediaAssets.promptUsed,
         })
         .from(mediaAssets)
         .where(
@@ -400,6 +402,7 @@ export class StudioService {
       for (const m of medias) {
         if (!mediaMap.has(m.publicationId)) {
           mediaMap.set(m.publicationId, m.cdnPublicUrl);
+          promptMap.set(m.publicationId, m.promptUsed || null);
         }
       }
     }
@@ -407,6 +410,7 @@ export class StudioService {
     return items.map((item) => ({
       ...item,
       imageUrl: mediaMap.get(item.id) || null,
+      promptUsed: promptMap.get(item.id) || null,
     }));
   }
 
@@ -426,15 +430,25 @@ export class StudioService {
       throw new NotFoundException('Infografis tidak ditemukan.');
     }
 
-    const [asset] = await db
+    const assets = await db
       .select()
       .from(mediaAssets)
-      .where(eq(mediaAssets.publicationId, article.id))
-      .limit(1);
+      .where(eq(mediaAssets.publicationId, article.id));
+
+    const posterAsset = assets.find((a) => a.assetType === AssetType.DALLE_POSTER || a.assetType === AssetType.INFOGRAPHIC_PNG);
+    const rawAsset = assets.find((a) => a.assetType === AssetType.HEADER_IMAGE);
+    let rawCanvasUrl = rawAsset?.cdnPublicUrl || '';
+    if (!rawCanvasUrl && posterAsset?.promptUsed) {
+      try {
+        const parsed = JSON.parse(posterAsset.promptUsed);
+        if (parsed.rawCanvasUrl) rawCanvasUrl = parsed.rawCanvasUrl;
+      } catch {}
+    }
 
     return {
       infographic: article,
-      asset,
+      asset: posterAsset || assets[0],
+      rawCanvasUrl: rawCanvasUrl || null,
     };
   }
 }

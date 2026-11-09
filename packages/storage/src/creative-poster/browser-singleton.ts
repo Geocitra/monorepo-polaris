@@ -1,5 +1,6 @@
 import sharp from 'sharp';
 import { chromium, type Browser, type BrowserContext, type Page } from 'playwright-core';
+import { POSTER_LAYER_EXTRACTOR_SCRIPT, type PosterLayerManifest } from './poster-layer-manifest.js';
 
 export interface RenderHtmlOptions {
   width?: number;
@@ -126,10 +127,31 @@ export class BrowserSingleton {
    * Retry 1x otomatis bila browser crash di tengah render.
    */
   public static async renderHtml(html: string, options: RenderHtmlOptions = {}): Promise<Buffer> {
+    const result = await this.renderWithRetry(html, options, false);
+    return result.buffer;
+  }
+
+  /**
+   * Sama seperti renderHtml, namun sekaligus mengekstrak Layer Manifest (posisi, teks, tipografi,
+   * dan kotak setiap elemen) dari DOM yang sama persis dengan hasil screenshot.
+   * Kegagalan ekstraksi tidak menggagalkan render (manifest = null).
+   */
+  public static async renderHtmlWithLayers(
+    html: string,
+    options: RenderHtmlOptions = {}
+  ): Promise<{ buffer: Buffer; layoutManifest: PosterLayerManifest | null }> {
+    return this.renderWithRetry(html, options, true);
+  }
+
+  private static async renderWithRetry(
+    html: string,
+    options: RenderHtmlOptions,
+    extractLayers: boolean
+  ): Promise<{ buffer: Buffer; layoutManifest: PosterLayerManifest | null }> {
     await this.acquireSlot();
     try {
       try {
-        return await this.renderOnce(html, options);
+        return await this.renderOnce(html, options, extractLayers);
       } catch (firstErr: any) {
         const message = String(firstErr?.message || firstErr);
         const isCrash = /closed|crash|disconnected|Target page|has been closed|Protocol error/i.test(message);
@@ -137,7 +159,7 @@ export class BrowserSingleton {
 
         console.warn(`[BrowserSingleton] Render gagal karena crash (${message}). Reset browser & retry 1x...`);
         await this.resetBrowser();
-        return await this.renderOnce(html, options);
+        return await this.renderOnce(html, options, extractLayers);
       }
     } finally {
       this.releaseSlot();
@@ -145,7 +167,11 @@ export class BrowserSingleton {
     }
   }
 
-  private static async renderOnce(html: string, options: RenderHtmlOptions): Promise<Buffer> {
+  private static async renderOnce(
+    html: string,
+    options: RenderHtmlOptions,
+    extractLayers = false
+  ): Promise<{ buffer: Buffer; layoutManifest: PosterLayerManifest | null }> {
     const { width = 1080, height = 1350, quality = 90, timeoutMs = 20000 } = options;
     const browser = await this.getBrowser();
 
@@ -180,9 +206,21 @@ export class BrowserSingleton {
         timeout: timeoutMs,
       });
 
+      let layoutManifest: PosterLayerManifest | null = null;
+      if (extractLayers) {
+        try {
+          layoutManifest = (await page.evaluate(POSTER_LAYER_EXTRACTOR_SCRIPT)) as PosterLayerManifest;
+        } catch (extractErr: any) {
+          console.warn(
+            `[BrowserSingleton] Ekstraksi layer manifest gagal (render tetap lanjut): ${extractErr?.message || extractErr}`
+          );
+        }
+      }
+
       this.renderCount++;
       // Konversi PNG -> WebP di sisi Sharp memberi kontrol kualitas yang konsisten
-      return await sharp(screenshot).webp({ quality, effort: 4 }).toBuffer();
+      const buffer = await sharp(screenshot).webp({ quality, effort: 4 }).toBuffer();
+      return { buffer, layoutManifest };
     } finally {
       if (page) await page.close().catch(() => {});
       if (context) await context.close().catch(() => {});

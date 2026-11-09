@@ -11,6 +11,7 @@ import {
   UseGuards
 } from '@nestjs/common';
 import { StudioService } from './studio.service.js';
+import { StudioMagicLayersService } from './services/studio-magic-layers.service.js';
 import {
   GenerateArticleRequestDto,
   UpdateDraftArticleDto,
@@ -24,7 +25,63 @@ import { SkipRlsContext } from '../../common/decorators/skip-rls-context.decorat
 
 @Controller('studio')
 export class StudioController {
-  constructor(private readonly studioService: StudioService) { }
+  constructor(
+    private readonly studioService: StudioService,
+    private readonly magicLayersService: StudioMagicLayersService,
+  ) { }
+
+  // Analisis Layout, Deteksi Teks OCR, dan Heuristic Grouping untuk Magic Layers
+  @Post('magic-layers/analyze')
+  @SkipRlsContext()
+  @HttpCode(HttpStatus.OK)
+  async analyzeMagicLayers(
+    @Body()
+    dto: {
+      archetype?: string;
+      title?: string;
+      subtitle?: string;
+      author?: string;
+      naturalW?: number;
+      naturalH?: number;
+    },
+  ) {
+    return await this.magicLayersService.analyzeDocumentLayout(dto);
+  }
+
+  // Ekstraksi 100% Manifest Asli Poster (OCR AI Vision & Layout Tanpa Dummy)
+  @Post('magic-layers/extract-manifest')
+  @SkipRlsContext()
+  @HttpCode(HttpStatus.OK)
+  async extractManifest(
+    @Body()
+    dto: {
+      imageUrl: string;
+      publicationId?: string;
+      naturalW?: number;
+      naturalH?: number;
+      forceReExtract?: boolean;
+    },
+  ) {
+    return await this.magicLayersService.getOrExtractPosterManifest(dto);
+  }
+
+  // Inpainting Latar Belakang AI (Menambal area kosong dengan pola tekstur sekitar solid)
+  @Post('magic-layers/inpaint')
+  @SkipRlsContext()
+  @HttpCode(HttpStatus.OK)
+  async inpaintMagicLayers(
+    @Body()
+    dto: {
+      imageUrl: string;
+      naturalW?: number;
+      naturalH?: number;
+      componentBounds: Array<{ x: number; y: number; w: number; h: number; cardBg?: string; name?: string; text?: string }>;
+      archetype?: string;
+      publicationId?: string;
+    },
+  ) {
+    return await this.magicLayersService.inpaintPosterBackground(dto);
+  }
 
   // Pengecualian: morning-briefing dapat dibaca anggota terdaftar tanpa error 403
   @Get('morning-briefing')

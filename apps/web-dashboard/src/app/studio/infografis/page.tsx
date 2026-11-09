@@ -118,7 +118,9 @@ export default function InfografisStudioPage() {
   // Prompt Form States
   const [promptInput, setPromptInput] = useState('');
   const [selectedStyle, setSelectedStyle] = useState<VisualStyle>('infographic');
-  const [selectedAspectRatio, setSelectedAspectRatio] = useState<AspectRatio>('16:9');
+  const [selectedAspectRatio, setSelectedAspectRatio] = useState<AspectRatio>('4:5');
+  const [selectedArchetype, setSelectedArchetype] = useState<string>('AUTO');
+  const [selectedLayoutVariant, setSelectedLayoutVariant] = useState<number | 'AUTO'>('AUTO');
   const [includeUserPhoto, setIncludeUserPhoto] = useState(false);
   const [refiningPrompt, setRefiningPrompt] = useState(false);
 
@@ -336,7 +338,11 @@ export default function InfografisStudioPage() {
           generateDallePoster: true,
           aspectRatio: submittedAspectRatio,
           style: submittedStyle,
+          forcedArchetype: selectedArchetype && selectedArchetype !== 'AUTO' ? selectedArchetype : undefined,
+          layoutVariant: selectedLayoutVariant !== 'AUTO' ? selectedLayoutVariant : undefined,
           includeUserPhoto,
+          enableImg2ImgPass: true,
+          img2ImgDenoisingStrength: 0.18,
           compositionMode: includeUserPhoto ? 'FIGURE_CENTERPIECE' : 'PUBLIC_ADVOCACY',
           customPhotoUrl: profile?.photoUrl || (Array.isArray(profile?.photoGallery) && profile.photoGallery[0]) || undefined,
         }),
@@ -347,6 +353,8 @@ export default function InfografisStudioPage() {
 
       let newImageUrl = res?.dalleImageUrl || res?.imageUrl;
       let newTitle = promptText.slice(0, 50);
+      let detectedArchetype: string | undefined = undefined;
+      let rawCanvasUrl: string | undefined = undefined;
 
       if (jobId && publicationId) {
         let completed = false;
@@ -374,8 +382,18 @@ export default function InfografisStudioPage() {
 
         const detail = await ApiClient.request<any>(`/studio/articles/${publicationId}`);
         newImageUrl = detail?.asset?.cdnPublicUrl || detail?.asset?.r2StorageUrl || newImageUrl;
+        if (detail?.rawCanvasUrl) {
+          rawCanvasUrl = detail.rawCanvasUrl;
+        }
         if (detail?.article?.title) {
           newTitle = detail.article.title;
+        }
+        if (detail?.asset?.promptUsed) {
+          try {
+            const parsed = JSON.parse(detail.asset.promptUsed);
+            if (parsed?.archetype) detectedArchetype = parsed.archetype;
+            if (!rawCanvasUrl && parsed?.rawCanvasUrl) rawCanvasUrl = parsed.rawCanvasUrl;
+          } catch {}
         }
       }
 
@@ -401,8 +419,10 @@ export default function InfografisStudioPage() {
         title: newTitle,
         style: submittedStyle,
         aspectRatio: submittedAspectRatio,
+        archetype: detectedArchetype,
         source: latestTargetSession.iterations.length === 0 ? 'INITIAL' : 'REFINE',
         publicationId: publicationId || undefined,
+        rawCanvasUrl,
       };
 
       const updated = sessionsRef.current.map((s) => {
@@ -597,6 +617,26 @@ export default function InfografisStudioPage() {
     }
   }
 
+  // Pembaruan iterasi dari Magic Layers Canvas Editor
+  function handleUpdateCurrentIteration(updatedFields: Partial<InfographicIteration>) {
+    if (!currentIteration) return;
+    const updated = sessionsRef.current.map((s) => {
+      if (s.id === activeSessionId) {
+        return {
+          ...s,
+          updatedAt: new Date().toISOString(),
+          iterations: s.iterations.map((it) =>
+            it.id === currentIteration.id
+              ? { ...it, ...updatedFields }
+              : it
+          ),
+        };
+      }
+      return s;
+    });
+    persistSessions(updated);
+  }
+
   return (
     <div className="flex min-h-screen bg-slate-100/70 dark:bg-[#070A12] text-slate-900 dark:text-slate-100 font-sans theme-transition">
       <Sidebar subdomain={profile?.subdomain} customDomain={profile?.customDomain} />
@@ -699,6 +739,7 @@ export default function InfografisStudioPage() {
                 publishing={publishing}
                 publishedUrl={publishedUrl}
                 isUnpaid={isUnpaid}
+                onUpdateIteration={handleUpdateCurrentIteration}
               />
 
               {/* STRIP ITERASI CEPAT (DI BAWAH KANVAS) */}
@@ -742,6 +783,10 @@ export default function InfografisStudioPage() {
             hasExistingIteration={Boolean(currentIteration)}
             includeUserPhoto={includeUserPhoto}
             onIncludeUserPhotoChange={setIncludeUserPhoto}
+            selectedArchetype={selectedArchetype}
+            onArchetypeChange={setSelectedArchetype}
+            selectedLayoutVariant={selectedLayoutVariant}
+            onLayoutVariantChange={setSelectedLayoutVariant}
             onRefinePrompt={handleRefinePrompt}
             refiningPrompt={refiningPrompt}
           />

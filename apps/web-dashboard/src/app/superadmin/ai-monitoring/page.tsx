@@ -37,13 +37,15 @@ export default function SuperadminAiMonitoringPage() {
   return (
     <div className="space-y-6">
       {/* 1. HEADER */}
-      <div className="border-b border-slate-200 dark:border-slate-800 pb-5">
-        <h1 className="text-xl sm:text-2xl font-black text-slate-900 dark:text-white tracking-tight">
-          Observabilitas AI, Token & Langfuse Tracing
-        </h1>
-        <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
-          Audit konsumsi token OpenAI GPT-4o, alokasi deposit master platform, sisa kuota saldo, dan telemetri inferensi realtime.
-        </p>
+      <div className="border-b border-slate-200 dark:border-slate-800 pb-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div>
+          <h1 className="text-xl sm:text-2xl font-black text-slate-900 dark:text-white tracking-tight">
+            Observabilitas AI, Token & Langfuse Tracing
+          </h1>
+          <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
+            Audit konsumsi token OpenAI GPT-4o, alokasi deposit master platform, sisa kuota saldo, dan telemetri inferensi realtime.
+          </p>
+        </div>
       </div>
 
       {/* 2. MASTER TOKEN VAULT & SISA KUOTA CARD */}
