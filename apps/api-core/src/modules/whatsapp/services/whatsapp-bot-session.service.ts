@@ -3849,8 +3849,9 @@ export class WhatsAppBotSessionService implements OnModuleDestroy {
         Array.isArray(syndication.twitterThreads) &&
         syndication.twitterThreads.length > 0
       ) {
-        cleanCaption = syndication.twitterThreads
-          .map((tweet: string, idx: number) => `🧵 [${idx + 1}/${syndication.twitterThreads.length}]\n${tweet}`)
+        const threads = syndication.twitterThreads as string[];
+        cleanCaption = threads
+          .map((tweet: string, idx: number) => `🧵 [${idx + 1}/${threads.length}]\n${tweet}`)
           .join('\n\n');
       } else {
         cleanCaption = `🧵 [1/2] ${pub.title}\n\n${pub.excerpt.slice(0, 180)}...\n\n[2/2] Baca selengkapnya di portal resmi: ${pub.canonicalUrl} #KilasInfo`;

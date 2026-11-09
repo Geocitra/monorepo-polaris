@@ -72,6 +72,21 @@ export interface BillingStatusDto {
     totalQuotaAllocated?: number;
     remainingQuota?: number;
     weeklyAllowanceLimit?: number;
+    weeklyUsed?: number;
+    weeklyRemaining?: number;
+    isPeriodExpired?: boolean;
+    fxRateApplied?: number;
+    fxRateSource?: string;
+    openaiInputTokens?: number;
+    openaiOutputTokens?: number;
+    openaiTotalTokens?: number;
+    openaiImageCalls?: number;
+    openaiCostIdr?: number;
+    geminiInputTokens?: number;
+    geminiOutputTokens?: number;
+    geminiTotalTokens?: number;
+    geminiImageCalls?: number;
+    geminiCostIdr?: number;
   };
   recentInvoice?: RecentInvoiceSummaryDto | null;
   gatewayConfig?: {
