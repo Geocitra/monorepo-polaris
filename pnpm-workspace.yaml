@@ -5,6 +5,7 @@ allowBuilds:
   '@google/genai': true
   '@nestjs/core': true
   bcrypt: true
+  canvas: false
   esbuild: true
   msgpackr-extract: true
   protobufjs: true
