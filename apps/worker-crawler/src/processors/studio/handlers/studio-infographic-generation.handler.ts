@@ -347,7 +347,11 @@ export class StudioInfographicGenerationHandler {
             copy: artCollage.copy,
             layoutVariant: data.layoutVariant,
             tenantId,
+            operatorId: data.operatorId,
             publicationId,
+            channel: data.channel || 'WEB_STUDIO',
+            activityType: 'VISION_CRITIC',
+            requestId: data.requestId || jobId,
           });
 
           console.log(
@@ -428,7 +432,11 @@ export class StudioInfographicGenerationHandler {
                 copy: artCollage.copy,
                 layoutVariant: data.layoutVariant,
                 tenantId,
+                operatorId: data.operatorId,
                 publicationId,
+                channel: data.channel || 'WEB_STUDIO',
+                activityType: 'VISION_CRITIC',
+                requestId: data.requestId || jobId,
               });
 
               console.log(

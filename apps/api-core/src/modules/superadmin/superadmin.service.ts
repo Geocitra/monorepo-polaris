@@ -235,6 +235,10 @@ export class SuperadminService {
     return await this.auditService.getMemberActivityLogs(tenantId, query);
   }
 
+  async getMemberAiActivityDetail(tenantId: string) {
+    return await this.auditService.getMemberAiActivityDetail(tenantId);
+  }
+
   // --- Domain: Pengelolaan Tiket Pengajuan Domain ---
   async getDomainRequests(status?: string) {
     return await this.domainService.getDomainRequests(status);

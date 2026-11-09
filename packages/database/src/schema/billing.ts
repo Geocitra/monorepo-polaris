@@ -1,5 +1,5 @@
-import { pgTable, uuid, varchar, timestamp, numeric, integer, bigint, text, unique, index, date } from 'drizzle-orm/pg-core';
-import { tenantMembers } from './identity.js';
+import { pgTable, uuid, varchar, timestamp, numeric, integer, bigint, text, unique, index, date, jsonb } from 'drizzle-orm/pg-core';
+import { tenantMembers, systemAdmins } from './identity.js';
 import { subscriptionStatusEnum, planTierEnum, paymentStatusEnum, quotaTransactionTypeEnum } from './enums.js';
 import { subscriptionPriceMatrices } from './pricing-matrix.js';
 import { contentBriefs } from './briefs.js';
@@ -84,8 +84,11 @@ export const tenantQuotaTransactions = pgTable('tenant_quota_transactions', {
   briefId: uuid('brief_id').references(() => contentBriefs.id, { onDelete: 'set null' }),
   publicationId: uuid('publication_id').references(() => contentPublications.id, { onDelete: 'set null' }),
   ledgerId: uuid('ledger_id').references(() => tenantQuotaLedgers.id, { onDelete: 'set null' }),
+  operatorId: uuid('operator_id').references(() => systemAdmins.id, { onDelete: 'set null' }),
   invoiceId: uuid('invoice_id').references(() => invoiceTransactions.id, { onDelete: 'set null' }),
   channel: varchar('channel', { length: 30 }).default('WHATSAPP').notNull(),
+  activityType: varchar('activity_type', { length: 60 }),
+  requestId: varchar('request_id', { length: 100 }),
   weeklyQuotaPeriod: varchar('weekly_quota_period', { length: 15 }),
   referenceCode: varchar('reference_code', { length: 100 }),
   transactionType: quotaTransactionTypeEnum('transaction_type').notNull(),
@@ -98,6 +101,8 @@ export const tenantQuotaTransactions = pgTable('tenant_quota_transactions', {
   idxQuotaTxBrief: index('idx_quota_tx_brief').on(t.briefId),
   idxQuotaTxPublication: index('idx_quota_tx_publication').on(t.publicationId),
   idxQuotaTxLedger: index('idx_quota_tx_ledger').on(t.ledgerId),
+  idxQuotaTxOperator: index('idx_quota_tx_operator').on(t.operatorId),
+  idxQuotaTxRequest: index('idx_quota_tx_request').on(t.requestId),
   idxQuotaTxTenantWeek: index('idx_quota_tx_tenant_week').on(t.tenantId, t.weeklyQuotaPeriod),
 }));
 
@@ -105,8 +110,12 @@ export const aiTraceLogs = pgTable('ai_trace_logs', {
   id: uuid('id').defaultRandom().primaryKey(),
   traceId: varchar('trace_id', { length: 100 }).notNull(),
   tenantId: uuid('tenant_id').references(() => tenantMembers.id, { onDelete: 'set null' }),
+  operatorId: uuid('operator_id').references(() => systemAdmins.id, { onDelete: 'set null' }),
   publicationId: uuid('publication_id').references(() => contentPublications.id, { onDelete: 'set null' }),
   ledgerId: uuid('ledger_id').references(() => tenantQuotaLedgers.id, { onDelete: 'set null' }),
+  channel: varchar('channel', { length: 30 }).default('WEB_STUDIO').notNull(),
+  activityType: varchar('activity_type', { length: 60 }),
+  requestId: varchar('request_id', { length: 100 }),
   provider: varchar('provider', { length: 20 }).default('OPENAI').notNull(),
   operation: varchar('operation', { length: 100 }).notNull(),
   model: varchar('model', { length: 50 }).notNull(),
@@ -119,6 +128,7 @@ export const aiTraceLogs = pgTable('ai_trace_logs', {
   fxRateApplied: numeric('fx_rate_applied', { precision: 10, scale: 2 }).default('16350.00').notNull(),
   costIdr: bigint('cost_idr', { mode: 'number' }).default(0).notNull(),
   visitorIpHash: varchar('visitor_ip_hash', { length: 64 }),
+  metadata: jsonb('metadata'),
   status: varchar('status', { length: 30 }).default('SUCCESS').notNull(),
   errorMessage: text('error_message'),
   createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
@@ -126,6 +136,9 @@ export const aiTraceLogs = pgTable('ai_trace_logs', {
   idxAiTraceTenantCreated: index('idx_ai_trace_tenant_created').on(t.tenantId, t.createdAt),
   idxAiTraceProviderCreated: index('idx_ai_trace_provider_created').on(t.provider, t.createdAt),
   idxAiTracePublication: index('idx_ai_trace_publication').on(t.publicationId),
+  idxAiTraceOperator: index('idx_ai_trace_operator').on(t.operatorId),
+  idxAiTraceChannelAct: index('idx_ai_trace_channel_act').on(t.channel, t.activityType),
+  idxAiTraceRequestId: index('idx_ai_trace_request_id').on(t.requestId),
 }));
 
 export const platformTokenPools = pgTable('platform_token_pools', {

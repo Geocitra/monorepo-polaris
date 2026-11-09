@@ -248,6 +248,9 @@ export class StudioGeneratorService implements OnModuleDestroy {
           tenantId,
           cost: 1,
           publicationId: publication.id,
+          operatorId: caller?.isOperator && caller.operatorId ? caller.operatorId : undefined,
+          activityType: 'STUDIO_ARTICLE_GENERATION',
+          requestId: jobId,
           referenceCode: `WEB-${publication.slug.slice(0, 36)}`,
           isUrgentOverquota: Boolean(dto.isUrgentOverquota),
           channel: QuotaConsumptionChannel.WEB_STUDIO,
@@ -334,6 +337,12 @@ export class StudioGeneratorService implements OnModuleDestroy {
           externalUrls: allUrls,
           attachments: dto.attachments,
           operatorId: caller?.isOperator ? caller.operatorId : undefined,
+          requestId: jobId,
+          channel: 'WEB_STUDIO',
+          activityType:
+            effectiveTaskType === 'INFOGRAPHIC_ONLY'
+              ? 'STUDIO_INFOGRAPHIC_GENERATION'
+              : 'STUDIO_ARTICLE_GENERATION',
         },
         {
           jobId,
@@ -497,6 +506,9 @@ export class StudioGeneratorService implements OnModuleDestroy {
           publicationId: article.id,
           topic: article.title,
           generateDallePoster: true,
+          channel: 'WEB_STUDIO',
+          activityType: 'POSTER_REVISION',
+          requestId: jobId,
         },
         {
           jobId,

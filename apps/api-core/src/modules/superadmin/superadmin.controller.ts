@@ -308,6 +308,13 @@ export class SuperadminController {
     });
   }
 
+  @UseGuards(SuperadminGuard)
+  @Get('members/:id/ai-activity-detail')
+  @HttpCode(HttpStatus.OK)
+  async getMemberAiActivityDetail(@Param('id') id: string) {
+    return await this.superadminService.getMemberAiActivityDetail(id);
+  }
+
   // --- Domain: Pengelolaan Tiket Pengajuan Domain ---
   @UseGuards(SuperadminGuard)
   @Get('domain-requests')

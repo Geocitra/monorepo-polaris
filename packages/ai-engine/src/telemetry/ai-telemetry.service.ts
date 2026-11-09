@@ -1,5 +1,14 @@
 import * as crypto from 'crypto';
-import { db, aiTraceLogs, tenantQuotaLedgers, platformTokenPools, eq, sql } from '@polaris/database';
+import {
+  db,
+  aiTraceLogs,
+  tenantQuotaLedgers,
+  platformTokenPools,
+  tenantActivityLogs,
+  operatorAuditLogs,
+  eq,
+  sql,
+} from '@polaris/database';
 import { AiCostCalculator, DynamicExchangeRate } from '@polaris/core-domain';
 import { langfuseClient } from '../client.js';
 
@@ -9,7 +18,11 @@ export interface StartTelemetryParams {
   operation: string;
   model: string;
   tenantId?: string;
+  operatorId?: string;
   publicationId?: string;
+  channel?: string;
+  activityType?: string;
+  requestId?: string;
   visitorIpHash?: string;
   metadata?: Record<string, any>;
   inputPayload?: Record<string, any>;
@@ -149,6 +162,11 @@ export class AiTelemetryService {
     const startTime = Date.now();
     const rawTenantId = params.tenantId?.trim() || undefined;
     const validTenantUuid = rawTenantId && UUID_REGEX.test(rawTenantId) ? rawTenantId : null;
+    const rawOperatorId = params.operatorId?.trim() || undefined;
+    const validOperatorUuid = rawOperatorId && UUID_REGEX.test(rawOperatorId) ? rawOperatorId : null;
+    const channel = (params.channel || params.metadata?.channel || 'WEB_STUDIO').toString().slice(0, 30);
+    const activityType = (params.activityType || params.metadata?.activityType || params.operation || '').toString().slice(0, 60);
+    const requestId = (params.requestId || params.metadata?.requestId || '').toString().slice(0, 100) || null;
     const rawPubId = (params.publicationId || params.metadata?.publicationId || '')
       .toString()
       .trim();
@@ -368,13 +386,17 @@ export class AiTelemetryService {
         }
       }
 
-      // C. Persistensi ke basis data lokal PostgreSQL ai_trace_logs (lengkap dengan relasi FK & IDR)
+      // C. Persistensi ke basis data lokal PostgreSQL ai_trace_logs (lengkap dengan relasi FK, Operator, Request & IDR)
       try {
         await db.insert(aiTraceLogs).values({
           traceId: canonicalTraceId,
           tenantId: validTenantUuid,
+          operatorId: validOperatorUuid,
           publicationId: validPublicationUuid,
           ledgerId: syncedLedgerId,
+          channel,
+          activityType,
+          requestId,
           provider: resolvedProvider,
           operation: params.operation.slice(0, 100),
           model: resolvedModel,
@@ -387,6 +409,13 @@ export class AiTelemetryService {
           fxRateApplied: fxRateApplied.toFixed(2),
           costIdr,
           visitorIpHash,
+          metadata: {
+            ...params.metadata,
+            requestId,
+            channel,
+            activityType,
+            operatorId: validOperatorUuid,
+          },
           status: endParams.status,
           errorMessage: endParams.errorMessage || null,
         });
@@ -394,6 +423,64 @@ export class AiTelemetryService {
         console.warn(
           `[AiTelemetryWarning] Gagal menyimpan log trace ${canonicalTraceId} ke database: ${dbErr?.message}`,
         );
+      }
+
+      // C2. Sinkronisasi log aktivitas anggota dewan (tenant_activity_logs) secara terstruktur
+      if (validTenantUuid) {
+        try {
+          await db.insert(tenantActivityLogs).values({
+            tenantId: validTenantUuid,
+            activityType: activityType || 'AI_INFERENCE',
+            category: 'AI_AGENT',
+            description: `Inferensi AI [${resolvedProvider}] ${resolvedModel} - ${totalTokens.toLocaleString('id-ID')} token (Rp ${costIdr.toLocaleString('id-ID')})`,
+            ipAddress: visitorIpHash ? `HASH_${visitorIpHash.slice(0, 12)}` : null,
+            userAgent: channel,
+            metadata: {
+              traceId: canonicalTraceId,
+              requestId,
+              operatorId: validOperatorUuid,
+              channel,
+              provider: resolvedProvider,
+              model: resolvedModel,
+              totalTokens,
+              inputTokens: safeInputTokens,
+              outputTokens: safeOutputTokens,
+              imageCalls: effectiveImageCalls,
+              latencyMs,
+              costIdr,
+              fxRateApplied,
+              publicationId: validPublicationUuid,
+            },
+          });
+        } catch (actErr: any) {
+          console.warn(`[AiTelemetryWarning] Gagal mencatat tenantActivityLogs: ${actErr?.message}`);
+        }
+      }
+
+      // C3. Sinkronisasi audit log operator jika dipicu atau ditangani oleh staf/admin (operator_audit_logs)
+      if (validOperatorUuid) {
+        try {
+          await db.insert(operatorAuditLogs).values({
+            operatorId: validOperatorUuid,
+            tenantId: validTenantUuid,
+            action: activityType || 'AI_INFERENCE',
+            targetEntity: 'AI_TRACE',
+            targetEntityId: null,
+            details: {
+              traceId: canonicalTraceId,
+              requestId,
+              channel,
+              provider: resolvedProvider,
+              model: resolvedModel,
+              tokens: totalTokens,
+              imageCalls: effectiveImageCalls,
+              costIdr,
+              publicationId: validPublicationUuid,
+            },
+          });
+        } catch (opErr: any) {
+          console.warn(`[AiTelemetryWarning] Gagal mencatat operatorAuditLogs: ${opErr?.message}`);
+        }
       }
 
       // D. Update platform_token_pools terpisah sesuai provider ('OPENAI' vs 'GEMINI')

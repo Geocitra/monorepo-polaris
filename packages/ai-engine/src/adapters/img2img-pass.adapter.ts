@@ -23,6 +23,11 @@ export interface Img2ImgPassOptions {
   headerTag?: string;
   editionTag?: string;
   tenantId?: string;
+  operatorId?: string;
+  publicationId?: string;
+  channel?: string;
+  activityType?: string;
+  requestId?: string;
 }
 
 export interface Img2ImgPassResult {
@@ -359,6 +364,11 @@ export class Img2ImgPassAdapter {
           operation: 'poster-gemini-relayout-pass',
           model: modelName,
           tenantId: options.tenantId,
+          operatorId: options.operatorId,
+          publicationId: options.publicationId,
+          channel: options.channel || 'WEB_STUDIO',
+          activityType: options.activityType || 'POSTER_REVISION',
+          requestId: options.requestId,
           metadata: {
             archetype: options.archetype || 'DEFAULT',
             layoutVariant,

@@ -647,14 +647,104 @@ export interface TenantQuotaTransactionDto {
   briefId?: string | null;
   publicationId?: string | null;
   ledgerId?: string | null;
+  operatorId?: string | null;
+  operatorName?: string | null;
   invoiceId?: string | null;
   channel?: QuotaConsumptionChannel | string | null;
+  activityType?: string | null;
+  requestId?: string | null;
   referenceCode?: string | null;
   transactionType: QuotaTransactionType;
   amountDelta: number;
   balanceAfter: number;
   notes?: string | null;
   createdAt: string;
+}
+
+export interface AiTraceLogDto {
+  id: string;
+  traceId: string;
+  tenantId?: string | null;
+  tenantName?: string | null;
+  operatorId?: string | null;
+  operatorName?: string | null;
+  publicationId?: string | null;
+  ledgerId?: string | null;
+  channel: string;
+  activityType?: string | null;
+  requestId?: string | null;
+  provider: 'OPENAI' | 'GEMINI' | string;
+  operation: string;
+  model: string;
+  inputTokens: number;
+  outputTokens: number;
+  totalTokens: number;
+  imageCalls: number;
+  latencyMs: number;
+  costUsd: number;
+  fxRateApplied: number;
+  costIdr: number;
+  visitorIpHash?: string | null;
+  metadata?: Record<string, any> | null;
+  status: 'SUCCESS' | 'FAILED' | 'REFUSAL' | string;
+  errorMessage?: string | null;
+  createdAt: string;
+}
+
+export interface MemberAiActivityDetailDto {
+  member: {
+    id: string;
+    fullName: string;
+    email: string;
+    partyAffiliation?: string | null;
+    legislativeLevel?: string | null;
+    dapilName?: string | null;
+    commissionName?: string | null;
+    accountStatus: string;
+    isVerified: boolean;
+    planTier: string;
+    photoUrl?: string | null;
+  };
+  quota: {
+    remainingQuota: number;
+    totalQuotaAllocated: number;
+    weeklyAllowanceLimit: number;
+    weeklyUsed: number;
+  };
+  providerBreakdown: {
+    openai: {
+      inputTokens: number;
+      outputTokens: number;
+      totalTokens: number;
+      imageCalls: number;
+      costIdr: number;
+    };
+    gemini: {
+      inputTokens: number;
+      outputTokens: number;
+      totalTokens: number;
+      imageCalls: number;
+      costIdr: number;
+    };
+    totalCostIdr: number;
+  };
+  activityBreakdown: Array<{
+    activityType: string;
+    label: string;
+    totalCalls: number;
+    openaiTokens: number;
+    geminiTokens: number;
+    imageCalls: number;
+    totalCostIdr: number;
+  }>;
+  operatorBreakdown: Array<{
+    operatorId: string | null;
+    operatorName: string;
+    totalRequests: number;
+    costIdr: number;
+  }>;
+  recentTraces: AiTraceLogDto[];
+  recentTransactions: TenantQuotaTransactionDto[];
 }
 
 export interface TenantQuotaWalletDto {

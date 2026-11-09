@@ -698,8 +698,11 @@ CREATE TABLE IF NOT EXISTS tenant_quota_transactions (
   brief_id UUID REFERENCES content_briefs(id) ON DELETE SET NULL,
   publication_id UUID REFERENCES content_publications(id) ON DELETE SET NULL,
   ledger_id UUID REFERENCES tenant_quota_ledgers(id) ON DELETE SET NULL,
+  operator_id UUID REFERENCES system_admins(id) ON DELETE SET NULL,
   invoice_id UUID REFERENCES invoice_transactions(id) ON DELETE SET NULL,
   channel VARCHAR(30) NOT NULL DEFAULT 'WHATSAPP',
+  activity_type VARCHAR(60),
+  request_id VARCHAR(100),
   weekly_quota_period VARCHAR(15),
   reference_code VARCHAR(100),
   transaction_type quota_transaction_type_enum NOT NULL,
@@ -717,6 +720,10 @@ CREATE INDEX IF NOT EXISTS idx_quota_tx_publication
   ON tenant_quota_transactions (publication_id);
 CREATE INDEX IF NOT EXISTS idx_quota_tx_ledger 
   ON tenant_quota_transactions (ledger_id);
+CREATE INDEX IF NOT EXISTS idx_quota_tx_operator 
+  ON tenant_quota_transactions (operator_id);
+CREATE INDEX IF NOT EXISTS idx_quota_tx_request 
+  ON tenant_quota_transactions (request_id);
 CREATE INDEX IF NOT EXISTS idx_quota_tx_tenant_week 
   ON tenant_quota_transactions (tenant_id, weekly_quota_period);
 
@@ -724,8 +731,12 @@ CREATE TABLE IF NOT EXISTS ai_trace_logs (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   trace_id VARCHAR(100) NOT NULL,
   tenant_id UUID REFERENCES tenant_members(id) ON DELETE SET NULL,
+  operator_id UUID REFERENCES system_admins(id) ON DELETE SET NULL,
   publication_id UUID REFERENCES content_publications(id) ON DELETE SET NULL,
   ledger_id UUID REFERENCES tenant_quota_ledgers(id) ON DELETE SET NULL,
+  channel VARCHAR(30) NOT NULL DEFAULT 'WEB_STUDIO',
+  activity_type VARCHAR(60),
+  request_id VARCHAR(100),
   provider VARCHAR(20) NOT NULL DEFAULT 'OPENAI',
   operation VARCHAR(100) NOT NULL,
   model VARCHAR(50) NOT NULL,
@@ -738,6 +749,7 @@ CREATE TABLE IF NOT EXISTS ai_trace_logs (
   fx_rate_applied NUMERIC(10, 2) NOT NULL DEFAULT 16350.00,
   cost_idr BIGINT NOT NULL DEFAULT 0,
   visitor_ip_hash VARCHAR(64),
+  metadata JSONB,
   status VARCHAR(30) NOT NULL DEFAULT 'SUCCESS',
   error_message TEXT,
   created_at TIMESTAMPTZ NOT NULL DEFAULT now()
@@ -749,6 +761,12 @@ CREATE INDEX IF NOT EXISTS idx_ai_trace_provider_created
   ON ai_trace_logs (provider, created_at DESC);
 CREATE INDEX IF NOT EXISTS idx_ai_trace_publication 
   ON ai_trace_logs (publication_id);
+CREATE INDEX IF NOT EXISTS idx_ai_trace_operator 
+  ON ai_trace_logs (operator_id);
+CREATE INDEX IF NOT EXISTS idx_ai_trace_channel_act 
+  ON ai_trace_logs (channel, activity_type);
+CREATE INDEX IF NOT EXISTS idx_ai_trace_request_id 
+  ON ai_trace_logs (request_id);
 
 CREATE TABLE IF NOT EXISTS platform_token_pools (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),

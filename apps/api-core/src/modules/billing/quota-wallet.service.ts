@@ -36,6 +36,9 @@ export interface DeductQuotaParams {
   cost: number;
   briefId?: string;
   publicationId?: string;
+  operatorId?: string;
+  activityType?: string;
+  requestId?: string;
   referenceCode?: string;
   isUrgentOverquota?: boolean;
   channel?: QuotaConsumptionChannel | 'WHATSAPP' | 'WEB_STUDIO' | 'ADMIN';
@@ -47,6 +50,9 @@ export interface RefundQuotaParams {
   tenantId: string;
   briefId?: string;
   publicationId?: string;
+  operatorId?: string;
+  activityType?: string;
+  requestId?: string;
   reason?: string;
   isCancelledByClient?: boolean;
 }
@@ -55,6 +61,9 @@ export interface AllocatePackageQuotaParams {
   tenantId: string;
   quotaAmount: number;
   periodEnd: Date;
+  operatorId?: string;
+  activityType?: string;
+  requestId?: string;
   invoiceId?: string;
   referenceCode?: string;
   notes?: string;
@@ -320,6 +329,9 @@ export class QuotaWalletService {
       await tx.insert(tenantQuotaTransactions).values({
         tenantId,
         ledgerId,
+        operatorId: params.operatorId || null,
+        activityType: params.activityType || 'PACKAGE_ALLOCATION',
+        requestId: params.requestId || null,
         invoiceId: invoiceId || null,
         channel: QuotaConsumptionChannel.ADMIN,
         weeklyQuotaPeriod: currentWeek,
@@ -441,6 +453,9 @@ export class QuotaWalletService {
         briefId: briefId || null,
         publicationId: publicationId || null,
         ledgerId,
+        operatorId: params.operatorId || null,
+        activityType: params.activityType || (channel === 'WHATSAPP' ? 'WHATSAPP_BOT_BRIEF' : 'STUDIO_ARTICLE_GENERATION'),
+        requestId: params.requestId || null,
         channel,
         weeklyQuotaPeriod: weeklyUsage.weeklyQuotaPeriod,
         referenceCode: referenceCode || null,
@@ -555,6 +570,9 @@ export class QuotaWalletService {
         briefId: briefId || null,
         publicationId: publicationId || null,
         ledgerId,
+        operatorId: params.operatorId || null,
+        activityType: params.activityType || 'QUOTA_REFUND',
+        requestId: params.requestId || null,
         channel: resolvedChannel,
         weeklyQuotaPeriod: currentWeek,
         referenceCode: resolvedRefCode,

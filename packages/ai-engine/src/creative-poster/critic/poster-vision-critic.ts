@@ -96,10 +96,25 @@ export class PosterVisionCritic {
     copy: ArtCollageCopy;
     layoutVariant?: number;
     tenantId?: string;
+    operatorId?: string;
     publicationId?: string;
+    channel?: string;
+    activityType?: string;
+    requestId?: string;
   }): Promise<CriticEvaluationResult> {
     const startTime = Date.now();
-    const { imageBuffer, archetype, topic, layoutVariant = 0, tenantId, publicationId } = params;
+    const {
+      imageBuffer,
+      archetype,
+      topic,
+      layoutVariant = 0,
+      tenantId,
+      operatorId,
+      publicationId,
+      channel,
+      activityType,
+      requestId,
+    } = params;
 
     const geminiApiKey =
       process.env.GEMINI_API_KEY ||
@@ -221,7 +236,11 @@ Return ONLY raw JSON (no markdown formatting, no code fence):
         operation: 'poster-vision-critic',
         model: visionModel,
         tenantId,
+        operatorId,
         publicationId,
+        channel: channel || 'WEB_STUDIO',
+        activityType: activityType || 'VISION_CRITIC',
+        requestId,
         inputPayload: { archetype, topic, layoutVariant },
       });
       try {
@@ -313,7 +332,11 @@ Return ONLY raw JSON (no markdown formatting, no code fence):
         operation: 'poster-vision-critic-fallback',
         model: 'gpt-4o-mini',
         tenantId,
+        operatorId,
         publicationId,
+        channel: channel || 'WEB_STUDIO',
+        activityType: activityType || 'VISION_CRITIC',
+        requestId,
         inputPayload: { archetype, topic, layoutVariant },
       });
       try {

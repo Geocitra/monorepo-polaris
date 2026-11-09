@@ -40,6 +40,8 @@ export class OpenAIAIEngineAdapter implements ILLMProviderPort {
     if (!inspection.isValid) {
       const telemetry = AiTelemetryService.startTrace({
         operation: 'public-concierge-chat',
+        channel: 'PUBLIC_CHAT',
+        activityType: 'PUBLIC_CHAT_CONCIERGE',
         model: 'heuristic-guardrail',
         visitorIpHash: params.visitorIpHash,
         metadata: { rejectionReason: inspection.rejectionReason },
@@ -64,6 +66,8 @@ export class OpenAIAIEngineAdapter implements ILLMProviderPort {
 
     const telemetry = AiTelemetryService.startTrace({
       operation: 'public-concierge-chat',
+      channel: 'PUBLIC_CHAT',
+      activityType: 'PUBLIC_CHAT_CONCIERGE',
       model: 'gpt-4o-mini',
       visitorIpHash: params.visitorIpHash,
       metadata: { rawInputLength: params.userMessage.length },
@@ -142,6 +146,8 @@ export class OpenAIAIEngineAdapter implements ILLMProviderPort {
 
     const telemetry = AiTelemetryService.startTrace({
       operation: 'dalle-image-generation',
+      channel: 'WEB_STUDIO',
+      activityType: 'STUDIO_INFOGRAPHIC_GENERATION',
       model: preferredModel,
       tenantId,
       metadata: { promptLength: englishPrompt.length, requestedSize: size },
@@ -363,6 +369,8 @@ export class OpenAIAIEngineAdapter implements ILLMProviderPort {
   ): Promise<{ answer: string; canonicalTraceId: string }> {
     const telemetry = AiTelemetryService.startTrace({
       operation: 'generate-civic-answer-grounded',
+      channel: 'CIVIC_ASSISTANT',
+      activityType: 'CIVIC_ASSISTANT_QUERY',
       model: 'gpt-4o-mini',
       tenantId: params.tenantId,
       visitorIpHash: params.visitorIpHash,
@@ -467,6 +475,8 @@ export class OpenAIAIEngineAdapter implements ILLMProviderPort {
   public async generateInfographicSpec(articleContent: string, tenantId?: string): Promise<InfographicDataSpecDto> {
     const telemetry = AiTelemetryService.startTrace({
       operation: 'generate-infographic-spec',
+      channel: 'WEB_STUDIO',
+      activityType: 'STUDIO_INFOGRAPHIC_GENERATION',
       model: 'gpt-4o-mini',
       tenantId,
       metadata: { contentLength: articleContent.length },
@@ -515,6 +525,8 @@ export class OpenAIAIEngineAdapter implements ILLMProviderPort {
   ): Promise<GeneratedSocialPackResult> {
     const telemetry = AiTelemetryService.startTrace({
       operation: 'generate-social-snippets',
+      channel: 'WEB_STUDIO',
+      activityType: 'STUDIO_ARTICLE_GENERATION',
       model: 'gpt-4o-mini',
       tenantId,
       metadata: { contentLength: articleContent.length },
@@ -570,6 +582,8 @@ export class OpenAIAIEngineAdapter implements ILLMProviderPort {
   }): Promise<string> {
     const telemetry = AiTelemetryService.startTrace({
       operation: 'openai-vision-ocr',
+      channel: 'WEB_STUDIO',
+      activityType: 'VISION_OCR',
       model: 'gpt-4o',
       tenantId: params.tenantId,
       metadata: { fileName: params.fileName, mimeType: params.mimeType },
