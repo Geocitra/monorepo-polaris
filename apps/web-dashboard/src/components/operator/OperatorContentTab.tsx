@@ -1050,7 +1050,7 @@ export function OperatorContentTab({
                   </p>
                   <button
                     type="button"
-                    onClick={onRegeneratePoster}
+                    onClick={() => onRegeneratePoster()}
                     disabled={regeneratingPoster}
                     className="px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold transition inline-flex items-center gap-1.5 cursor-pointer"
                   >
