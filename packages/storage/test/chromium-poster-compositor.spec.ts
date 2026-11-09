@@ -138,7 +138,7 @@ describe('ChromiumPosterCompositor (Playwright Headless)', () => {
     expect(textOf('◈ 01')).toBeTruthy();
     expect(textOf('PILAR UJI 1')).toBeTruthy();
     expect(textOf(points[0].text)).toBeTruthy();
-    expect(textOf('✦ INDIKATOR 01')).toBeTruthy();
+    expect(textOf('STAT A')).toBeTruthy();
     expect(textOf('JUDUL UTAMA PENGUJIAN')).toBeTruthy();
 
     // Badge membawa kotak latarnya sendiri (pill)
