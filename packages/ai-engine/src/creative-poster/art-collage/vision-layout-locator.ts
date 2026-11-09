@@ -155,17 +155,24 @@ export function validateVisionLayout(
   const headline = clampBox(raw?.headline);
   const body = clampBox(raw?.body);
   if (!headline || !body) return null;
-  if (headline.w < 0.3 || headline.h < 0.08) return null;
-  if (body.w < 0.26 || body.h < 0.08) return null;
-  if (overlapRatio(body, headline) > 0.15) return null;
+  if (headline.w < 0.25 || headline.h < 0.06) return null;
+  if (body.w < 0.22 || body.h < 0.06) return null;
+
+  // Jika body sedikit bertumpuk secara vertikal dengan headline, geser body ke bawah secara otomatis
+  if (overlapRatio(body, headline) > 0.12 && body.y >= headline.y) {
+    const newBodyY = Math.min(0.82, headline.y + headline.h + 0.015);
+    const bottomEdge = Math.max(newBodyY + 0.10, body.y + body.h);
+    body.y = newBodyY;
+    body.h = Math.min(1 - SAFE_MARGIN - newBodyY, bottomEdge - newBodyY);
+  }
 
   const obstacles = (Array.isArray(raw?.obstacles) ? raw.obstacles : [])
     .map(clampBox)
     .filter((b: NormalizedBox | null): b is NormalizedBox => !!b && b.w > 0.02 && b.h > 0.02);
 
-  // Tolak jika Vision sendiri menaruh teks di atas obstacle yang ia laporkan
+  // Tolak hanya jika teks menabrak bagian tengah obstacle secara signifikan (> 35%)
   for (const ob of obstacles) {
-    if (overlapRatio(headline, ob) > 0.2 || overlapRatio(body, ob) > 0.2) return null;
+    if (overlapRatio(headline, ob) > 0.35 || overlapRatio(body, ob) > 0.35) return null;
   }
 
   const footer = clampBox(raw?.footer);
@@ -237,6 +244,14 @@ export class VisionLayoutLocator {
   }): Promise<VisionLayoutResult> {
     const isInfographic = params.isInfographic ?? false;
     const fallback = anchorFallbackLayout(params.anchor, params.paperTone, isInfographic);
+
+    // Untuk Infografis (12 arketipe), tata letak kolom & ruang kosong 74% sudah presisi deterministik
+    // di ChromiumPosterCompositor + luminansi kertas diukur langsung via Sharp.
+    // Lewati panggilan LLM Vision ganda agar lebih cepat (hemat 4-6 detik) dan hemat token Gemini/OpenAI.
+    if (isInfographic) {
+      return fallback;
+    }
+
     const mimeType = params.mimeType || 'image/png';
     const b64 = params.imageBuffer.toString('base64');
     const prompt = buildVisionPrompt(params.anchor, isInfographic);

@@ -17,7 +17,7 @@ export const INFOGRAPHIC_TEMPLATES: InfographicTemplateOption[] = [
     name: 'Otomatis (Pilihan Cerdas AI)',
     subtitle: 'Analisis topik & pilihkan template terbaik',
     previewImage: '',
-    description: 'AI menganalisis naskah/topik Anda dan otomatis memilih template paling tepat dari 5 desain referensi.',
+    description: 'AI menganalisis naskah/topik Anda dan otomatis memilih template paling tepat dari 12 desain referensi.',
     tags: ['Rekomendasi', 'Adaptif', 'Auto AI'],
   },
   {
@@ -64,6 +64,24 @@ export const INFOGRAPHIC_TEMPLATES: InfographicTemplateOption[] = [
     archetype: 'INFOGRAPHIC_VISIONARY_TIMELINE',
     description: 'Gaya monokrom modern dengan kartu frosted glass, kutipan inspiratif, dan pita garis waktu horizontal di bawah.',
     tags: ['Inovasi', 'Digital', 'Timeline'],
+  },
+  {
+    id: 'INFOGRAPHIC_EDITORIAL_COLLAGE',
+    name: 'Kolase Zine Risograf',
+    subtitle: 'Light & Shadow / Modul Edukasi',
+    previewImage: '/templates/infografis/template-06-Light bears shadow.jpg',
+    archetype: 'INFOGRAPHIC_EDITORIAL_COLLAGE',
+    description: 'Potongan judul blok warna (teal & mustard), ilustrasi cut-out bohlam lampu dengan bayangan tanaman, kartu tanya-jawab modular, fakta menarik, dan footer pita penutup.',
+    tags: ['Kolase', 'Risograf', 'Sains & Edukasi', 'Light & Shadow'],
+  },
+  {
+    id: 'INFOGRAPHIC_HISTORICAL_EXPEDITION',
+    name: 'Kronik Sejarah & Ekspedisi',
+    subtitle: 'Biografi Vintage & Gulungan Perkamen',
+    previewImage: '/templates/infografis/template-07-template-infografis.jpg',
+    archetype: 'INFOGRAPHIC_HISTORICAL_EXPEDITION',
+    description: 'Gaya arsip biografi sejarah berlatar perkamen kayu cokelat hangat, bingkai oval antik, figura emas, kompas navigasi bahari, buku kuno, dan pena bulu.',
+    tags: ['Sejarah', 'Perkamen', 'Biografi', 'Vintage Ekspedisi'],
   },
 ];
 

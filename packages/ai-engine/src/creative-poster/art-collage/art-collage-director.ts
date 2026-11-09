@@ -14,6 +14,7 @@ import { openaiClient } from '../../client.js';
 import { MasterEditorialSanitizer } from '../../master-editorial-sanitizer.js';
 import type { CreativePosterArchetype } from '../types.js';
 import { isInfographicArchetype } from '@polaris/shared-types';
+import { db, studioAiLearnedMemories, eq, and, desc, or } from '@polaris/database';
 import type {
   ArtCollageAnchor,
   ArtCollageCopy,
@@ -162,31 +163,73 @@ export const ART_COLLAGE_DNA: Record<CreativePosterArchetype, ArtCollageDna> = {
   },
   INFOGRAPHIC_NARRATIVE_WAVE: {
     style:
-      'editorial photojournalism multi-image documentary montage featuring 2 to 3 distinct realistic photographs (wide environment angle, close-up hands-on action, and real Indonesian citizens/workers), natural daylight, 35mm lens, realistic newsprint documentary tones with clean photo divisions',
+      'authentic Indonesian editorial broadsheet infographic artwork matching the gold reference standard: warm textured cream newsprint paper (#F8F6F0), featuring ONLY 1 single black-and-white documentary photo cutout of an Indonesian worker or citizen anchored in the upper-left quadrant (max 30% area), a sweeping bold crimson-red ribbon wave (#991B1B) flowing down the entire right-hand flank from top to bottom, and leaving the lower-left quadrant as an empty, calm, flat cream paper clearing reserved for data visualization, with ABSOLUTELY ZERO text, zero numbers, and zero charts on the artwork background. ABSOLUTELY ZERO silhouettes, zero people, and zero stick figures in the top 18% header or bottom footer area - top 18% must be pure clean unprinted cream paper.',
     anchors: ['TEXT_TOP', 'TEXT_BOTTOM'],
     paperTone: 'LIGHT',
   },
   INFOGRAPHIC_CHRONICLE_GRID: {
     style:
-      'genuine press documentary multi-photo montage featuring 2 to 3 distinct realistic photographs of Indonesian public infrastructure, community life, and active field operations, natural editorial lighting, Reuters / Kompas photojournalism triptych quality',
+      'authentic Indonesian newspaper chronicle editorial infographic on warm newsprint paper matching the classic Soedirman biography layout, featuring a prominent solid orange vertical masthead pillar on the left (width 30% of canvas) with a single compact documentary portrait photo framed inside this left column, leaving the entire right-hand 68% of the canvas as a completely empty, flat, clean cream paper surface for the newspaper chronicle card grid with ZERO photos and ZERO clutter in the right column',
     anchors: ['TEXT_RIGHT', 'TEXT_TOP'],
     paperTone: 'LIGHT',
   },
   INFOGRAPHIC_RADIAL_CLOCK: {
     style:
-      'vintage educational chronicle infographic poster in the exact style of an archival museum chronicle: an ornate antique brass mechanical clock dial on the center-left radiating colorful era fan wedges outward across a warm parchment paper background, with richly detailed realistic documentary photo cutouts and vignettes of Indonesian citizens, workers, and field activities related to the topic, antique book stacks at the lower margin, warm museum lighting, textured parchment paper grain',
+      'vintage educational chronicle artwork on warm aged parchment paper featuring an ornate antique pocket watch dial and radial time sectors in the left margin: ONLY 1 single compact documentary photo cutout anchored strictly in the middle-left margin (max 26% area), leaving the entire top header/title/deck band, the entire lower 36% section, and the entire right-hand 65% of the canvas as a completely empty, clean, unobstructed warm parchment paper expanse for direct typography',
     anchors: ['TEXT_RIGHT', 'TEXT_TOP'],
     paperTone: 'LIGHT',
   },
   INFOGRAPHIC_ADVOCACY_PILLARS: {
     style:
-      'multi-angle documentary photography montage capturing Indonesian public services, schools, healthcare, or community programs from multiple perspectives (wide-angle facility view + close-up citizen interaction + frontline worker detail)',
+      'documentary photography editorial artwork on warm alabaster paper with subtle traditional Indonesian batik motif watermark in the background, featuring ONLY 1 single compact horizontal documentary scene strictly in the narrow mid-upper band (around 24% height), leaving the entire top masthead zone and the entire lower 58% of the canvas as a completely empty, clean, unobstructed warm paper surface for direct 5-column pillar typography',
     anchors: ['TEXT_TOP', 'TEXT_BOTTOM'],
     paperTone: 'LIGHT',
   },
   INFOGRAPHIC_VISIONARY_TIMELINE: {
     style:
-      'contemporary editorial photojournalism montage featuring 2 to 3 realistic photographs depicting regional development, public infrastructure, and civic life from both panoramic and ground-level angles',
+      'contemporary minimal monochrome editorial artwork on cool light grey textured broadsheet paper with subtle horizontal milestone line, with ONLY 1 single compact documentary photograph anchored in the middle-left window (max 25% area), leaving 75% of the canvas (the entire top header band, lower half, and right-hand expanse) as a calm, clean, unobstructed open paper surface for direct timeline typography',
+    anchors: ['TEXT_TOP', 'TEXT_BOTTOM'],
+    paperTone: 'LIGHT',
+  },
+  INFOGRAPHIC_EDITORIAL_COLLAGE: {
+    style:
+      'risograph zine collage educational artwork on warm ivory paper with layered geometric teal and mustard color block accents, with ONLY 1 single compact documentary cutout anchored strictly in the middle-right margin (max 25% area), leaving 75% of the canvas (the entire top, entire lower section, and left-hand 70% of the canvas) as a clean, calm, unobstructed ivory paper surface for direct typography',
+    anchors: ['TEXT_LEFT', 'TEXT_TOP'],
+    paperTone: 'LIGHT',
+  },
+  INFOGRAPHIC_HISTORICAL_EXPEDITION: {
+    style:
+      'archival chronicle artwork on warm aged sepia parchment paper with an antique nautical compass and weathered cartographic textures, with ONLY 1 single compact documentary vignette in a subtle vintage frame in the middle-left window (max 25% area), leaving the entire top header/title/deck band, the entire right-hand column, and the entire lower parchment expanse (75% of the canvas) completely empty, clean, and unobstructed for direct archival ink typography',
+    anchors: ['TEXT_RIGHT', 'TEXT_TOP'],
+    paperTone: 'LIGHT',
+  },
+  INFOGRAPHIC_PUNK_ZINE: {
+    style:
+      'raw eco-punk zine halftone risograph artwork on deep charcoal textured paper with acid lime and hot pink ink splatters, ONLY 1 single compact high-contrast halftone documentary cutout anchored strictly in the lower-right corner (max 24% area), leaving 76% of the canvas (entire top, left, and center) as a clean, calm, unobstructed dark charcoal paper surface for direct typography',
+    anchors: ['TEXT_LEFT', 'TEXT_TOP'],
+    paperTone: 'DARK',
+  },
+  INFOGRAPHIC_HERITAGE_EDITORIAL: {
+    style:
+      'warm authentic Indonesian editorial documentary artwork on woven cream linen paper with elegant deep maroon borders, with ONLY 1 single compact documentary photograph neatly framed in the middle-left window (between 26% and 60% vertical height, max 25% total area), leaving 75% of the canvas (the entire top 25% header/headline/deck zone, the entire right-hand 58% column, and the entire lower 38% section) as a 100% flat, empty, clean, unobstructed warm cream linen paper surface for direct typography with zero corner ribbons and zero second photos',
+    anchors: ['TEXT_LEFT', 'TEXT_TOP'],
+    paperTone: 'LIGHT',
+  },
+  INFOGRAPHIC_INDIGENOUS_ADVOCACY: {
+    style:
+      'rich anthropological documentary editorial artwork on deep warm earthy espresso-brown textured paper with organic woven noken fiber accents, with ONLY 1 single authentic Indonesian community documentary cutout anchored strictly in the lower-left window (max 25% area), leaving 75% of the canvas (entire top header/deck band and entire right-hand expanse) as a calm, completely empty, unobstructed dark earth-toned paper surface for direct typography',
+    anchors: ['TEXT_RIGHT', 'TEXT_TOP'],
+    paperTone: 'DARK',
+  },
+  INFOGRAPHIC_CLASSICAL_MONUMENT: {
+    style:
+      'prestigious monumental editorial broadsheet on warm aged sandstone parchment paper with classical Roman arch and pillar textures, featuring ONLY 1 single authentic Indonesian documentary subject or civic architecture cutout anchored strictly in the lower-left corner (occupying at most 26% of the canvas area), leaving 74% of the canvas (the entire top header band, center, and entire right-hand expanse from top to bottom) as a completely empty, smooth, unobstructed warm sandstone parchment surface for direct typography',
+    anchors: ['TEXT_RIGHT', 'TEXT_TOP'],
+    paperTone: 'LIGHT',
+  },
+  INFOGRAPHIC_RETRO_SUNBURST: {
+    style:
+      'warm vintage chronicle editorial artwork on cream newsprint paper with bold radiating retro amber-orange sunburst rays, ONLY 1 single compact archival documentary cutout anchored strictly in the middle-left window (between 26% and 56% vertical height, max 25% area), leaving 75% of the canvas (entire top 25% band, entire right-hand half, and entire lower 42% half) as a clean, open, unobstructed warm cream paper surface for direct typography',
     anchors: ['TEXT_TOP', 'TEXT_BOTTOM'],
     paperTone: 'LIGHT',
   },
@@ -277,65 +320,92 @@ export function compileArtCollageImagePrompt(params: {
   mutation: ArtCollageMutation;
   visualSubject: string;
   withStyleReference: boolean;
+  remedyPrompt?: string;
 }): string {
   const dna = ART_COLLAGE_DNA[params.archetype];
   const spatial = ANCHOR_SPATIAL_PHRASE[params.mutation.anchor];
   const p = params.mutation.palette;
   const isInfographic = isInfographicArchetype(params.archetype);
 
+  const remedyClause = params.remedyPrompt
+    ? `CRITICAL CORRECTIVE MANDATE FROM AI CRITIC (PRIORITY OVERRIDE):\n${params.remedyPrompt}\n`
+    : '';
+
   if (isInfographic) {
     const referenceClause = params.withStyleReference
-      ? 'The attached image is the OFFICIAL TEMPLATE & LAYOUT REFERENCE. Borrow its exact artistic structure, spatial layout, paper texture, and visual energy. Seamlessly populate the visual sectors with authentic realistic Indonesian people, public infrastructure, and activities related to the topic. Do NOT copy any of its text.'
+      ? 'The attached image is a COLOR PALETTE, PAPER TEXTURE, AND ARTISTIC MOOD reference ONLY. Do NOT copy its scattered multi-box layout, small circular frames, or multiple photo panels, and do NOT copy any irrelevant foreign statues or subjects from the reference! Instead, depict ONLY authentic Indonesian subjects related to the topic strictly confined to a compact 25% to 30% focal corner/margin, and leave 70% of the canvas as a completely empty, clean, unobstructed paper clearing reserved for direct typography.'
       : '';
 
-    if (params.archetype === 'INFOGRAPHIC_RADIAL_CLOCK') {
-      return [
-        `Create a high-resolution, print-quality archival infographic poster ARTWORK (vertical 4:5 ratio) in the exact visual style of the attached template about: ${params.visualSubject}.`,
-        `Master Visual Motif: An ornate antique mechanical clock / pocket watch dial on the center-left radiating colorful era fan wedges and curved ribbons outward across warm aged parchment paper.`,
-        `Documentary Vignettes: Seamlessly integrate 2 to 3 realistic photographic cutouts and documentary vignettes of Indonesian citizens, workers, and field activities related to ${params.visualSubject} within and around the radiating sectors (organic cutout edges blending smoothly with the parchment paper, NEVER square boxes or polaroids). Include vintage book stacks and archival elements at the lower margin.`,
-        `Negative Space for Typography: The right side and upper-right half must remain a calm, clean, open field of aged parchment paper with natural warm paper grain, providing a clear clearing where typography will be printed.`,
-        referenceClause,
-        `STRICT COMPOSITION MANDATES:`,
-        `- Must faithfully match the radial composition, antique clock dial, and parchment texture of the reference image.`,
-        `- ABSOLUTELY NO ANIMATION, NO ANIME, NO CARTOON, NO 3D RENDER, NO ISOMETRIC VECTOR ART, NO SKETCHES, NO CLIPART. The people and equipment cutouts must be realistic photographic quality.`,
-        `- ABSOLUTELY NO SQUARES, RECTANGLES, OR BOX FRAMES. Cutouts must blend organically with the parchment and fan wedges.`,
-        `- DO NOT DRAW ANY UI CARDS, FROSTED GLASS RECTANGLES, WHITE BOXES, OR WEB CONTAINERS.`,
-        `- DO NOT DRAW ANY CHARTS, ICONS, OR QR CODES.`,
-        `- All typography and data will be rendered cleanly by the compositor.`,
-        `ABSOLUTELY ZERO TEXT: No words, no letters, no numbers, no fake writing, no labels, no headings, no logos, no watermarks anywhere on the artwork.`,
-      ].filter(Boolean).join('\n');
-    }
-
-    let archetypeSpatialGuide = '';
-    if (params.archetype === 'INFOGRAPHIC_NARRATIVE_WAVE') {
-      archetypeSpatialGuide = `Multi-Photo Composition: Multi-image editorial photojournalism documentary montage comprising 2 to 3 distinct realistic photographs about ${params.visualSubject}. Include a wide environmental context shot of the facility/location, paired with close-up shots of hands-on technical action, equipment, or Indonesian workers. Seamlessly integrated with clean editorial photo borders, natural daylight, zero drawings, zero text.`;
-    } else if (params.archetype === 'INFOGRAPHIC_CHRONICLE_GRID') {
-      archetypeSpatialGuide = `Multi-Photo Composition: Multi-image editorial press photography and authentic photojournalism montage featuring 2 to 3 distinct realistic photographs about ${params.visualSubject}. The primary wide-angle documentary shot and close-up action vignettes are prominently framed on the left-hand side and lower-left area, creating a rich multi-angle visual anchor. Genuine real-life documentary photography with zero empty rectangles or boxes.`;
+    let negativeSpaceMandate = '';
+    if (params.archetype === 'INFOGRAPHIC_CHRONICLE_GRID') {
+      negativeSpaceMandate = [
+        `CRITICAL COMPOSITION MANDATE FOR CHRONICLE GRID (TEMPLATE 02 - SOEDIRMAN ARCHIVAL LAYOUT):`,
+        `- Left Orange Pillar & Focal Portrait: The left column (width ~30% from the left edge) features the iconic prominent solid vibrant orange masthead pillar. Inside this left column, place ONLY 1 single authentic Indonesian documentary subject photo/cutout neatly framed in the dedicated oval or rounded portrait window.`,
+        `- 100% EMPTY RIGHT COLUMN (STRICT NO-PHOTO ZONE): The entire right-hand 68% of the canvas (from top to bottom, across full height) MUST be a 100% EMPTY, FLAT, UNOBSTRUCTED, CLEAN CREAM NEWSPRINT PAPER SURFACE with ZERO photos, ZERO people, ZERO landscapes, and ZERO clutter. All newspaper chronicle cards, text points, and metrics will be printed onto this clean paper on the right.`,
+        `- NEVER let any photograph or visual subject extend horizontally past 32% of the canvas width!`,
+      ].join('\n');
+    } else if (
+      params.archetype === 'INFOGRAPHIC_CLASSICAL_MONUMENT' ||
+      params.archetype === 'INFOGRAPHIC_RADIAL_CLOCK' ||
+      params.archetype === 'INFOGRAPHIC_INDIGENOUS_ADVOCACY'
+    ) {
+      negativeSpaceMandate = [
+        `CRITICAL NEGATIVE SPACE MANDATE (74% OPEN CANVAS FOR DIRECT TYPOGRAPHY):`,
+        `- Visual Subject Placement: Place ONLY 1 compact documentary visual cutout/vignette strictly in the LOWER-LEFT corner (occupying AT MOST 24% to 26% of the canvas area, and NEVER extending horizontally past 36% of the canvas width from the left edge — all roofs, eaves, trees, and objects must fade smoothly into empty paper well before the horizontal midpoint).`,
+        `- Dedicated Open Space: The ENTIRE TOP HEADER BAND (top 50% on the left) AND the ENTIRE RIGHT-HAND 62% OF THE CANVAS (from top to bottom) MUST be a 100% EMPTY, CALM, UNOBSTRUCTED, EVENLY-LIT paper/parchment surface with ZERO photos, ZERO cutouts, ZERO stone reliefs, ZERO maps, ZERO circles, and ZERO objects. Infographic text and data will be printed directly onto this open paper surface without any cards.`,
+      ].join('\n');
+    } else if (
+      params.archetype === 'INFOGRAPHIC_EDITORIAL_COLLAGE' ||
+      params.archetype === 'INFOGRAPHIC_PUNK_ZINE'
+    ) {
+      negativeSpaceMandate = [
+        `CRITICAL NEGATIVE SPACE MANDATE (74% OPEN CANVAS FOR DIRECT TYPOGRAPHY):`,
+        `- Visual Subject Placement: Place ONLY 1 compact documentary visual cutout strictly in the LOWER-RIGHT corner (occupying AT MOST 24% to 26% of the canvas area, and NEVER extending horizontally past 36% of the canvas width from the right edge).`,
+        `- Dedicated Open Space: The ENTIRE TOP BAND AND the ENTIRE LEFT-HAND 64% OF THE CANVAS (from top to bottom) MUST be a 100% EMPTY, CALM, UNOBSTRUCTED, EVENLY-LIT paper surface with ZERO photos, ZERO cutouts, and ZERO clutter. Infographic text and data will be printed directly onto this open surface without any cards.`,
+      ].join('\n');
     } else if (params.archetype === 'INFOGRAPHIC_ADVOCACY_PILLARS') {
-      archetypeSpatialGuide = `Multi-Photo Composition: Multi-image authentic documentary photojournalism montage capturing real Indonesian citizens, students, workers, or public facilities related to ${params.visualSubject} across 2 to 3 photographic panels, with the central horizontal band open and clearly visible.`;
+      negativeSpaceMandate = [
+        `CRITICAL NEGATIVE SPACE MANDATE (74% OPEN CANVAS FOR DIRECT TYPOGRAPHY):`,
+        `- Visual Subject Placement: Place a compact horizontal documentary vignette strictly in the narrow mid-upper band (between 24% and 40% vertical height).`,
+        `- Dedicated Open Space: The ENTIRE TOP 24% MASTHEAD ZONE and the ENTIRE LOWER 58% OF THE CANVAS MUST be a 100% EMPTY, CALM, UNOBSTRUCTED, EVENLY-LIT paper surface with ZERO photos and ZERO clutter so 5-column infographic data can be printed directly onto the paper without cards.`,
+      ].join('\n');
+    } else if (params.archetype === 'INFOGRAPHIC_NARRATIVE_WAVE') {
+      negativeSpaceMandate = [
+        `CRITICAL ARCHITECTURAL MANDATE FOR S-CURVE NARRATIVE WAVE (GOLD REFERENCE STANDARD):`,
+        `- TOP 18% HEADER ZONE IS 100% STERILIZED BLANK CREAM BROADSHEET PAPER: The entire top 18% of the canvas (from vertical 0% down to 18%, across full width) MUST be completely blank, unprinted, flat warm cream paper (#F8F6F0) with ZERO photos, ZERO ribbons, and ZERO text. ABSOLUTELY ZERO people, zero walking silhouettes, zero pedestrians, zero figures, zero trees, and zero buildings in the top 18% header zone! The masthead headline, kicker, and deck will be printed programmatically here.`,
+        `- SINGLE COMPACT DOCUMENTARY PHOTO CUTOUT ONLY: In the upper-left quadrant (strictly between 18% and 42% vertical height, occupying the left 44% width), place ONLY 1 single black-and-white or muted documentary photograph of authentic Indonesian workers/citizens related to the topic. Do NOT add any second photo, and NEVER draw any cards, scorecards, numbers, or UI boxes!`,
+        `- SWEEPING CRIMSON S-CURVE RIBBON (ENTIRE RIGHT FLANK): A bold, graceful, deep crimson-red ribbon wave (#991B1B) flows continuously down the right-hand half of the canvas (from vertical 18% down to 90% height, occupying the right 50% width). The ribbon surface must be smooth, solid deep crimson ink for white typography.`,
+        `- LOWER-LEFT 44% IS 100% BLANK CREAM BROADSHEET PAPER (DATA CLEARING): The entire lower-left area (from vertical 44% down to 90%, occupying the left 48% width) MUST be 100% COMPLETELY BLANK, CLEAN, FLAT, UNPRINTED WARM CREAM BROADSHEET PAPER (#F8F6F0). ABSOLUTELY ZERO red ribbons, ZERO charts, ZERO pie charts, ZERO metric boxes, ZERO scorecards, and ZERO text anywhere in this clearing! All charts and text will be rendered programmatically by our compositor.`,
+        `- FOOTER MARGIN (y=90% to 100%): Clean flat margin for closing callout and official signature. ABSOLUTELY ZERO stick figures, zero doodle characters, zero walking silhouettes anywhere at the bottom or near the footer!`,
+        `- ABSOLUTELY NO CARTOON STICK FIGURES OR DOODLES: Zero stick figures, zero tiny human sketches, zero random floating silhouettes anywhere on the canvas.`,
+      ].join('\n');
     } else {
-      // INFOGRAPHIC_VISIONARY_TIMELINE
-      archetypeSpatialGuide = `Multi-Photo Composition: Multi-image contemporary editorial photojournalism montage depicting ${params.visualSubject}, featuring 2 to 3 realistic photographs showing public infrastructure and genuine community life from both panoramic and ground-level angles.`;
+      // INFOGRAPHIC_HERITAGE_EDITORIAL, INFOGRAPHIC_RETRO_SUNBURST, INFOGRAPHIC_NARRATIVE_WAVE, INFOGRAPHIC_VISIONARY_TIMELINE, INFOGRAPHIC_HISTORICAL_EXPEDITION
+      negativeSpaceMandate = [
+        `CRITICAL NEGATIVE SPACE MANDATE (75% OPEN CANVAS FOR DIRECT TYPOGRAPHY):`,
+        `- SINGLE VISUAL WINDOW ONLY (NO STACKED OR DUPLICATE PHOTOS): Place ONLY 1 single compact, authentic Indonesian documentary photograph/cutout strictly in the MIDDLE-LEFT window (between 26% and 58% vertical height, and NEVER extending horizontally past 38% of the canvas width from the left edge).`,
+        `- STRICT FORBIDDEN ZONES FOR PHOTOGRAPHS: NEVER draw a second photograph in the lower half of the canvas! NEVER let any photograph rise into the top 25% header/headline/deck zone, and NEVER let any photograph extend below 60% vertical height (the entire lower 40% from left to right is reserved for 3-column text Points 04-06 and must be 100% plain empty paper!).`,
+        `- Dedicated Open Space: At least 75% of the canvas (the entire top 25% header/title/deck expanse, the entire right-hand 60% width, and the entire lower 40% full-width reading area) MUST be a 100% EMPTY, FLAT, CALM, UNOBSTRUCTED, EVENLY-LIT paper/parchment surface with ZERO photos, ZERO cutouts, ZERO ribbons, and ZERO boxes.`,
+      ].join('\n');
     }
 
     return [
-      `Create a high-resolution, print-quality editorial infographic poster ARTWORK (vertical 4:5 ratio) specifically about: ${params.visualSubject}.`,
-      `Artistic Style: ${dna.style}. Natural lighting, authentic colors, archival parchment texture.`,
-      `Multi-Image & Subject Mandate: The artwork MUST feature 2 to 3 distinct photographic/documentary scenes seamlessly composed into the visual template:`,
-      `- Scene 1 (Context / Wide): The overall facility, environment, public infrastructure, or setting.`,
-      `- Scene 2 (Action / Technical Detail): Active hands, tools, machinery, or physical action in progress.`,
-      `- Scene 3 (Human Context): Candid everyday Indonesian citizens, students, or workers engaged in the activity.`,
-      `All photographic elements must depict authentic Indonesian people and real-world settings related to ${params.visualSubject}.`,
-      archetypeSpatialGuide,
+      remedyClause,
+      `Create a high-resolution, print-quality editorial infographic background ARTWORK (vertical 4:5 ratio) specifically about: ${params.visualSubject}.`,
+      `Artistic Style & Surface: ${dna.style}.`,
+      `Subject Mandate: Depict ONLY 1 single scene of authentic Indonesian people, public facilities, or real-world settings directly related to ${params.visualSubject}. Do NOT include any unrelated statues, foreign monuments, or random icons.`,
+      negativeSpaceMandate,
       referenceClause,
       `STRICT COMPOSITION MANDATES:`,
-      `- Must look like a masterpiece archival documentary infographic poster (such as in National Geographic, Reuters, or Kompas).`,
-      `- ABSOLUTELY NO ANIMATION, NO ANIME, NO CARTOON, NO 3D RENDER, NO ISOMETRIC VECTOR ART, NO SKETCHES, NO COMICS, NO LINE ART, NO CLIPART.`,
-      `- ABSOLUTELY NO FAKE HISTORICAL DRAWINGS, NO CLOCKS, NO COMPASSES.`,
-      `- DO NOT DRAW ANY UI CARDS, FROSTED GLASS RECTANGLES, WHITE BOXES, OR BLUR PANELS.`,
-      `- DO NOT DRAW ANY PILLARS, CAPSULES, TIMELINE RAILS, BULLET NODES, CHARTS, OR QR CODES.`,
-      `- All typography and data will be rendered cleanly by the compositor.`,
-      `ABSOLUTELY ZERO TEXT: No words, no letters, no numbers, no fake writing, no labels, no headings, no logos, no watermarks anywhere on the artwork.`,
+      `- SINGLE PHOTO ONLY: Render ONLY 1 single documentary photograph/illustration on the entire canvas. NEVER render 2 stacked photos (top and bottom) and NEVER place a second photo in the bottom-left or bottom-right.`,
+      `- Leave 75% of the canvas as clean, open, flat, unencumbered textured paper/surface specifically designed to hold direct editorial typography without needing any cards or boxes.`,
+      `- NO CORNER RIBBONS OR FLAGS: Do NOT draw any red-and-white ribbons, flags, or banners at the top or bottom corners of the canvas.`,
+      `- Keep all architectural roofs, trees, and objects strictly inside their single compact window so they never touch or intrude into the top headline/deck, the right-hand text column, or the bottom 3-column text zone.`,
+      `- ABSOLUTELY NO ANIMATION, NO ANIME, NO CARTOON, NO 3D RENDER, NO ISOMETRIC VECTOR ART, NO CLIPART, NO STICK FIGURES, NO DOODLE CHARACTERS, NO WALKING SILHOUETTES IN HEADER OR FOOTER.`,
+      `- DO NOT DRAW ANY UI CARDS, FROSTED GLASS RECTANGLES, WHITE BOXES, CIRCLES, OR CONTAINERS.`,
+      `- DO NOT DRAW ANY CHARTS, MAPS, ICONS, OR QR CODES.`,
+      `- DO NOT DRAW ANY DONUT CHARTS, PIE CHARTS, OR SCORECARD METRICS IN THE BACKGROUND.`,
+      `ABSOLUTELY ZERO TEXT OR SIGNAGE: No words, no letters, no numbers, no building signboards, no roof plaques, no nameplates on walls, no banners, no labels, no logos, no watermarks anywhere on the artwork. Buildings must have clean unlettered facades.`,
     ].filter(Boolean).join('\n');
   }
 
@@ -360,17 +430,23 @@ export function compileArtCollageImagePrompt(params: {
 // 5. OTAK TEKS: COPY AI DARI TOPIK YANG SAMA
 // =============================================================================
 const COPY_LIMITS = {
-  kicker: 56,
-  headline: 50,
-  deck: 280,
-  pointLabel: 48,
-  pointText: 260,
-  closing: 160,
+  kicker: 64,
+  headline: 58,
+  deck: 380,
+  pointLabel: 54,
+  pointText: 350,
+  closing: 220,
 };
+
+function stripTrailingConnectors(text: string): string {
+  return text
+    .replace(/\s*(?:&|\/|-|•|,|:|;|\bdan\b|\batau\b|\bdi\b|\bke\b|\bdari\b|\buntuk\b|\bpada\b|\bdengan\b|\bbagi\b|\bdalam\b|\boleh\b|\bserta\b|\byang\b)\s*$/gi, '')
+    .trim();
+}
 
 function clampWords(text: string, max: number): string {
   const clean = (text || '').replace(/\s+/g, ' ').trim();
-  if (clean.length <= max) return clean;
+  if (clean.length <= max) return stripTrailingConnectors(clean) || clean;
   const words = clean.split(' ');
   let out = '';
   for (const w of words) {
@@ -378,7 +454,8 @@ function clampWords(text: string, max: number): string {
     if (next.length > max) break;
     out = next;
   }
-  return out || clean.slice(0, max);
+  const stripped = stripTrailingConnectors(out);
+  return stripped || out || clean.slice(0, max);
 }
 
 function clampSentence(text: string, max: number): string {
@@ -388,6 +465,69 @@ function clampSentence(text: string, max: number): string {
   const stop = Math.max(sliced.lastIndexOf('.'), sliced.lastIndexOf(';'));
   if (stop >= max * 0.55) return sliced.slice(0, stop + 1).trim();
   return `${clampWords(clean, max - 1).replace(/[,;:\s]+$/, '')}.`;
+}
+
+/**
+ * Membersihkan judul poin (label) dari kata-kata instruksi template / meta-label kaku
+ * agar judul poin selalu terdengar alami, luwes, jurnalistik, dan relevan langsung dengan topik.
+ */
+function cleanEditorialPointLabel(rawLabel: string, fallbackIdx: number, topic: string): string {
+  let cleaned = String(rawLabel || '')
+    .replace(/\s*\/\/+\s*/g, ' ')
+    .replace(/^\s*(?:POIN|INDIKATOR|TONGGAK|FASE|TAHAP|DIMENSI|PILAR|FOKUS|BUTIR)\s*(?:0?\d+|[IVX]+)\s*[:.•\-–—]*\s*/i, '')
+    .replace(/^\s*0?\d+\s*[:.•\-–—]+\s*/, '')
+    .replace(/\(\s*POIN\s*0?\d+\s*[-–—]\s*POIN\s*0?\d+\s*\)/gi, '')
+    .replace(/\b(?:CLOSINGLINE|CLOSING\s*LINE|VISUALSUBJECT|VISUAL\s*SUBJECT|PROMPT)\b/gi, '')
+    .trim();
+
+  // Hilangkan frasa meta-prompt kaku bila AI tidak sengaja menyalinnya
+  const metaReplacements: Array<[RegExp, string]> = [
+    [/^DIAGNOSA\s+MASALAH\s+(?:DAN\s+KESENJANGAN\s*)?/i, 'PEMETAAN KEBUTUHAN '],
+    [/^PETA\s+SEBARAN\s+WILAYAH\s+PRIORITAS$/i, `FOKUS WILAYAH ${topic.split(' ').slice(0, 2).join(' ')}`],
+    [/^PETA\s+SEBARAN\s+/i, 'CAKUPAN WILAYAH '],
+    [/^SKEMA\s+PROGRAM\s+INTERVENSI\s*/i, 'MEKANISME LAYANAN '],
+    [/^PROYEKSI\s+DAMPAK\s+JANGKA\s+PANJANG$/i, `TARGET KEBERHASILAN ${topic.split(' ').slice(0, 2).join(' ')}`],
+    [/^PROYEKSI\s+DAMPAK\s+/i, 'TARGET CAPAIAN '],
+    [/^LANJUTAN\s+ANALISIS\s*(?:&\s*RENCANA\s+AKSI)?\s*/i, 'STRATEGI PELAKSANAAN '],
+  ];
+
+  for (const [pattern, replacement] of metaReplacements) {
+    if (pattern.test(cleaned)) {
+      cleaned = cleaned.replace(pattern, replacement).trim();
+    }
+  }
+
+  cleaned = MasterEditorialSanitizer.cleanHeadline(cleaned);
+  if (!cleaned || cleaned.length < 4) {
+    const topicShort = clampWords(MasterEditorialSanitizer.cleanHeadline(topic), 24).toUpperCase();
+    const naturalFallbacks = [
+      `AKSES & KEBUTUHAN ${topicShort}`,
+      `PRIORITAS WILAYAH SASARAN`,
+      `MEKANISME PELAKSANAAN PROGRAM`,
+      `PENINGKATAN FASILITAS LAYANAN`,
+      `PENGAWASAN & AKUNTABILITAS DATA`,
+      `TARGET MANFAAT MASYARAKAT`,
+    ];
+    cleaned = naturalFallbacks[fallbackIdx % naturalFallbacks.length]!;
+  }
+
+  return clampWords(cleaned, COPY_LIMITS.pointLabel).toUpperCase();
+}
+
+function cleanEditorialSectionHeading(rawHeading: string | undefined, topic: string): string {
+  let cleaned = String(rawHeading || '')
+    .replace(/\s*\/\/+\s*/g, ' ')
+    .replace(/\(\s*POIN\s*0?\d+\s*[-–—]\s*POIN\s*0?\d+\s*\)/gi, '')
+    .replace(/\bLANJUTAN\s+ANALISIS\s*(?:&|DAN)?\s*RENCANA\s+AKSI\b/gi, '')
+    .replace(/\bPOIN\s*0?\d+\b/gi, '')
+    .replace(/^[\s✦◈•:.\-–—]+|[\s✦◈•:.\-–—]+$/g, '')
+    .trim();
+
+  if (!cleaned || cleaned.length < 6) {
+    const topicCore = clampWords(MasterEditorialSanitizer.cleanHeadline(topic), 28).toUpperCase();
+    cleaned = `STRATEGI IMPLEMENTASI & TARGET ${topicCore}`;
+  }
+  return clampWords(cleaned, 52).toUpperCase();
 }
 
 function finalizeCopy(
@@ -408,7 +548,9 @@ function finalizeCopy(
     : [];
 
   const isInfographic = isInfographicArchetype(archetype);
-  const maxPoints = isInfographic ? 8 : 3;
+  const isAdvocacyPillars = archetype === 'INFOGRAPHIC_ADVOCACY_PILLARS';
+  const targetPoints = isAdvocacyPillars ? 5 : (isInfographic ? 6 : 3);
+  const maxPoints = targetPoints;
 
   const points = pointsArray
     .map((pt: any, idx: number) => {
@@ -418,90 +560,179 @@ function finalizeCopy(
           const lbl = pt.slice(0, colonIdx).trim();
           const txt = pt.slice(colonIdx + 1).trim();
           return {
-            label: clampWords(MasterEditorialSanitizer.cleanHeadline(lbl), COPY_LIMITS.pointLabel).toUpperCase(),
+            label: cleanEditorialPointLabel(lbl, idx, topic),
             text: clampSentence(s(txt), COPY_LIMITS.pointText),
           };
         }
         return {
-          label: `TONGGAK 0${idx + 1}`,
+          label: cleanEditorialPointLabel('', idx, topic),
           text: clampSentence(s(pt), COPY_LIMITS.pointText),
         };
       }
       if (typeof pt === 'object' && pt !== null) {
-        const rawLabel = pt.label || pt.title || pt.name || pt.step || pt.pilar || pt.heading || `TONGGAK 0${idx + 1}`;
-        const rawText = pt.text || pt.description || pt.desc || pt.content || pt.detail || pt.uraian || '';
+        const rawLabel = String(pt.label || pt.title || pt.name || pt.step || pt.pilar || pt.heading || '').replace(/\s*\/\/+\s*/g, ' ');
+        const rawText = String(pt.text || pt.description || pt.desc || pt.content || pt.detail || pt.uraian || '').replace(/\s*\/\/+\s*/g, ' ');
         return {
-          label: clampWords(MasterEditorialSanitizer.cleanHeadline(rawLabel), COPY_LIMITS.pointLabel).toUpperCase(),
+          label: cleanEditorialPointLabel(rawLabel, idx, topic),
           text: clampSentence(s(rawText), COPY_LIMITS.pointText),
         };
       }
       return null;
     })
-    .filter((pt): pt is { label: string; text: string } => Boolean(pt && (pt.label || pt.text)))
-    .slice(0, maxPoints);
+    .filter((pt): pt is { label: string; text: string } => {
+      if (!pt || (!pt.label && !pt.text)) return false;
+      const lblLower = (pt.label || '').toLowerCase();
+      const txtLower = (pt.text || '').toLowerCase();
+      if (
+        lblLower.includes('closingline') ||
+        lblLower.includes('closing line') ||
+        lblLower.includes('visualsubject') ||
+        lblLower.includes('visual subject') ||
+        lblLower.includes('prompt') ||
+        txtLower.includes('closingline') ||
+        txtLower.includes('visualsubject') ||
+        txtLower.includes('a farmer inspecting') ||
+        txtLower.includes('documentary photograph')
+      ) {
+        return false;
+      }
+      return true;
+    });
 
-  // Parse stats (3 sampai 4 KPI highlight metrics) untuk infografis
+  // Parse stats (3 sampai 4 KPI highlight metrics) untuk infografis — label ringkas 2-3 kata (maks 24 karakter) agar tidak berdesakan
   const rawStatsCandidate = raw.stats || raw.kpis || raw.metrics || [];
   let stats: Array<{ value: string; label: string }> = [];
   if (Array.isArray(rawStatsCandidate) && rawStatsCandidate.length > 0) {
+    const seenStatValues = new Set<string>();
     stats = rawStatsCandidate
       .map((st: any) => ({
-        value: clampWords(String(st.value || st.angka || st.metric || '').toUpperCase(), 16),
-        label: clampWords(String(st.label || st.title || st.keterangan || ''), 36),
+        value: clampWords(String(st.value || st.angka || st.metric || '').replace(/\s*\/\/+\s*/g, ' ').toUpperCase(), 14),
+        label: clampWords(String(st.label || st.title || st.keterangan || '').replace(/\s*\/\/+\s*/g, ' '), 24),
       }))
-      .filter((st) => Boolean(st.value && st.label))
+      .filter((st) => {
+        if (!st.value || !st.label) return false;
+        const key = `${st.value}|${st.label.toLowerCase()}`;
+        if (seenStatValues.has(key)) return false;
+        seenStatValues.add(key);
+        return true;
+      })
       .slice(0, 4);
   }
 
-  // Jika stats belum lengkap dari AI, bentuk 4 KPI data berbasis points agar visual padat data
+  // Jika stats belum lengkap dari AI, gunakan indikator makro yang BEDA dari points
   if (isInfographic && stats.length < 4) {
-    stats = [
-      {
-        value: points[0]?.label.match(/(?:RP\s*[\d.,]+[BMK]?|[\d.,]+%|\d+\s*(?:KECAMATAN|TITIK|HARI|RUAS|DESA|RIBU|JT|M|KOTA))/i)?.[0] || points[0]?.label.split(' ').slice(0, 2).join(' ') || '15,2%',
-        label: points[0]?.label.replace(/(?:RP\s*[\d.,]+[BMK]?|[\d.,]+%|\d+\s*(?:KECAMATAN|TITIK|HARI|RUAS|DESA|RIBU|JT|M|KOTA))/i, '').trim() || 'Rasio Indikator Kunci',
-      },
-      {
-        value: points[1]?.label.match(/(?:RP\s*[\d.,]+[BMK]?|[\d.,]+%|\d+\s*(?:KECAMATAN|TITIK|HARI|RUAS|DESA|RIBU|JT|M|KOTA))/i)?.[0] || points[1]?.label.split(' ').slice(0, 2).join(' ') || 'RP 1,2 T',
-        label: points[1]?.label.replace(/(?:RP\s*[\d.,]+[BMK]?|[\d.,]+%|\d+\s*(?:KECAMATAN|TITIK|HARI|RUAS|DESA|RIBU|JT|M|KOTA))/i, '').trim() || 'Alokasi Pagu Anggaran',
-      },
-      {
-        value: points[2]?.label.match(/(?:RP\s*[\d.,]+[BMK]?|[\d.,]+%|\d+\s*(?:KECAMATAN|TITIK|HARI|RUAS|DESA|RIBU|JT|M|KOTA))/i)?.[0] || points[2]?.label.split(' ').slice(0, 2).join(' ') || '5 KOTA',
-        label: points[2]?.label.replace(/(?:RP\s*[\d.,]+[BMK]?|[\d.,]+%|\d+\s*(?:KECAMATAN|TITIK|HARI|RUAS|DESA|RIBU|JT|M|KOTA))/i, '').trim() || 'Sebaran Episentrum Fokus',
-      },
-      {
-        value: points[3]?.label.match(/(?:RP\s*[\d.,]+[BMK]?|[\d.,]+%|\d+\s*(?:KECAMATAN|TITIK|HARI|RUAS|DESA|RIBU|JT|M|KOTA))/i)?.[0] || points[3]?.label.split(' ').slice(0, 2).join(' ') || '100%',
-        label: points[3]?.label.replace(/(?:RP\s*[\d.,]+[BMK]?|[\d.,]+%|\d+\s*(?:KECAMATAN|TITIK|HARI|RUAS|DESA|RIBU|JT|M|KOTA))/i, '').trim() || 'Kepatuhan Pelaporan LHKPN',
-      },
+    const fallbackMacroStats = [
+      { value: '27 KAB/KOTA', label: 'Cakupan Evaluasi Wilayah' },
+      { value: 'TRIWULAN IV', label: 'Siklus Pemantauan Data' },
+      { value: 'PRIORITAS A', label: 'Klasifikasi Intervensi' },
+      { value: 'TERPADU', label: 'Integrasi Lintas Sektor' },
     ];
-  }
-
-  // Jika infografis dan butir data kurang dari 6, lengkapi butir analitis substantif
-  if (isInfographic && points.length < 6) {
-    const supplementals = [
-      { label: 'KONSENTRASI EPISENTRUM', text: `Pemetaan konsentrasi titik krusial di wilayah Jawa Barat yang memerlukan pengawasan intensif.` },
-      { label: 'TRANSPARANSI ALOKASI ANGGARAN', text: 'Pemeriksaan distribusi alokasi anggaran daerah agar tepat sasaran dan berkeadilan bagi warga.' },
-      { label: 'TARGET AUDIT INDEPENDEN', text: 'Pelaksanaan audit periodik secara terpadu guna memastikan integritas pelaporan publik.' },
-      { label: 'PARTISIPASI KANAL ADUAN WARGA', text: 'Kanal pemantauan dan pengaduan terbuka 24 jam untuk menjamin partisipasi masyarakat luas.' },
-      { label: 'STANDARDISASI REGULASI DAERAH', text: 'Penyelarasan perda dan instrumen kepatuhan berbasis transparansi informasi publik.' },
-      { label: 'EVALUASI SEMESTER BERKALA', text: 'Rapat dengar pendapat dan pemutakhiran berkala indikator kinerja demi akuntabilitas.' },
-    ];
-    for (const sup of supplementals) {
-      if (points.length >= 6) break;
-      points.push(sup);
+    for (const fb of fallbackMacroStats) {
+      if (stats.length >= 4) break;
+      if (!stats.some((s) => s.value === fb.value)) {
+        stats.push(fb);
+      }
     }
   }
 
-  // Jika setelah diparse points masih kurang dari 2, lengkapi dari topik agar tidak gagal
-  if (points.length < 2) {
-    if (points.length === 1) {
-      points.push({
-        label: 'ARAH SOLUSI',
+  // DEDUPLIKASI KETAT ANTAR POINTS & ANTARA STATS VS POINTS
+  const statTokens = new Set(
+    stats.map((st) => `${st.value} ${st.label}`.toUpperCase().replace(/[^A-Z0-9%.,]/g, ' ').trim())
+  );
+  const seenLabels = new Set<string>();
+  const seenTexts = new Set<string>();
+  const uniquePoints: Array<{ label: string; text: string; badge?: string }> = [];
+
+  for (const pt of points) {
+    const normLabel = pt.label.toUpperCase().replace(/[^A-Z0-9]/g, '');
+    const normText = pt.text.toLowerCase().replace(/[^a-z0-9]/g, '').slice(0, 55);
+    if (!normLabel || !normText) continue;
+    if (seenLabels.has(normLabel) || seenTexts.has(normText)) {
+      continue; // Buang poin duplikat!
+    }
+    // Cek apakah label poin persis menyalin salah satu KPI stat
+    let finalLabel = pt.label;
+    for (const st of stats) {
+      if (
+        st.value.length >= 2 &&
+        finalLabel.includes(st.value) &&
+        finalLabel.toLowerCase().includes(st.label.split(' ')[0]?.toLowerCase() || '___')
+      ) {
+        // Ubah fokus judul poin agar tidak kembar dengan KPI di atas
+        finalLabel = clampWords(
+          `PEMERATAAN ${finalLabel.replace(st.value, '').replace(/^[\s•/-]+/, '').trim()}`,
+          COPY_LIMITS.pointLabel
+        ).toUpperCase();
+      }
+    }
+    seenLabels.add(normLabel);
+    seenTexts.add(normText);
+    uniquePoints.push({ label: finalLabel, text: pt.text, badge: (pt as any).badge });
+    if (uniquePoints.length >= maxPoints) break;
+  }
+
+  const finalPoints = uniquePoints;
+
+  // Jika butir data unik kurang dari targetPoints, lengkapi dengan dimensi analisis berbeda yang lengkap, relevan & alami
+  if (isInfographic && finalPoints.length < targetPoints) {
+    const topicShort = clampWords(MasterEditorialSanitizer.cleanHeadline(topic), 22).toUpperCase();
+    const supplementals: Array<{ label: string; text: string; badge?: string }> = [
+      {
+        label: `CAKUPAN AKSES & PRIORITAS WILAYAH`,
+        text: `Identifikasi kecamatan dan desa dengan tingkat kebutuhan tertinggi terkait ${topic} guna memastikan distribusi kuota program dan intervensi anggaran tersalurkan tepat sasaran ke wilayah yang paling membutuhkan.`,
+        badge: 'INDIKATOR KUNCI',
+      },
+      {
+        label: `VALIDASI DATA PENERIMA MANFAAT`,
+        text: 'Pemutakhiran basis data warga sasaran secara berkala setiap semester lintas instansi daerah untuk menutup celah ketidaktepatan penyaluran serta menjamin akurasi layanan di lapangan.',
+        badge: 'PROGRAM INTERVENSI',
+      },
+      {
+        label: `STANDARISASI SARANA & FASILITAS`,
+        text: 'Peningkatan kapasitas fasilitas pelayanan publik, rehabilitasi sarana penunjang, serta pemerataan akses konektivitas warga di zona prioritas agar standar pelayanan minimum terpenuhi secara merata.',
+      },
+      {
+        label: `PENGAWASAN REALISASI ANGGARAN`,
+        text: 'Pelaksanaan pengawasan berlapis terhadap serapan pagu anggaran daerah dan capaian fisik program agar setiap alokasi dana memberikan dampak terukur bagi peningkatan kesejahteraan warga.',
+        badge: 'TARGET PENURUNAN',
+      },
+      {
+        label: `PELIBATAN WARGA & KANAL PENGADUAN`,
+        text: 'Pembukaan kanal pelaporan masyarakat dan pelibatan komunitas lokal secara transparan dalam mengawal mutu pelaksanaan program serta mempercepat tindak lanjut kendala teknis di lapangan.',
+      },
+      {
+        label: `TARGET KEBERLANJUTAN ${topicShort}`,
+        text: 'Pengukuran indikator kinerja utama secara berkala sebagai landasan penyempurnaan regulasi daerah, perluasan cakupan manfaat, dan penguatan kemandirian masyarakat jangka panjang.',
+      },
+    ];
+    for (const sup of supplementals) {
+      if (finalPoints.length >= targetPoints) break;
+      const normLbl = sup.label.replace(/[^A-Z0-9]/g, '');
+      if (!seenLabels.has(normLbl)) {
+        seenLabels.add(normLbl);
+        finalPoints.push(sup);
+      }
+    }
+  }
+
+  // Lengkapi badge tematik untuk arketipe Gelombang Naratif Merah
+  if (archetype === 'INFOGRAPHIC_NARRATIVE_WAVE') {
+    if (finalPoints[0] && !finalPoints[0].badge) finalPoints[0].badge = 'INDIKATOR KUNCI';
+    if (finalPoints[1] && !finalPoints[1].badge) finalPoints[1].badge = 'PROGRAM INTERVENSI';
+    if (finalPoints[3] && !finalPoints[3].badge) finalPoints[3].badge = 'TARGET PENURUNAN';
+  }
+
+  // Jika setelah diparse finalPoints masih kurang dari 2, lengkapi dari topik agar tidak gagal
+  if (finalPoints.length < 2) {
+    if (finalPoints.length === 1) {
+      finalPoints.push({
+        label: 'ARAH SOLUSI KEBIJAKAN',
         text: `Implementasi kebijakan terukur dan pengawasan komprehensif atas ${topic}.`,
       });
     } else {
-      points.push(
-        { label: 'URGENSI ISU', text: `Persoalan ${topic} memerlukan perhatian dan penanganan berbasis data riil.` },
-        { label: 'ARAH SOLUSI', text: 'Penyusunan regulasi komprehensif dan alokasi sumber daya tepat sasaran.' }
+      finalPoints.push(
+        { label: 'URGENSI PENANGANAN ISU', text: `Persoalan ${topic} memerlukan perhatian dan penanganan berbasis data riil.` },
+        { label: 'ARAH SOLUSI KEBIJAKAN', text: 'Penyusunan regulasi komprehensif dan alokasi sumber daya tepat sasaran.' }
       );
     }
   }
@@ -511,8 +742,74 @@ function finalizeCopy(
 
   let sanitizedKicker = s(raw.kicker || raw.rubrik || raw.category || 'TELAAH ISU');
   sanitizedKicker = sanitizedKicker
+    .replace(/\s*\/\/+\s*/g, ' • ')
     .replace(/\b(?:catatan|langkah|agenda|fokus|kabar)\s+parlemen\b/gi, 'TELAAH KEBIJAKAN')
     .replace(/\bparlemen(?:\s+ri)?\b/gi, 'KEBIJAKAN PUBLIK');
+
+  // 3. Parse & normalisasi chart (Pie / Donut Chart 4 segmen yang jumlahnya 100%)
+  // PANTANGAN: DILARANG MEMBUAT CHART UNTUK TEMPLATE TANPA DIAGRAM (ADVOCACY PILLARS, RADIAL CLOCK)
+  const allowsChart =
+    isInfographic &&
+    !isAdvocacyPillars &&
+    archetype !== 'INFOGRAPHIC_RADIAL_CLOCK';
+  const rawChartCandidate = (raw as any).chart || (raw as any).pieChart || (raw as any).grafik;
+  let chart: ArtCollageCopy['chart'] = undefined;
+  if (allowsChart) {
+    const rawSlices = Array.isArray(rawChartCandidate?.slices || rawChartCandidate?.data || rawChartCandidate?.items)
+      ? rawChartCandidate.slices || rawChartCandidate.data || rawChartCandidate.items
+      : [];
+    const parsedSlices = rawSlices
+      .map((sl: any) => ({
+        label: clampWords(String(sl.label || sl.name || sl.kategori || '').replace(/\s*\/\/+\s*/g, ' '), 24).toUpperCase(),
+        percentage: Math.max(5, Math.round(Number(String(sl.percentage ?? sl.value ?? sl.persen ?? 0).replace(/[^0-9.]/g, '')) || 0)),
+      }))
+      .filter((sl: { label: string; percentage: number }) => Boolean(sl.label) && sl.percentage > 0)
+      .slice(0, 4);
+
+    if (parsedSlices.length >= 3) {
+      const sum = parsedSlices.reduce((acc: number, s: { percentage: number }) => acc + s.percentage, 0) || 100;
+      const normalized = parsedSlices.map((s: { label: string; percentage: number }) => ({
+        label: s.label,
+        percentage: Math.max(5, Math.round((s.percentage / sum) * 100)),
+      }));
+      const diff = 100 - normalized.reduce((acc: number, s: { percentage: number }) => acc + s.percentage, 0);
+      if (normalized[0]) normalized[0].percentage += diff;
+
+      // Ensure all slice percentages are strictly unique to prevent duplicate chart numbers
+      const seenPcts = new Set<number>();
+      for (let i = 0; i < normalized.length; i++) {
+        while (seenPcts.has(normalized[i]!.percentage)) {
+          normalized[i]!.percentage += 1;
+          if (normalized[0] && i !== 0 && normalized[0]!.percentage > 10) normalized[0]!.percentage -= 1;
+        }
+        seenPcts.add(normalized[i]!.percentage);
+      }
+
+      chart = {
+        title: clampWords(
+          String(rawChartCandidate?.title || 'PROPORSI DISTRIBUSI & ALOKASI PROGRAM').replace(/\s*\/\/+\s*/g, ' '),
+          38
+        ).toUpperCase(),
+        type: 'DONUT',
+        slices: normalized,
+      };
+    } else {
+      chart = {
+        title: 'PROPORSI ALOKASI & FOKUS INTERVENSI',
+        type: 'DONUT',
+        slices: [
+          { label: 'LAYANAN UTAMA', percentage: 44 },
+          { label: 'BANTUAN SASARAN', percentage: 26 },
+          { label: 'SARANA PENDUKUNG', percentage: 18 },
+          { label: 'EVALUASI BERKALA', percentage: 12 },
+        ],
+      };
+    }
+  }
+
+  const sectionHeading = isInfographic
+    ? cleanEditorialSectionHeading((raw as any).sectionHeading || (raw as any).subHeading || (raw as any).lowerHeading, topic)
+    : undefined;
 
   return {
     kicker: clampWords(sanitizedKicker, COPY_LIMITS.kicker).toUpperCase(),
@@ -522,7 +819,9 @@ function finalizeCopy(
     ).toUpperCase(),
     deck: clampSentence(s(raw.deck || raw.summary || raw.ringkasan || `Telaah substansial mengenai ${topic}.`), COPY_LIMITS.deck),
     stats,
-    points,
+    chart,
+    sectionHeading,
+    points: finalPoints,
     closingLine: clampSentence(s(raw.closingLine || raw.closing || 'Komitmen terukur bagi transparansi dan kemaslahatan publik.'), COPY_LIMITS.closing),
     visualSubject:
       (raw.visualSubject || '').trim() ||
@@ -540,42 +839,112 @@ export async function synthesizeArtCollageCopy(params: {
   const { topic, groundedContext, archetype } = params;
   const isInfographic = isInfographicArchetype(archetype);
 
+  let learnedMemoriesText = '';
+  try {
+    if (archetype) {
+      const mems = await db
+        .select({ ruleInstruction: studioAiLearnedMemories.ruleInstruction })
+        .from(studioAiLearnedMemories)
+        .where(
+          and(
+            or(
+              eq(studioAiLearnedMemories.archetype, archetype),
+              eq(studioAiLearnedMemories.archetype, 'GLOBAL')
+            ),
+            eq(studioAiLearnedMemories.isActive, true)
+          )
+        )
+        .orderBy(desc(studioAiLearnedMemories.triggerCount))
+        .limit(15);
+
+      if (mems && mems.length > 0) {
+        learnedMemoriesText = `\nATURAN KUALITAS & POLA YANG TELAH DIPELAJARI AI DARI DATABASE (CRITICAL LEARNED RULES - WAJIB PATUH 100%):\n${mems
+          .map((m, i) => `${i + 1}. ${m.ruleInstruction}`)
+          .join('\n')}\n`;
+      }
+    }
+  } catch (err: any) {
+    console.warn(`[ArtCollageDirector] Gagal membaca active learned memories: ${err?.message}`);
+  }
+
   let systemPrompt = '';
 
   if (isInfographic) {
-    let specificGuide = '';
-    if (archetype === 'INFOGRAPHIC_ADVOCACY_PILLARS') {
-      specificGuide = 'Tulis TEPAT 5 pilar aksi terencana. Setiap pilar memiliki target angka/metrik konkret dan penjelasan mendalam.';
-    } else if (archetype === 'INFOGRAPHIC_NARRATIVE_WAVE') {
-      specificGuide = 'Tulis TEPAT 4 sampai 5 dimensi isu kebijakan (misal: Sisi Anggaran, Titik Kritis Lapangan, Standar Teknis, Kanal Aduan/Akses, Regulasi).';
-    } else if (archetype === 'INFOGRAPHIC_RADIAL_CLOCK') {
-      specificGuide = 'Tulis TEPAT 5 tonggak waktu dan aksi strategis terukur (2 metrik urgensi untuk zona atas dan 3 fase implementasi/mitigasi untuk zona bawah).';
-    } else {
-      specificGuide = 'Tulis TEPAT 4 sampai 5 tonggak capaian atau tahapan kronologis terukur dengan besaran angka, target hari/bulan, atau volume output riil.';
-    }
+    const specificGuide =
+      'Tulis TEPAT 6 butir analisis mendalam, temuan data lapangan, rincian mekanisme kebijakan, dan langkah strategis terukur yang SANGAT LENGKAP, BANYAK, DAN PADAT INFORMASI (masing-masing poin wajib 2 sampai 3 kalimat utuh / 24-38 kata per poin) dengan besaran angka, persentase, alokasi anggaran, lokasi/wilayah fokus, serta target capaian riil yang relevan 100% dengan topik infografis.';
 
-    systemPrompt = `Anda adalah Lead Visual Data Journalist & Analis Kebijakan Publik Senior berstandar riset nasional (seperti Katadata, Kompas Data, Lokadata, Reuters Graphics).
-Tulis naskah INFOGRAFIS DATA RESMI yang SANGAT KAYA DATA, AKURAT, DAN PADAT INFORMASI bertopik: "${topic}".
-${groundedContext ? `\nFAKTA RISET & DATA DAERAH:\n${groundedContext.slice(0, 2000)}\n` : ''}
+    systemPrompt = `Anda adalah Lead Visual Data Journalist & Analis Kebijakan Publik Senior berstandar riset nasional (seperti Katadata, Kompas Data, Lokadata, Tempo Data Science).
+Tugas Anda adalah menyusun naskah isi konten INFOGRAFIS DATA RESMI yang JAUH LEBIH LENGKAP, MENDALAM, BANYAK, KAYA DATA KUANTITATIF, DAN 100% RELEVAN dengan topik: "${topic}".
+${groundedContext ? `\nFAKTA RISET, ARTIKEL & DATA DAERAH RUJUKAN:\n${groundedContext.slice(0, 4500)}\n` : ''}${learnedMemoriesText}
 
-STRUKTUR WAJIB INFOGRAFIS DATA KOMPREHENSIF (${specificGuide}):
-1. headline: Judul infografis yang berbobot, lugas, dan relevan (maks ${COPY_LIMITS.headline} karakter, huruf kapital).
-2. kicker: Rubrik analisis kebijakan publik (misal: "DATA KEKAYAAN PEJABAT // TRANSPARANSI", "DATA ANGGARAN APBD // TELAAH SOSIAL", maks ${COPY_LIMITS.kicker} karakter).
-3. deck: Ringkasan eksekutif 2-3 kalimat padat yang memuat angka agregat makro dan urgensi penanganan (maks ${COPY_LIMITS.deck} karakter).
-4. stats: TEPAT 4 Indikator Kinerja Utama (Key Performance Indicators / KPI Primer) berupa angka/metrik kuantitatif mencolok:
-   - Stat 1: Angka persentase, rasio, atau volume utama (contoh value: "15,2%", label: "Persentase Anggota Terkaya").
-   - Stat 2: Besaran komitmen fiskal atau akumulasi aset/anggaran (contoh value: "RP 1,2 TRILIUN", label: "Total Akumulasi Aset").
-   - Stat 3: Sebaran zona prioritas atau jumlah wilayah (contoh value: "5 KOTA", label: "Konsentrasi Wilayah Terbanyak").
-   - Stat 4: Target kuantitatif capaian atau kepatuhan (contoh value: "100%", label: "Kepatuhan Audit LHKPN").
-5. points: TEPAT 6 sampai 8 Butir Data Temuan, Analisis Lapangan & Aksi Terperinci:
-   - label: Frasa ringkas diawali angka/fase/metrik (maks ${COPY_LIMITS.pointLabel} karakter, misal: "3 ANGGOTA DPR TERKAYA", "ALOKASI RP 50 MILIAR", "TARGET TRANSPARANSI 2024", "AUDIT KEKAYAAN TAHUNAN", "PUBLIKASI LAPORAN 6 BULAN", "SANKSI KETIDAKPATUHAN").
-   - text: Uraian substantif 2 kalimat padat informasi, memuat angka konkret dan rincian langkah kebijakan (maks ${COPY_LIMITS.pointText} karakter).
-6. closingLine: Rekomendasi aksi / penegasan transparansi tata kelola kebijakan (maks ${COPY_LIMITS.closing} karakter).
-7. PANTANGAN: DILARANG kata "nyata", DILARANG slogan motivasional kosong tanpa data, DILARANG butir yang tidak memuat angka atau rincian kebijakan.
-8. visualSubject: Deskripsi adegan FOTOGRAFI DOKUMENTER MULTI-FOTO (editorial multi-photo documentary montage) dalam Bahasa Inggris (maks 45 kata). Rancang komposisi yang memuat 2 sampai 3 sudut foto nyata yang saling melengkapi di Indonesia terkait topik: misalnya panel 1 (lingkungan/fasilitas umum luas), panel 2 (aksi teknis/tangan pekerja/alat kerja konkret), dan panel 3 (warga/interaksi komunitas nyata). PANTANGAN MUTLAK: DILARANG animasi, DILARANG kartun, DILARANG anime, DILARANG 3D render, DILARANG sketsa/gambar tangan, DILARANG jam/kompas antik, DILARANG menyebut kotak/card/bagan/teks.
+TAHAP DEEP THINKING, REASONING & AUDIT MANDIRI SEBELUM GENERASI (WAJIB DILAKUKAN SECARA MENDALAM):
+Sebelum mengeluarkan format JSON, Anda WAJIB berpikir mendalam dan menganalisis secara cermat:
+1. Analisis Kebutuhan Topik: Selidiki topik "${topic}" secara spesifik. Identifikasi data kuantitatif, nominal anggaran, persentase kemantapan, dan kebutuhan wilayah riil di lapangan.
+2. Verifikasi Kepatuhan Menyeluruh terhadap Setiap Aturan di tabel 'studio_ai_learned_memories' di atas:
+   - Pastikan TIDAK ADA pembungkus card/kotak/glass container (Zero-Card Direct Inking).
+   - Pastikan HANYA ADA 1 baris KPI tunggal (4 metrik makro) di bawah judul, DILARANG ada KPI bar kedua di bawah foto.
+   - Pastikan TEPAT 1 Donut Chart proporsi 100% dengan 4 slices utuh (sum = 100).
+   - Pastikan TEPAT 6 butir analisis substantif yang 100% berbeda tanpa pengulangan (Poin 01-03 zona atas, Poin 04-06 zona bawah).
+   - Pastikan foto dokumenter bebas dari teks atau kartu.
+3. Strategi Variasi Subjek Visual (visualSubject) yang Beragam:
+   Untuk mencegah hasil visual yang monoton atau berulang antar sesi generate, rencanakan sudut pandang fotografi dokumenter yang berbeda dan segar. Pilih salah satu dari skenario otentik berikut sesuai topik:
+   - Skenario A: Tim teknisi & pengawas proyek membawa waterpass/theodolite dan lembar gambar kerja di tepi proyek jalan.
+   - Skenario B: Alat berat tandem road roller memadatkan aspal hitam pekat di bawah terik matahari pagi bersama kru berompi pengaman oranye.
+   - Skenario C: Dialog interaktif petugas teknis dinas bersama tokoh warga desa meninjau jembatan atau drainase baru.
+   - Skenario D: Sudut pandang sinematik jalan aspal baru yang membentang mulus melintasi kontur perbukitan perdesaan asri dengan rambu lalu lintas.
+   - Skenario E: Pekerja konstruksi merapikan trotoar batu andesit atau dinding penahan tebing (bronjong) di tikungan rawan longsor.
+   Deskripsikan subjek terpilih secara konkret dalam Bahasa Inggris untuk visualSubject (maks 35 kata).
+
+PEDOMAN UTAMA KELENGKAPAN, RELEVANSI DIKSI & KEDALAMAN KONTEN INFOGRAFIS (${specificGuide}):
+1. Gunakan Bahasa Indonesia jurnalistik yang luwes, kontekstual, tajam, dan langsung berbicara tentang substansi topik "${topic}".
+2. PANTANGAN MUTLAK KATA META-TEMPLATE (CRITICAL — JANGAN PERNAH DILANGGAR):
+   - DILARANG KERAS menulis kalimat atau sub-judul kaku yang terdengar seperti instruksi form/template seperti:
+     * "LANJUTAN ANALISIS & RENCANA AKSI (POIN 04 – POIN 06)"
+     * "(POIN 04 - POIN 06)" atau "(POIN 01 - POIN 03)"
+     * "POIN 01", "POIN 02", "INDIKATOR 01", "TONGGAK 01", "FASE 01" di dalam teks/label
+     * Judul generik kaku seperti "DIAGNOSA MASALAH...", "PETA SEBARAN WILAYAH...", "SKEMA PROGRAM INTERVENSI...", "PENGUATAN INFRASTRUKTUR...", "INTEGRASI BASIS DATA...", atau "PROYEKSI DAMPAK JANGKA PANJANG".
+   - Sebagai gantinya, setiap sub-judul poin (label) dan judul seksi bawah (sectionHeading) WAJIB menggunakan diksi substantif yang spesifik sesuai kosakata topik "${topic}"!
+     * Contoh sub-judul (label) yang BAIK & RELEVAN (misal topik Puskesmas Lansia): "AKSES PEMERIKSAAN LANSIA DESA", "PRIORITAS CIDADAP & UJUNGBERUNG", "JADWAL KUNJUNGAN TIM MEDIS", "REHABILITASI 50 PUSKESMAS PEMBANTU", "PEMANTAUAN KESEHATAN TIAP SEMESTER", "PENURUNAN RISIKO PENYAKIT KRONIS".
+     * Contoh sub-judul (label) yang BAIK & RELEVAN (misal topik Beasiswa Pendidikan): "KESENJANGAN AKSES SISWA PRAPSEJAHTERA", "KUOTA PRIORITAS 12 KECAMATAN", "SELEKSI PRESTASI & TRANSFER LANGSUNG", "PEMENUHAN LABORATORIUM & RUANG KELAS", "AUDIT TERBUKA PENERIMA BEASISWA", "PENINGKATAN LULUSAN PERGURUAN TINGGI".
+
+STRUKTUR WAJIB INFOGRAFIS DATA LENGKAP:
+1. headline: Judul utama infografis yang tegas, spesifik, berbobot, dan langsung mencerminkan inti topik (maks 42 karakter agar proporsional di bagian atas, huruf kapital).
+2. kicker: Rubrik klasifikasi dokumen riset/kebijakan di bagian atas TANPA simbol "//" (misal: "DATA LAYANAN KESEHATAN • ANALISIS KOMPREHENSIF DAERAH", "DATA ANGGARAN APBD • TELAAH KEBIJAKAN PENDIDIKAN", maks ${COPY_LIMITS.kicker} karakter).
+3. deck: Ringkasan Eksekutif Komprehensif sepanjang 2 sampai 3 kalimat lengkap (minimal 28-40 kata, maks ${COPY_LIMITS.deck} karakter) yang merangkum potret besar topik: besaran anggaran/indikator makro, perbandingan tren/baseline sebelumnya, cakupan wilayah sasaran, serta urgensi strategis kebijakan.
+4. stats: TEPAT 4 Indikator Makro Ringkas (Key Performance Indicators / KPI Primer) berupa metrik agregat tingkat tinggi yang paling krusial dan relevan dengan topik:
+   - Stat 1: Indikator persentase/rasio capaian atau tren utama (contoh value: "85%", label: "Cakupan Layanan").
+   - Stat 2: Total alokasi anggaran / nilai ekonomi makro (contoh value: "RP 500 M", label: "Total Anggaran Program").
+   - Stat 3: Cakupan geografis / wilayah fokus intervensi (contoh value: "15 KECAMATAN", label: "Wilayah Operasional").
+   - Stat 4: Target penerima manfaat atau sasaran output terukur (contoh value: "> 100.000", label: "Target Penerima Manfaat").
+   * Setiap label KPI wajib SINGKAT, PADAT, DAN TEGAS (2 sampai 3 kata saja, maksimal 22 karakter) dengan ejaan Bahasa Indonesia baku agar hurufnya besar dan tidak berdesakan di kolom KPI!
+5. sectionHeading: Judul sub-bagian bawah yang alami, spesifik, dan relevan 100% dengan topik "${topic}" (3 sampai 6 kata, maks 48 karakter, TANPA kata "LANJUTAN ANALISIS", TANPA "(POIN 04 - POIN 06)"). Contoh: "STRATEGI PENINGKATAN FASILITAS & TARGET LAYANAN LANSIA" atau "PEMERATAAN SARANA SEKOLAH & AKUNTABILITAS BEASISWA".
+6. points: TEPAT 6 Butir Analisis Komprehensif & Strategi Pelaksanaan yang MENDALAM, LENGKAP, DAN 100% BERBEDA SATU SAMA LAIN (TANPA SIMBOL "//" DAN TANPA KATA "POIN 01"):
+   - ATURAN PANJANG & KELENGKAPAN TIAP POIN (WAJIB DIPATUHI):
+     * Setiap item pada points (urutan 1 s/d 6) DILARANG hanya berisi 1 kalimat pendek!
+     * Setiap poin WAJIB berisi 2 sampai 3 kalimat utuh dan padat (sekitar 24 sampai 38 kata, atau 190 sampai ${COPY_LIMITS.pointText} karakter per poin) yang memuat:
+       (a) Data kuantitatif / angka / persentase / fakta riil di lapangan,
+       (b) Penjelasan mekanisme teknis / rincian alokasi / lokasi wilayah fokus / instrumen kebijakan, dan
+       (c) Target hasil atau dampak konkret yang dirasakan oleh masyarakat.
+     * Setiap label poin (3 sampai 5 kata, maks ${COPY_LIMITS.pointLabel} karakter) WAJIB berupa judul jurnalistik yang alami dan spesifik sesuai topik (DILARANG menyalin nama kategori prompt, DILARANG memakai simbol "//", dan DILARANG menulis "POIN 01" di dalam label).
+   - 6 CAKUPAN SUBSTANSI YANG HARUS DIULAS SECARA ALAMI (SESUAIKAN JUDUL LABEL DENGAN TOPIK "${topic}"):
+     * Butir 1: Mengulas kondisi riil di lapangan, angka kesenjangan akses saat ini, serta kebutuhan mendesak warga terkait ${topic}.
+     * Butir 2: Mengulas fokus wilayah/kecamatan/desa prioritas beserta alasan pemilihan lokasi dan proporsi penyaluran kuota/anggaran.
+     * Butir 3: Mengulas mekanisme operasional pelaksanaan program di lapangan, jadwal/tahapan layanan, serta kolaborasi petugas/instansi terkait.
+     * Butir 4: Mengulas peningkatan kualitas fasilitas, ketersediaan sarana pendukung, serta target rehabilitasi atau pemenuhan standar pelayanan.
+     * Butir 5: Mengulas mekanisme pemutakhiran data penerima manfaat, pengawasan berkala, serta pelibatan masyarakat dalam menjaga transparansi.
+     * Butir 6: Mengulas target keberhasilan jangka menengah-panjang serta dampak nyata program terhadap peningkatan kualitas hidup warga.
+   - ATURAN ANTI-DUPLIKASI MUTLAK (ZERO DUPLICATION):
+     * DILARANG KERAS menyalin/mengulang metrik yang sudah ada di stats (KPI 1-4) menjadi judul points!
+     * Keenam item points WAJIB memiliki label dan text yang 100% berbeda satu sama lain. DILARANG ada dua poin dengan angka, judul, atau isi kalimat yang sama/mirip!
+7. chart: Data Grafik Pie / Donut Chart Proporsi (WAJIB ADA) yang relevan 100% dengan topik "${topic}":
+   - title: Judul grafik proporsi yang spesifik sesuai topik (maks 36 karakter, contoh: "PROPORSI ALOKASI ANGGARAN PUSKESMAS", "KOMPOSISI DANA PENDIDIKAN DAERAH").
+   - slices: TEPAT 4 segmen proporsi. Setiap label segmen WAJIB berupa frasa benda utuh 2 kata (maks 20 karakter, TANPA kata sambung "&" atau "DAN" agar tidak terpotong, contoh: "LAYANAN MEDIS", "PROMOSI KESEHATAN", "PELATIHAN TENAGA", "EVALUASI PROGRAM"), dan percentage berupa angka bulat yang jika dijumlahkan ke-4 segmennya TEPAT = 100 (contoh: 40, 30, 20, 10).
+8. closingLine: Sintesis Rekomendasi Kebijakan sepanjang 1 sampai 2 kalimat lengkap dan tegas (18-28 kata, maks ${COPY_LIMITS.closing} karakter) yang merangkum urgensi transparansi, pengawasan berlapis, dan target keberhasilan bagi masyarakat luas.
+9. PANTANGAN: DILARANG kata "nyata", DILARANG simbol "//", DILARANG menulis "(POIN 04 - POIN 06)" atau "LANJUTAN ANALISIS", DILARANG membuat poin yang pendek/menggantung.
+10. visualSubject: Deskripsi 1 subjek visual fotografi dokumenter Indonesia yang konkret, otentik, dan relevan langsung dengan topik "${topic}" dalam Bahasa Inggris (maks 35 kata), ditempatkan secara ringkas di satu jendela fokus dengan menyisakan 75% ruang kosong kertas bersih (open negative space) untuk teks infografis. PANTANGAN MUTLAK: DILARANG multi-panel kolase ramai, DILARANG 2 foto bertumpuk, DILARANG patung asing/Yunani, DILARANG animasi, DILARANG kartun, DILARANG 3D render, DILARANG menyebut kotak/card/bagan/teks.
 
 Format JSON Wajib:
-{"kicker":"","headline":"","deck":"","stats":[{"value":"","label":""}],"points":[{"label":"","text":""}],"closingLine":"","visualSubject":""}`;
+{"kicker":"","headline":"","deck":"","stats":[{"value":"","label":""}],"chart":{"title":"","slices":[{"label":"","percentage":40},{"label":"","percentage":30},{"label":"","percentage":20},{"label":"","percentage":10}]},"sectionHeading":"","points":[{"label":"","text":""}],"closingLine":"","visualSubject":""}`;
   } else {
     const posterGuide = archetype === 'RETRO_CAMPAIGN' ? '\nTeks poster kampanye persuasif lugas.\n' : '';
 
@@ -596,30 +965,86 @@ Keluarkan JSON murni:
   }
 
   try {
+    let userInstruction = '';
+    if (archetype === 'INFOGRAPHIC_NARRATIVE_WAVE') {
+      userInstruction = `Susun naskah infografis GELOMBANG NARATIF MERAH (S-CURVE NARRATIVE WAVE) untuk topik "${topic}".
+Arketipe ini berstandar editorial data journalism presisi tinggi tanpa card/kotak.
+PANDUAN STRUKTUR WAJIB:
+- headline: Tajam, ringkas (maks 5-7 kata), bernas dan langsung pada pokok masalah dalam huruf kapital.
+- kicker: Rubrik ringkas kebijakan publik (misal: "DATA INFRASTRUKTUR JALAN • ANALISIS KABUPATEN SUKABUMI").
+- deck: Ringkasan eksekutif 2-3 kalimat lengkap yang kaya konteks dan data riil (besaran anggaran, persentase kemantapan, cakupan wilayah).
+- stats: Tepat 4 KPI makro terukur:
+  * KPI 01: Hero Metric persentase capaian/kondisi utama (misal value: "60%", label: "Jalan Mantap").
+  * KPI 02: Total anggaran atau nilai alokasi dana (misal value: "RP 150 M", label: "Total Anggaran").
+  * KPI 03: Cakupan wilayah/zona prioritas (misal value: "10 KECAMATAN", label: "Wilayah Prioritas").
+  * KPI 04: Target penerima manfaat/sasaran output (misal value: "> 500.000", label: "Target Penerima Manfaat").
+- sectionHeading: Judul seksi strategi bawah (misal: "STRATEGI PENANGANAN INFRASTRUKTUR JALAN").
+- points: TEPAT 6 BUTIR ANALISIS LENGKAP (Point 01 s/d Point 06). DILARANG HANYA 4 BUTIR! WAJIB 6 BUTIR:
+  * 01: Kondisi eksisting dan tantangan lapangan saat ini. Wajib beri badge tematik singkat (misal: "INDIKATOR KUNCI" atau "KONDISI RIIL").
+  * 02: Fokus wilayah/kecamatan prioritas intervensi. Wajib beri badge tematik singkat (misal: "PROGRAM INTERVENSI" atau "PRIORITAS WILAYAH").
+  * 03: Mekanisme pelaksanaan program & koordinasi dinas.
+  * 04: Peningkatan kualitas fasilitas & sarana fisik / target penurunan. Wajib beri badge tematik singkat (misal: "TARGET PENURUNAN" atau "STANDAR LAYANAN").
+  * 05: Pemutakhiran data berkala & sistem pengawasan akuntabel.
+  * 06: Dampak jangka panjang & peningkatan kesejahteraan warga.
+  Setiap butir wajib memuat 2 kalimat padat data, judul tematik tanpa kata "Poin", badge tematik (khusus butir 1, 2, dan 4), dan 100% berbeda satu sama lain!
+  PANTANGAN MUTLAK: DILARANG MEMBUNGKUS TEKS DALAM CARD/KOTAK. Teks akan dicetak langsung di kanvas kertas dan pita gelombang merah.
+- chart: TEPAT 1 GRAFIK DONUT PROPORSI 100% (WAJIB ADA). Berisi title spesifik topik (misal: "PROPORSI KONDISI JALAN KABUPATEN") dan 4 slices proporsi (label 2 kata tanpa "&", percentage bilangan bulat yang bila dijumlahkan TEPAT = 100). PANTANGAN DUPLIKASI DATA: Setiap persentase pada ke-4 slice WAJIB berbeda satu sama lain (misal 45%, 28%, 17%, 10%), dilarang membuat angka kembar/duplikat seperti 50% dan 50%! Angka di chart dan label KPI tidak boleh berulang!
+- closingLine: 1 kalimat kesimpulan komitmen advokasi kebijakan publik.`;
+    } else if (archetype === 'INFOGRAPHIC_ADVOCACY_PILLARS') {
+      userInstruction = `Susun naskah infografis 5 PILAR ADVOKASI untuk topik "${topic}". Arketipe ini memiliki 5 pilar vertikal data.
+Pastikan points terdiri dari TEPAT 5 PILAR (PILAR 01 s/d PILAR 05) dengan label tematik dan teks padat 2 kalimat, 4 stats KPI makro, dan chart HARUS null / tidak ada diagram lingkaran.`;
+    } else if (isInfographic) {
+      userInstruction = `Susun naskah infografis yang SANGAT LENGKAP, BANYAK, MENDALAM, DAN KAYA DATA untuk topik "${topic}". Pastikan seluruh pilihan kata (headline, sectionHeading, dan keenam label points) 100% relevan dan spesifik membahas substansi "${topic}" (JANGAN memakai istilah template kaku seperti "Diagnosa Masalah", "Peta Sebaran", "Skema Program", atau "Lanjutan Analisis (Poin 04 - Poin 06)"). Pastikan deck terdiri dari 2-3 kalimat lengkap, 4 stats KPI makro yang spesifik, 1 chart proporsi (4 segmen utuh tanpa "&"), serta 6 points analisis yang masing-masing terdiri dari 2-3 kalimat utuh tanpa ada satu pun poin yang diulang.`;
+    } else {
+      userInstruction = `Susun naskah poster editorial yang tajam dan berbobot untuk topik "${topic}".`;
+    }
+
     const response = await openaiClient.chat.completions.create({
       model: process.env.POSTER_COPY_MODEL || 'gpt-4o-mini',
-      temperature: 0.5,
+      temperature: 0.45,
+      max_tokens: 1800,
       response_format: { type: 'json_object' },
-      messages: [{ role: 'system', content: systemPrompt }],
+      messages: [
+        { role: 'system', content: systemPrompt },
+        { role: 'user', content: userInstruction },
+      ],
     });
     const parsed = JSON.parse(response.choices[0]?.message?.content || '{}') as Partial<ArtCollageCopy>;
     return finalizeCopy(parsed, topic, archetype);
   } catch (err: any) {
     console.warn(`[ArtCollageDirector] Copy AI gagal, memakai fallback deterministik: ${err?.message}`);
     const fallbackStats = [
-      { value: '15,2%', label: 'Rasio Indikator Kunci' },
+      { value: '15,2%', label: 'Capaian Indikator Utama' },
       { value: 'RP 1,2 T', label: 'Alokasi Pagu Anggaran' },
-      { value: '5 KOTA', label: 'Konsentrasi Episentrum' },
-      { value: '100%', label: 'Kepatuhan Pelaporan Audit' },
+      { value: '10 WILAYAH', label: 'Cakupan Wilayah Fokus' },
+      { value: '100%', label: 'Target Akuntabilitas Data' },
     ];
     const fallbackPoints = isInfographic
       ? [
-          { label: '38 TITIK PRIORITAS', text: `Pemetaan lokasi kritis di wilayah ${topic} untuk percepatan penanganan terpadu.` },
-          { label: 'ALOKASI RP 45 MILIAR', text: 'Dukungan pagu anggaran APBD dialokasikan guna menjamin realisasi program berdampak langsung.' },
-          { label: 'TARGET 90 HARI KERJA', text: 'Penyelesaian tahapan awal dengan pengawasan berkala dan evaluasi terukur lintas instansi.' },
-          { label: '5 KOTA & KABUPATEN FOKUS', text: 'Konsentrasi pendampingan intensif bagi kawasan dengan tingkat urgensi penanganan tertinggi.' },
-          { label: 'AUDIT DATA & KANAL 24 JAM', text: 'Aktivasi sistem monitoring digital dan partisipasi warga guna memastikan transparansi mutlak.' },
-          { label: 'STANDARDISASI REGULASI DAERAH', text: 'Penyelarasan instrumen hukum dan pelaporan berkala demi akuntabilitas tata kelola.' },
+          {
+            label: 'PEMETAAN KEBUTUHAN LAYANAN WARGA',
+            text: `Identifikasi komprehensif terhadap kebutuhan masyarakat terkait ${topic} menunjukkan perlunya percepatan pemerataan akses dan peningkatan kualitas pelayanan bagi kelompok warga sasaran.`,
+          },
+          {
+            label: 'PRIORITAS KECAMATAN & DESA SASARAN',
+            text: 'Penetapan wilayah fokus pelaksanaan program dilakukan berbasis tingkat kebutuhan daerah agar distribusi kuota layanan dan pendampingan teknis menjangkau warga secara proporsional.',
+          },
+          {
+            label: 'MEKANISME PELAKSANAAN & PENYALURAN',
+            text: 'Dukungan pagu anggaran daerah dialokasikan secara bertahap dengan jadwal operasional serta mekanisme layanan terukur guna memastikan manfaat program dirasakan langsung oleh masyarakat.',
+          },
+          {
+            label: 'PENINGKATAN FASILITAS & SARANA PUBLIK',
+            text: 'Penguatan kapasitas infrastruktur dasar dan rehabilitasi fasilitas pelayanan publik diprioritaskan pada wilayah sasaran untuk menjamin terpenuhinya standar pelayanan prima.',
+          },
+          {
+            label: 'PEMANTAUAN DATA & AUDIT BERKALA',
+            text: 'Pemutakhiran data penerima manfaat dilakukan setiap semester disertai pengawasan lintas instansi dan pelibatan masyarakat guna menjamin ketepatan sasaran program.',
+          },
+          {
+            label: 'TARGET DAMPAK & KUALITAS HIDUP WARGA',
+            text: 'Pengukuran capaian kinerja program diarahkan pada peningkatan kesejahteraan masyarakat secara berkelanjutan serta penguatan tata kelola pelayanan publik di daerah.',
+          },
         ]
       : [
           { label: 'Urgensi Isu', text: `Persoalan ${topic} memerlukan perbaikan tata kelola dan pengawasan terintegrasi.` },
@@ -628,7 +1053,7 @@ Keluarkan JSON murni:
 
     return finalizeCopy(
       {
-        kicker: isInfographic ? 'DATA ANGGARAN APBD // TELAAH' : 'Telaah Isu Kebijakan',
+        kicker: isInfographic ? 'DATA KEBIJAKAN PUBLIK • ANALISIS DAERAH' : 'Telaah Isu Kebijakan',
         headline: clampWords(topic, COPY_LIMITS.headline),
         deck: `Evaluasi terukur atas tata kelola ${topic} demi kepentingan masyarakat luas.`,
         stats: isInfographic ? fallbackStats : undefined,

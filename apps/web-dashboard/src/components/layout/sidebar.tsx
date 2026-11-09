@@ -15,6 +15,7 @@ import {
   ChevronLeft,
   ChevronRight,
   User,
+  Bot,
 } from 'lucide-react';
 import { ApiClient } from '@/lib/api-client';
 import { getPortalUrl, getRootDomain } from '@/lib/urls';

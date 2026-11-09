@@ -1,4 +1,4 @@
-import { IsString, IsNotEmpty, IsOptional, IsBoolean } from 'class-validator';
+import { IsString, IsNotEmpty, IsOptional, IsBoolean, IsNumber } from 'class-validator';
 
 export class GenerateArticleRequestDto {
   @IsString()
@@ -70,6 +70,18 @@ export class GenerateArticleRequestDto {
   @IsOptional()
   @IsString()
   forcedArchetype?: string;
+
+  @IsOptional()
+  @IsNumber()
+  layoutVariant?: number;
+
+  @IsOptional()
+  @IsBoolean()
+  enableImg2ImgPass?: boolean;
+
+  @IsOptional()
+  @IsNumber()
+  img2ImgDenoisingStrength?: number;
 }
 
 export class UpdateDraftArticleDto {

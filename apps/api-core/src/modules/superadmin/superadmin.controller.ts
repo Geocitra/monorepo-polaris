@@ -246,6 +246,13 @@ export class SuperadminController {
   }
 
   @UseGuards(SuperadminGuard)
+  @Get('ai-monitoring/prompts')
+  @HttpCode(HttpStatus.OK)
+  async getAiPromptPayloads(@Query('limit') limit?: string) {
+    return await this.superadminService.getAiPromptPayloads(limit ? Number(limit) : 30);
+  }
+
+  @UseGuards(SuperadminGuard)
   @Get('audit-logs')
   @HttpCode(HttpStatus.OK)
   async getAuditLogs(
@@ -358,5 +365,33 @@ export class SuperadminController {
   ) {
     const adminUser = req.user?.email || req.user?.fullName || 'SUPERADMIN';
     return await this.superadminService.updatePlatformFeatureFlag(flagKey, dto.enabled, adminUser);
+  }
+  // --- AI Self-Critic & Learned Memory Audit ---
+  @UseGuards(SuperadminGuard)
+  @Get('ai-critic/logs')
+  async getAiCriticLogs(
+    @Query('archetype') archetype?: string,
+    @Query('page') page?: number,
+    @Query('limit') limit?: number,
+  ) {
+    return await this.superadminService.getAiCriticLogs({ archetype, page, limit });
+  }
+
+  @UseGuards(SuperadminGuard)
+  @Get('ai-critic/stats')
+  async getAiCriticStats() {
+    return await this.superadminService.getAiCriticStats();
+  }
+
+  @UseGuards(SuperadminGuard)
+  @Get('ai-critic/memories')
+  async getAiCriticMemories(@Query('archetype') archetype?: string) {
+    return await this.superadminService.getAiCriticMemories(archetype);
+  }
+
+  @UseGuards(SuperadminGuard)
+  @Patch('ai-critic/memories/:id/toggle')
+  async toggleAiCriticMemory(@Param('id') id: string) {
+    return await this.superadminService.toggleAiCriticMemory(id);
   }
 }

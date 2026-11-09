@@ -383,11 +383,13 @@ export class StudioService {
 
     const pubIds = items.map((i) => i.id);
     const mediaMap = new Map<string, string>();
+    const promptMap = new Map<string, string | null>();
     if (pubIds.length > 0) {
       const medias = await db
         .select({
           publicationId: mediaAssets.publicationId,
           cdnPublicUrl: mediaAssets.cdnPublicUrl,
+          promptUsed: mediaAssets.promptUsed,
         })
         .from(mediaAssets)
         .where(
@@ -399,6 +401,7 @@ export class StudioService {
       for (const m of medias) {
         if (!mediaMap.has(m.publicationId)) {
           mediaMap.set(m.publicationId, m.cdnPublicUrl);
+          promptMap.set(m.publicationId, m.promptUsed || null);
         }
       }
     }
@@ -406,6 +409,7 @@ export class StudioService {
     return items.map((item) => ({
       ...item,
       imageUrl: mediaMap.get(item.id) || null,
+      promptUsed: promptMap.get(item.id) || null,
     }));
   }
 

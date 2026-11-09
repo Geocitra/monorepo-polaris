@@ -24,6 +24,7 @@ import {
   SuperadminObservabilityService,
   SuperadminAuditService,
   SuperadminDomainService,
+  SuperadminAiCriticService,
 } from './services/index.js';
 import { PlatformSettingsService } from '../platform-settings/platform-settings.service.js';
 
@@ -53,6 +54,7 @@ export class SuperadminService {
     private readonly auditService: SuperadminAuditService,
     private readonly domainService: SuperadminDomainService,
     private readonly platformSettingsService: PlatformSettingsService,
+    private readonly aiCriticService: SuperadminAiCriticService,
   ) {}
 
   // --- Domain: Autentikasi Superadmin ---
@@ -164,6 +166,10 @@ export class SuperadminService {
     return await this.observabilityService.getHistoricalTopups();
   }
 
+  async getAiPromptPayloads(limit: number = 30) {
+    return await this.observabilityService.getAiPromptPayloads(limit);
+  }
+
   // --- Domain: Audit Log & Agregat Token Member ---
   async getAuditLogs(query: {
     tenantId?: string;
@@ -219,5 +225,21 @@ export class SuperadminService {
 
   async updatePlatformFeatureFlag(flagKey: string, enabled: boolean, updatedBy?: string) {
     return await this.platformSettingsService.updateFlag(flagKey, enabled, updatedBy);
+  }
+  // --- Domain: AI Self-Critic & Learned Memory ---
+  async getAiCriticLogs(query: { archetype?: string; page?: number; limit?: number }) {
+    return await this.aiCriticService.getLogs(query);
+  }
+
+  async getAiCriticStats() {
+    return await this.aiCriticService.getStats();
+  }
+
+  async getAiCriticMemories(archetype?: string) {
+    return await this.aiCriticService.getMemories(archetype);
+  }
+
+  async toggleAiCriticMemory(id: string) {
+    return await this.aiCriticService.toggleMemory(id);
   }
 }

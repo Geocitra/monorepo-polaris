@@ -141,7 +141,10 @@ export class PosterBlueprintSelector {
     });
 
     // Urutkan berdasarkan skor relevansi
-    scoredPool.sort((a, b) => b.score - a.score);
+    scoredPool.sort((a, b) => {
+      if (b.score !== a.score) return b.score - a.score;
+      return 0.5 - Math.random();
+    });
 
     // Ambil kandidat relevan teratas
     const topCandidates = scoredPool.slice(0, Math.min(8, scoredPool.length)).map((s) => s.blueprint);

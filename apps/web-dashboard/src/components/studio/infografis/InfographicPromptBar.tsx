@@ -16,6 +16,7 @@ import {
 } from 'lucide-react';
 import { VisualStyle, AspectRatio } from './InfographicTypes';
 import { Button } from '@/components/ui/button';
+import { InfographicTemplateSelector } from './InfographicTemplateSelector';
 
 interface InfographicPromptBarProps {
   prompt: string;
@@ -30,6 +31,10 @@ interface InfographicPromptBarProps {
   hasExistingIteration: boolean;
   includeUserPhoto?: boolean;
   onIncludeUserPhotoChange?: (val: boolean) => void;
+  selectedArchetype?: string;
+  onArchetypeChange?: (archetypeId: string) => void;
+  selectedLayoutVariant?: number | 'AUTO';
+  onLayoutVariantChange?: (variant: number | 'AUTO') => void;
   onRefinePrompt?: () => void;
   refiningPrompt?: boolean;
 }
@@ -85,6 +90,10 @@ export function InfographicPromptBar({
   hasExistingIteration,
   includeUserPhoto = false,
   onIncludeUserPhotoChange,
+  selectedArchetype = 'AUTO',
+  onArchetypeChange,
+  selectedLayoutVariant = 'AUTO',
+  onLayoutVariantChange,
   onRefinePrompt,
   refiningPrompt = false,
 }: InfographicPromptBarProps) {
@@ -220,6 +229,17 @@ export function InfographicPromptBar({
             {includeUserPhoto ? 'Wajah Asli Aktif' : 'Tanpa Wajah'}
           </div>
         </div>
+      )}
+
+      {/* KATALOG 12 TEMPLATE INFOGRAFIS TERKURASI */}
+      {selectedStyle === 'infographic' && onArchetypeChange && (
+        <InfographicTemplateSelector
+          selectedArchetype={selectedArchetype}
+          onSelectArchetype={onArchetypeChange}
+          selectedLayoutVariant={selectedLayoutVariant}
+          onSelectLayoutVariant={onLayoutVariantChange}
+          disabled={loading}
+        />
       )}
 
       {/* INPUT FORM */}

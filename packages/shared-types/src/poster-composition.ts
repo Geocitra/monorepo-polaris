@@ -26,12 +26,19 @@ export type CreativePosterArchetype =
   | 'VINTAGE_PERSONA_GAZETTE'
   | 'BROADSHEET_NEWSPAPER'
   | 'TECHNICAL_GRID_CALLOUT'
-  // 5 Arketipe Infografis Terkurasi dari Referensi
+  // 12 Arketipe Infografis Terkurasi dari Referensi
   | 'INFOGRAPHIC_NARRATIVE_WAVE'
   | 'INFOGRAPHIC_CHRONICLE_GRID'
   | 'INFOGRAPHIC_RADIAL_CLOCK'
   | 'INFOGRAPHIC_ADVOCACY_PILLARS'
-  | 'INFOGRAPHIC_VISIONARY_TIMELINE';
+  | 'INFOGRAPHIC_VISIONARY_TIMELINE'
+  | 'INFOGRAPHIC_EDITORIAL_COLLAGE'
+  | 'INFOGRAPHIC_HISTORICAL_EXPEDITION'
+  | 'INFOGRAPHIC_PUNK_ZINE'
+  | 'INFOGRAPHIC_HERITAGE_EDITORIAL'
+  | 'INFOGRAPHIC_INDIGENOUS_ADVOCACY'
+  | 'INFOGRAPHIC_CLASSICAL_MONUMENT'
+  | 'INFOGRAPHIC_RETRO_SUNBURST';
 
 export const INFOGRAPHIC_ARCHETYPES: CreativePosterArchetype[] = [
   'INFOGRAPHIC_NARRATIVE_WAVE',
@@ -39,6 +46,13 @@ export const INFOGRAPHIC_ARCHETYPES: CreativePosterArchetype[] = [
   'INFOGRAPHIC_RADIAL_CLOCK',
   'INFOGRAPHIC_ADVOCACY_PILLARS',
   'INFOGRAPHIC_VISIONARY_TIMELINE',
+  'INFOGRAPHIC_EDITORIAL_COLLAGE',
+  'INFOGRAPHIC_HISTORICAL_EXPEDITION',
+  'INFOGRAPHIC_PUNK_ZINE',
+  'INFOGRAPHIC_HERITAGE_EDITORIAL',
+  'INFOGRAPHIC_INDIGENOUS_ADVOCACY',
+  'INFOGRAPHIC_CLASSICAL_MONUMENT',
+  'INFOGRAPHIC_RETRO_SUNBURST',
 ];
 
 export function isInfographicArchetype(archetype?: string | null): boolean {
@@ -361,6 +375,53 @@ export const LAYOUT_BLOCK_SCHEMA: Record<CreativePosterArchetype, LayoutBlockSpe
     { slotId: 'milestone_2', roleDescription: 'Krisis & titik balik kepemimpinan', headerMaxChars: 24, bodyMinChars: 70, bodyMaxChars: 160, defaultHeader: 'TITIK BALIK' },
     { slotId: 'milestone_3', roleDescription: 'Kebangkitan & revolusi teknologi', headerMaxChars: 24, bodyMinChars: 70, bodyMaxChars: 160, defaultHeader: 'REVOLUSI KARYA' },
     { slotId: 'milestone_4', roleDescription: 'Warisan pemikiran & visi masa depan', headerMaxChars: 24, bodyMinChars: 70, bodyMaxChars: 160, defaultHeader: 'WARISAN VISIONER' },
+  ],
+  INFOGRAPHIC_EDITORIAL_COLLAGE: [
+    { slotId: 'mechanism_card', roleDescription: 'Mekanisme & penjelasan cara kerja', headerMaxChars: 28, bodyMinChars: 60, bodyMaxChars: 160, defaultHeader: 'BAGAIMANA INI BEKERJA?' },
+    { slotId: 'daily_card', roleDescription: 'Manifestasi & fenomena keseharian di lapangan', headerMaxChars: 28, bodyMinChars: 60, bodyMaxChars: 160, defaultHeader: 'DI MANA KITA MENEMUKANNYA?' },
+    { slotId: 'significance_card', roleDescription: 'Urgensi, manfaat & signifikansi kebijakan', headerMaxChars: 28, bodyMinChars: 60, bodyMaxChars: 160, defaultHeader: 'MENGAPA INI PENTING?' },
+    { slotId: 'fun_facts', roleDescription: 'Butir fakta menarik / statistik lapangan', headerMaxChars: 24, bodyMinChars: 40, bodyMaxChars: 120, defaultHeader: 'FAKTA MENARIK' },
+    { slotId: 'summary_quote', roleDescription: 'Kutipan refleksi & kesimpulan kebijakan', headerMaxChars: 24, bodyMinChars: 50, bodyMaxChars: 140, defaultHeader: 'PESAN KUNCI' },
+  ],
+  INFOGRAPHIC_HISTORICAL_EXPEDITION: [
+    { slotId: 'expedition_goal', roleDescription: 'Tujuan pokok perjalanan / misi advokasi', headerMaxChars: 28, bodyMinChars: 60, bodyMaxChars: 160, defaultHeader: 'TUJUAN & AMANAT MISI' },
+    { slotId: 'expedition_experience', roleDescription: 'Catatan perjalanan & pengalaman lapangan', headerMaxChars: 28, bodyMinChars: 60, bodyMaxChars: 160, defaultHeader: 'PENGALAMAN & PERJUANGAN' },
+    { slotId: 'expedition_locations', roleDescription: 'Daftar wilayah/fokus yang dikunjungi', headerMaxChars: 28, bodyMinChars: 60, bodyMaxChars: 160, defaultHeader: 'WILAYAH SASARAN' },
+    { slotId: 'expedition_significance', roleDescription: 'Signifikansi & relevansi bagi masyarakat', headerMaxChars: 28, bodyMinChars: 60, bodyMaxChars: 160, defaultHeader: 'SIGNIFIKANSI HISTORIS' },
+    { slotId: 'expedition_conclusion', roleDescription: 'Kesimpulan akhir & refleksi kebangsaan', headerMaxChars: 28, bodyMinChars: 50, bodyMaxChars: 150, defaultHeader: 'KESIMPULAN' },
+  ],
+  INFOGRAPHIC_PUNK_ZINE: [
+    { slotId: 'the_substance', roleDescription: 'Pemicu & akar permasalahan industri/ekologi', headerMaxChars: 28, bodyMinChars: 60, bodyMaxChars: 160, defaultHeader: 'THE SUBSTANCE' },
+    { slotId: 'the_impact', roleDescription: 'Dampak riil terhadap ekonomi dan iklim', headerMaxChars: 28, bodyMinChars: 60, bodyMaxChars: 160, defaultHeader: 'THE IMPACT' },
+    { slotId: 'compelling_truth', roleDescription: 'Fakta krusial yang tidak bisa diabaikan', headerMaxChars: 28, bodyMinChars: 60, bodyMaxChars: 160, defaultHeader: 'THE COMPELLING TRUTH' },
+    { slotId: 'search_for_escape', roleDescription: 'Solusi transisi & langkah pemulihan', headerMaxChars: 28, bodyMinChars: 60, bodyMaxChars: 160, defaultHeader: 'THE SEARCH FOR ESCAPE' },
+    { slotId: 'sustainable_tomorrow', roleDescription: 'Aksi nyata masa depan berkelanjutan', headerMaxChars: 28, bodyMinChars: 50, bodyMaxChars: 150, defaultHeader: 'SUSTAINABLE TOMORROW' },
+  ],
+  INFOGRAPHIC_HERITAGE_EDITORIAL: [
+    { slotId: 'asal_usul', roleDescription: 'Sejarah, akar budaya & latar belakang tradisi', headerMaxChars: 28, bodyMinChars: 60, bodyMaxChars: 160, defaultHeader: 'ASAL USUL BUDAYA' },
+    { slotId: 'filosofi_nilai', roleDescription: 'Nilai pembelajaran, filosofi & kearifan lokal', headerMaxChars: 28, bodyMinChars: 60, bodyMaxChars: 160, defaultHeader: 'NILAI & FILOSOFI' },
+    { slotId: 'langkah_tahap', roleDescription: 'Langkah-langkah bertahap & cara pelaksanaan', headerMaxChars: 28, bodyMinChars: 60, bodyMaxChars: 160, defaultHeader: 'LANGKAH BERTANDANG' },
+    { slotId: 'relevansi_generasi', roleDescription: 'Upaya pelestarian & relevansi generasi muda', headerMaxChars: 28, bodyMinChars: 50, bodyMaxChars: 150, defaultHeader: 'PELESTARIAN GENERASI' },
+  ],
+  INFOGRAPHIC_INDIGENOUS_ADVOCACY: [
+    { slotId: 'suara_akar_rumput', roleDescription: 'Aspirasi & perjuangan hak masyarakat adat', headerMaxChars: 28, bodyMinChars: 60, bodyMaxChars: 160, defaultHeader: 'SUARA ADVOKASI ADAT' },
+    { slotId: 'data_berkata', roleDescription: 'Fakta lapangan & data peran perempuan/warga adat', headerMaxChars: 28, bodyMinChars: 60, bodyMaxChars: 160, defaultHeader: 'DATA BERKATA' },
+    { slotId: 'tanya_jawab_kebijakan', roleDescription: 'Solusi & langkah nyata keberpihakan publik', headerMaxChars: 28, bodyMinChars: 60, bodyMaxChars: 160, defaultHeader: 'LANGKAH NYATA KITA' },
+    { slotId: 'simbol_kebersamaan', roleDescription: 'Filosofi simbolik kerajinan & keadilan sosial', headerMaxChars: 28, bodyMinChars: 50, bodyMaxChars: 150, defaultHeader: 'SIMBOL KEADILAN' },
+  ],
+  INFOGRAPHIC_CLASSICAL_MONUMENT: [
+    { slotId: 'era_kronologis', roleDescription: 'Garis waktu era dan peradaban utama', headerMaxChars: 28, bodyMinChars: 60, bodyMaxChars: 160, defaultHeader: 'ERA & PERIODE KRONOLOGIS' },
+    { slotId: 'monumen_arsitektur', roleDescription: 'Deskripsi karya monumen & keagungan arsitektur', headerMaxChars: 28, bodyMinChars: 60, bodyMaxChars: 160, defaultHeader: 'MONUMEN MAHA KARYA' },
+    { slotId: 'situs_arkeologi_1', roleDescription: 'Analisis situs bersejarah pertama', headerMaxChars: 28, bodyMinChars: 60, bodyMaxChars: 160, defaultHeader: 'SITUS BERSEJARAH I' },
+    { slotId: 'situs_arkeologi_2', roleDescription: 'Analisis situs bersejarah kedua', headerMaxChars: 28, bodyMinChars: 60, bodyMaxChars: 160, defaultHeader: 'SITUS BERSEJARAH II' },
+    { slotId: 'pengaruh_peradaban', roleDescription: 'Pengaruh terhadap arsitektur modern', headerMaxChars: 28, bodyMinChars: 50, bodyMaxChars: 150, defaultHeader: 'WARISAN PERADABAN' },
+  ],
+  INFOGRAPHIC_RETRO_SUNBURST: [
+    { slotId: 'profil_singkat', roleDescription: 'Latar belakang & profil gerakan/perjuangan', headerMaxChars: 28, bodyMinChars: 60, bodyMaxChars: 160, defaultHeader: 'PROFIL SINGKAT' },
+    { slotId: 'alasan_dibentuk', roleDescription: 'Faktor pemicu & alasan pembentukan gerakan', headerMaxChars: 28, bodyMinChars: 60, bodyMaxChars: 160, defaultHeader: 'ALASAN DIBENTUK' },
+    { slotId: 'tokoh_dan_peran', roleDescription: 'Peran sentral tokoh pelopor perjuangan', headerMaxChars: 28, bodyMinChars: 60, bodyMaxChars: 160, defaultHeader: 'TOKOH DAN PERAN' },
+    { slotId: 'tujuan_utama', roleDescription: 'Arah tujuan & visi kemerdekaan bersama', headerMaxChars: 28, bodyMinChars: 60, bodyMaxChars: 160, defaultHeader: 'TUJUAN PERJUANGAN' },
+    { slotId: 'tahukah_kamu', roleDescription: 'Fakta unik & wawasan sejarah penting', headerMaxChars: 28, bodyMinChars: 50, bodyMaxChars: 150, defaultHeader: 'TAHUKAH KAMU?!' },
   ],
 };
 

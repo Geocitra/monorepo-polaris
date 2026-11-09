@@ -47,6 +47,7 @@ export class MasterEditorialSanitizer {
     title = title.replace(/^["'“”‘’]+|["'“”‘’]+$/g, '').trim();
 
     // 4. Pastikan disucikan dari kata terlarang dan slop
+    title = this.normalizePrepositions(title);
     title = this.sanitizeForbiddenWords(title);
     title = this.removeAiSlop(title);
 
@@ -170,6 +171,27 @@ export class MasterEditorialSanitizer {
     text = text.replace(/\bdimana\b/gi, 'di mana');
     text = text.replace(/\bkesana\b/gi, 'ke sana');
     text = text.replace(/\bkemana\b/gi, 'ke mana');
+    text = text.replace(/\bpemeraataan\b/gi, (match) => match === match.toUpperCase() ? 'PEMERATAAN' : 'Pemerataan');
+    text = text.replace(/\bekonoml\b/gi, (match) => match === match.toUpperCase() ? 'EKONOMI' : (match[0] === 'E' ? 'Ekonomi' : 'ekonomi'));
+    text = text.replace(/\bbeta sebaran\b/gi, (match) => match === match.toUpperCase() ? 'PETA SEBARAN' : (match[0] === 'B' ? 'Peta Sebaran' : 'peta sebaran'));
+    text = text.replace(/\bansia\b/gi, (match) => match === match.toUpperCase() ? 'LANSIA' : (match[0] === 'A' ? 'Lansia' : 'lansia'));
+    text = text.replace(/\bresehatan\b/gi, (match) => match === match.toUpperCase() ? 'KESEHATAN' : (match[0] === 'R' ? 'Kesehatan' : 'kesehatan'));
+    text = text.replace(/\boata\b/gi, (match) => match === match.toUpperCase() ? 'DATA' : (match[0] === 'O' ? 'Data' : 'data'));
+    text = text.replace(/\bkomunitss\b/gi, 'komunitas');
+    text = text.replace(/\btidaa\b/gi, 'tidak');
+    text = text.replace(/\bhenini\b/gi, 'hal ini');
+    text = text.replace(/\btiemiliki\b/gi, 'memiliki');
+    text = text.replace(/\bdiikksanakan\b/gi, 'dilaksanakan');
+    text = text.replace(/\bmenuler\b/gi, 'menular');
+    text = text.replace(/\btahan ke depan\b/gi, 'tahun ke depan');
+    text = text.replace(/\baksas\b/gi, 'akses');
+    text = text.replace(/\bdiinbusi\b/gi, 'didistribusi');
+    text = text.replace(/\bpcniokoratan\b/gi, 'peningkatan');
+    text = text.replace(/\bpakiang\b/gi, 'panjang');
+    text = text.replace(/\blabiinpon\b/gi, 'lapangan');
+    text = text.replace(/\bdesadan\b/gi, 'desa dan');
+    text = text.replace(/\bclosingline\b/gi, '');
+    text = text.replace(/\bvisualsubject\b/gi, '');
 
     return text;
   }

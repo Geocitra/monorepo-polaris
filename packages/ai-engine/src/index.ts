@@ -17,9 +17,11 @@ export * from './research/connectors/web-discovery.connector.js';
 export * from './research/autonomous-research.orchestrator.js';
 export * from './creative-poster/index.js';
 export * from './adapters/google-imagen.adapter.js';
+export * from './adapters/img2img-pass.adapter.js';
 export * from './config/image-provider.config.js';
 export * from './master-editorial-sanitizer.js';
 export * from './refiners/prompt-refiner.service.js';
+export * from './creative-poster/critic/poster-vision-critic.js';
 export * from './datahub/index.js';
 
 

@@ -29,7 +29,7 @@ import {
   synthesizeArtCollageCopy,
 } from './art-collage-director.js';
 import { VisionLayoutLocator } from './vision-layout-locator.js';
-import type { ArtCollagePosterResult } from './art-collage.types.js';
+import type { ArtCollagePosterResult, ArtCollageCopy } from './art-collage.types.js';
 
 const REFERENCE_DIR_CANDIDATES = [
   process.env.POSTER_REFERENCE_DIR,
@@ -77,6 +77,9 @@ export class ArtCollagePosterPipeline {
     /** Mis. jobId/publicationId: membuat mutasi reproducible untuk audit. */
     variationKey?: string;
     isInfographic?: boolean;
+    candidateIndex?: number;
+    remedyPrompt?: string;
+    reuseCopy?: ArtCollageCopy;
   }): Promise<ArtCollagePosterResult> {
     const blueprint = await PosterBlueprintSelector.selectBestBlueprintAsync({
       topic: params.topic,
@@ -88,15 +91,18 @@ export class ArtCollagePosterPipeline {
     const archetype = blueprint.archetype;
     const dna = ART_COLLAGE_DNA[archetype];
 
-    const seed = params.variationKey
-      ? seedFromString(`${params.variationKey}:${archetype}`)
-      : Math.floor(Math.random() * 2 ** 31);
+    const seedKey = params.candidateIndex && params.candidateIndex > 1
+      ? `${params.variationKey || Date.now()}:c${params.candidateIndex}:${archetype}`
+      : `${params.variationKey || Date.now()}:${archetype}`;
+    const seed = seedFromString(seedKey);
     const mutation = pickArtCollageMutation(archetype, seed);
 
     const isInfographic = params.isInfographic || isInfographicArchetype(archetype);
 
     const [copy, styleReference] = await Promise.all([
-      synthesizeArtCollageCopy({ topic: params.topic, groundedContext: params.groundedContextSummary, archetype }),
+      params.reuseCopy
+        ? Promise.resolve(params.reuseCopy)
+        : synthesizeArtCollageCopy({ topic: params.topic, groundedContext: params.groundedContextSummary, archetype }),
       loadStyleReference(blueprint.referenceFile),
     ]);
 
@@ -105,6 +111,7 @@ export class ArtCollagePosterPipeline {
       mutation,
       visualSubject: copy.visualSubject,
       withStyleReference: !!styleReference,
+      remedyPrompt: params.remedyPrompt,
     });
 
     const image = await this.imageAdapter.generateArtCollage({

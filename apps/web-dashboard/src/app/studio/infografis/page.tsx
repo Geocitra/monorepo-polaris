@@ -119,6 +119,8 @@ export default function InfografisStudioPage() {
   const [promptInput, setPromptInput] = useState('');
   const [selectedStyle, setSelectedStyle] = useState<VisualStyle>('infographic');
   const [selectedAspectRatio, setSelectedAspectRatio] = useState<AspectRatio>('4:5');
+  const [selectedArchetype, setSelectedArchetype] = useState<string>('AUTO');
+  const [selectedLayoutVariant, setSelectedLayoutVariant] = useState<number | 'AUTO'>('AUTO');
   const [includeUserPhoto, setIncludeUserPhoto] = useState(false);
   const [refiningPrompt, setRefiningPrompt] = useState(false);
 
@@ -336,7 +338,11 @@ export default function InfografisStudioPage() {
           generateDallePoster: true,
           aspectRatio: submittedAspectRatio,
           style: submittedStyle,
+          forcedArchetype: selectedArchetype && selectedArchetype !== 'AUTO' ? selectedArchetype : undefined,
+          layoutVariant: selectedLayoutVariant !== 'AUTO' ? selectedLayoutVariant : undefined,
           includeUserPhoto,
+          enableImg2ImgPass: true,
+          img2ImgDenoisingStrength: 0.18,
           compositionMode: includeUserPhoto ? 'FIGURE_CENTERPIECE' : 'PUBLIC_ADVOCACY',
           customPhotoUrl: profile?.photoUrl || (Array.isArray(profile?.photoGallery) && profile.photoGallery[0]) || undefined,
         }),
@@ -777,6 +783,10 @@ export default function InfografisStudioPage() {
             hasExistingIteration={Boolean(currentIteration)}
             includeUserPhoto={includeUserPhoto}
             onIncludeUserPhotoChange={setIncludeUserPhoto}
+            selectedArchetype={selectedArchetype}
+            onArchetypeChange={setSelectedArchetype}
+            selectedLayoutVariant={selectedLayoutVariant}
+            onLayoutVariantChange={setSelectedLayoutVariant}
             onRefinePrompt={handleRefinePrompt}
             refiningPrompt={refiningPrompt}
           />

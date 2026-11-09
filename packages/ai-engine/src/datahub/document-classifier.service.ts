@@ -190,7 +190,7 @@ Kembalikan format JSON persis seperti ini (tanpa markdown backtick):
   "suggestedTitle": "Judul resmi yang rapi dan deskriptif"
 }`;
 
-    const modelName = process.env.GEMINI_TEXT_MODEL || 'gemini-2.5-flash';
+    const modelName = process.env.GEMINI_TEXT_MODEL || 'gemini-3.8-flash';
     const response = await googleGenAiClient.models.generateContent({
       model: modelName,
       contents: [{ role: 'user', parts: [{ text: prompt }] }],

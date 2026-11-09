@@ -10,11 +10,13 @@ import {
   mediaDiscourses,
   findSimilarKnowledgeChunks,
   withTenantContext,
+  studioAiCriticLogs,
 } from '@polaris/database';
-import { OpenAIAIEngineAdapter } from '@polaris/ai-engine';
+import { OpenAIAIEngineAdapter, PosterVisionCritic } from '@polaris/ai-engine';
 import {
   CloudflareR2StorageAdapter,
   ChromiumPosterCompositor,
+  PosterAmbientBaker,
 } from '@polaris/storage';
 import { ContentStatus, AssetType } from '@polaris/shared-types';
 import { AiCostCalculator } from '@polaris/core-domain';
@@ -175,22 +177,31 @@ export class StudioInfographicGenerationHandler {
       await StudioContextHelper.emitProgress(
         tenantId,
         jobId,
-        35,
-        'Memilih gaya infografis & mengenerate kanvas AI...'
+        25,
+        'Menganalisis topik riset, memeriksa aturan kualitas proyek & learned memories di database...'
       );
 
-      // Pemilihan gaya infografis otomatis secara acak (random) dari 5 template terkurasi
+      // Pemilihan gaya infografis otomatis dari seluruh template terkurasi (Template 1-12)
       const infographicArchetypeList = [
         'INFOGRAPHIC_NARRATIVE_WAVE',
         'INFOGRAPHIC_CHRONICLE_GRID',
         'INFOGRAPHIC_RADIAL_CLOCK',
         'INFOGRAPHIC_ADVOCACY_PILLARS',
         'INFOGRAPHIC_VISIONARY_TIMELINE',
+        'INFOGRAPHIC_EDITORIAL_COLLAGE',
+        'INFOGRAPHIC_HISTORICAL_EXPEDITION',
+        'INFOGRAPHIC_PUNK_ZINE',
+        'INFOGRAPHIC_HERITAGE_EDITORIAL',
+        'INFOGRAPHIC_INDIGENOUS_ADVOCACY',
+        'INFOGRAPHIC_CLASSICAL_MONUMENT',
+        'INFOGRAPHIC_RETRO_SUNBURST',
       ] as const;
 
-      // Selalu pilih acak (random) setiap kali generate
+      // Hormati forcedArchetype jika disediakan, atau pilih acak jika tidak ada
       const chosenArchetype =
-        infographicArchetypeList[Math.floor(Math.random() * infographicArchetypeList.length)];
+        data.forcedArchetype && infographicArchetypeList.includes(data.forcedArchetype as any)
+          ? data.forcedArchetype
+          : infographicArchetypeList[Math.floor(Math.random() * infographicArchetypeList.length)];
 
       console.log(`[StudioInfographic] v3.0 Authentic Editorial Broadsheet Infographics loaded (${chosenArchetype})...`);
 
@@ -200,7 +211,7 @@ export class StudioInfographicGenerationHandler {
       // 2. AI Generator menghasilkan kanvas visual utuh dari nol (tanpa teks)
       // 3. Gemini Vision mendeteksi zona kertas kosong (Negative Space)
       // =========================================================================
-      const artCollage = await aiEngine.generateArtCollagePoster({
+      let artCollage = await aiEngine.generateArtCollagePoster({
         topic: cleanPrompt,
         groundedContextSummary,
         forcedArchetype: (chosenArchetype as any) || undefined,
@@ -231,10 +242,273 @@ export class StudioInfographicGenerationHandler {
         editionTag: roleIdentity.editionTag,
         textToneHint: artCollage.layout.textTone,
         archetype: artCollage.archetype,
+        layoutVariant: typeof data.layoutVariant === 'number' ? data.layoutVariant : Math.floor(Math.random() * 4),
       });
 
-      const posterBuffer: Buffer = composed.buffer;
-      const posterSizeBytes: number = composed.sizeBytes;
+      let posterBuffer: Buffer = composed.buffer;
+      let posterSizeBytes: number = composed.sizeBytes;
+      let img2ImgMetadata: Record<string, any> | null = null;
+
+      // =========================================================================
+      // LANGKAH 3: IMAGE-TO-IMAGE (IMG2IMG) PASS-THROUGH & AMBIENT TEXTURE BAKE
+      // Mematangkan draf poster Chromium melalui neural diffusion / ambient bake
+      // dengan denoising strength 0.15 - 0.25 agar teks menyatu dengan lighting latar
+      // =========================================================================
+      const shouldApplyImg2Img = data.enableImg2ImgPass !== false;
+      if (shouldApplyImg2Img) {
+        await StudioContextHelper.emitProgress(
+          tenantId,
+          jobId,
+          80,
+          'Mematangkan pencahayaan ambient & tekstur AI (Img2Img Pass-through)...'
+        );
+
+        try {
+          const sdxlInputBuffer = await PosterAmbientBaker.prepareSdxlInput(posterBuffer);
+          const passResult = await aiEngine.applyImg2ImgPass({
+            imageBuffer: posterBuffer,
+            sdxlInputBuffer,
+            prompt: artCollage.imagePrompt || cleanPrompt,
+            denoisingStrength: data.img2ImgDenoisingStrength || 0.18,
+            archetype: artCollage.archetype,
+            layoutVariant: data.layoutVariant,
+            copy: artCollage.copy,
+            signature: roleIdentity.signature,
+            headerTag: roleIdentity.headerTag,
+            editionTag: roleIdentity.editionTag,
+            palette: {
+              accentHex: artCollage.mutation.palette.accentHex,
+              secondaryHex: artCollage.mutation.palette.secondaryHex,
+            },
+            tenantId,
+          });
+
+          if (passResult.providerUsed !== 'skipped') {
+            const harmonized = await PosterAmbientBaker.harmonizeDiffusedWithCrispDraft(
+              posterBuffer,
+              passResult.buffer
+            );
+            posterBuffer = harmonized;
+            posterSizeBytes = harmonized.length;
+            img2ImgMetadata = {
+              providerUsed: passResult.providerUsed,
+              denoisingStrength: passResult.denoisingStrengthUsed,
+              durationMs: passResult.durationMs,
+              relayoutPrompt: passResult.compiledRelayoutPrompt,
+            };
+            console.log(
+              `[StudioInfographic] Img2Img Pass + Crisp Harmonization berhasil (${passResult.providerUsed}, ${passResult.durationMs}ms)`
+            );
+          } else {
+            // Built-in Native Ambient Texture & Lighting Bake Fallback via Sharp
+            const baked = await PosterAmbientBaker.bakeAmbientTexture({
+              imageBuffer: posterBuffer,
+              archetype: artCollage.archetype,
+            layoutVariant: data.layoutVariant,
+            copy: artCollage.copy,
+            signature: roleIdentity.signature,
+            headerTag: roleIdentity.headerTag,
+            editionTag: roleIdentity.editionTag,
+              strength: data.img2ImgDenoisingStrength || 0.15,
+            });
+            posterBuffer = baked;
+            posterSizeBytes = baked.length;
+            img2ImgMetadata = {
+              providerUsed: 'native-ambient-bake',
+              denoisingStrength: 0.15,
+            };
+            console.log(`[StudioInfographic] Native Ambient Texture Bake berhasil (Sharp grain & light dispersion)`);
+          }
+        } catch (img2imgErr: any) {
+          console.warn(`[StudioInfographic] Img2Img pass-through fallback: ${img2imgErr.message}`);
+        }
+      }
+
+      // =========================================================================
+      // LANGKAH 4: AUTONOMOUS AI VISION CRITIC & MULTI-CANDIDATE AUTO-REPAIR LOOP
+      // Khusus fokus template Gelombang Naratif Merah (INFOGRAPHIC_NARRATIVE_WAVE):
+      // Menginspeksi draf dengan AI Vision. Jika skor < 85 atau ada cacat visual
+      // (terutama chart background, KPI duplikat, atau pita menimpa teks), sistem
+      // diizinkan mengenerate kanvas kandidat ke-2 yang bersih di latar belakang.
+      // =========================================================================
+      if (artCollage.archetype === 'INFOGRAPHIC_NARRATIVE_WAVE') {
+        try {
+          await StudioContextHelper.emitProgress(
+            tenantId,
+            jobId,
+            75,
+            'AI Multimodal Vision Critic sedang menginspeksi draf poster terhadap checklist kualitas...'
+          );
+
+          let evalResult = await PosterVisionCritic.evaluatePoster({
+            imageBuffer: posterBuffer,
+            archetype: artCollage.archetype,
+            topic: cleanPrompt,
+            copy: artCollage.copy,
+            layoutVariant: data.layoutVariant,
+          });
+
+          console.log(
+            `[VisionCritic] Evaluasi Draf 1: Skor ${evalResult.overallScore}/100, Lulus: ${evalResult.passed}`
+          );
+
+          let beforeImageUrl: string | undefined = undefined;
+          let autoRepaired = false;
+
+          // ATURAN BARU: Boleh generate lebih dari 1 gambar jika diperlukan saja!
+          // Cacat latar belakang (chart background fiktif, KPI duplikat, pita merah menimpa teks, atau skor < 85)
+          const hasBackgroundStructuralDefects =
+            !evalResult.passed &&
+            (evalResult.checklist.duplicatePieChartDetected ||
+              evalResult.checklist.duplicateKpiDetected ||
+              evalResult.checklist.textWaveOverlapDetected ||
+              evalResult.overallScore < 85);
+
+          if (hasBackgroundStructuralDefects) {
+            console.log(
+              `[VisionCritic] Mendeteksi cacat kanvas latar belakang (${evalResult.critiqueNotes.join('; ')}). Mengaktifkan izin generasi kanvas kandidat ke-2...`
+            );
+            await StudioContextHelper.emitProgress(
+              tenantId,
+              jobId,
+              80,
+              'Ditemukan anomali kanvas, mengaktifkan izin generasi kanvas kandidat ke-2 yang lebih presisi...'
+            );
+
+            // Simpan snapshot draf 1 sebagai beforeImageUrl untuk audit transparansi admin
+            try {
+              const beforeUpload = await storageAdapter.uploadBuffer(posterBuffer, {
+                destinationPath: `posters/${tenantId}/critic-candidate1-${Date.now()}-${publicationId}.webp`,
+                contentType: 'image/webp',
+                contentLength: posterBuffer.length,
+              });
+              beforeImageUrl = beforeUpload.publicUrl;
+            } catch (e) {
+              console.warn('[VisionCritic] Gagal upload snapshot before candidate 1: ', e);
+            }
+
+            try {
+              const candidate2 = await aiEngine.generateArtCollagePoster({
+                topic: cleanPrompt,
+                groundedContextSummary,
+                forcedArchetype: (chosenArchetype as any) || undefined,
+                isInfographic: true,
+                tenantBrandHex,
+                tenantId,
+                variationKey: `${publicationId}:${jobId}:c2:${Date.now()}`,
+                candidateIndex: 2,
+                remedyPrompt:
+                  evalResult.remedyInstructions ||
+                  'MANDAT KRUSIAL: Area 42% bawah wajib 100% kertas krem polos (#F8F6F0) tanpa chart fiktif apapun, 1 baris KPI tunggal tanpa duplikasi, dan pita merah dibatasi di atas 58% tinggi poster.',
+                reuseCopy: artCollage.copy,
+              });
+
+              const composed2 = await ChromiumPosterCompositor.compose({
+                canvasBuffer: candidate2.imageBuffer,
+                copy: artCollage.copy,
+                zones: candidate2.layout,
+                palette: {
+                  accentHex: candidate2.mutation.palette.accentHex,
+                  secondaryHex: candidate2.mutation.palette.secondaryHex,
+                },
+                signature: roleIdentity.signature,
+                headerTag: roleIdentity.headerTag,
+                editionTag: roleIdentity.editionTag,
+                textToneHint: candidate2.layout.textTone,
+                archetype: candidate2.archetype,
+                layoutVariant: typeof data.layoutVariant === 'number' ? data.layoutVariant : 0,
+              });
+
+              const evalResult2 = await PosterVisionCritic.evaluatePoster({
+                imageBuffer: composed2.buffer,
+                archetype: candidate2.archetype,
+                topic: cleanPrompt,
+                copy: artCollage.copy,
+                layoutVariant: data.layoutVariant,
+              });
+
+              console.log(
+                `[VisionCritic] Evaluasi Kanvas Kandidat ke-2: Skor ${evalResult2.overallScore}/100, Lulus: ${evalResult2.passed}`
+              );
+
+              if (evalResult2.overallScore >= evalResult.overallScore) {
+                artCollage = candidate2;
+                posterBuffer = composed2.buffer;
+                posterSizeBytes = composed2.sizeBytes;
+                evalResult = evalResult2;
+                autoRepaired = true;
+              }
+            } catch (c2Err: any) {
+              console.warn(`[VisionCritic] Gagal generate kanvas kandidat ke-2: ${c2Err?.message}`);
+            }
+          } else if (!evalResult.passed && evalResult.remedyInstructions) {
+            console.log(
+              `[VisionCritic] Menjalankan Autonomous Auto-Repair Pass berdasarkan feedback: ${evalResult.critiqueNotes.join('; ')}`
+            );
+            autoRepaired = true;
+
+            // Simpan snapshot gambar sebelum perbaikan untuk audit admin
+            try {
+              const beforeUpload = await storageAdapter.uploadBuffer(posterBuffer, {
+                destinationPath: `posters/${tenantId}/critic-before-${Date.now()}-${publicationId}.webp`,
+                contentType: 'image/webp',
+                contentLength: posterBuffer.length,
+              });
+              beforeImageUrl = beforeUpload.publicUrl;
+            } catch (e) {
+              console.warn('[VisionCritic] Gagal upload snapshot before: ', e);
+            }
+
+            // Jalankan Micro-Refinement Pass dengan instruksi perbaikan Critic
+            try {
+              const repairResult = await aiEngine.applyImg2ImgPass({
+                imageBuffer: posterBuffer,
+                prompt: `${artCollage.imagePrompt}\nCRITICAL CRITIC AUTO-REPAIR FIX:\n${evalResult.remedyInstructions}`,
+                denoisingStrength: 0.22,
+                archetype: artCollage.archetype,
+                layoutVariant: data.layoutVariant,
+                copy: artCollage.copy,
+                signature: roleIdentity.signature,
+                headerTag: roleIdentity.headerTag,
+                editionTag: roleIdentity.editionTag,
+                palette: {
+                  accentHex: artCollage.mutation.palette.accentHex,
+                  secondaryHex: artCollage.mutation.palette.secondaryHex,
+                },
+                tenantId,
+              });
+
+              if (repairResult.providerUsed !== 'skipped') {
+                const harmonizedRepair = await PosterAmbientBaker.harmonizeDiffusedWithCrispDraft(
+                  posterBuffer,
+                  repairResult.buffer
+                );
+                posterBuffer = harmonizedRepair;
+                posterSizeBytes = harmonizedRepair.length;
+                console.log(`[VisionCritic] Auto-Repair Pass selesai diaplikasikan.`);
+              }
+            } catch (repairErr: any) {
+              console.warn(`[VisionCritic] Auto-Repair Pass gagal, memakai draf sebelumnya:`, repairErr?.message);
+            }
+          }
+
+          // Catat Log ke database studio_ai_critic_logs
+          await PosterVisionCritic.recordCriticLog({
+            tenantId,
+            publicationId,
+            jobId: String(jobId || job.id),
+            archetype: artCollage.archetype,
+            layoutVariant: data.layoutVariant || 0,
+            topic: cleanPrompt,
+            evalResult,
+            autoRepaired,
+            beforeImageUrl,
+            finalImageUrl: '', // Diperbarui setelah upload
+          });
+        } catch (criticErr: any) {
+          console.warn(`[VisionCritic] Peringatan kritik AI: ${criticErr?.message}`);
+        }
+      }
 
       // 5b. Upload Master Raw Canvas Latar Belakang Bersih (Tanpa Teks / Kartu) untuk Magic Layers Studio
       let rawCanvasPublicUrl = '';
@@ -256,6 +530,7 @@ export class StudioInfographicGenerationHandler {
       const promptUsedJson = JSON.stringify({
         engine: 'ART_COLLAGE_INFOGRAPHIC_CHROMIUM',
         renderer: 'chromium',
+        img2ImgPass: img2ImgMetadata,
         rawCanvasUrl: rawCanvasPublicUrl,
         layoutManifest: composed.layoutManifest,
         blueprintId: artCollage.blueprintId,
@@ -370,6 +645,17 @@ export class StudioInfographicGenerationHandler {
             },
           });
       });
+
+      if (finalPublicUrl) {
+        try {
+          await db
+            .update(studioAiCriticLogs)
+            .set({ finalImageUrl: finalPublicUrl })
+            .where(eq(studioAiCriticLogs.publicationId, publicationId));
+        } catch (e) {
+          // non-critical
+        }
+      }
 
       await StudioContextHelper.emitProgress(
         tenantId,

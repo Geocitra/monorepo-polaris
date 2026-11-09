@@ -776,6 +776,22 @@ async function runMigration() {
       console.log('  -> Research Engine schema applied.');
     }
 
+    console.log('\n[5c/6] Applying Incremental Migrations (packages/database/src/migrations)...');
+    const migrationsDir = path.join(rootDir, 'packages/database/src/migrations');
+    if (fs.existsSync(migrationsDir)) {
+      const files = fs.readdirSync(migrationsDir).filter(f => f.endsWith('.sql')).sort();
+      for (const file of files) {
+        const filePath = path.join(migrationsDir, file);
+        const fileSql = fs.readFileSync(filePath, 'utf-8');
+        try {
+          await sql.unsafe(fileSql);
+          console.log(`  -> Applied migration: ${file}`);
+        } catch (mErr) {
+          console.log(`  -> Notice on ${file}: ${mErr.message}`);
+        }
+      }
+    }
+
     console.log('\n[6/6] Verifying Database Integrity & Tables Summary...');
     const tables = await sql`
       SELECT table_name 

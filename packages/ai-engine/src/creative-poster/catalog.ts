@@ -1283,4 +1283,333 @@ export const POSTER_BLUEPRINT_CATALOG: PreAnalyzedPosterBlueprint[] = [
       canMutatePalette: true,
     },
   },
+
+  // ---------------------------------------------------------------------------
+  // 28. INFOGRAFIS 06: KOLASE EDITORIAL RISOGRAF (LIGHT & SHADOW)
+  // ---------------------------------------------------------------------------
+  {
+    id: 'INF-06-LIGHT-BEARS-SHADOW',
+    name: 'Kolase Editorial Risograf (Light & Shadow)',
+    archetype: 'INFOGRAPHIC_EDITORIAL_COLLAGE',
+    referenceFile: 'template-06-Light bears shadow.jpg',
+    description: 'Infografis kolase zine/risograf bernuansa edukatif-sains dengan potongan tipografi judul bertingkat dalam kotak warna (teal & mustard), ilustrasi cut-out bohlam lampu dengan bayangan tanaman, kartu tanya-jawab modular bertape, fakta menarik (fun facts), dan footer pita penutup.',
+    tags: ['infografis', 'kolase', 'risograf', 'edukasi', 'sains', 'light', 'shadow', 'zine', 'modular', 'fakta'],
+    aspectRatio: '4:5',
+    colorPalette: {
+      primaryAccent: '#0E7490',
+      secondaryAccent: '#D97706',
+      backgroundBase: '#F6F3EB',
+      textColor: '#0F172A',
+      subTextColor: '#334155',
+    },
+    scenePromptHint: 'Risograph zine collage educational science infographic poster artwork, cutout vintage glowing lightbulb with shadow of potted houseplant, teal and warm ochre textured paper blocks, subtle screenprint halftone, tactile warm paper grain.',
+    negativeSpaceZone: 'Spacious cream paper surface with clean modular cutout spaces for explanatory questions, statistics, and fun facts.',
+    slotManifest: {
+      canvas: { width: 1080, height: 1350, aspectRatio: '4:5' },
+      slots: {
+        subjectPhoto: { x: 0.60, y: 0.15, w: 0.35, h: 0.45, anchor: 'center' },
+        headlineBlock: { x: 0.06, y: 0.05, w: 0.50, maxLines: 3, fontFamily: 'Anton', fontSizePx: 72, textColor: '#0E7490', isUppercase: true },
+        quoteStatement: { x: 0.58, y: 0.82, w: 0.38, fontFamily: 'Plus Jakarta Sans', fontSizePx: 14, textColor: '#0F172A' },
+        memberIdentity: { x: 0.06, y: 0.94, w: 0.45, nameFontSizePx: 16, titleFontSizePx: 12, nameColor: '#0F172A', titleColor: '#0E7490' },
+        officialEmblem: { x: 0.82, y: 0.03, w: 0.12, maxHeightPx: 38, placement: 'top-right' },
+      },
+    },
+    fixedConstraints: {
+      baseBackgroundTone: 'WARM_PAPER',
+      requiredFontFamilies: {
+        headline: 'Anton',
+        body: 'Plus Jakarta Sans',
+      },
+      imageNegativeAllow: ['banner', 'frame', 'border'],
+      toneSafety: 'ALL_TOPICS',
+    },
+    variationRules: {
+      allowedLayoutVariants: ['TOP_BANNER', 'EDITORIAL_SPLIT'],
+      allowedHeaderPlacements: ['top'],
+      allowedCardArrangements: ['stacked', 'grid_compact'],
+      canMutatePalette: true,
+    },
+  },
+
+  // ---------------------------------------------------------------------------
+  // 29. INFOGRAFIS 07: KRONIK SEJARAH & EKSPEDISI (VINTAGE PARCHMENT)
+  // ---------------------------------------------------------------------------
+  {
+    id: 'INF-07-HISTORICAL-EXPEDITION',
+    name: 'Kronik Sejarah & Ekspedisi (Vintage Parchment)',
+    archetype: 'INFOGRAPHIC_HISTORICAL_EXPEDITION',
+    referenceFile: 'template-07-template-infografis.jpg',
+    description: 'Infografis biografi sejarah dan catatan ekspedisi vintage berlatar gulungan perkamen cokelat hangat, bingkai oval antik, figura ukir emas, kompas bahari, buku kuno, dan pena bulu.',
+    tags: ['infografis', 'sejarah', 'ekspedisi', 'biografi', 'perkamen', 'vintage', 'kompas', 'klasik', 'arsip'],
+    aspectRatio: '4:5',
+    colorPalette: {
+      primaryAccent: '#78350F',
+      secondaryAccent: '#D97706',
+      backgroundBase: '#2B1408',
+      textColor: '#FEF3C7',
+      subTextColor: '#FDE68A',
+    },
+    scenePromptHint: 'Archival historical expedition biographical infographic artwork, antique brass navigational compass and ancient leather books on top, ornate golden baroque frame, vintage warm sepia parchment paper with feather quill and ink bottle, museum lighting.',
+    negativeSpaceZone: 'Warm aged parchment paper areas and parchment scrolls provide rich typographical reading surfaces.',
+    slotManifest: {
+      canvas: { width: 1080, height: 1350, aspectRatio: '4:5' },
+      slots: {
+        subjectPhoto: { x: 0.20, y: 0.40, w: 0.38, h: 0.40, anchor: 'center' },
+        headlineBlock: { x: 0.20, y: 0.05, w: 0.60, maxLines: 2, fontFamily: 'Bebas Neue', fontSizePx: 64, textColor: '#FEF3C7', isUppercase: false },
+        quoteStatement: { x: 0.55, y: 0.68, w: 0.40, fontFamily: 'Plus Jakarta Sans', fontSizePx: 14, textColor: '#FEF3C7' },
+        memberIdentity: { x: 0.08, y: 0.94, w: 0.45, nameFontSizePx: 16, titleFontSizePx: 12, nameColor: '#FEF3C7', titleColor: '#FDE68A' },
+        officialEmblem: { x: 0.82, y: 0.03, w: 0.12, maxHeightPx: 38, placement: 'top-right' },
+      },
+    },
+    fixedConstraints: {
+      baseBackgroundTone: 'DARK',
+      requiredFontFamilies: {
+        headline: 'Playfair Display',
+        body: 'Plus Jakarta Sans',
+      },
+      imageNegativeAllow: ['banner', 'frame', 'border'],
+      toneSafety: 'ALL_TOPICS',
+    },
+    variationRules: {
+      allowedLayoutVariants: ['CENTERED_HERO', 'EDITORIAL_SPLIT'],
+      allowedHeaderPlacements: ['top'],
+      allowedCardArrangements: ['stacked', 'grid_compact'],
+      canMutatePalette: true,
+    },
+  },
+
+  // ---------------------------------------------------------------------------
+  // 30. INFOGRAFIS 08: KOLASE ZINE ECO-PUNK (HALFTONE RISOGRAPH)
+  // ---------------------------------------------------------------------------
+  {
+    id: 'INF-08-PUNK-ZINE-HALFTONE',
+    name: 'Kolase Zine Eco-Punk (Punk Zine Halftone)',
+    archetype: 'INFOGRAPHIC_PUNK_ZINE',
+    referenceFile: 'template-08-punk-zine-halftone.jpg',
+    description: 'Infografis gaya zine punk dan risograf lingkungan dengan kontras warna hot pink dan neon acid lime, tekstur halftone hitam-putih, siluet pabrik industri, drum minyak bumi, grafik batang, dan stiker kutipan distres.',
+    tags: ['infografis', 'punk-zine', 'halftone', 'eco-punk', 'lingkungan', 'risograf', 'iklim', 'industri', 'grafik-batang'],
+    aspectRatio: '4:5',
+    colorPalette: {
+      primaryAccent: '#FF2E93',
+      secondaryAccent: '#BEF264',
+      backgroundBase: '#09090B',
+      textColor: '#FFFFFF',
+      subTextColor: '#BEF264',
+    },
+    scenePromptHint: 'Raw gritty eco-punk zine halftone collage with high-contrast industrial factory silhouette, dramatic halftone dot patterns, risograph noise, clean open torn-paper background panels in fluorescent acid lime and hot pink.',
+    negativeSpaceZone: 'Torn paper cutout panels at the top (pink header bar), middle-left (lime card), middle-right (pink pill), and bottom (lime bar chart zone) for editorial data typography.',
+    slotManifest: {
+      canvas: { width: 1080, height: 1350, aspectRatio: '4:5' },
+      slots: {
+        subjectPhoto: { x: 0.35, y: 0.40, w: 0.30, h: 0.35, anchor: 'center' },
+        headlineBlock: { x: 0.08, y: 0.04, w: 0.68, maxLines: 2, fontFamily: 'Anton', fontSizePx: 64, textColor: '#09090B', bgColor: '#FF2E93', isUppercase: true },
+        quoteStatement: { x: 0.38, y: 0.68, w: 0.24, fontFamily: 'Plus Jakarta Sans', fontSizePx: 13, textColor: '#09090B' },
+        memberIdentity: { x: 0.08, y: 0.95, w: 0.45, nameFontSizePx: 16, titleFontSizePx: 12, nameColor: '#FFFFFF', titleColor: '#BEF264' },
+        officialEmblem: { x: 0.82, y: 0.03, w: 0.12, maxHeightPx: 38, placement: 'top-right' },
+      },
+    },
+    fixedConstraints: {
+      baseBackgroundTone: 'DARK',
+      requiredFontFamilies: {
+        headline: 'Anton',
+        body: 'Plus Jakarta Sans',
+      },
+      imageNegativeAllow: ['banner', 'frame', 'border'],
+      toneSafety: 'ALL_TOPICS',
+    },
+    variationRules: {
+      allowedLayoutVariants: ['CENTERED_HERO', 'EDITORIAL_SPLIT'],
+      allowedHeaderPlacements: ['top'],
+      allowedCardArrangements: ['stacked', 'grid_compact'],
+      canMutatePalette: true,
+    },
+  },
+
+  // ---------------------------------------------------------------------------
+  // 31. INFOGRAFIS 09: WARISAN BUDAYA & LANGKAH EDUKASI
+  // ---------------------------------------------------------------------------
+  {
+    id: 'INF-09-HERITAGE-EDITORIAL',
+    name: 'Warisan Budaya & Langkah Edukasi',
+    archetype: 'INFOGRAPHIC_HERITAGE_EDITORIAL',
+    referenceFile: 'template-09-cultural-heritage-card.jpg',
+    description: 'Format infografis edukasi budaya dan permainan tradisional berbingkai merah marun elegan, aksen pita Merah Putih bergelombang, bilah pencarian modern di atas, dan alur 4 langkah interaktif.',
+    tags: ['infografis', 'budaya', 'tradisional', 'edukasi', 'merah-putih', 'kartu-sosial', 'timeline-langkah', 'heritage'],
+    aspectRatio: '4:5',
+    colorPalette: {
+      primaryAccent: '#991B1B',
+      secondaryAccent: '#DC2626',
+      backgroundBase: '#FAF8F5',
+      textColor: '#1E293B',
+      subTextColor: '#475569',
+    },
+    scenePromptHint: 'Warm cultural documentary photography with authentic Indonesian heritage textures, woven linen paper background, elegant red-and-white ribbon curves, authentic archival photo cutouts of traditional games or community heritage.',
+    negativeSpaceZone: 'Spacious rounded card zones in the middle register and lower section with crisp off-white paper texture, ideal for cultural narratives and 4-step horizontal timeline.',
+    slotManifest: {
+      canvas: { width: 1080, height: 1350, aspectRatio: '4:5' },
+      slots: {
+        subjectPhoto: { x: 0.08, y: 0.25, w: 0.35, h: 0.25, anchor: 'center' },
+        headlineBlock: { x: 0.08, y: 0.12, w: 0.45, maxLines: 2, fontFamily: 'Bebas Neue', fontSizePx: 56, textColor: '#991B1B', isUppercase: true },
+        quoteStatement: { x: 0.08, y: 0.52, w: 0.70, fontFamily: 'Plus Jakarta Sans', fontSizePx: 13, textColor: '#334155' },
+        memberIdentity: { x: 0.40, y: 0.93, w: 0.35, nameFontSizePx: 15, titleFontSizePx: 11, nameColor: '#1E293B', titleColor: '#991B1B' },
+        officialEmblem: { x: 0.82, y: 0.04, w: 0.12, maxHeightPx: 38, placement: 'top-right' },
+      },
+    },
+    fixedConstraints: {
+      baseBackgroundTone: 'WARM_PAPER',
+      requiredFontFamilies: {
+        headline: 'Bebas Neue',
+        body: 'Plus Jakarta Sans',
+      },
+      imageNegativeAllow: ['banner', 'frame', 'border'],
+      toneSafety: 'ALL_TOPICS',
+    },
+    variationRules: {
+      allowedLayoutVariants: ['TOP_BANNER', 'EDITORIAL_SPLIT'],
+      allowedHeaderPlacements: ['top'],
+      allowedCardArrangements: ['stacked', 'grid_compact'],
+      canMutatePalette: true,
+    },
+  },
+
+  // ---------------------------------------------------------------------------
+  // 32. INFOGRAFIS 10: ADVOKASI BUDAYA & SCRAPBOOK ORGANIK
+  // ---------------------------------------------------------------------------
+  {
+    id: 'INF-10-INDIGENOUS-ADVOCACY',
+    name: 'Advokasi Budaya & Scrapbook Organik',
+    archetype: 'INFOGRAPHIC_INDIGENOUS_ADVOCACY',
+    referenceFile: 'template-10-indigenous-advocacy.jpg',
+    description: 'Infografis advokasi hak adat dan budaya komunitas nusantara berformat scrapbook organik, tipografi gelembung stiker (bubble sticker), ornamen serat tenun noken, dan kotak tanya-jawab dialog publik.',
+    tags: ['infografis', 'advokasi', 'adat', 'papua', 'nusantara', 'scrapbook', 'organik', 'noken', 'komunitas'],
+    aspectRatio: '4:5',
+    colorPalette: {
+      primaryAccent: '#15803D',
+      secondaryAccent: '#D97706',
+      backgroundBase: '#29180C',
+      textColor: '#FEF3C7',
+      subTextColor: '#FDE68A',
+    },
+    scenePromptHint: 'Rich anthropological documentary photography of Indonesian indigenous culture, traditional tribal headdress, thatched hut village, authentic woven fiber textures (noken), warm golden hour natural lighting, vivid organic earth tones.',
+    negativeSpaceZone: 'Smooth warm earth-toned gradients and thatched textures across the center-right and lower area, tailored for organic dialogue bubbles and advocacy copy.',
+    slotManifest: {
+      canvas: { width: 1080, height: 1350, aspectRatio: '4:5' },
+      slots: {
+        subjectPhoto: { x: 0.65, y: 0.08, w: 0.30, h: 0.28, anchor: 'center' },
+        headlineBlock: { x: 0.08, y: 0.06, w: 0.55, maxLines: 2, fontFamily: 'Anton', fontSizePx: 64, textColor: '#15803D', isUppercase: true },
+        quoteStatement: { x: 0.25, y: 0.35, w: 0.70, fontFamily: 'Plus Jakarta Sans', fontSizePx: 13, textColor: '#FEF3C7' },
+        memberIdentity: { x: 0.15, y: 0.92, w: 0.30, nameFontSizePx: 14, titleFontSizePx: 11, nameColor: '#FEF3C7', titleColor: '#FDE68A' },
+        officialEmblem: { x: 0.05, y: 0.02, w: 0.18, maxHeightPx: 42, placement: 'top-left' },
+      },
+    },
+    fixedConstraints: {
+      baseBackgroundTone: 'DARK',
+      requiredFontFamilies: {
+        headline: 'Anton',
+        body: 'Plus Jakarta Sans',
+      },
+      imageNegativeAllow: ['banner', 'frame', 'border'],
+      toneSafety: 'ALL_TOPICS',
+    },
+    variationRules: {
+      allowedLayoutVariants: ['CENTERED_HERO', 'EDITORIAL_SPLIT'],
+      allowedHeaderPlacements: ['top'],
+      allowedCardArrangements: ['stacked', 'grid_compact'],
+      canMutatePalette: true,
+    },
+  },
+
+  // ---------------------------------------------------------------------------
+  // 33. INFOGRAFIS 11: ARSITEKTUR KLASIK & MONUMEN SEJARAH
+  // ---------------------------------------------------------------------------
+  {
+    id: 'INF-11-CLASSICAL-MONUMENT',
+    name: 'Arsitektur Klasik & Monumen Sejarah',
+    archetype: 'INFOGRAPHIC_CLASSICAL_MONUMENT',
+    referenceFile: 'template-11-classical-monument.jpg',
+    description: 'Infografis sejarah arsitektur klasik dan monumen peradaban berlatar pualam batu pasir antik, patung heroik megah di sisi kiri, lengkungan marmer kronologis, dan bingkai lingkaran situs arkeologi.',
+    tags: ['infografis', 'arsitektur', 'sejarah-dunia', 'klasik', 'arkeologi', 'monumen', 'pualam', 'peradaban'],
+    aspectRatio: '4:5',
+    colorPalette: {
+      primaryAccent: '#854D0E',
+      secondaryAccent: '#A16207',
+      backgroundBase: '#F5EBE1',
+      textColor: '#1C1917',
+      subTextColor: '#44403C',
+    },
+    scenePromptHint: 'Majestic classical antiquity and archaeological documentary photography, weathered sandstone and white marble colosseum architecture, dramatic classical sculpture under warm Mediterranean sunlight, parchment textures with subtle Greek architectural draft lines.',
+    negativeSpaceZone: 'Smooth antique parchment areas on the right side and lower sections between architectural callouts, perfect for classical serif typography and archaeological timeline.',
+    slotManifest: {
+      canvas: { width: 1080, height: 1350, aspectRatio: '4:5' },
+      slots: {
+        subjectPhoto: { x: 0.05, y: 0.28, w: 0.40, h: 0.50, anchor: 'center' },
+        headlineBlock: { x: 0.05, y: 0.02, w: 0.70, maxLines: 2, fontFamily: 'Bebas Neue', fontSizePx: 64, textColor: '#854D0E', isUppercase: true },
+        quoteStatement: { x: 0.05, y: 0.14, w: 0.52, fontFamily: 'Plus Jakarta Sans', fontSizePx: 12, textColor: '#44403C' },
+        memberIdentity: { x: 0.35, y: 0.98, w: 0.40, nameFontSizePx: 13, titleFontSizePx: 11, nameColor: '#FFFFFF', titleColor: '#FEF3C7' },
+        officialEmblem: { x: 0.82, y: 0.02, w: 0.12, maxHeightPx: 38, placement: 'top-right' },
+      },
+    },
+    fixedConstraints: {
+      baseBackgroundTone: 'WARM_PAPER',
+      requiredFontFamilies: {
+        headline: 'Bebas Neue',
+        body: 'Plus Jakarta Sans',
+      },
+      imageNegativeAllow: ['banner', 'frame', 'border'],
+      toneSafety: 'ALL_TOPICS',
+    },
+    variationRules: {
+      allowedLayoutVariants: ['TOP_BANNER', 'EDITORIAL_SPLIT'],
+      allowedHeaderPlacements: ['top'],
+      allowedCardArrangements: ['stacked', 'grid_compact'],
+      canMutatePalette: true,
+    },
+  },
+
+  // ---------------------------------------------------------------------------
+  // 34. INFOGRAFIS 12: KRONIK RETRO PANCARAN SURYA
+  // ---------------------------------------------------------------------------
+  {
+    id: 'INF-12-RETRO-SUNBURST',
+    name: 'Kronik Retro Pancaran Surya',
+    archetype: 'INFOGRAPHIC_RETRO_SUNBURST',
+    referenceFile: 'template-12-retro-sunburst-history.jpg',
+    description: 'Infografis sejarah perjuangan nasional berlatar pancaran sinar retro oranye-amber (sunburst rays), tipografi komik retro distres, foto arsip pahlawan Tiga Serangkai, dan kotak fakta \'Tahukah Kamu?!\'.',
+    tags: ['infografis', 'sejarah-nasional', 'retro', 'sunburst', 'pahlawan', 'tiga-serangkai', 'komik-vintage', 'edukasi-sejarah'],
+    aspectRatio: '4:5',
+    colorPalette: {
+      primaryAccent: '#EA580C',
+      secondaryAccent: '#D97706',
+      backgroundBase: '#FEF3C7',
+      textColor: '#431407',
+      subTextColor: '#78350F',
+    },
+    scenePromptHint: 'Vintage Indonesian historical chronicle background with radiant warm orange-amber sunburst rays, authentic aged newsprint and batik watermark texture, sepia archival photo frames of Indonesian national awakening heroes, warm nostalgic film grain.',
+    negativeSpaceZone: 'Structured horizontal parchment panels with warm amber borders across the center and lower areas, designed for 3-column historical dossier and interactive trivia card.',
+    slotManifest: {
+      canvas: { width: 1080, height: 1350, aspectRatio: '4:5' },
+      slots: {
+        subjectPhoto: { x: 0.06, y: 0.32, w: 0.38, h: 0.22, anchor: 'center' },
+        headlineBlock: { x: 0.06, y: 0.05, w: 0.44, maxLines: 2, fontFamily: 'Anton', fontSizePx: 64, textColor: '#EA580C', isUppercase: true },
+        quoteStatement: { x: 0.54, y: 0.08, w: 0.40, fontFamily: 'Plus Jakarta Sans', fontSizePx: 12, textColor: '#78350F' },
+        memberIdentity: { x: 0.10, y: 0.96, w: 0.40, nameFontSizePx: 14, titleFontSizePx: 11, nameColor: '#431407', titleColor: '#EA580C' },
+        officialEmblem: { x: 0.05, y: 0.24, w: 0.12, maxHeightPx: 38, placement: 'top-left' },
+      },
+    },
+    fixedConstraints: {
+      baseBackgroundTone: 'WARM_PAPER',
+      requiredFontFamilies: {
+        headline: 'Anton',
+        body: 'Plus Jakarta Sans',
+      },
+      imageNegativeAllow: ['banner', 'frame', 'border'],
+      toneSafety: 'ALL_TOPICS',
+    },
+    variationRules: {
+      allowedLayoutVariants: ['TOP_BANNER', 'EDITORIAL_SPLIT'],
+      allowedHeaderPlacements: ['top'],
+      allowedCardArrangements: ['stacked', 'grid_compact'],
+      canMutatePalette: true,
+    },
+  },
 ];

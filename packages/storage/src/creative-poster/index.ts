@@ -39,3 +39,4 @@ export * from './chromium-font-face.js';
 export * from './poster-layer-manifest.js';
 export * from './poster-inpainter.js';
 export * from './poster-color-harmonizer.js';
+export * from './poster-ambient-baker.js';

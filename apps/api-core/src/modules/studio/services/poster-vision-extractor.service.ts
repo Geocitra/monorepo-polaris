@@ -25,6 +25,8 @@ export interface ExtractedPosterContent {
     | 'INFOGRAPHIC_NARRATIVE_WAVE'
     | 'INFOGRAPHIC_CHRONICLE_GRID'
     | 'INFOGRAPHIC_RADIAL_CLOCK'
+    | 'INFOGRAPHIC_EDITORIAL_COLLAGE'
+    | 'INFOGRAPHIC_HISTORICAL_EXPEDITION'
     | 'GENERIC_INFOGRAPHIC'
     | string;
   elements?: ExtractedPosterElement[];
@@ -131,7 +133,7 @@ PERINGATAN KERAS & ATURAN MUTLAK:
    - fontWeight: "bold" atau "normal"
    - bgFill: warna latar badge teks jika teks memiliki latar tombol/pill sendiri (misal "#DC2626", "#FEE2E2")
 5. JUGA EKSTRAK STRUKTUR RINGKASAN:
-   - detectedArchetype: "INFOGRAPHIC_NARRATIVE_WAVE" | "INFOGRAPHIC_VISIONARY_TIMELINE" | "INFOGRAPHIC_ADVOCACY_PILLARS" | "INFOGRAPHIC_CHRONICLE_GRID" | "INFOGRAPHIC_RADIAL_CLOCK" | "INFOGRAPHIC_CUSTOM_DYNAMIC"
+   - detectedArchetype: "INFOGRAPHIC_NARRATIVE_WAVE" | "INFOGRAPHIC_VISIONARY_TIMELINE" | "INFOGRAPHIC_ADVOCACY_PILLARS" | "INFOGRAPHIC_CHRONICLE_GRID" | "INFOGRAPHIC_RADIAL_CLOCK" | "INFOGRAPHIC_EDITORIAL_COLLAGE" | "INFOGRAPHIC_HISTORICAL_EXPEDITION" | "INFOGRAPHIC_CUSTOM_DYNAMIC"
    - topBar: { left, right }
    - kicker, headline, deck
    - stats: [ { value, label } ]
@@ -272,6 +274,20 @@ Format JSON yang wajib dihasilkan (hanya JSON murni):
       allText.includes('rekam jejak')
     ) {
       archetype = 'INFOGRAPHIC_CHRONICLE_GRID';
+    } else if (
+      allText.includes('shadow') ||
+      allText.includes('light') ||
+      allText.includes('fakta menarik') ||
+      allText.includes('risograf')
+    ) {
+      archetype = 'INFOGRAPHIC_EDITORIAL_COLLAGE';
+    } else if (
+      allText.includes('ekspedisi') ||
+      allText.includes('rizal') ||
+      allText.includes('paglalakbay') ||
+      allText.includes('perkamen')
+    ) {
+      archetype = 'INFOGRAPHIC_HISTORICAL_EXPEDITION';
     }
 
     if (archetype === 'INFOGRAPHIC_NARRATIVE_WAVE') {

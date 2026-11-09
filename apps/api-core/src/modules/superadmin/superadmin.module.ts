@@ -10,6 +10,7 @@ import {
   SuperadminObservabilityService,
   SuperadminAuditService,
   SuperadminDomainService,
+  SuperadminAiCriticService,
 } from './services/index.js';
 import { EmailService } from '../../common/services/email.service.js';
 import { BillingModule } from '../billing/billing.module.js';
@@ -26,6 +27,7 @@ import { BillingModule } from '../billing/billing.module.js';
     SuperadminObservabilityService,
     SuperadminAuditService,
     SuperadminDomainService,
+    SuperadminAiCriticService,
     EmailService,
   ],
   exports: [
@@ -37,6 +39,7 @@ import { BillingModule } from '../billing/billing.module.js';
     SuperadminObservabilityService,
     SuperadminAuditService,
     SuperadminDomainService,
+    SuperadminAiCriticService,
   ],
 })
 export class SuperadminModule {}

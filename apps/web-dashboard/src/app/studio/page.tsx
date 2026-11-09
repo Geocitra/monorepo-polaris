@@ -21,6 +21,8 @@ import {
   ChevronRight,
   Layers,
   ArrowLeft,
+  Bot,
+  Terminal,
 } from 'lucide-react';
 
 export default function StudioHubPage() {
