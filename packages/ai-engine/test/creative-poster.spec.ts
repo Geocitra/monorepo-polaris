@@ -8,7 +8,7 @@ import { openaiClient } from '../src/client.js';
 
 describe('POLARIS Creative Poster Engine', () => {
   it('harus memuat katalog blueprint pre-analyzed lengkap dengan slot manifest', () => {
-    expect(POSTER_BLUEPRINT_CATALOG.length).toBe(22);
+    expect(POSTER_BLUEPRINT_CATALOG.length).toBe(34);
 
     const streetTemplate = POSTER_BLUEPRINT_CATALOG.find((b) => b.archetype === 'STREET_JOURNALISM');
     expect(streetTemplate).toBeDefined();
@@ -79,7 +79,7 @@ describe('POLARIS Creative Poster Engine', () => {
     expect(cleaned).not.toMatch(/\bnewspaper\b/i);
   });
 
-  it('harus memvalidasi Zero HEX Leak & Zero UI Trigger Leak untuk SELURUH 22 blueprint katalog', async () => {
+  it('harus memvalidasi Zero HEX Leak & Zero UI Trigger Leak untuk seluruh 34 blueprint katalog', async () => {
     vi.spyOn(PosterPromptCompiler, 'synthesizeEditorialCopyAndVisuals').mockImplementation(
       async (topic, blueprint) => ({
         layoutVariant: 'TOP_BANNER',
