@@ -22,4 +22,14 @@ export class ImageOptimizer {
       sizeBytes: optimized.length,
     };
   }
+
+  /**
+   * convertToJpegBuffer mengonversi buffer gambar (WebP/PNG/AVIF) ke format JPEG standar
+   * yang kompatibel secara native dengan WhatsApp Cloud API Meta (yang menolak WebP).
+   */
+  public static async convertToJpegBuffer(inputBuffer: Buffer, quality = 85): Promise<Buffer> {
+    return await sharp(inputBuffer)
+      .jpeg({ quality, mozjpeg: true })
+      .toBuffer();
+  }
 }
