@@ -325,7 +325,18 @@ export class PartyIdeologyResolver {
           )
           .limit(1);
 
-        if (row) dbProfile = row;
+        if (row) {
+          dbProfile = {
+            name: row.name,
+            ideologySpectrum: row.ideologySpectrum,
+            corePhilosophies: row.corePhilosophies,
+            policyDoctrines: (row.policyDoctrines && typeof row.policyDoctrines === 'object')
+              ? (row.policyDoctrines as Record<string, string>)
+              : undefined,
+            preferredVocabulary: row.preferredVocabulary,
+            tabooStances: row.tabooStances,
+          };
+        }
       }
     } catch {
       // Abaikan jika DB belum dimigrasi atau offline, gunakan builtin registry

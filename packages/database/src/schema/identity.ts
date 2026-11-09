@@ -22,7 +22,7 @@ export const masterPoliticalParties = pgTable('master_political_parties', {
   description: text('description'),
   ideologySpectrum: varchar('ideology_spectrum', { length: 50 }).default('NASIONALIS').notNull(),
   corePhilosophies: text('core_philosophies').array().default([]).notNull(),
-  policyDoctrines: jsonb('policy_doctrines').default({}).notNull(),
+  policyDoctrines: jsonb('policy_doctrines').$type<Record<string, string>>().default({}).notNull(),
   preferredVocabulary: text('preferred_vocabulary').array().default([]).notNull(),
   tabooStances: text('taboo_stances').array().default([]).notNull(),
   isActive: boolean('is_active').default(true).notNull(),
