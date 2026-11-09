@@ -38,6 +38,11 @@ export class SuperadminMasterDataService {
         secondaryColor: dto.secondaryColor,
         logoUrl: dto.logoUrl,
         description: dto.description,
+        ...(dto.ideologySpectrum ? { ideologySpectrum: dto.ideologySpectrum } : {}),
+        ...(dto.corePhilosophies ? { corePhilosophies: dto.corePhilosophies } : {}),
+        ...(dto.policyDoctrines ? { policyDoctrines: dto.policyDoctrines } : {}),
+        ...(dto.preferredVocabulary ? { preferredVocabulary: dto.preferredVocabulary } : {}),
+        ...(dto.tabooStances ? { tabooStances: dto.tabooStances } : {}),
         isActive: true,
       })
       .returning();

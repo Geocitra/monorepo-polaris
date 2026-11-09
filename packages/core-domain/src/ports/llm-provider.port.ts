@@ -12,6 +12,8 @@ export interface GenerateArticleParams {
   writingStyle?: string;
   framingStance?: string;
   toneOverride?: string;
+  partyAffiliation?: string | null;
+  partyIdeologyDirective?: string | null;
   onProgress?: (step: string, percent: number) => Promise<void> | void;
 }
 

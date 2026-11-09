@@ -1,6 +1,7 @@
 import { GoogleGenAI } from '@google/genai';
 import dns from 'node:dns';
 import { AiTelemetryService } from '../telemetry/ai-telemetry.service.js';
+import { PartyIdeologyResolver } from '../party/party-ideology.resolver.js';
 
 try {
   dns.setDefaultResultOrder('ipv4first');
@@ -67,7 +68,20 @@ Aturan:
       if (memberName) contextParts.push(`Tokoh: ${memberName}`);
       if (dapilName) contextParts.push(`Dapil: ${dapilName}`);
       if (commissionName) contextParts.push(`Komisi: ${commissionName}`);
-      if (partyAffiliation) contextParts.push(`Fraksi/Partai: ${partyAffiliation}`);
+      if (partyAffiliation) {
+        try {
+          const resolved = await PartyIdeologyResolver.resolveDirective({
+            partyAffiliation,
+            topic: rawPrompt,
+          });
+          contextParts.push(`Fraksi: ${resolved.partyName} (${resolved.ideologySpectrum})`);
+          if (resolved.preferredVocabulary.length > 0) {
+            contextParts.push(`Diksi Fraksi: ${resolved.preferredVocabulary.slice(0, 3).join(', ')}`);
+          }
+        } catch {
+          contextParts.push(`Fraksi/Partai: ${partyAffiliation}`);
+        }
+      }
       const contextStr = contextParts.length > 0 ? ` (Konteks Tokoh: ${contextParts.join(', ')})` : '';
 
       const fullPrompt = `${instruction}\n\nIde Kasar Pengguna: "${rawPrompt}"${contextStr}\n\nHasil Sempurna:`;
@@ -143,6 +157,17 @@ Aturan:
       const client = new GoogleGenAI({ apiKey });
       const model = process.env.GEMINI_LITE_MODEL || 'gemini-3.1-flash-lite';
 
+      let partyIdeologyHint = '';
+      if (partyAffiliation) {
+        try {
+          const resolved = await PartyIdeologyResolver.resolveDirective({
+            partyAffiliation,
+            topic: dapilName,
+          });
+          partyIdeologyHint = `- Haluan Ideologi Fraksi: ${resolved.partyName} (${resolved.ideologySpectrum}). Fokus: ${resolved.corePhilosophies.slice(0, 3).join(', ')}`;
+        } catch {}
+      }
+
       const prompt = `Kamu adalah analis intelijen kebijakan publik dan komunikasi politik POLARIS.
 Buatlah 4 topik isu hangat daerah yang paling relevan, mendesak, dan realistis untuk disuarakan oleh:
 - Tokoh: ${memberName}
@@ -151,7 +176,7 @@ Buatlah 4 topik isu hangat daerah yang paling relevan, mendesak, dan realistis u
 ${regencyCoverage.length > 0 ? `- Cakupan Wilayah: ${regencyCoverage.slice(0, 4).join(', ')}` : ''}
 ${commissionName ? `- Komisi/Bidang: ${commissionName}` : ''}
 ${partyAffiliation ? `- Fraksi: ${partyAffiliation}` : ''}
-${recentNewsHeadlines.length > 0 ? `- Sinyal Berita Daerah Terbaru: ${recentNewsHeadlines.slice(0, 3).join('; ')}` : ''}
+${partyIdeologyHint ? `${partyIdeologyHint}\n` : ''}${recentNewsHeadlines.length > 0 ? `- Sinyal Berita Daerah Terbaru: ${recentNewsHeadlines.slice(0, 3).join('; ')}` : ''}
 
 Aturan:
 1. Setiap topik harus spesifik ke nama wilayah atau permasalahan riil di daerah tersebut (bukan isu generik nasional).

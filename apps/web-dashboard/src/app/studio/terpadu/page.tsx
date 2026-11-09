@@ -914,7 +914,7 @@ function KampanyeTerpaduContent() {
               onUpdateArticleContent={handleUpdateArticleContent}
               isBackgroundRenderingPoster={isBackgroundRenderingPoster}
               authorName={profile?.fullName || 'Tokoh Publik'}
-              partyAffiliation={profile?.commissionName || profile?.politicalParty || ''}
+              partyAffiliation={profile?.partyAffiliation || ''}
               userSubdomain={profile?.subdomain}
               userCustomDomain={profile?.customDomain}
             />

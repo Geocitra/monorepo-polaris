@@ -17,6 +17,7 @@ import {
   subscriptions,
   electoralDistricts,
   emailOtps,
+  masterPoliticalParties,
 } from '@polaris/database';
 import { SubdomainSlug } from '@polaris/core-domain';
 import { SubscriptionStatus, PlanTier } from '@polaris/shared-types';
@@ -37,7 +38,7 @@ export class IdentityAuthService {
   constructor(
     private readonly jwtService: JwtService,
     private readonly emailService: EmailService,
-  ) {}
+  ) { }
 
   async registerTenant(dto: RegisterRequestDto): Promise<AuthResponseDto> {
     let cleanSlug: string;
@@ -109,6 +110,26 @@ export class IdentityAuthService {
       }
     }
 
+    let finalPartyId: string | null = null;
+    let finalPartyAffiliation: string | null = dto.partyAffiliation?.trim() || null;
+    if (finalPartyAffiliation) {
+      const [partyMatch] = await db
+        .select({ id: masterPoliticalParties.id, code: masterPoliticalParties.code })
+        .from(masterPoliticalParties)
+        .where(
+          or(
+            eq(masterPoliticalParties.code, finalPartyAffiliation),
+            eq(masterPoliticalParties.name, finalPartyAffiliation),
+            sql`UPPER(REPLACE(${masterPoliticalParties.code}, '-', '')) = UPPER(REPLACE(${finalPartyAffiliation}, '-', ''))`
+          )
+        )
+        .limit(1);
+      if (partyMatch) {
+        finalPartyId = partyMatch.id;
+        finalPartyAffiliation = partyMatch.code;
+      }
+    }
+
     const passwordHash = await bcrypt.hash(dto.password, 10);
 
     const result = await db.transaction(async (tx) => {
@@ -119,7 +140,8 @@ export class IdentityAuthService {
           passwordHash,
           fullName: dto.fullName.trim(),
           phoneNumber: dto.phoneNumber.trim(),
-          partyAffiliation: dto.partyAffiliation?.trim() || null,
+          partyAffiliation: finalPartyAffiliation,
+          politicalPartyId: finalPartyId,
           legislativeLevel: dto.legislativeLevel || 'DPRD_PROVINSI',
           electoralDistrictId: finalDapilId,
           customDapilName: initialDapilName,

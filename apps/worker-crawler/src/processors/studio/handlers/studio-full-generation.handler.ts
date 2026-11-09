@@ -1,62 +1,31 @@
-import * as crypto from 'crypto';
-import * as path from 'path';
-import * as fs from 'fs';
 import { Job } from 'bullmq';
-import { and, eq, sql } from 'drizzle-orm';
+import { and, eq } from 'drizzle-orm';
 import {
   db,
   contentPublications,
-  mediaAssets,
-  socialSyndicationPacks,
-  tenantQuotaLedgers,
   tenantMembers,
   electoralDistricts,
-  findSimilarKnowledgeChunks,
   withTenantContext,
-  researchJobs,
-  researchOutputs,
-  datahubFiles,
-  datahubDocumentRefs,
-  datahubDocumentChunks,
 } from '@polaris/database';
-import {
-  OpenAIAIEngineAdapter,
-  ContextCapsuleBuilder,
-  AutonomousResearchOrchestrator,
-  DeterministicQualityGates,
-  AiTelemetryService,
-  DocumentExtractorService,
-  ContextualChunkerService,
-  DatahubEmbedderService,
-  DocumentClassifierService,
-} from '@polaris/ai-engine';
-import { CloudflareR2StorageAdapter, ChromiumPosterCompositor, PosterAmbientBaker } from '@polaris/storage';
-import {
-  ContentStatus,
-  AssetType,
-  ResearchJobStatus,
-  DatahubPrivacyScope,
-  DatahubCategory,
-} from '@polaris/shared-types';
-import { AiCostCalculator } from '@polaris/core-domain';
+import { OpenAIAIEngineAdapter } from '@polaris/ai-engine';
+import { CloudflareR2StorageAdapter } from '@polaris/storage';
+import { ContentStatus } from '@polaris/shared-types';
 import { StudioGenerationJobPayload } from '../../../queues/studio.queue.js';
 import { StudioContextHelper } from '../studio-context.helper.js';
-
-function cosineSimilarity(vecA: number[], vecB: number[]): number {
-  if (!vecA || !vecB || vecA.length !== vecB.length) return 0;
-  let dotProduct = 0;
-  let normA = 0;
-  let normB = 0;
-  for (let i = 0; i < vecA.length; i++) {
-    dotProduct += vecA[i] * vecB[i];
-    normA += vecA[i] * vecA[i];
-    normB += vecB[i] * vecB[i];
-  }
-  if (normA === 0 || normB === 0) return 0;
-  return dotProduct / (Math.sqrt(normA) * Math.sqrt(normB));
-}
+import {
+  StudioAttachmentPipelineService,
+  StudioArticleSynthesizerService,
+  StudioPosterSynthesizerService,
+} from '../services/index.js';
 
 export class StudioFullGenerationHandler {
+  /**
+   * Facade Orchestrator untuk Pemrosesan Generasi Konten Terpadu:
+   * 1. Resolusi Identitas Wilayah, Dapil, & Query Embedding Topik
+   * 2. Multimodal Ingestion, Deduplikasi SHA-256, OCR, & RAG Chunking (StudioAttachmentPipelineService)
+   * 3. Riset Otonom, Ideologi Partai, Sintesis 5-Bab, QC Gate, & Social Pack (StudioArticleSynthesizerService)
+   * 4. Progressive Delivery & Render Visual Editorial Poster (StudioPosterSynthesizerService)
+   */
   public static async execute(
     job: Job<StudioGenerationJobPayload>,
     aiEngine: OpenAIAIEngineAdapter,
@@ -71,7 +40,7 @@ export class StudioFullGenerationHandler {
 
     try {
       // -----------------------------------------------------------------------
-      // LANGKAH 1 (20%): Resolusi Wilayah & Ekstraksi Dokumen
+      // LANGKAH 1 (20%): Resolusi Profil Tokoh, Wilayah & Query Embedding
       // -----------------------------------------------------------------------
       await StudioContextHelper.emitProgress(
         tenantId,
@@ -132,250 +101,19 @@ export class StudioFullGenerationHandler {
         console.warn(`[StudioProcessor] Query embedding gagal: ${err.message}`);
       }
 
-      // =======================================================================
-      // LANGKAH 1A: MULTIMODAL INGESTION, DEDUPLIKASI SHA-256 & RAG CHUNKING
-      // Hak Milik Dokumen: Terikat strictly ke Tokoh Binaan aktif (tenantId)
-      // =======================================================================
-      const parsedDocuments: Array<{ name: string; type: string; extractedContent: string }> = [];
-
-      if (data.attachments && data.attachments.length > 0) {
-        for (const att of data.attachments.slice(0, 5)) {
-          try {
-            if (!att.base64) continue;
-            const cleanBase64 = att.base64.replace(/^data:[^;]+;base64,/, '');
-            const fileBuffer = Buffer.from(cleanBase64, 'base64');
-            if (fileBuffer.length === 0) continue;
-
-            const contentSha256 = crypto.createHash('sha256').update(fileBuffer).digest('hex');
-            const cleanName = att.name || 'lampiran_lapangan';
-            const cleanMime = (att.type || 'application/octet-stream').toLowerCase();
-
-            // 1. Cek Deduplikasi Fisik di DataHub
-            const [existingFile] = await db
-              .select({
-                id: datahubFiles.id,
-                contentSha256: datahubFiles.contentSha256,
-                extractionStatus: datahubFiles.extractionStatus,
-                extractedRawText: datahubFiles.extractedRawText,
-              })
-              .from(datahubFiles)
-              .where(eq(datahubFiles.contentSha256, contentSha256))
-              .limit(1);
-
-            let targetFileId: string;
-            let fileChunks: Array<{
-              chunkIndex: number;
-              sectionTitle: string | null;
-              chunkContent: string;
-              vectorEmbedding: number[];
-            }> = [];
-
-            if (existingFile && existingFile.extractionStatus === 'COMPLETED') {
-              // DEDUPLIKASI HIT! File fisik, ekstraksi & embedding sudah ada.
-              console.log(
-                `[StudioProcessor] Dokumen '${cleanName}' terdeduplikasi via SHA-256 (${contentSha256}). Skip ekstraksi & embedding ulang.`
-              );
-              targetFileId = existingFile.id;
-
-              // Ambil chunk dan vektor yang sudah tersimpan di pgvector
-              const loadedChunks = await db
-                .select({
-                  chunkIndex: datahubDocumentChunks.chunkIndex,
-                  sectionTitle: datahubDocumentChunks.sectionTitle,
-                  chunkContent: datahubDocumentChunks.chunkContent,
-                  vectorEmbedding: datahubDocumentChunks.vectorEmbedding,
-                })
-                .from(datahubDocumentChunks)
-                .where(eq(datahubDocumentChunks.fileId, targetFileId));
-
-              fileChunks = loadedChunks;
-            } else {
-              // BERKAS BARU: Ekstraksi Teks Multimodal (PDF, DOCX, Gemini Vision OCR, CSV/Plaintext)
-              const extraction = await DocumentExtractorService.extractText(
-                fileBuffer,
-                cleanMime,
-                cleanName,
-                tenantId
-              );
-              const extractedText = (extraction.text || '').trim();
-
-              // Simpan fisik file ke upload dir lokal
-              const uploadDir = path.resolve(process.cwd(), 'uploads/datahub');
-              if (!fs.existsSync(uploadDir)) {
-                fs.mkdirSync(uploadDir, { recursive: true });
-              }
-              const ext = path.extname(cleanName) || '.bin';
-              const localFilePath = path.join(uploadDir, `${contentSha256}${ext}`);
-              if (!fs.existsSync(localFilePath)) {
-                fs.writeFileSync(localFilePath, fileBuffer);
-              }
-
-              // Simpan record master file
-              const [newMasterFile] = await db
-                .insert(datahubFiles)
-                .values({
-                  contentSha256,
-                  originalFileName: cleanName,
-                  mimeType: cleanMime,
-                  fileSizeBytes: fileBuffer.length,
-                  storagePath: `/uploads/datahub/${contentSha256}${ext}`,
-                  extractionStatus: 'COMPLETED',
-                  totalPages: extraction.totalPages || 1,
-                  extractedRawText: extractedText.slice(0, 100000),
-                })
-                .returning({ id: datahubFiles.id });
-
-              targetFileId = newMasterFile.id;
-
-              // Klasifikasi Cerdas Kategori Dokumen (3-Pass AI & Heuristik)
-              let detectedCategory = DatahubCategory.DOKUMEN_INTERNAL;
-              try {
-                const cls = await DocumentClassifierService.classifyDocument(
-                  cleanName,
-                  extractedText,
-                  undefined,
-                  tenantId
-                );
-                detectedCategory = cls.category;
-              } catch (clsErr: any) {
-                console.warn(
-                  `[StudioProcessor] Gagal klasifikasi dokumen ${cleanName}: ${clsErr.message}`
-                );
-              }
-
-              // PEMBEDAAN CHUNKING SISTEM:
-              // - Dokumen pendek / Foto OCR (<= 800 kata): Unified Single Context Chunk
-              // - Dokumen panjang (Perda, APBD, LKPJ > 800 kata): Contextual Sliding Window Chunking
-              const wordCount = extractedText.split(/\s+/).filter(Boolean).length;
-              let generatedChunks: any[] = [];
-
-              if (wordCount <= 800 || extraction.extractorUsed === 'gemini-vision-ocr') {
-                generatedChunks = [
-                  {
-                    chunkIndex: 0,
-                    sectionTitle:
-                      extraction.extractorUsed === 'gemini-vision-ocr'
-                        ? 'Transkrip & Scene Lapangan'
-                        : 'Ringkasan Rilis/Memo',
-                    chunkContent: extractedText,
-                    fullChunkText: `[Kategori: ${detectedCategory}] [Dokumen: ${cleanName}]\n${extractedText}`,
-                    tokenCount: Math.ceil(extractedText.length / 4),
-                  },
-                ];
-              } else {
-                generatedChunks = ContextualChunkerService.chunkDocument(extractedText, {
-                  documentTitle: cleanName,
-                  categoryTag: detectedCategory,
-                  targetChunkWords: 380,
-                  overlapWords: 70,
-                });
-              }
-
-              // Batch Embeddings & Simpan ke pgvector
-              if (generatedChunks.length > 0) {
-                const chunkTexts = generatedChunks.map((c) => c.fullChunkText || c.chunkContent);
-                const embeddings = await DatahubEmbedderService.generateBatchEmbeddings(chunkTexts, 50, tenantId);
-
-                const chunkRows = generatedChunks.map((c, idx) => ({
-                  fileId: targetFileId,
-                  chunkIndex: c.chunkIndex,
-                  sectionTitle: c.sectionTitle || `Bagian ${idx + 1}`,
-                  chunkContent: c.chunkContent,
-                  contextualHeader: c.contextualHeader || null,
-                  tokenCount: c.tokenCount || Math.ceil(c.chunkContent.length / 4),
-                  vectorEmbedding: embeddings[idx],
-                }));
-
-                for (let i = 0; i < chunkRows.length; i += 50) {
-                  const slice = chunkRows.slice(i, i + 50);
-                  await db.insert(datahubDocumentChunks).values(slice);
-                }
-
-                fileChunks = chunkRows;
-              }
-            }
-
-            // 2. KEPEMILIKAN DOKUMEN: Daftarkan Referensi Multi-Tenant ke Tokoh Binaan (tenantId)
-            const [existingRef] = await db
-              .select({ id: datahubDocumentRefs.id })
-              .from(datahubDocumentRefs)
-              .where(
-                and(
-                  eq(datahubDocumentRefs.fileId, targetFileId),
-                  eq(datahubDocumentRefs.uploadedByTenantId, tenantId)
-                )
-              )
-              .limit(1);
-
-            if (!existingRef) {
-              // Jika berkas sudah pernah diunggah sebelumnya (deduplikasi), warisi kategori yang ada
-              let refCategory = DatahubCategory.DOKUMEN_INTERNAL;
-              const [priorRef] = await db
-                .select({ categoryTag: datahubDocumentRefs.categoryTag })
-                .from(datahubDocumentRefs)
-                .where(eq(datahubDocumentRefs.fileId, targetFileId))
-                .limit(1);
-
-              if (priorRef?.categoryTag) {
-                refCategory = priorRef.categoryTag as DatahubCategory;
-              } else if (fileChunks.length > 0) {
-                const sampleText = fileChunks.map((c) => c.chunkContent).join('\n').slice(0, 3000);
-                const cls = await DocumentClassifierService.classifyDocument(cleanName, sampleText, undefined, tenantId);
-                refCategory = cls.category;
-              }
-
-              await db.insert(datahubDocumentRefs).values({
-                fileId: targetFileId,
-                uploadedByTenantId: tenantId, // Hak milik mutlak tokoh dewan binaan yang aktif!
-                customTitle: cleanName,
-                dapilCode: resolvedDapilCode,
-                partyAffiliation: member?.partyAffiliation || null,
-                branchType: member?.legislativeLevel?.startsWith('KEPALA_DAERAH')
-                  ? 'EKSEKUTIF'
-                  : member?.legislativeLevel === 'PIMPINAN_LEMBAGA_REKTOR_SWASTA'
-                    ? 'PUBLIK'
-                    : 'LEGISLATIF',
-                legislativeLevel: (member?.legislativeLevel as any) || null,
-                privacyScope: DatahubPrivacyScope.PRIVATE_TENANT,
-                categoryTag: refCategory,
-              });
-            }
-
-            // 3. RAG TOP-K RELEVANCE FILTERING: Ambil chunk terbaik yang relevan dengan topik artikel
-            if (fileChunks.length > 0) {
-              let selectedChunks = fileChunks;
-
-              if (fileChunks.length > 3 && queryVector && queryVector.length > 0) {
-                const scored = fileChunks.map((ch) => ({
-                  chunk: ch,
-                  score: cosineSimilarity(queryVector!, ch.vectorEmbedding),
-                }));
-                scored.sort((a, b) => b.score - a.score);
-                selectedChunks = scored.slice(0, 4).map((s) => s.chunk);
-              }
-
-              const formattedContent = selectedChunks
-                .map(
-                  (ch, idx) =>
-                    `[Lampiran Dokumen: ${cleanName} - ${ch.sectionTitle || 'Bagian ' + (idx + 1)}]:\n${ch.chunkContent}`
-                )
-                .join('\n\n');
-
-              parsedDocuments.push({
-                name: cleanName,
-                type: cleanMime,
-                extractedContent: formattedContent,
-              });
-            }
-          } catch (attErr: any) {
-            console.warn(`[StudioProcessor] Gagal memproses lampiran ${att.name}: ${attErr.message}`);
-          }
-        }
-      }
+      // -----------------------------------------------------------------------
+      // LANGKAH 2: Multimodal Ingestion & Lampiran Lapangan (Pipeline Service)
+      // -----------------------------------------------------------------------
+      const parsedDocuments = await StudioAttachmentPipelineService.processAttachments({
+        tenantId,
+        attachments: data.attachments,
+        queryVector,
+        resolvedDapilCode,
+        member,
+      });
 
       // -----------------------------------------------------------------------
-      // CHECKPOINT IDEMPOTENCY: Muat status tahapan publikasi agar BullMQ retry
-      // tidak mengeksekusi ulang Riset Otonom atau 5-Bab GPT-4o yang sudah selesai.
+      // LANGKAH 3: Checkpoint Idempotency & Sintesis Naskah (Synthesizer Service)
       // -----------------------------------------------------------------------
       const [existingPub] = await db
         .select({
@@ -395,295 +133,35 @@ export class StudioFullGenerationHandler {
           ? { ...(existingPub.generationCheckpoints as Record<string, any>) }
           : {};
 
-      // -----------------------------------------------------------------------
-      // LANGKAH 1B (20%-35%): Autonomous Research Pipeline (Planner, Multi-Source, Evidence Spans)
-      // -----------------------------------------------------------------------
-      await StudioContextHelper.emitProgress(
+      const synthesisResult = await StudioArticleSynthesizerService.synthesizeArticle({
         tenantId,
+        publicationId,
         jobId,
-        20,
-        'Menjalankan Riset Otonom & Pencarian Bukti Terverifikasi...'
-      );
-
-      let researchJobId: string | undefined = checkpoints.researchJobId || existingPub?.researchJobId || undefined;
-      let groundedEvidenceText = typeof checkpoints.groundedEvidenceText === 'string' ? checkpoints.groundedEvidenceText : '';
-      let evidenceMap = new Map<string, string>(
-        Array.isArray(checkpoints.evidenceEntries) ? checkpoints.evidenceEntries : []
-      );
-
-      if (checkpoints.researchDone && groundedEvidenceText) {
-        console.log(
-          `[StudioProcessor] Checkpoint Riset Otonom ditemukan untuk PubID ${publicationId}; melewati eksekusi ulang riset.`
-        );
-      } else {
-        try {
-          const researchResult = await AutonomousResearchOrchestrator.executeResearchPipeline({
-            tenantId,
-            topic: data.topic,
-            userPrompt: data.prompt || data.topic,
-            targetRegion,
-            queryEmbedding: queryVector || undefined,
-            attachedDocuments: parsedDocuments,
-            providedUrls: data.externalUrls || data.referencedUrls || [],
-            onProgress: async (step, pct) => {
-              const scaledPct = Math.round(20 + (pct / 100) * 15);
-              await StudioContextHelper.emitProgress(tenantId, jobId, scaledPct, step);
-            },
-          });
-          researchJobId = researchResult.jobId;
-          groundedEvidenceText = researchResult.groundedContextText;
-          evidenceMap = researchResult.evidenceIdMap;
-
-          checkpoints.researchDone = true;
-          checkpoints.researchJobId = researchJobId || null;
-          checkpoints.groundedEvidenceText = groundedEvidenceText.slice(0, 25000);
-          checkpoints.evidenceEntries = Array.from(evidenceMap.entries());
-
-          await db
-            .update(contentPublications)
-            .set({
-              researchJobId: researchJobId || null,
-              generationCheckpoints: checkpoints,
-              updatedAt: new Date(),
-            })
-            .where(eq(contentPublications.id, publicationId))
-            .catch(() => null);
-        } catch (researchErr: any) {
-          console.warn(
-            `[StudioProcessor] Autonomous research error, fallback ke RAG dasar: ${researchErr.message}`
-          );
-        }
-      }
-
-      const similarChunks = queryVector
-        ? await findSimilarKnowledgeChunks(queryVector, 3, targetRegion, 0.6)
-        : [];
-
-      const baseContext = ContextCapsuleBuilder.assembleContext({
-        regionName: `${dapilName} (${targetRegion})`,
-        regulations: similarChunks.map((c) => ({
-          reference: c.structuralReference,
-          content: c.chunkContent,
-        })),
-        recentNews: [],
-        comparisonRegionData: data.comparisonRegion
-          ? `Perbandingan: ${data.comparisonRegion}`
-          : undefined,
-        attachedDocuments: parsedDocuments,
+        topic: data.topic,
+        prompt: data.prompt,
+        targetRegion,
+        dapilName,
+        queryVector,
+        parsedDocuments,
+        externalUrls: data.externalUrls,
+        referencedUrls: data.referencedUrls,
+        targetAudience: data.targetAudience,
+        targetLength: data.targetLength,
+        writingStyle: data.writingStyle,
         framingStance: data.framingStance,
+        toneOverride: data.toneOverride,
+        comparisonRegion: data.comparisonRegion,
+        member,
+        checkpoints,
+        existingPub,
+        aiEngine,
       });
 
-      const contextPayload = groundedEvidenceText
-        ? `${baseContext}\n\n${groundedEvidenceText}`
-        : baseContext;
+      const { article: generatedArticle, groundedEvidenceText } = synthesisResult;
 
       // -----------------------------------------------------------------------
-      // LANGKAH 2 (50%): Sintesis Naskah Kebijakan Panjang (GPT-4o)
+      // LANGKAH 4: Progressive Instant Delivery (Teks 100% Siap)
       // -----------------------------------------------------------------------
-      await StudioContextHelper.emitProgress(
-        tenantId,
-        jobId,
-        35,
-        'Menyusun Naskah Kebijakan Modular Berantai...'
-      );
-
-      const isArticleAlreadyCheckpointed = Boolean(
-        checkpoints.articleDone &&
-          existingPub?.bodyContentMarkdown &&
-          (existingPub.wordCount ?? 0) > 100
-      );
-
-      const generatedArticle = isArticleAlreadyCheckpointed
-        ? {
-            title: existingPub!.title || data.topic,
-            excerpt: existingPub!.excerpt || '',
-            contentMarkdown: existingPub!.bodyContentMarkdown,
-            wordCount: existingPub!.wordCount || 0,
-            totalTokensUsed: 0,
-            canonicalTraceId: String(checkpoints.canonicalTraceId || `checkpoint-${publicationId}`),
-          }
-        : await aiEngine.generateArticle({
-            topic: data.topic,
-            regionalContextData: contextPayload,
-            targetAudience: data.targetAudience,
-            targetLength: data.targetLength,
-            writingStyle: data.writingStyle,
-            framingStance: data.framingStance,
-            toneOverride: data.toneOverride,
-            tenantId,
-            onProgress: async (step, pct) => {
-              await StudioContextHelper.emitProgress(tenantId, jobId, pct, step);
-            },
-          });
-
-      if (!isArticleAlreadyCheckpointed) {
-        // -----------------------------------------------------------------------
-        // LANGKAH 2B: Deterministic Quality Control Gate & BR-05 Self-Healing Gate
-        // -----------------------------------------------------------------------
-        const validEvidenceKeys = new Set(evidenceMap.keys());
-        let qcResult = DeterministicQualityGates.verifyCitationQualityControl(
-          generatedArticle.contentMarkdown,
-          validEvidenceKeys
-        );
-
-        // BR-05: Self-Healing Anti-Rogue Citation Gate
-        if (qcResult.rogueCitations && qcResult.rogueCitations.length > 0) {
-          console.warn(
-            `[StudioProcessor] Terdeteksi ${qcResult.rogueCitations.length} rogue citation fiktif: [${qcResult.rogueCitations.join(', ')}]. Menjalankan Self-Healing Citation Gate...`
-          );
-          let healedMarkdown = generatedArticle.contentMarkdown;
-          for (const rogueId of qcResult.rogueCitations) {
-            const escaped = rogueId.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-            const rogueRegex = new RegExp(`\\[(?:\\^|Bukti:?\\s*)?${escaped}\\]`, 'gi');
-            healedMarkdown = healedMarkdown.replace(rogueRegex, '');
-          }
-          healedMarkdown = healedMarkdown.replace(/[ \t]{2,}([.,;])/g, '$1');
-          generatedArticle.contentMarkdown = healedMarkdown;
-
-          // Re-evaluasi QC setelah pembersihan deterministik
-          qcResult = DeterministicQualityGates.verifyCitationQualityControl(
-            generatedArticle.contentMarkdown,
-            validEvidenceKeys
-          );
-        }
-
-        if (researchJobId) {
-          try {
-            await db
-              .update(researchJobs)
-              .set({
-                qcPassed: qcResult.qcPassed,
-                status: ResearchJobStatus.COMPLETED,
-                updatedAt: new Date(),
-              })
-              .where(eq(researchJobs.id, researchJobId));
-
-            await db.insert(researchOutputs).values({
-              researchJobId,
-              title: generatedArticle.title,
-              executiveSummary: generatedArticle.excerpt,
-              markdownBody: generatedArticle.contentMarkdown,
-              bibliographyJson: Array.from(evidenceMap.entries()).map(([token, spanId]) => ({
-                citationToken: token,
-                evidenceSpanId: spanId,
-              })),
-              qcReport: qcResult,
-            });
-          } catch (dbErr: any) {
-            console.warn(`[StudioProcessor] Gagal menyimpan research outputs: ${dbErr.message}`);
-          }
-        }
-
-        let socialPack = {
-          instagramCaption: '',
-          twitterThreads: [] as string[],
-          whatsappBroadcast: `*${generatedArticle.title}*\n\n${generatedArticle.excerpt}`,
-        };
-        try {
-          const generatedSocialPack = await aiEngine.generateSocialSnippets(
-            generatedArticle.contentMarkdown,
-            tenantId
-          );
-          socialPack = {
-            instagramCaption: generatedSocialPack.instagramCaption || '',
-            twitterThreads: generatedSocialPack.twitterThreads || [],
-            whatsappBroadcast:
-              generatedSocialPack.whatsappBroadcast || socialPack.whatsappBroadcast,
-          };
-        } catch (error: unknown) {
-          const message = error instanceof Error ? error.message : String(error);
-          console.warn(
-            `[StudioProcessor] Social pack gagal dibuat; memakai ringkasan artikel: ${message}`
-          );
-        }
-
-        // Commit naskah artikel sebelum operasi gambar opsional
-        await StudioContextHelper.emitProgress(
-          tenantId,
-          jobId,
-          69,
-          'Menyimpan naskah dan paket teks...'
-        );
-
-        // Self-healing sanitizer untuk rogue citations (Defect 6)
-        let finalMarkdown = generatedArticle.contentMarkdown;
-        if (qcResult.rogueCitations && qcResult.rogueCitations.length > 0) {
-          console.warn(
-            `[StudioProcessor] Menghapus ${qcResult.rogueCitations.length} rogue citation dari naskah: ${qcResult.rogueCitations.join(', ')}`
-          );
-          for (const rogueId of qcResult.rogueCitations) {
-            const rogueRegex = new RegExp(`\\[(?:\\^|Bukti:?\\s*)?${rogueId}\\]`, 'gi');
-            finalMarkdown = finalMarkdown.replace(rogueRegex, '');
-          }
-        }
-
-        checkpoints.articleDone = true;
-        checkpoints.socialDone = true;
-        checkpoints.canonicalTraceId = generatedArticle.canonicalTraceId;
-
-        await withTenantContext(tenantId, async (tx) => {
-          await tx
-            .update(contentPublications)
-            .set({
-              title: generatedArticle.title,
-              excerpt: generatedArticle.excerpt,
-              bodyContentMarkdown: finalMarkdown,
-              wordCount: generatedArticle.wordCount,
-              status: ContentStatus.DRAFT,
-              researchJobId: researchJobId || null,
-              generationCheckpoints: checkpoints,
-              updatedAt: new Date(),
-            })
-            .where(eq(contentPublications.id, publicationId));
-
-          const currentMonth = new Date().toISOString().slice(0, 7);
-
-          // Single Source of Truth: Token dan biaya IDR sudah dicatat secara atomik per-trace oleh AiTelemetryService.endTrace().
-          // Di sini kita hanya menaikkan counter kuota naskah (articleUsed + 1).
-          await tx
-            .insert(tenantQuotaLedgers)
-            .values({
-              tenantId,
-              billingCycleMonth: currentMonth,
-              articleLimit: 0,
-              articleUsed: 1,
-              dalleLimit: 0,
-              dalleUsed: 0,
-              totalTokensConsumed: 0,
-              estimatedCostUsd: '0.00000',
-            })
-            .onConflictDoUpdate({
-              target: [tenantQuotaLedgers.tenantId, tenantQuotaLedgers.billingCycleMonth],
-              set: {
-                articleUsed: sql`${tenantQuotaLedgers.articleUsed} + 1`,
-                updatedAt: new Date(),
-              },
-            });
-
-          await tx
-            .insert(socialSyndicationPacks)
-            .values({
-              publicationId,
-              instagramCaption: socialPack.instagramCaption,
-              twitterThreads: socialPack.twitterThreads,
-              whatsappBroadcastText: socialPack.whatsappBroadcast,
-            })
-            .onConflictDoUpdate({
-              target: socialSyndicationPacks.publicationId,
-              set: {
-                instagramCaption: socialPack.instagramCaption,
-                twitterThreads: socialPack.twitterThreads,
-                whatsappBroadcastText: socialPack.whatsappBroadcast,
-              },
-            });
-        });
-      } else {
-        console.log(
-          `[StudioProcessor] Checkpoint Naskah 5-Bab ditemukan untuk PubID ${publicationId}; melewati sintesis ulang GPT-4o.`
-        );
-      }
-
-      // PROGRESSIVE INSTANT DELIVERY: Naskah teks 100% siap di database!
       await StudioContextHelper.emitProgress(
         tenantId,
         jobId,
@@ -696,238 +174,56 @@ export class StudioFullGenerationHandler {
         publicationId
       );
 
-      let posterSucceeded = !data.generateDallePoster;
+      // -----------------------------------------------------------------------
+      // LANGKAH 5: Visual Editorial Poster Pipeline (Opsional)
+      // -----------------------------------------------------------------------
+      const shouldGeneratePoster = Boolean(
+        data.generateDallePoster && data.taskType !== 'ARTICLE_ONLY'
+      );
+      let posterSucceeded = !shouldGeneratePoster;
       let posterFailure: string | undefined;
-      if (data.generateDallePoster) {
+
+      if (shouldGeneratePoster) {
         await StudioContextHelper.emitProgress(
           tenantId,
           jobId,
           85,
           'Merender poster visual berestetika tinggi; naskah telah tersimpan...'
         );
-        try {
-          // Keputusan Desain Mutlak: AI tidak merender wajah tokoh dan sistem tidak menaruh foto tokoh pada poster
-          const tenantBrandHex = await StudioContextHelper.resolveTenantBrandColor(
-            tenantId,
-            member?.partyAffiliation
-          );
 
-          // 2. Ekstrak latar belakang berseni dan fakta kontekstual terstruktur
-          const cleanTopic = (generatedArticle.title || data.topic || '').trim();
-          const articleExcerpt = generatedArticle.excerpt || '';
-          const articleSnippet = (generatedArticle.contentMarkdown || '').slice(0, 3500);
-          const evidenceSnippet = (groundedEvidenceText || '').slice(0, 2500);
+        const posterResult = await StudioPosterSynthesizerService.synthesizePoster({
+          tenantId,
+          publicationId,
+          jobId,
+          topic: data.topic,
+          articleTitle: generatedArticle.title,
+          articleExcerpt: generatedArticle.excerpt,
+          articleContent: generatedArticle.contentMarkdown,
+          groundedEvidenceText,
+          member,
+          dapilName,
+          forcedArchetype: data.forcedArchetype,
+          layoutVariant: data.layoutVariant,
+          enableImg2ImgPass: data.enableImg2ImgPass,
+          img2ImgDenoisingStrength: data.img2ImgDenoisingStrength,
+          aiEngine,
+          storageAdapter,
+          onProgress: async (step, pct) => {
+            await StudioContextHelper.emitProgress(tenantId, jobId, pct, step);
+          },
+        });
 
-          const cleanContextSummary = [
-            `JUDUL & RINGKASAN EKSEKUTIF ARTIKEL: ${generatedArticle.title} — ${articleExcerpt}`,
-            articleSnippet ? `CUPLIKAN ISI & DATA ARTIKEL:\n${articleSnippet}` : '',
-            evidenceSnippet ? `BUKTI RISET TERVERIFIKASI:\n${evidenceSnippet}` : '',
-          ]
-            .filter(Boolean)
-            .join('\n\n')
-            .trim();
-
-          const destPath = `posters/${tenantId}/${Date.now()}-${publicationId}.webp`;
-
-          // Pipeline tunggal: AI Art-Collage canvas -> Vision Locator -> Chromium HTML/CSS render.
-          // TIDAK ADA fallback ke Satori. Jika Chromium gagal, error dilempar apa adanya
-          // sehingga poster ditandai "tertunda" (naskah tetap aman) dan penyebab aslinya terlihat.
-          console.log(`[StudioProcessor] Menjalankan Art-Collage Pipeline + Chromium renderer...`);
-          const artCollage = await aiEngine.generateArtCollagePoster({
-            topic: cleanTopic,
-            groundedContextSummary: cleanContextSummary,
-            forcedArchetype: (data.forcedArchetype as any) || undefined,
-            tenantBrandHex,
-            tenantId,
-            variationKey: `${publicationId}:${jobId}`,
-          });
-
-          const roleIdentity = StudioContextHelper.resolveSignatureAndHeader(member, dapilName);
-
-          const composed = await ChromiumPosterCompositor.compose({
-            canvasBuffer: artCollage.imageBuffer,
-            copy: artCollage.copy,
-            zones: artCollage.layout,
-            palette: {
-              accentHex: artCollage.mutation.palette.accentHex,
-              secondaryHex: artCollage.mutation.palette.secondaryHex,
-            },
-            signature: roleIdentity.signature,
-            headerTag: roleIdentity.headerTag,
-            editionTag: roleIdentity.editionTag,
-            textToneHint: artCollage.layout.textTone,
-            archetype: artCollage.archetype,
-            layoutVariant: typeof data.layoutVariant === 'number' ? data.layoutVariant : Math.floor(Math.random() * 4),
-          });
-
-          let posterBuffer = composed.buffer;
-          let posterSizeBytes = composed.sizeBytes;
-          let img2ImgMetadata: Record<string, any> | null = null;
-
-          if (data.enableImg2ImgPass !== false) {
-            await StudioContextHelper.emitProgress(
-              tenantId,
-              jobId,
-              75,
-              'Mematangkan pencahayaan ambient & tekstur AI (Img2Img Pass-through)...'
-            );
-
-            try {
-              const passResult = await aiEngine.applyImg2ImgPass({
-                imageBuffer: posterBuffer,
-                sdxlInputBuffer: await PosterAmbientBaker.prepareSdxlInput(posterBuffer),
-                prompt: artCollage.imagePrompt || generatedArticle.title || cleanTopic,
-                denoisingStrength: data.img2ImgDenoisingStrength || 0.18,
-                archetype: artCollage.archetype,
-                layoutVariant: data.layoutVariant,
-                copy: artCollage.copy,
-                signature: roleIdentity.signature,
-                headerTag: roleIdentity.headerTag,
-                editionTag: roleIdentity.editionTag,
-                palette: {
-                  accentHex: artCollage.mutation.palette.accentHex,
-                  secondaryHex: artCollage.mutation.palette.secondaryHex,
-                },
-                tenantId,
-              });
-
-              if (passResult.providerUsed !== 'skipped') {
-                posterBuffer = await PosterAmbientBaker.harmonizeDiffusedWithCrispDraft(posterBuffer, passResult.buffer);
-                posterSizeBytes = passResult.buffer.length;
-                img2ImgMetadata = {
-                  providerUsed: passResult.providerUsed,
-                  denoisingStrength: passResult.denoisingStrengthUsed,
-                  durationMs: passResult.durationMs,
-                  relayoutPrompt: passResult.compiledRelayoutPrompt,
-                };
-              } else {
-                const baked = await PosterAmbientBaker.bakeAmbientTexture({
-                  imageBuffer: posterBuffer,
-                  archetype: artCollage.archetype,
-                layoutVariant: data.layoutVariant,
-                copy: artCollage.copy,
-                signature: roleIdentity.signature,
-                headerTag: roleIdentity.headerTag,
-                editionTag: roleIdentity.editionTag,
-                  strength: data.img2ImgDenoisingStrength || 0.15,
-                });
-                posterBuffer = baked;
-                posterSizeBytes = baked.length;
-                img2ImgMetadata = {
-                  providerUsed: 'native-ambient-bake',
-                  denoisingStrength: 0.15,
-                };
-              }
-            } catch (img2imgErr: any) {
-              console.warn('[StudioFullGen] Img2Img fallback: ' + img2imgErr.message);
-            }
-          }
-
-          let rawCanvasPublicUrl = '';
-          if (artCollage.imageBuffer && artCollage.imageBuffer.length > 0) {
-            const rawDestPath = `posters/${tenantId}/raw-canvas-${Date.now()}-${publicationId}.webp`;
-            try {
-              const rawUpload = await storageAdapter.uploadBuffer(artCollage.imageBuffer, {
-                destinationPath: rawDestPath,
-                contentType: 'image/webp',
-                contentLength: artCollage.imageBuffer.length,
-              });
-              rawCanvasPublicUrl = rawUpload.publicUrl;
-            } catch {}
-          }
-
-          const promptUsedJson = JSON.stringify({
-            engine: 'ART_COLLAGE_CHROMIUM',
-            renderer: 'chromium',
-            img2ImgPass: img2ImgMetadata,
-            rawCanvasUrl: rawCanvasPublicUrl || undefined,
-            layoutManifest: composed.layoutManifest,
-            blueprintId: artCollage.blueprintId,
-            archetype: artCollage.archetype,
-            layoutVariant: typeof data.layoutVariant === 'number' ? data.layoutVariant : Math.floor(Math.random() * 4),
-            referenceFile: artCollage.referenceFile,
-            usedStyleReference: artCollage.usedStyleReference,
-            mutation: artCollage.mutation,
-            layout: artCollage.layout,
-            imagePrompt: artCollage.imagePrompt,
-            imageProvider: artCollage.imageProvider,
-            detectedLuminance: composed.detectedLuminance,
-            blendModeUsed: composed.blendModeUsed,
-          });
-
-          // 5. Unggah hasil komposit ke Cloudflare R2
-          let finalPublicUrl = '';
-          let finalSizeBytes = posterSizeBytes;
-
-          try {
-            const uploadResult = await storageAdapter.uploadBuffer(posterBuffer, {
-              destinationPath: destPath,
-              contentType: 'image/webp',
-              contentLength: posterSizeBytes,
-            });
-            finalPublicUrl = uploadResult.publicUrl;
-          } catch (storageErr) {
-            console.warn(
-              `[StudioProcessor] GCS/R2 buffer upload gagal, beralih ke data base64:`,
-              storageErr
-            );
-            finalPublicUrl = `data:image/webp;base64,${posterBuffer.toString('base64')}`;
-          }
-
-          await withTenantContext(tenantId, async (tx) => {
-            await tx
-              .delete(mediaAssets)
-              .where(
-                and(
-                  eq(mediaAssets.publicationId, publicationId),
-                  eq(mediaAssets.assetType, AssetType.DALLE_POSTER)
-                )
-              );
-
-            await tx.insert(mediaAssets).values({
-              publicationId,
-              assetType: AssetType.DALLE_POSTER,
-              r2StorageUrl: finalPublicUrl,
-              cdnPublicUrl: finalPublicUrl,
-              promptUsed: promptUsedJson,
-              mimeType: 'image/webp',
-              fileSizeBytes: finalSizeBytes,
-            });
-
-            // Biaya USD & token poster sudah dicatat secara atomik oleh AiTelemetryService.endTrace().
-            // Di sini kita hanya menaikkan counter kuota poster/visual (dalleUsed + 1).
-            const currentMonth = new Date().toISOString().slice(0, 7);
-            await tx
-              .insert(tenantQuotaLedgers)
-              .values({
-                tenantId,
-                billingCycleMonth: currentMonth,
-                articleLimit: 0,
-                articleUsed: 0,
-                dalleLimit: 0,
-                dalleUsed: 1,
-                totalTokensConsumed: 0,
-                estimatedCostUsd: '0.00000',
-              })
-              .onConflictDoUpdate({
-                target: [tenantQuotaLedgers.tenantId, tenantQuotaLedgers.billingCycleMonth],
-                set: {
-                  dalleUsed: sql`${tenantQuotaLedgers.dalleUsed} + 1`,
-                  updatedAt: new Date(),
-                },
-              });
-          });
-          posterSucceeded = true;
-        } catch (error: unknown) {
-          posterSucceeded = false;
-          posterFailure = error instanceof Error ? error.message : String(error);
-          console.warn(`[StudioProcessor] Poster gagal; naskah tetap tersimpan: ${posterFailure}`);
-        }
+        posterSucceeded = posterResult.succeeded;
+        posterFailure = posterResult.error;
       }
 
+      // -----------------------------------------------------------------------
+      // LANGKAH 6 (100%): Finalisasi & Notifikasi
+      // -----------------------------------------------------------------------
       const completionStep = posterSucceeded
         ? 'Selesai! Naskah dan materi yang tersedia siap ditinjau.'
         : 'Naskah artikel berhasil dibuat (Poster visual tertunda).';
+
       await StudioContextHelper.emitProgress(
         tenantId,
         jobId,

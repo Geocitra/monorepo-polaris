@@ -1,4 +1,4 @@
-import { IsString, IsEmail, IsNotEmpty, IsOptional, IsNumber, IsBoolean, IsArray, IsEnum } from 'class-validator';
+import { IsString, IsEmail, IsNotEmpty, IsOptional, IsNumber, IsBoolean, IsArray, IsEnum, IsObject } from 'class-validator';
 import { LegislativeLevel, SubscriptionStatus, PlanTier } from '@polaris/shared-types';
 
 export class SuperadminLoginDto {
@@ -87,6 +87,26 @@ export class CreatePartyDto {
   @IsString()
   @IsOptional()
   description?: string;
+
+  @IsString()
+  @IsOptional()
+  ideologySpectrum?: string;
+
+  @IsArray()
+  @IsOptional()
+  corePhilosophies?: string[];
+
+  @IsObject()
+  @IsOptional()
+  policyDoctrines?: Record<string, string>;
+
+  @IsArray()
+  @IsOptional()
+  preferredVocabulary?: string[];
+
+  @IsArray()
+  @IsOptional()
+  tabooStances?: string[];
 }
 
 export class UpdatePartyDto {
@@ -113,6 +133,26 @@ export class UpdatePartyDto {
   @IsString()
   @IsOptional()
   description?: string;
+
+  @IsString()
+  @IsOptional()
+  ideologySpectrum?: string;
+
+  @IsArray()
+  @IsOptional()
+  corePhilosophies?: string[];
+
+  @IsObject()
+  @IsOptional()
+  policyDoctrines?: Record<string, string>;
+
+  @IsArray()
+  @IsOptional()
+  preferredVocabulary?: string[];
+
+  @IsArray()
+  @IsOptional()
+  tabooStances?: string[];
 
   @IsBoolean()
   @IsOptional()

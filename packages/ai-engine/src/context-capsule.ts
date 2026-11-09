@@ -7,6 +7,7 @@ export interface RawContextSources {
   externalWebSources?: Array<{ url: string; title?: string; content: string }>;
   attachedDocuments?: Array<{ name: string; type: string; extractedContent: string }>;
   framingStance?: string;
+  partyIdeologyDirective?: string;
 }
 
 export class ContextCapsuleBuilder {
@@ -45,6 +46,10 @@ export class ContextCapsuleBuilder {
       ? `\n\n--- ARAHAN SUDUT PANDANG / FRAMING POLITIK DEWAN ---\nFokus Framing: ${sources.framingStance}`
       : '';
 
+    const ideologySection = sources.partyIdeologyDirective
+      ? `\n\n--- HALUAN IDEOLOGI & SIKAP DOKTRIN PARTAI/FRAKSI ---\n${sources.partyIdeologyDirective}`
+      : '';
+
     return `=== KAPSUL KONTEKS POLARIS (GROUNDING DATA LENGKAP) ===
 WILAYAH TARGET: ${sources.regionName}
 
@@ -52,7 +57,7 @@ WILAYAH TARGET: ${sources.regionName}
 ${regulationSection}
 
 --- DISKURSUS PUBLIK & BERITA MEDIA TERKINI (CRON CRAWLER) ---
-${newsSection}${webSection}${docSection}${framingSection}${comparisonSection}${writingStyleSection}
+${newsSection}${webSection}${docSection}${framingSection}${ideologySection}${comparisonSection}${writingStyleSection}
 ======================================================`;
   }
 }

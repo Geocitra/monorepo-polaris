@@ -322,7 +322,8 @@ export class StudioGeneratorService implements OnModuleDestroy {
           toneOverride: dto.toneOverride,
           comparisonRegion: dto.comparisonRegion,
           framingStance: dto.framingStance,
-          generateDallePoster: dto.generateDallePoster ?? true,
+          generateDallePoster:
+            effectiveTaskType === 'ARTICLE_ONLY' ? false : (dto.generateDallePoster ?? true),
           style: dto.style,
           aspectRatio: dto.aspectRatio,
           forcedArchetype,

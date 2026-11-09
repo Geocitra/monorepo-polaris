@@ -6,7 +6,7 @@ import {
   ConflictException,
   Logger,
 } from '@nestjs/common';
-import { eq, and, ne } from 'drizzle-orm';
+import { eq, and, ne, or, sql } from 'drizzle-orm';
 import {
   db,
   tenantMembers,
@@ -15,6 +15,7 @@ import {
   subscriptions,
   electoralDistricts,
   masterCommissions,
+  masterPoliticalParties,
 } from '@polaris/database';
 import { UpdateProfileDto } from '../dto/auth.dto.js';
 
@@ -91,7 +92,7 @@ export class IdentityProfileService {
       totalVoters: masterDapil?.totalVoters || null,
       isCustomized: Boolean(
         member.customDapilName ||
-          (member.personalCoverage && member.personalCoverage.length > 0)
+        (member.personalCoverage && member.personalCoverage.length > 0)
       ),
     };
 
@@ -171,7 +172,27 @@ export class IdentityProfileService {
     }
     if (dto.partyAffiliation !== undefined || dto.institutionPartyName !== undefined) {
       const party = dto.partyAffiliation?.trim() || dto.institutionPartyName?.trim() || null;
-      updates.partyAffiliation = party;
+      let partyId: string | null = null;
+      let normalizedCode: string | null = party;
+      if (party) {
+        const [partyMatch] = await db
+          .select({ id: masterPoliticalParties.id, code: masterPoliticalParties.code })
+          .from(masterPoliticalParties)
+          .where(
+            or(
+              eq(masterPoliticalParties.code, party),
+              eq(masterPoliticalParties.name, party),
+              sql`UPPER(REPLACE(${masterPoliticalParties.code}, '-', '')) = UPPER(REPLACE(${party}, '-', ''))`
+            )
+          )
+          .limit(1);
+        if (partyMatch) {
+          partyId = partyMatch.id;
+          normalizedCode = partyMatch.code;
+        }
+      }
+      updates.partyAffiliation = normalizedCode;
+      updates.politicalPartyId = partyId;
     }
 
     if (dto.username !== undefined) {
@@ -226,8 +247,8 @@ export class IdentityProfileService {
           const parsed = JSON.parse(dto.photoGallery);
           parsedGallery = Array.isArray(parsed)
             ? parsed
-                .map((item: any) => (typeof item === 'string' ? item.trim() : ''))
-                .filter(Boolean)
+              .map((item: any) => (typeof item === 'string' ? item.trim() : ''))
+              .filter(Boolean)
             : [dto.photoGallery.trim()].filter(Boolean);
         } catch {
           parsedGallery = dto.photoGallery.split(',').map((s) => s.trim()).filter(Boolean);

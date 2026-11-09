@@ -23,5 +23,6 @@ export * from './master-editorial-sanitizer.js';
 export * from './refiners/prompt-refiner.service.js';
 export * from './creative-poster/critic/poster-vision-critic.js';
 export * from './datahub/index.js';
+export * from './party/party-ideology.resolver.js';
 
 

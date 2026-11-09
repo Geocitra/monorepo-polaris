@@ -1,4 +1,4 @@
-import { eq } from 'drizzle-orm';
+import { eq, or, sql } from 'drizzle-orm';
 import {
   db,
   masterPoliticalParties,
@@ -16,25 +16,43 @@ export class StudioContextHelper {
     partyAffiliation?: string | null
   ): Promise<string> {
     let resolvedBrandHex = '#9E0B0F';
+    let partyColorFound = false;
+
     try {
-      if (partyAffiliation) {
+      if (partyAffiliation && partyAffiliation.trim()) {
+        const cleanParty = partyAffiliation.trim();
         const [party] = await db
           .select({ primaryColor: masterPoliticalParties.primaryColor })
           .from(masterPoliticalParties)
-          .where(eq(masterPoliticalParties.code, partyAffiliation))
+          .where(
+            or(
+              eq(masterPoliticalParties.code, cleanParty),
+              eq(masterPoliticalParties.name, cleanParty),
+              sql`UPPER(REPLACE(${masterPoliticalParties.code}, '-', '')) = UPPER(REPLACE(${cleanParty}, '-', ''))`
+            )
+          )
           .limit(1);
+
         if (party?.primaryColor) {
           resolvedBrandHex = party.primaryColor;
+          partyColorFound = true;
         }
       }
+
+      // Periksa tema portal tenant. Catatan: Warna default pendaftaran adalah '#1890ff'.
+      // Jika warna tema portal masih default '#1890ff' dan warna partai ditemukan, prioritaskan warna partai!
       const [theme] = await db
         .select({ primaryHexColor: portalThemeSettings.primaryHexColor })
         .from(portalThemeSettings)
         .innerJoin(portalConfigs, eq(portalThemeSettings.portalId, portalConfigs.id))
         .where(eq(portalConfigs.tenantId, tenantId))
         .limit(1);
+
       if (theme?.primaryHexColor) {
-        resolvedBrandHex = theme.primaryHexColor;
+        const isDefaultBlue = theme.primaryHexColor.toLowerCase() === '#1890ff';
+        if (!partyColorFound || !isDefaultBlue) {
+          resolvedBrandHex = theme.primaryHexColor;
+        }
       }
     } catch (colorErr) {
       console.warn(`[StudioProcessor] Gagal memuat warna tema tenant, fallback:`, colorErr);

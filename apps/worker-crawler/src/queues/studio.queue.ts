@@ -34,6 +34,10 @@ export interface StudioGenerationJobPayload {
     type: string;
     base64: string;
   }>;
+  operatorId?: string;
+  requestId?: string;
+  channel?: string;
+  activityType?: string;
 }
 
 export const studioGenerationQueue = new Queue<StudioGenerationJobPayload>(

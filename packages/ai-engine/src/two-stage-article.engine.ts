@@ -3,6 +3,7 @@ import { openaiClient } from './client.js';
 import { PromptTemplates } from './prompts.js';
 import { AiTelemetryService } from './telemetry/ai-telemetry.service.js';
 import { MasterEditorialSanitizer } from './master-editorial-sanitizer.js';
+import { PartyIdeologyResolver } from './party/party-ideology.resolver.js';
 
 export interface ChapterBlueprint {
   chapterNumber: string;
@@ -217,7 +218,8 @@ export class TwoStageArticleEngine {
    */
   public static async generateOutline(
     params: GenerateArticleParams,
-    lengthPlan: ReturnType<typeof TwoStageArticleEngine.resolveLengthPlan>
+    lengthPlan: ReturnType<typeof TwoStageArticleEngine.resolveLengthPlan>,
+    ideologyDirective?: string
   ): Promise<{ outline: OutlineResult; tokensUsed: number; inputTokens: number; outputTokens: number }> {
     const profile = EditorialStyleProfileResolver.resolve(params.writingStyle, params.framingStance);
 
@@ -229,7 +231,7 @@ TARGET AUDIENS: ${params.targetAudience || 'Masyarakat Umum, Pengambil Kebijakan
 PROFIL GAYA PENULISAN: ${profile.label} (${profile.style})
 TONE & KARAKTER: ${params.toneOverride || profile.toneDirective}
 TARGET TOTAL KATA: ~${lengthPlan.totalTargetWords} kata (terbagi ke dalam ${lengthPlan.chapterCount} Bab/Bagian).
-${profile.framingMandate ? `${profile.framingMandate}\n` : ''}${params.regionalContextData ? `KONTEKS WILAYAH & DATA:\n${params.regionalContextData.slice(0, 2000)}` : ''}
+${ideologyDirective ? `\n=== DOKTRIN & HALUAN PARTAI/FRAKSI ===\n${ideologyDirective}\n(Pastikan rancangan kerangka bab mencerminkan sikap dan keberpihakan ideologi partai di atas tanpa menjadi propaganda murahan!)\n======================================\n` : ''}${profile.framingMandate ? `${profile.framingMandate}\n` : ''}${params.regionalContextData ? `KONTEKS WILAYAH & DATA:\n${params.regionalContextData.slice(0, 2000)}` : ''}
 
 ANATOMI ALUR BAB YANG DIHARUSKAN UNTUK GAYA ${profile.style}:
 ${profile.chapterAnatomyDirectives.map((d) => `- ${d}`).join('\n')}
@@ -391,7 +393,8 @@ Keluarkan hasil HANYA dalam format JSON valid berikut:
     chapter: ChapterBlueprint,
     articleTitle: string,
     params: GenerateArticleParams,
-    previousChapterSummary?: string
+    previousChapterSummary?: string,
+    ideologyDirective?: string
   ): Promise<{
     chapterMarkdown: string;
     chapterSummary: string;
@@ -461,7 +464,7 @@ PROPOSISI POKOK BAB (CORE THESIS): ${chapter.coreThesis || chapter.substanceFocu
 GAYA PENULISAN AKTIF: ${profile.label} (${profile.style})
 TONE & SIKAP: ${params.toneOverride || profile.toneDirective}
 TARGET AUDIENS: ${params.targetAudience || 'Masyarakat Umum, Pengambil Kebijakan Daerah, dan Media'}
-${profile.framingMandate ? `${profile.framingMandate}\n` : ''}
+${ideologyDirective ? `\n=== DOKTRIN KEBIJAKAN & DIKSI KHAS PARTAI/FRAKSI ===\n${ideologyDirective}\n(Selaraskan argumen bab dengan doktrin di atas, sematkan diksi pilihan secara natural, dan patuhi seluruh pantangan narasi!)\n====================================================\n` : ''}${profile.framingMandate ? `${profile.framingMandate}\n` : ''}
 RENCANA ALUR PARAGRAF WAJIB (AUTO-DETAIL EXPANSION - BR-02):
 ${subPointsDirective}
 
@@ -679,6 +682,20 @@ Keluarkan hasil dalam format JSON:
     try {
       const lengthPlan = this.resolveLengthPlan(params.targetLength);
 
+      // Resolusi Doktrin & Ideologi Partai (jika ada partyAffiliation atau direktif eksplisit)
+      let ideologyDirective = params.partyIdeologyDirective || '';
+      if (!ideologyDirective && params.partyAffiliation) {
+        try {
+          const resolved = await PartyIdeologyResolver.resolveDirective({
+            partyAffiliation: params.partyAffiliation,
+            topic: params.topic,
+          });
+          ideologyDirective = resolved.promptInstructions;
+        } catch (ideologyErr: any) {
+          console.warn(`[TwoStageArticleEngine] Gagal resolve party ideology: ${ideologyErr.message}`);
+        }
+      }
+
       // 1. TAHAP 1: Generate Outline
       if (params.onProgress) {
         await params.onProgress(
@@ -686,7 +703,7 @@ Keluarkan hasil dalam format JSON:
           25
         );
       }
-      const outlineRes = await this.generateOutline(params, lengthPlan);
+      const outlineRes = await this.generateOutline(params, lengthPlan, ideologyDirective);
       const { outline, tokensUsed: outlineTokens } = outlineRes;
 
       let totalTokens = outlineTokens;
@@ -719,7 +736,8 @@ Keluarkan hasil dalam format JSON:
           chapter,
           outline.title,
           params,
-          runningSummary
+          runningSummary,
+          ideologyDirective
         );
 
         chapterContents.push(chapterResult.chapterMarkdown);
