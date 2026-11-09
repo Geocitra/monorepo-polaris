@@ -226,24 +226,24 @@ export class AiTelemetryService {
 
       const costBreakdown = isSuccess
         ? AiCostCalculator.calculateDetailedModelCostUsd({
-            model: resolvedModel,
-            inputTokens: safeInputTokens,
-            outputTokens: safeOutputTokens,
-            imageCalls: effectiveImageCalls,
-            fxRateIdr: fxRateApplied,
-          })
+          model: resolvedModel,
+          inputTokens: safeInputTokens,
+          outputTokens: safeOutputTokens,
+          imageCalls: effectiveImageCalls,
+          fxRateIdr: fxRateApplied,
+        })
         : {
-            provider: resolvedProvider,
-            inputCostUsd: 0,
-            outputCostUsd: 0,
-            imageCostUsd: 0,
-            totalCostUsd: 0,
-            fxRateApplied,
-            inputCostIdr: 0,
-            outputCostIdr: 0,
-            imageCostIdr: 0,
-            totalCostIdr: 0,
-          };
+          provider: resolvedProvider,
+          inputCostUsd: 0,
+          outputCostUsd: 0,
+          imageCostUsd: 0,
+          totalCostUsd: 0,
+          fxRateApplied,
+          inputCostIdr: 0,
+          outputCostIdr: 0,
+          imageCostIdr: 0,
+          totalCostIdr: 0,
+        };
 
       const costUsd = costBreakdown.totalCostUsd;
       const costIdr = costBreakdown.totalCostIdr;

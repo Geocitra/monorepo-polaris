@@ -92,7 +92,7 @@ function AIArticleStudioContent() {
     try {
       const saved = localStorage.getItem('polaris_article_wide_canvas');
       if (saved !== null) setIsWide(saved === 'true');
-    } catch {}
+    } catch { }
   }, []);
 
   function toggleWide() {
@@ -100,7 +100,7 @@ function AIArticleStudioContent() {
     setIsWide(next);
     try {
       localStorage.setItem('polaris_article_wide_canvas', String(next));
-    } catch {}
+    } catch { }
   }
 
   useEffect(() => {
