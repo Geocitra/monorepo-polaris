@@ -65,6 +65,12 @@ export class MarkRevisionFaultDto {
   isInternalFault!: boolean;
 }
 
+export interface ParagraphRevisionItem {
+  paragraphIndex: number;
+  feedbackText: string;
+  originalText?: string;
+}
+
 export class PublicReviewRevisionDto {
   @IsArray()
   @ArrayNotEmpty()
@@ -72,9 +78,13 @@ export class PublicReviewRevisionDto {
   targetComponents!: BriefTargetComponent[];
 
   @IsString()
-  @MinLength(5)
-  @MaxLength(2000)
+  @MinLength(3)
+  @MaxLength(3000)
   feedbackText!: string;
+
+  @IsOptional()
+  @IsArray()
+  paragraphRevisions?: ParagraphRevisionItem[];
 }
 
 export class UpdateTenantBriefLimitsDto {

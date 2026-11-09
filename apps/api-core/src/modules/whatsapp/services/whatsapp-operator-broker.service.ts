@@ -818,6 +818,18 @@ export class WhatsAppOperatorBrokerService {
       );
     }
 
+    // Kirim naskah siaran WhatsApp sebagai 1 balon pesan bersih terpisah (siap langsung 1-klik FORWARD ke grup dapil)
+    if (syndication?.whatsappBroadcastText && !isVisualOnly) {
+      try {
+        await this.waClient.sendTextMessage(
+          row.phoneNumber,
+          syndication.whatsappBroadcastText.trim()
+        );
+      } catch (waBroadcastErr) {
+        this.logger.warn(`Gagal mengirim balon naskah siaran WA: ${waBroadcastErr}`);
+      }
+    }
+
     const remainingRevs = Math.max(0, updatedBrief.revisionLimit - updatedBrief.revisionUsed);
     const isVisualOnly = pkgType === 'POSTER_ONLY' || pkgType === 'INFOGRAPHIC_ONLY';
     const isArticleOnly = pkgType === 'ARTICLE_ONLY';

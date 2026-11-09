@@ -430,6 +430,9 @@ CREATE TABLE IF NOT EXISTS social_syndication_packs (
   instagram_caption TEXT,
   twitter_threads JSONB,
   whatsapp_broadcast_text TEXT,
+  threads_text TEXT,
+  tiktok_caption TEXT,
+  facebook_post_text TEXT,
   created_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 

@@ -43,5 +43,8 @@ export const socialSyndicationPacks = pgTable('social_syndication_packs', {
   instagramCaption: text('instagram_caption'),
   twitterThreads: jsonb('twitter_threads'),
   whatsappBroadcastText: text('whatsapp_broadcast_text'),
+  threadsText: text('threads_text'),
+  tiktokCaption: text('tiktok_caption'),
+  facebookPostText: text('facebook_post_text'),
   createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
 });

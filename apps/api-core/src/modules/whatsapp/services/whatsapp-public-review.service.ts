@@ -62,6 +62,10 @@ export class WhatsAppPublicReviewService {
           posterUrl: assets[0]?.cdnPublicUrl || null,
           instagramCaption: syndication?.instagramCaption || null,
           whatsappBroadcastText: syndication?.whatsappBroadcastText || null,
+          twitterThreads: Array.isArray(syndication?.twitterThreads) ? syndication.twitterThreads : [],
+          threadsText: (syndication as any)?.threadsText || null,
+          tiktokCaption: (syndication as any)?.tiktokCaption || null,
+          facebookPostText: (syndication as any)?.facebookPostText || null,
         };
       }
     }
@@ -130,6 +134,14 @@ export class WhatsAppPublicReviewService {
       throw new NotFoundException('Data klien tidak ditemukan.');
     }
 
+    let finalFeedbackText = dto.feedbackText.trim();
+    if (dto.paragraphRevisions && dto.paragraphRevisions.length > 0) {
+      const paragraphNotes = dto.paragraphRevisions
+        .map((p) => `📌 [Koreksi P${p.paragraphIndex}]: ${p.feedbackText}`)
+        .join('\n');
+      finalFeedbackText = `${paragraphNotes}\n\n📝 Catatan Tambahan:\n${finalFeedbackText}`;
+    }
+
     await this.botSessionService.processClientRevisionSubmission(
       { id: tenant.id, fullName: tenant.fullName },
       tenant.phoneNumber,
@@ -143,7 +155,7 @@ export class WhatsAppPublicReviewService {
       {
         wamid: `web_rev_${Date.now()}_${crypto.randomBytes(4).toString('hex')}`,
         itemType: 'TEXT',
-        extractedText: dto.feedbackText.trim(),
+        extractedText: finalFeedbackText,
       }
     );
 

@@ -1,3 +1,4 @@
+import * as crypto from 'node:crypto';
 import {
   Injectable,
   Logger,
@@ -528,6 +529,52 @@ export class WhatsAppBotSessionService implements OnModuleDestroy {
         lowerCmd === 'draf' ||
         lowerCmd === 'artikel')
     ) {
+      await this.sendLatestPublicationsMenu(tenant.id, tenant.fullName, normalizedSender, 1);
+      return;
+    }
+
+    // Perintah Cepat Pengambilan Caption Medsos & Siaran WhatsApp Langsung
+    if (
+      itemType === 'TEXT' &&
+      (lowerCmd === 'caption' ||
+        lowerCmd === 'minta caption' ||
+        lowerCmd === 'ambil caption' ||
+        lowerCmd === 'siaran' ||
+        lowerCmd === 'siaran wa' ||
+        lowerCmd === 'caption ig' ||
+        lowerCmd === 'medsos')
+    ) {
+      const lastPubId = await this.redisService.get<string>(`whatsapp:last_viewed_pub:${tenant.id}`);
+      if (lastPubId) {
+        if (lowerCmd.includes('wa') || lowerCmd === 'siaran') {
+          await this.sendCleanWhatsAppBroadcast(tenant, normalizedSender, lastPubId);
+        } else if (lowerCmd.includes('ig')) {
+          await this.sendCleanChannelCaption(tenant, normalizedSender, lastPubId, 'IG');
+        } else {
+          await this.sendSocialSyndicationMenu(tenant, normalizedSender, lastPubId);
+        }
+        return;
+      }
+
+      // Jika belum ada riwayat naskah yang baru dibuka, cek artikel publikasi terbaru
+      const [latestPub] = await db
+        .select()
+        .from(contentPublications)
+        .where(eq(contentPublications.tenantId, tenant.id))
+        .orderBy(desc(contentPublications.createdAt))
+        .limit(1);
+
+      if (latestPub) {
+        if (lowerCmd.includes('wa') || lowerCmd === 'siaran') {
+          await this.sendCleanWhatsAppBroadcast(tenant, normalizedSender, latestPub.id);
+        } else if (lowerCmd.includes('ig')) {
+          await this.sendCleanChannelCaption(tenant, normalizedSender, latestPub.id, 'IG');
+        } else {
+          await this.sendSocialSyndicationMenu(tenant, normalizedSender, latestPub.id);
+        }
+        return;
+      }
+
       await this.sendLatestPublicationsMenu(tenant.id, tenant.fullName, normalizedSender, 1);
       return;
     }
@@ -1561,6 +1608,48 @@ export class WhatsAppBotSessionService implements OnModuleDestroy {
     if (buttonId.startsWith('PUB_DETAIL:')) {
       const pubId = buttonId.slice('PUB_DETAIL:'.length).trim();
       await this.sendPublicationDetailPackage(tenant.id, pubId, phoneE164);
+      return;
+    }
+
+    if (buttonId.startsWith('PUB_CAPTION_WA:')) {
+      const pubId = buttonId.slice('PUB_CAPTION_WA:'.length).trim();
+      await this.sendCleanWhatsAppBroadcast(tenant, phoneE164, pubId);
+      return;
+    }
+
+    if (buttonId.startsWith('PUB_CAPTION_MENU:')) {
+      const pubId = buttonId.slice('PUB_CAPTION_MENU:'.length).trim();
+      await this.sendSocialSyndicationMenu(tenant, phoneE164, pubId);
+      return;
+    }
+
+    if (buttonId.startsWith('PUB_CAPTION_IG:')) {
+      const pubId = buttonId.slice('PUB_CAPTION_IG:'.length).trim();
+      await this.sendCleanChannelCaption(tenant, phoneE164, pubId, 'IG');
+      return;
+    }
+
+    if (buttonId.startsWith('PUB_CAPTION_X:')) {
+      const pubId = buttonId.slice('PUB_CAPTION_X:'.length).trim();
+      await this.sendCleanChannelCaption(tenant, phoneE164, pubId, 'X');
+      return;
+    }
+
+    if (buttonId.startsWith('PUB_CAPTION_TT:')) {
+      const pubId = buttonId.slice('PUB_CAPTION_TT:'.length).trim();
+      await this.sendCleanChannelCaption(tenant, phoneE164, pubId, 'TT');
+      return;
+    }
+
+    if (buttonId.startsWith('PUB_CAPTION_FB:')) {
+      const pubId = buttonId.slice('PUB_CAPTION_FB:'.length).trim();
+      await this.sendCleanChannelCaption(tenant, phoneE164, pubId, 'FB');
+      return;
+    }
+
+    if (buttonId.startsWith('PUB_SHARE_WEB:')) {
+      const pubId = buttonId.slice('PUB_SHARE_WEB:'.length).trim();
+      await this.sendPublicReviewWebHub(tenant, phoneE164, pubId);
       return;
     }
 
@@ -3509,6 +3598,13 @@ export class WhatsAppBotSessionService implements OnModuleDestroy {
     const posterUrl = assets[0]?.cdnPublicUrl;
     const isPublished = pub.status === 'PUBLISHED';
 
+    // Cache publikasi aktif yang sedang dibuka agar perintah teks seperti "caption", "siaran" langsung merujuk ke konten ini
+    await this.redisService.set(
+      `whatsapp:last_viewed_pub:${tenantId}`,
+      pub.id,
+      3600
+    );
+
     if (posterUrl && posterUrl.startsWith('http')) {
       await this.waClient.sendImageMessage(
         phoneE164,
@@ -3519,13 +3615,8 @@ export class WhatsAppBotSessionService implements OnModuleDestroy {
       );
     }
 
-    const shareableCaption =
-      syndication?.whatsappBroadcastText ||
-      syndication?.instagramCaption ||
-      pub.excerpt;
-
     if (isPublished) {
-      // KASUS A: KONTEN SUDAH TAYANG (Fokus pada Distribusi & Sebar)
+      // KASUS A: KONTEN SUDAH TAYANG (Fokus pada Distribusi, Siaran WA & Caption Medsos)
       await this.waClient.sendInteractiveButtons(
         phoneE164,
         [
@@ -3535,19 +3626,21 @@ export class WhatsAppBotSessionService implements OnModuleDestroy {
           `• Status: *✅ Telah Tayang di Portal Berita Publik*`,
           `• 🔗 Link Berita: ${pub.canonicalUrl}`,
           '',
-          '*Teks Siap Sebar / Caption:*',
-          shareableCaption.slice(0, 600),
+          '*Ringkasan Naskah:*',
+          `"${pub.excerpt.slice(0, 300)}..."`,
+          '',
+          '💡 _Pilih opsi di bawah untuk mengambil naskah siap sebar / caption medsos bersih:_',
         ].join('\n'),
         [
-          { id: 'MENU_LATEST_LINKS', title: '📚 Arsip Lainnya' },
-          { id: 'MENU_NEW_BRIEF', title: '📝 Request Baru' },
-          { id: 'MENU_OPEN_MAIN', title: '📋 Menu Utama' },
+          { id: `PUB_CAPTION_WA:${pub.id}`, title: '📢 Siaran WA' },
+          { id: `PUB_CAPTION_MENU:${pub.id}`, title: '📱 Pilihan Medsos' },
+          { id: `PUB_SHARE_WEB:${pub.id}`, title: '🌐 Sentra Web' },
         ],
-        'Paket Konten Resmi Tayang',
+        'Paket Distribusi Konten',
         'Asisten Redaksi Polaris'
       );
     } else {
-      // KASUS B: KONTEN MASIH DRAF (Fokus pada Tindak Lanjut: Minta Terbitkan vs Revisi vs Biarkan)
+      // KASUS B: KONTEN MASIH DRAF (Fokus pada Tindak Lanjut: Minta Terbitkan vs Revisi vs Review Web)
       const canRevise =
         linkedBrief && linkedBrief.revisionUsed < linkedBrief.revisionLimit;
 
@@ -3556,7 +3649,11 @@ export class WhatsAppBotSessionService implements OnModuleDestroy {
       if (canRevise) {
         buttons.push({ id: `REV_START:${linkedBrief.id}`, title: '✏️ Minta Revisi' });
       }
-      buttons.push({ id: 'MENU_OPEN_MAIN', title: '📁 Biarkan di Draf' });
+      if (linkedBrief) {
+        buttons.push({ id: `PUB_SHARE_WEB:${pub.id}`, title: '🌐 Review Web Hub' });
+      } else {
+        buttons.push({ id: 'MENU_OPEN_MAIN', title: '📁 Biarkan di Draf' });
+      }
 
       await this.waClient.sendInteractiveButtons(
         phoneE164,
@@ -3580,7 +3677,7 @@ export class WhatsAppBotSessionService implements OnModuleDestroy {
           canRevise
             ? '• Tekan *✏️ Minta Revisi* jika ada bagian yang ingin disempurnakan.'
             : '',
-          '• Tekan *📁 Biarkan di Draf* jika hanya ingin meninjau tanpa mengubah status.',
+          '• Tekan *🌐 Review Web Hub* untuk meninjau per paragraf secara interaktif tanpa login.',
         ]
           .filter(Boolean)
           .join('\n'),
@@ -3589,6 +3686,275 @@ export class WhatsAppBotSessionService implements OnModuleDestroy {
         'Asisten Redaksi Polaris'
       );
     }
+  }
+
+  private async sendCleanWhatsAppBroadcast(
+    tenant: any,
+    phoneE164: string,
+    publicationId: string
+  ): Promise<void> {
+    const [pub] = await db
+      .select()
+      .from(contentPublications)
+      .where(and(eq(contentPublications.id, publicationId), eq(contentPublications.tenantId, tenant.id)))
+      .limit(1);
+
+    if (!pub) {
+      await this.waClient.sendTextMessage(phoneE164, 'Data konten tidak ditemukan.');
+      return;
+    }
+
+    const [syndication] = await db
+      .select()
+      .from(socialSyndicationPacks)
+      .where(eq(socialSyndicationPacks.publicationId, pub.id))
+      .limit(1);
+
+    const broadcastText =
+      syndication?.whatsappBroadcastText ||
+      `*${pub.title}*\n\n${pub.excerpt}\n\n📌 *Baca rilis lengkapnya melalui portal resmi:* \n${pub.canonicalUrl}\n\n#InformasiPublik #KilasBerita`;
+
+    // 1. Kirim balon teks 100% murni tanpa prefix bot agar 1-tap forwardable
+    await this.waClient.sendTextMessage(phoneE164, broadcastText);
+
+    // 2. Kirim pesan panduan navigasi ringkas
+    await this.waClient.sendInteractiveButtons(
+      phoneE164,
+      '💡 _Teks siaran di atas sudah bersih & siap di-forward langsung ke WhatsApp Group tim relawan, fraksi, atau konstituen._',
+      [
+        { id: `PUB_CAPTION_MENU:${pub.id}`, title: '📱 Medsos Lainnya' },
+        { id: `PUB_SHARE_WEB:${pub.id}`, title: '🌐 Sentra Web' },
+        { id: 'MENU_LATEST_LINKS', title: '📚 Arsip Lainnya' },
+      ],
+      'Siaran WhatsApp Terkirim',
+      'Asisten Redaksi Polaris'
+    );
+  }
+
+  private async sendSocialSyndicationMenu(
+    tenant: any,
+    phoneE164: string,
+    publicationId: string
+  ): Promise<void> {
+    const [pub] = await db
+      .select()
+      .from(contentPublications)
+      .where(and(eq(contentPublications.id, publicationId), eq(contentPublications.tenantId, tenant.id)))
+      .limit(1);
+
+    if (!pub) {
+      await this.waClient.sendTextMessage(phoneE164, 'Data konten tidak ditemukan.');
+      return;
+    }
+
+    const sections = [
+      {
+        title: 'Naskah Media Sosial Bersih',
+        rows: [
+          {
+            id: `PUB_CAPTION_WA:${pub.id}`,
+            title: '📢 Siaran WhatsApp',
+            description: 'Format siap forward ke grup WA relawan & konstituen',
+          },
+          {
+            id: `PUB_CAPTION_IG:${pub.id}`,
+            title: '📸 Caption Instagram & Threads',
+            description: 'Narasi visual lengkap dengan hashtag kurasi',
+          },
+          {
+            id: `PUB_CAPTION_X:${pub.id}`,
+            title: '🐦 Utas Twitter / X',
+            description: 'Rangkaian tweet bersambung (thread 280 karakter)',
+          },
+          {
+            id: `PUB_CAPTION_TT:${pub.id}`,
+            title: '🎬 Naskah TikTok / Reels',
+            description: 'Struktur hook 3 detik, inti pesan & Call to Action',
+          },
+          {
+            id: `PUB_CAPTION_FB:${pub.id}`,
+            title: '📘 Postingan Facebook',
+            description: 'Narasi publikasi lengkap gaya akun resmi',
+          },
+        ],
+      },
+      {
+        title: 'Akses Lengkap & Berkas',
+        rows: [
+          {
+            id: `PUB_SHARE_WEB:${pub.id}`,
+            title: '🌐 Sentra Sosmed Web',
+            description: 'Buka Web Hub tanpa login (1-tap copy & download HD)',
+          },
+          {
+            id: `PUB_DETAIL:${pub.id}`,
+            title: '🖼️ Ambil Ulang Poster',
+            description: 'Kirim ulang poster grafis ke chat WhatsApp ini',
+          },
+          {
+            id: 'MENU_LATEST_LINKS',
+            title: '📚 Kembali ke Arsip',
+            description: 'Lihat daftar publikasi dan tiket lainnya',
+          },
+        ],
+      },
+    ];
+
+    await this.waClient.sendInteractiveList(
+      phoneE164,
+      `📱 *Pilih Format Naskah Medsos*\n\nArtikel: *${pub.title}*\n\nSilakan pilih saluran di bawah untuk menerima naskah bersih siap pakai:`,
+      '📱 Pilih Format Naskah',
+      sections,
+      'Sentra Distribusi Konten',
+      'Asisten Redaksi Polaris'
+    );
+  }
+
+  private async sendCleanChannelCaption(
+    tenant: any,
+    phoneE164: string,
+    publicationId: string,
+    channel: 'IG' | 'X' | 'TT' | 'FB'
+  ): Promise<void> {
+    const [pub] = await db
+      .select()
+      .from(contentPublications)
+      .where(and(eq(contentPublications.id, publicationId), eq(contentPublications.tenantId, tenant.id)))
+      .limit(1);
+
+    if (!pub) {
+      await this.waClient.sendTextMessage(phoneE164, 'Data konten tidak ditemukan.');
+      return;
+    }
+
+    const [syndication] = await db
+      .select()
+      .from(socialSyndicationPacks)
+      .where(eq(socialSyndicationPacks.publicationId, pub.id))
+      .limit(1);
+
+    let cleanCaption = '';
+    let channelLabel = '';
+
+    if (channel === 'IG') {
+      channelLabel = 'Instagram & Threads';
+      cleanCaption =
+        syndication?.instagramCaption ||
+        syndication?.threadsText ||
+        `📸 *${pub.title}*\n\n${pub.excerpt}\n\nBaca artikel selengkapnya melalui tautan di bio atau kunjungi portal resmi kami:\n🔗 ${pub.canonicalUrl}\n\n#BeritaTerkini #KabarPublik #AspirasiRakyat #TransparansiPublik`;
+    } else if (channel === 'X') {
+      channelLabel = 'Twitter / X';
+      if (
+        syndication?.twitterThreads &&
+        Array.isArray(syndication.twitterThreads) &&
+        syndication.twitterThreads.length > 0
+      ) {
+        cleanCaption = syndication.twitterThreads
+          .map((tweet: string, idx: number) => `🧵 [${idx + 1}/${syndication.twitterThreads.length}]\n${tweet}`)
+          .join('\n\n');
+      } else {
+        cleanCaption = `🧵 [1/2] ${pub.title}\n\n${pub.excerpt.slice(0, 180)}...\n\n[2/2] Baca selengkapnya di portal resmi: ${pub.canonicalUrl} #KilasInfo`;
+      }
+    } else if (channel === 'TT') {
+      channelLabel = 'TikTok & Reels';
+      cleanCaption =
+        syndication?.tiktokCaption ||
+        `🎬 *[NASKAH SINGKAT REELS / TIKTOK]*\n\n📌 *[Hook 0-3 Detik]:*\n"Tahukah Anda apa perkembangan terbaru tentang ${pub.title.slice(0, 50)}?"\n\n📝 *[Inti Narasi]:*\n"${pub.excerpt}"\n\n👉 *[Call to Action]:*\n"Tulis tanggapan Anda di kolom komentar! Informasi lengkapnya ada di link pada bio: ${pub.canonicalUrl}"`;
+    } else if (channel === 'FB') {
+      channelLabel = 'Facebook';
+      cleanCaption =
+        syndication?.facebookPostText ||
+        syndication?.whatsappBroadcastText ||
+        `${pub.title}\n\n${pub.excerpt}\n\nInformasi dan dokumentasi selengkapnya dapat diakses melalui portal resmi kami:\n🔗 ${pub.canonicalUrl}\n\n#PublikasiResmi #KabarDaerah`;
+    }
+
+    // 1. Kirim pesan bersih murni
+    await this.waClient.sendTextMessage(phoneE164, cleanCaption);
+
+    // 2. Kirim tombol navigasi pendamping
+    await this.waClient.sendInteractiveButtons(
+      phoneE164,
+      `💡 _Naskah untuk *${channelLabel}* telah dikirimkan secara bersih. Anda dapat langsung menyalin (copy) teks di atas._`,
+      [
+        { id: `PUB_CAPTION_MENU:${pub.id}`, title: '📱 Format Lainnya' },
+        { id: `PUB_CAPTION_WA:${pub.id}`, title: '📢 Siaran WA' },
+        { id: 'MENU_LATEST_LINKS', title: '📚 Arsip Lainnya' },
+      ],
+      `Naskah ${channelLabel}`,
+      'Asisten Redaksi Polaris'
+    );
+  }
+
+  private async sendPublicReviewWebHub(
+    tenant: any,
+    phoneE164: string,
+    publicationId: string
+  ): Promise<void> {
+    const [pub] = await db
+      .select()
+      .from(contentPublications)
+      .where(and(eq(contentPublications.id, publicationId), eq(contentPublications.tenantId, tenant.id)))
+      .limit(1);
+
+    if (!pub) {
+      await this.waClient.sendTextMessage(phoneE164, 'Data konten tidak ditemukan.');
+      return;
+    }
+
+    const [linkedBrief] = await db
+      .select()
+      .from(contentBriefs)
+      .where(and(eq(contentBriefs.linkedPublicationId, pub.id), eq(contentBriefs.tenantId, tenant.id)))
+      .limit(1);
+
+    const dashboardBase = (
+      process.env.DASHBOARD_URL ||
+      process.env.WEB_DASHBOARD_URL ||
+      'https://app.polaris-platform.com'
+    ).replace(/\/$/, '');
+
+    let reviewUrl = pub.canonicalUrl;
+
+    if (linkedBrief) {
+      const rawToken = crypto.randomBytes(24).toString('hex');
+      const tokenHash = crypto.createHash('sha256').update(rawToken).digest('hex');
+      const expiresAt = new Date(Date.now() + 72 * 60 * 60 * 1000);
+
+      await db
+        .update(contentBriefs)
+        .set({
+          reviewTokenHash: tokenHash,
+          reviewTokenExpiresAt: expiresAt,
+          updatedAt: new Date(),
+        })
+        .where(eq(contentBriefs.id, linkedBrief.id));
+
+      reviewUrl = `${dashboardBase}/review-brief/${rawToken}`;
+    }
+
+    await this.waClient.sendInteractiveButtons(
+      phoneE164,
+      [
+        `🌐 *Sentra Distribusi Medsos & Review Web (Tanpa Login)*`,
+        `*${pub.title}*`,
+        '',
+        `Bapak/Ibu *${tenant.fullName}*, tautan aman berikut dapat dibuka langsung di browser ponsel Anda:`,
+        `🔗 ${reviewUrl}`,
+        '',
+        '✨ *Keunggulan Sentra Web:*',
+        '• 1-Tap Copy Caption untuk WhatsApp, IG, X, Threads, TikTok & FB',
+        '• Tombol Web Intent (klik langsung buka aplikasi Twitter & WhatsApp dengan teks terisi)',
+        '• Unduh Poster HD Kualitas Cetak langsung ke galeri HP',
+        '• Tanpa perlu login username/password',
+      ].join('\n'),
+      [
+        { id: `PUB_CAPTION_WA:${pub.id}`, title: '📢 Siaran WA' },
+        { id: `PUB_CAPTION_MENU:${pub.id}`, title: '📱 Pilihan Medsos' },
+        { id: 'MENU_LATEST_LINKS', title: '📚 Arsip Lainnya' },
+      ],
+      'Sentra Medsos Web Hub',
+      'Asisten Redaksi Polaris'
+    );
   }
 
   private async publishDraftPublicationFromClient(

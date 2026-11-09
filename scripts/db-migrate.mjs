@@ -542,8 +542,15 @@ async function runMigration() {
         instagram_caption TEXT,
         twitter_threads JSONB,
         whatsapp_broadcast_text TEXT,
+        threads_text TEXT,
+        tiktok_caption TEXT,
+        facebook_post_text TEXT,
         created_at TIMESTAMPTZ NOT NULL DEFAULT now()
       );
+
+      ALTER TABLE social_syndication_packs ADD COLUMN IF NOT EXISTS threads_text TEXT;
+      ALTER TABLE social_syndication_packs ADD COLUMN IF NOT EXISTS tiktok_caption TEXT;
+      ALTER TABLE social_syndication_packs ADD COLUMN IF NOT EXISTS facebook_post_text TEXT;
 
       -- 4b. Content Briefs Intake Broker & Quota Wallets
       CREATE TABLE IF NOT EXISTS content_briefs (
