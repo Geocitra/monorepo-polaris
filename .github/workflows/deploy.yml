@@ -80,27 +80,23 @@ jobs:
       - name: Checkout Repository
         uses: actions/checkout@v4
 
+      - name: Configure SSH Key & Host Verification
+        run: |
+          mkdir -p ~/.ssh
+          # tr -d '\r' memastikan private key bebas dari format CRLF Windows yang bisa merusak format PEM OpenSSH
+          echo "${{ secrets.PROD_SSH_KEY }}" | tr -d '\r' > ~/.ssh/id_rsa
+          chmod 600 ~/.ssh/id_rsa
+          ssh-keyscan -p ${{ secrets.PROD_SSH_PORT || 22 }} -H "${{ secrets.PROD_SSH_HOST }}" >> ~/.ssh/known_hosts 2>/dev/null || true
+          chmod 644 ~/.ssh/known_hosts
+
       - name: Transfer Deployment Files to VPS
-        uses: appleboy/scp-action@v0.1.7
-        with:
-          host: ${{ secrets.PROD_SSH_HOST }}
-          username: ${{ secrets.PROD_SSH_USER }}
-          key: ${{ secrets.PROD_SSH_KEY }}
-          port: ${{ secrets.PROD_SSH_PORT || 22 }}
-          source: "docker-compose.prod.yml,scripts/deploy-production.sh,packages/database/src/migrations/*"
-          target: "/home/${{ secrets.PROD_SSH_USER }}/monorepo-polaris"
-          overwrite: true
+        run: |
+          ssh -o BatchMode=yes -o StrictHostKeyChecking=accept-new -o ServerAliveInterval=15 -p ${{ secrets.PROD_SSH_PORT || 22 }} -i ~/.ssh/id_rsa ${{ secrets.PROD_SSH_USER }}@${{ secrets.PROD_SSH_HOST }} "mkdir -p /home/${{ secrets.PROD_SSH_USER }}/monorepo-polaris"
+          scp -o BatchMode=yes -o StrictHostKeyChecking=accept-new -P ${{ secrets.PROD_SSH_PORT || 22 }} -i ~/.ssh/id_rsa -r docker-compose.prod.yml scripts/deploy-production.sh packages/database/src/migrations ${{ secrets.PROD_SSH_USER }}@${{ secrets.PROD_SSH_HOST }}:/home/${{ secrets.PROD_SSH_USER }}/monorepo-polaris/
 
       - name: Execute Remote Deployment via SSH
-        uses: appleboy/ssh-action@v1.2.0
-        with:
-          host: ${{ secrets.PROD_SSH_HOST }}
-          username: ${{ secrets.PROD_SSH_USER }}
-          key: ${{ secrets.PROD_SSH_KEY }}
-          port: ${{ secrets.PROD_SSH_PORT || 22 }}
-          script_stop: true
-          script: |
-            set -e
+        run: |
+          ssh -o BatchMode=yes -o StrictHostKeyChecking=accept-new -o ServerAliveInterval=15 -p ${{ secrets.PROD_SSH_PORT || 22 }} -i ~/.ssh/id_rsa ${{ secrets.PROD_SSH_USER }}@${{ secrets.PROD_SSH_HOST }} 'bash -se' << 'EOF'
             echo "=========================================================="
             echo " [POLARIS CD] Memulai Rolling Deployment Versi ${{ github.sha }} "
             echo "=========================================================="
@@ -118,3 +114,8 @@ jobs:
             # 3. Jalankan script rolling deployment aman
             chmod +x ./scripts/deploy-production.sh
             ./scripts/deploy-production.sh
+          EOF
+
+      - name: Secure Cleanup SSH Key
+        if: always()
+        run: rm -f ~/.ssh/id_rsa
