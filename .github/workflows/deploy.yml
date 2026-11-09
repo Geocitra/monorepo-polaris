@@ -91,8 +91,14 @@ jobs:
 
       - name: Transfer Deployment Files to VPS
         run: |
-          ssh -o BatchMode=yes -o StrictHostKeyChecking=accept-new -o ServerAliveInterval=15 -p ${{ secrets.PROD_SSH_PORT || 22 }} -i ~/.ssh/id_rsa ${{ secrets.PROD_SSH_USER }}@${{ secrets.PROD_SSH_HOST }} "mkdir -p /home/${{ secrets.PROD_SSH_USER }}/monorepo-polaris"
-          scp -o BatchMode=yes -o StrictHostKeyChecking=accept-new -P ${{ secrets.PROD_SSH_PORT || 22 }} -i ~/.ssh/id_rsa -r docker-compose.prod.yml scripts/deploy-production.sh packages/database/src/migrations ${{ secrets.PROD_SSH_USER }}@${{ secrets.PROD_SSH_HOST }}:/home/${{ secrets.PROD_SSH_USER }}/monorepo-polaris/
+          REMOTE_DIR=/home/${{ secrets.PROD_SSH_USER }}/monorepo-polaris
+          SSH_OPTS="-o BatchMode=yes -o StrictHostKeyChecking=accept-new -o ServerAliveInterval=15 -i ~/.ssh/id_rsa"
+          REMOTE=${{ secrets.PROD_SSH_USER }}@${{ secrets.PROD_SSH_HOST }}
+          # Struktur folder di VPS harus sama dengan repo agar deploy-production.sh menemukan file yang benar
+          ssh $SSH_OPTS -p ${{ secrets.PROD_SSH_PORT || 22 }} $REMOTE "mkdir -p $REMOTE_DIR/scripts $REMOTE_DIR/packages/database/src/migrations"
+          scp $SSH_OPTS -P ${{ secrets.PROD_SSH_PORT || 22 }} docker-compose.prod.yml $REMOTE:$REMOTE_DIR/
+          scp $SSH_OPTS -P ${{ secrets.PROD_SSH_PORT || 22 }} scripts/deploy-production.sh scripts/db-migrate.mjs $REMOTE:$REMOTE_DIR/scripts/
+          scp $SSH_OPTS -P ${{ secrets.PROD_SSH_PORT || 22 }} packages/database/src/migrations/*.sql $REMOTE:$REMOTE_DIR/packages/database/src/migrations/
 
       - name: Execute Remote Deployment via SSH
         run: |

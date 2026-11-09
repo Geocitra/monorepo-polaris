@@ -21,7 +21,11 @@ import {
 } from '@polaris/database';
 import { BriefUrgencyLevel, BriefPackageType, LiveChatCsatRating } from '@polaris/shared-types';
 import { RedisService } from '../../redis/redis.service.js';
-import { WhatsAppCloudClient, WhatsAppListSection } from '../whatsapp-cloud.client.js';
+import {
+  WhatsAppCloudClient,
+  type WhatsAppListSection,
+  type WhatsAppReplyButton,
+} from '../whatsapp-cloud.client.js';
 import {
   normalizeIndonesianPhone,
   getCurrentWibWeeklyPeriod,
