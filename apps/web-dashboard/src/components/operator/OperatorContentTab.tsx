@@ -171,7 +171,7 @@ export function OperatorContentTab({
 
   const isRevisionMode = Boolean(
     activeBrief &&
-      (activeBrief.status === 'REVISION_REQUESTED' || (activeBrief.revisionUsed && activeBrief.revisionUsed > 0))
+    (activeBrief.status === 'REVISION_REQUESTED' || (activeBrief.revisionUsed && activeBrief.revisionUsed > 0))
   );
 
   const latestRevisionMsg = activeBrief?.messages
@@ -183,38 +183,34 @@ export function OperatorContentTab({
       {/* COCKPIT TIKET & REVISI WHATSAPP BRIEF AKTIF */}
       {activeBrief && (
         <div
-          className={`p-4 sm:p-5 rounded-2xl border transition-all ${
-            isRevisionMode
+          className={`p-4 sm:p-5 rounded-2xl border transition-all ${isRevisionMode
               ? 'bg-gradient-to-r from-rose-500/15 via-amber-500/10 to-indigo-500/10 border-rose-500/40 shadow-xs'
               : 'bg-gradient-to-r from-emerald-500/15 via-indigo-500/10 to-transparent border-emerald-500/40'
-          }`}
+            }`}
         >
           <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-3">
             <div className="flex items-start gap-3.5">
               <div
-                className={`w-10 h-10 rounded-xl text-white flex items-center justify-center shrink-0 mt-0.5 ${
-                  isRevisionMode ? 'bg-rose-600 shadow-md shadow-rose-600/30' : 'bg-emerald-600'
-                }`}
+                className={`w-10 h-10 rounded-xl text-white flex items-center justify-center shrink-0 mt-0.5 ${isRevisionMode ? 'bg-rose-600 shadow-md shadow-rose-600/30' : 'bg-emerald-600'
+                  }`}
               >
                 {isRevisionMode ? <RotateCcw className="w-5 h-5" /> : <MessageCircle className="w-5 h-5" />}
               </div>
               <div className="space-y-1">
                 <div className="flex items-center gap-2 flex-wrap">
                   <span
-                    className={`text-xs font-black uppercase tracking-wide ${
-                      isRevisionMode ? 'text-rose-700 dark:text-rose-300' : 'text-emerald-800 dark:text-emerald-300'
-                    }`}
+                    className={`text-xs font-black uppercase tracking-wide ${isRevisionMode ? 'text-rose-700 dark:text-rose-300' : 'text-emerald-800 dark:text-emerald-300'
+                      }`}
                   >
                     {isRevisionMode
                       ? `🛠️ Cockpit Revisi Tiket #${activeBrief.briefCode}`
                       : `Mengerjakan Tiket Request #${activeBrief.briefCode}`}
                   </span>
                   <span
-                    className={`px-2 py-0.5 rounded-full text-[10px] font-black border ${
-                      isRevisionMode
+                    className={`px-2 py-0.5 rounded-full text-[10px] font-black border ${isRevisionMode
                         ? 'bg-rose-100 text-rose-800 dark:bg-rose-950/80 dark:text-rose-200 border-rose-300 dark:border-rose-800'
                         : 'bg-white/80 dark:bg-slate-900 text-slate-700 dark:text-slate-300 border-emerald-300 dark:border-emerald-800'
-                    }`}
+                      }`}
                   >
                     Putaran Revisi: {activeBrief.revisionUsed}/{activeBrief.revisionLimit}
                   </span>
@@ -264,11 +260,10 @@ export function OperatorContentTab({
                         setResultTab('article');
                         setIsEditingArticle(true);
                       }}
-                      className={`px-2 py-0.5 rounded-lg text-[10px] font-bold transition flex items-center gap-1 cursor-pointer ${
-                        activeBrief.articleStatus === 'REVISION_REQUESTED'
+                      className={`px-2 py-0.5 rounded-lg text-[10px] font-bold transition flex items-center gap-1 cursor-pointer ${activeBrief.articleStatus === 'REVISION_REQUESTED'
                           ? 'bg-rose-500 text-white hover:bg-rose-600 ring-2 ring-rose-400/40 animate-pulse'
                           : 'bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 text-slate-700 dark:text-slate-300'
-                      }`}
+                        }`}
                       title="Buka & edit naskah artikel"
                     >
                       <FileText className="w-3 h-3" />
@@ -280,11 +275,10 @@ export function OperatorContentTab({
                     <button
                       type="button"
                       onClick={() => setResultTab('poster')}
-                      className={`px-2 py-0.5 rounded-lg text-[10px] font-bold transition flex items-center gap-1 cursor-pointer ${
-                        activeBrief.imageStatus === 'REVISION_REQUESTED'
+                      className={`px-2 py-0.5 rounded-lg text-[10px] font-bold transition flex items-center gap-1 cursor-pointer ${activeBrief.imageStatus === 'REVISION_REQUESTED'
                           ? 'bg-rose-500 text-white hover:bg-rose-600 ring-2 ring-rose-400/40 animate-pulse'
                           : 'bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 text-slate-700 dark:text-slate-300'
-                      }`}
+                        }`}
                       title="Buka visual untuk regenerasi gambar AI"
                     >
                       <ImageIcon className="w-3 h-3" />
@@ -296,11 +290,10 @@ export function OperatorContentTab({
                     <button
                       type="button"
                       onClick={() => setResultTab('social')}
-                      className={`px-2 py-0.5 rounded-lg text-[10px] font-bold transition flex items-center gap-1 cursor-pointer ${
-                        activeBrief.captionStatus === 'REVISION_REQUESTED'
+                      className={`px-2 py-0.5 rounded-lg text-[10px] font-bold transition flex items-center gap-1 cursor-pointer ${activeBrief.captionStatus === 'REVISION_REQUESTED'
                           ? 'bg-rose-500 text-white hover:bg-rose-600 ring-2 ring-rose-400/40 animate-pulse'
                           : 'bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 text-slate-700 dark:text-slate-300'
-                      }`}
+                        }`}
                       title="Buka distribusi pesan siaran WA & medsos"
                     >
                       <MessageCircle className="w-3 h-3" />
@@ -737,27 +730,33 @@ export function OperatorContentTab({
             <button
               type="button"
               onClick={() => setResultTab('article')}
-              className={`shrink-0 whitespace-nowrap flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition cursor-pointer ${
-                resultTab === 'article'
+              className={`shrink-0 whitespace-nowrap flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition cursor-pointer ${resultTab === 'article'
                   ? 'bg-indigo-600 text-white shadow-sm'
                   : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800'
-              }`}
+                }`}
             >
               <FileText className="w-4 h-4" />
               <span>Naskah Kebijakan Utuh</span>
+              {activeBrief?.articleStatus === 'NOT_APPLICABLE' && (
+                <span className="text-[10px] opacity-75 font-normal">(Bukan Paket Naskah)</span>
+              )}
             </button>
 
             <button
               type="button"
               onClick={() => setResultTab('poster')}
-              className={`shrink-0 whitespace-nowrap flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition cursor-pointer ${
-                resultTab === 'poster'
+              className={`shrink-0 whitespace-nowrap flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition cursor-pointer ${resultTab === 'poster'
                   ? 'bg-indigo-600 text-white shadow-sm'
                   : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800'
-              }`}
+                }`}
             >
               <ImageIcon className="w-4 h-4" />
               <span>Visual Poster Editorial</span>
+              {activeBrief?.imageStatus !== 'NOT_APPLICABLE' && activeBrief?.articleStatus === 'NOT_APPLICABLE' && (
+                <span className="px-1.5 py-0.5 rounded text-[10px] font-black bg-emerald-500/20 text-emerald-300 border border-emerald-400/30">
+                  Paket Utama
+                </span>
+              )}
               {generatedResult.posterUrl && (
                 <span className="w-2 h-2 rounded-full bg-emerald-500" />
               )}
@@ -766,11 +765,10 @@ export function OperatorContentTab({
             <button
               type="button"
               onClick={() => setResultTab('social')}
-              className={`shrink-0 whitespace-nowrap flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition cursor-pointer ${
-                resultTab === 'social'
+              className={`shrink-0 whitespace-nowrap flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition cursor-pointer ${resultTab === 'social'
                   ? 'bg-emerald-600 text-white shadow-sm'
                   : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800'
-              }`}
+                }`}
             >
               <Share2 className="w-4 h-4" />
               <span>Distribusi WA &amp; Medsos</span>
@@ -786,11 +784,10 @@ export function OperatorContentTab({
                   <button
                     type="button"
                     onClick={() => setIsEditingArticle(false)}
-                    className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
-                      !isEditingArticle
+                    className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${!isEditingArticle
                         ? 'bg-indigo-600 text-white shadow-xs'
                         : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
-                    }`}
+                      }`}
                   >
                     <Eye className="w-3.5 h-3.5" />
                     <span>Pratinjau Dokumen (A4)</span>
@@ -798,11 +795,10 @@ export function OperatorContentTab({
                   <button
                     type="button"
                     onClick={() => setIsEditingArticle(true)}
-                    className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
-                      isEditingArticle
+                    className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${isEditingArticle
                         ? 'bg-indigo-600 text-white shadow-xs'
                         : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
-                    }`}
+                      }`}
                   >
                     <Edit3 className="w-3.5 h-3.5" />
                     <span>Sunting Naskah Langsung</span>
@@ -842,7 +838,28 @@ export function OperatorContentTab({
               </div>
 
               {/* KONTEN DOKUMEN: PRATINJAU DOKUMEN A4 vs TIPTAP WYSIWYG */}
-              <div className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-slate-100/50 dark:bg-slate-950/40 p-2 sm:p-4 overflow-hidden">
+              <div className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-slate-100/50 dark:bg-slate-950/40 p-2 sm:p-4 overflow-hidden space-y-4">
+                {/* JUDUL NASKAH KEBIJAKAN (INPUT LANGSUNG SAAT MODE SUNTING) */}
+                <div className="space-y-1.5 p-3 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-2xs">
+                  <label className="text-[11px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 flex items-center gap-1.5">
+                    <FileText className="w-3.5 h-3.5 text-indigo-500" />
+                    <span>Judul Naskah Kebijakan</span>
+                  </label>
+                  {isEditingArticle ? (
+                    <input
+                      type="text"
+                      value={editedTitle}
+                      onChange={(e) => setEditedTitle(e.target.value.replace(/<[^>]+>/g, ''))}
+                      placeholder="Masukkan judul naskah kebijakan..."
+                      className="w-full rounded-xl border border-indigo-500 bg-slate-50/50 dark:bg-slate-950/50 px-3.5 py-2 text-sm sm:text-base font-black text-slate-900 dark:text-white shadow-2xs focus:outline-hidden"
+                    />
+                  ) : (
+                    <h2 className="text-base sm:text-lg font-black text-slate-900 dark:text-white tracking-tight">
+                      {editedTitle || generatedResult.publication.title}
+                    </h2>
+                  )}
+                </div>
+
                 {!isEditingArticle ? (
                   <VisualDocumentCanvas
                     content={
@@ -850,11 +867,7 @@ export function OperatorContentTab({
                         ? editedBody
                         : (editedTitle ? `# ${editedTitle}\n\n${editedBody}` : (generatedResult.publication.bodyContentMarkdown || ''))
                     }
-                    onContentChange={(newContent) => {
-                      setEditedBody(newContent);
-                      const firstLine = newContent.split('\n')[0].replace(/^#\s*/, '').trim();
-                      if (firstLine) setEditedTitle(firstLine);
-                    }}
+                    onContentChange={() => { }}
                     selectedStyle={selectedStyle}
                     wordCount={
                       (editedBody || generatedResult.publication.bodyContentMarkdown || '')
@@ -878,15 +891,9 @@ export function OperatorContentTab({
                       </span>
                     </div>
                     <TiptapExecutiveEditor
-                      content={
-                        editedBody.startsWith('# ')
-                          ? editedBody
-                          : (editedTitle ? `# ${editedTitle}\n\n${editedBody}` : (generatedResult.publication.bodyContentMarkdown || ''))
-                      }
-                      onContentChange={(newContent) => {
-                        setEditedBody(newContent);
-                        const firstLine = newContent.split('\n')[0].replace(/^#\s*/, '').trim();
-                        if (firstLine) setEditedTitle(firstLine);
+                      content={editedBody || generatedResult.publication.bodyContentMarkdown || ''}
+                      onContentChange={(newHtml) => {
+                        setEditedBody(newHtml);
                       }}
                       selectedStyle={selectedStyle}
                       authorName={selectedDewan.fullName}
@@ -1014,11 +1021,10 @@ export function OperatorContentTab({
                         type="button"
                         disabled={submittingBriefReview || !hasRequiredAssets || regeneratingPoster}
                         onClick={onSubmitBriefForWhatsAppReview}
-                        className={`px-5 py-2.5 rounded-xl text-xs font-black transition flex items-center gap-2 cursor-pointer shadow-sm ${
-                          hasRequiredAssets && !regeneratingPoster && !submittingBriefReview
+                        className={`px-5 py-2.5 rounded-xl text-xs font-black transition flex items-center gap-2 cursor-pointer shadow-sm ${hasRequiredAssets && !regeneratingPoster && !submittingBriefReview
                             ? 'bg-indigo-600 hover:bg-indigo-700 text-white'
                             : 'bg-slate-200 dark:bg-slate-800 text-slate-400 dark:text-slate-500 cursor-not-allowed opacity-80'
-                        }`}
+                          }`}
                       >
                         {submittingBriefReview ? (
                           <RefreshCw className="w-4 h-4 animate-spin" />

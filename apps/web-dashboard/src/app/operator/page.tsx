@@ -227,32 +227,44 @@ export default function OperatorCockpitPage() {
     }
   };
 
-  const loadArticleToCanvas = async (articleId: string) => {
+  const loadArticleToCanvas = async (articleId: string, briefContext?: ContentBriefItem | null) => {
     try {
       setLoadingCanvasArticleId(articleId);
       const detail = await AdminApiClient.request<any>(`/studio/articles/${articleId}`);
       const art = detail?.article || detail;
       if (!art) throw new Error('Data artikel tidak ditemukan.');
 
+      // 1. Bersihkan judul dari sisa-sisa tag HTML (defensive sanitization jika terkena riwayat bug sebelumnya)
+      const cleanTitle = (art.title || '')
+        .replace(/<[^>]+>/g, '')
+        .replace(/^#\s*/, '')
+        .trim();
+
+      // 2. Deteksi apakah tiket / publikasi ini khusus untuk poster/infografis (tanpa naskah utuh)
+      const isPosterOnly =
+        briefContext?.articleStatus === 'NOT_APPLICABLE' ||
+        (briefContext as any)?.packageType === 'POSTER' ||
+        (briefContext?.imageStatus !== 'NOT_APPLICABLE' && briefContext?.articleStatus === 'NOT_APPLICABLE') ||
+        (!briefContext && Boolean(detail?.asset?.cdnPublicUrl || detail?.asset?.r2StorageUrl || art.posterUrl) && (art.wordCount <= 35 || (art.bodyContentMarkdown || '').includes('Studio Infografis Polaris Gov')));
+
       const rawBody = art.bodyContentMarkdown || '';
-      const bodyWithTitle = rawBody.startsWith('# ')
-        ? rawBody
-        : (art.title ? `# ${art.title}\n\n${rawBody}` : rawBody);
 
       setGeneratedResult({
         publication: {
           ...art,
-          bodyContentMarkdown: bodyWithTitle,
+          title: cleanTitle,
+          bodyContentMarkdown: rawBody,
         },
         posterUrl: detail?.asset?.cdnPublicUrl || detail?.asset?.r2StorageUrl || art.posterUrl || '',
         socialPack: detail?.socialPack || art.socialPack,
         infographicData: detail?.infographicData || art.infographicData,
       });
 
-      setEditedTitle(art.title || '');
-      setEditedBody(bodyWithTitle);
+      setEditedTitle(cleanTitle);
+      setEditedBody(rawBody);
       setActiveTab('CONTENT');
-      setResultTab('article');
+      // Otomatis arahkan ke tab 'poster' jika jenis permintaan adalah poster visual
+      setResultTab(isPosterOnly ? 'poster' : 'article');
       setIsEditingArticle(false);
       setPublishedUrl(art.canonicalUrl || (art.status === 'PUBLISHED' ? `https://polaris.id/p/${art.id}` : null));
     } catch (err: any) {
@@ -355,10 +367,10 @@ export default function OperatorCockpitPage() {
           taskType: isInfographicOnly
             ? 'INFOGRAPHIC_ONLY'
             : isPosterOnly
-            ? 'POSTER_ONLY'
-            : isArticleOnly
-            ? 'ARTICLE_ONLY'
-            : 'FULL_CAMPAIGN',
+              ? 'POSTER_ONLY'
+              : isArticleOnly
+                ? 'ARTICLE_ONLY'
+                : 'FULL_CAMPAIGN',
           style: isInfographicOnly ? 'infographic' : isPosterOnly ? 'poster' : undefined,
           generateDallePoster: !isArticleOnly,
           writingStyle: selectedStyle,
@@ -466,31 +478,31 @@ export default function OperatorCockpitPage() {
     if (!generatedResult?.publication?.id) return;
     setSavingDraft(true);
     try {
-      const derivedTitle =
-        editedTitle ||
-        editedBody.split('\n')[0].replace(/^#\s*/, '').trim() ||
-        generatedResult.publication.title;
+      const cleanTitle = (editedTitle || generatedResult.publication.title || 'Draf Kebijakan')
+        .replace(/<[^>]+>/g, '')
+        .replace(/^#\s*/, '')
+        .trim();
 
       await AdminApiClient.request(`/studio/articles/${generatedResult.publication.id}`, {
         method: 'PUT',
         body: JSON.stringify({
-          title: derivedTitle,
+          title: cleanTitle,
           bodyContentMarkdown: editedBody,
         }),
       });
       setGeneratedResult((prev) =>
         prev
           ? {
-              ...prev,
-              publication: {
-                ...prev.publication,
-                title: derivedTitle,
-                bodyContentMarkdown: editedBody,
-              },
-            }
+            ...prev,
+            publication: {
+              ...prev.publication,
+              title: cleanTitle,
+              bodyContentMarkdown: editedBody,
+            },
+          }
           : null
       );
-      setEditedTitle(derivedTitle);
+      setEditedTitle(cleanTitle);
       alert('Perubahan naskah berhasil disimpan.');
     } catch (err: any) {
       alert(`Gagal menyimpan: ${err.message}`);
@@ -511,12 +523,12 @@ export default function OperatorCockpitPage() {
       setGeneratedResult((prev) =>
         prev
           ? {
-              ...prev,
-              publication: {
-                ...prev.publication,
-                status: 'PUBLISHED',
-              },
-            }
+            ...prev,
+            publication: {
+              ...prev.publication,
+              status: 'PUBLISHED',
+            },
+          }
           : null
       );
       loadAssignments();
@@ -715,11 +727,10 @@ export default function OperatorCockpitPage() {
           <button
             type="button"
             onClick={() => setViewMode(viewMode === 'WORKSPACE' ? 'DIRECTORY' : 'WORKSPACE')}
-            className={`flex items-center space-x-2 px-3.5 py-2 rounded-xl text-xs font-bold transition border cursor-pointer ${
-              viewMode === 'DIRECTORY'
+            className={`flex items-center space-x-2 px-3.5 py-2 rounded-xl text-xs font-bold transition border cursor-pointer ${viewMode === 'DIRECTORY'
                 ? 'bg-indigo-600 text-white border-indigo-600 shadow-md shadow-indigo-500/20'
                 : 'bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 hover:bg-slate-50'
-            }`}
+              }`}
           >
             <LayoutGrid className="w-3.5 h-3.5" />
             <span>{viewMode === 'DIRECTORY' ? 'Kembali ke Studio' : `Semua Tokoh (${totalAssigned})`}</span>
@@ -847,7 +858,7 @@ export default function OperatorCockpitPage() {
                 if (brief?.linkedPublicationId) {
                   // Jika tiket ini sudah memiliki draf publikasi (misal revisi atau draf lanjutan),
                   // muat langsung naskah dan poster sebelumnya ke kanvas studio agar operator tidak mengulang dari nol!
-                  loadArticleToCanvas(brief.linkedPublicationId);
+                  loadArticleToCanvas(brief.linkedPublicationId, brief);
                 } else {
                   setGeneratedResult(null);
                   setActiveTab('CONTENT');
@@ -855,7 +866,7 @@ export default function OperatorCockpitPage() {
               }}
               onOpenLinkedArticle={(publicationId, brief) => {
                 setActiveBrief(brief);
-                loadArticleToCanvas(publicationId);
+                loadArticleToCanvas(publicationId, brief);
               }}
               onBriefStatsChanged={() => loadAssignments()}
             />
