@@ -68,16 +68,18 @@ export class PlatformTokenPool {
     return Math.max(0, Math.round(this.totalBudgetIdr - consumed));
   }
 
+  public calculateRemainingPercentIdr(currentConsumedIdr?: number): number {
+    if (this.totalBudgetIdr <= 0) return 0;
+    const remaining = this.calculateRemainingIdr(currentConsumedIdr);
+    return Math.max(0, Math.min(100, Math.round((remaining / this.totalBudgetIdr) * 100)));
+  }
+
   public calculateRemainingPercent(
     currentEstimatedCostUsd: number,
     currentConsumedIdr?: number,
   ): number {
     if (this.totalBudgetIdr > 0 && (currentConsumedIdr !== undefined || this.consumedBudgetIdr > 0)) {
-      const remainingIdr = this.calculateRemainingIdr(currentConsumedIdr);
-      return Math.max(
-        0,
-        Math.min(100, Math.round((remainingIdr / (this.totalBudgetIdr || 1)) * 100)),
-      );
+      return this.calculateRemainingPercentIdr(currentConsumedIdr);
     }
     const remaining = this.calculateRemainingUsd(currentEstimatedCostUsd);
     return Math.max(0, Math.min(100, Math.round((remaining / (this.totalBudgetUsd || 1)) * 100)));
