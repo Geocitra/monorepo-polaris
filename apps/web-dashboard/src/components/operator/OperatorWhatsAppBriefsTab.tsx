@@ -21,6 +21,8 @@ import {
   Check,
   ArrowRight,
   Search,
+  PanelLeftClose,
+  PanelLeftOpen,
 } from 'lucide-react';
 import { AdminApiClient } from '@/lib/api-client';
 import { OperatorLiveChatPanel } from './OperatorLiveChatPanel';
@@ -113,6 +115,7 @@ export function OperatorWhatsAppBriefsTab({
   const [statusFilter, setStatusFilter] = useState<'ALL' | 'ACTIVE' | 'PRIORITY' | 'REVISION' | 'DONE'>('ALL');
   const [searchQuery, setSearchQuery] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
+  const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   const ITEMS_PER_PAGE = 8;
 
   // Action states
@@ -521,14 +524,32 @@ export function OperatorWhatsAppBriefsTab({
       ) : (
         /* 3. MASTER-DETAIL LAYOUT: DAFTAR TIKET KIRI & THREAD PERCAKAPAN KANAN */
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-5">
-        {/* KOLOM KIRI: DAFTAR TIKET BRIEF */}
-        <div className="lg:col-span-4 bg-white dark:bg-[#0B0F19] rounded-2xl border border-slate-200 dark:border-slate-800 shadow-xs overflow-hidden flex flex-col">
-          <div className="p-3.5 border-b border-slate-100 dark:border-slate-800 space-y-2.5">
-            <div className="flex items-center justify-between gap-2">
-              <span className="text-xs font-black uppercase tracking-wider text-slate-800 dark:text-slate-200">
-                Daftar Tiket ({filteredBriefs.length})
-              </span>
-              <div className="flex items-center gap-1 bg-slate-100 dark:bg-slate-900 p-0.5 rounded-lg">
+        {/* KOLOM KIRI: DAFTAR TIKET BRIEF (COLLAPSIBLE / BISA DITUTUP) */}
+        {isSidebarOpen && (
+          <div className="lg:col-span-4 bg-white dark:bg-[#0B0F19] rounded-2xl border border-slate-200 dark:border-slate-800 shadow-xs overflow-hidden flex flex-col transition-all">
+            <div className="p-3.5 border-b border-slate-100 dark:border-slate-800 space-y-3">
+              {/* Baris 1: Judul, Counter, dan Tombol Tutup Panel */}
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <span className="text-xs font-black uppercase tracking-wider text-slate-800 dark:text-slate-200">
+                    Daftar Tiket
+                  </span>
+                  <span className="px-2 py-0.5 rounded-full text-[10.5px] font-bold bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300">
+                    {filteredBriefs.length}
+                  </span>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setIsSidebarOpen(false)}
+                  className="p-1.5 rounded-lg text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition cursor-pointer"
+                  title="Sembunyikan daftar tiket untuk memperluas kanvas pengerjaan"
+                >
+                  <PanelLeftClose className="w-4 h-4" />
+                </button>
+              </div>
+
+              {/* Baris 2: Segmented Filter Tabs (Full Width, Lega & Tidak Terjepit) */}
+              <div className="grid grid-cols-5 gap-1 bg-slate-100 dark:bg-slate-900 p-1 rounded-xl">
                 {(['ALL', 'ACTIVE', 'PRIORITY', 'REVISION', 'DONE'] as const).map((f) => (
                   <button
                     key={f}
@@ -537,9 +558,9 @@ export function OperatorWhatsAppBriefsTab({
                       setStatusFilter(f);
                       setCurrentPage(1);
                     }}
-                    className={`px-2 py-1 rounded-md text-[10px] font-bold transition cursor-pointer ${
+                    className={`py-1.5 px-0.5 text-center rounded-lg text-[10px] font-bold transition cursor-pointer truncate ${
                       statusFilter === f
-                        ? 'bg-white dark:bg-slate-800 text-slate-900 dark:text-white shadow-2xs'
+                        ? 'bg-white dark:bg-slate-800 text-indigo-600 dark:text-indigo-400 shadow-xs font-black'
                         : 'text-slate-500 hover:text-slate-800 dark:hover:text-slate-300'
                     }`}
                   >
@@ -555,35 +576,34 @@ export function OperatorWhatsAppBriefsTab({
                   </button>
                 ))}
               </div>
-            </div>
 
-            {/* Kotak Pencarian Tiket Cepat */}
-            <div className="relative">
-              <Search className="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
-              <input
-                type="text"
-                placeholder="Cari kode tiket (#BR-...) atau kata topik..."
-                value={searchQuery}
-                onChange={(e) => {
-                  setSearchQuery(e.target.value);
-                  setCurrentPage(1);
-                }}
-                className="w-full pl-8 pr-7 py-1.5 text-xs rounded-xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-1 focus:ring-indigo-500"
-              />
-              {searchQuery && (
-                <button
-                  type="button"
-                  onClick={() => {
-                    setSearchQuery('');
+              {/* Baris 3: Kotak Pencarian Tiket Cepat */}
+              <div className="relative">
+                <Search className="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+                <input
+                  type="text"
+                  placeholder="Cari kode tiket (#BR-...) atau kata topik..."
+                  value={searchQuery}
+                  onChange={(e) => {
+                    setSearchQuery(e.target.value);
                     setCurrentPage(1);
                   }}
-                  className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 text-xs cursor-pointer"
-                >
-                  ✕
-                </button>
-              )}
+                  className="w-full pl-8 pr-7 py-1.5 text-xs rounded-xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                />
+                {searchQuery && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setSearchQuery('');
+                      setCurrentPage(1);
+                    }}
+                    className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 text-xs cursor-pointer"
+                  >
+                    ✕
+                  </button>
+                )}
+              </div>
             </div>
-          </div>
 
           <div className="divide-y divide-slate-100 dark:divide-slate-800/80 max-h-[600px] overflow-y-auto">
             {loading ? (
@@ -644,9 +664,29 @@ export function OperatorWhatsAppBriefsTab({
             </div>
           )}
         </div>
+      )}
 
-        {/* KOLOM KANAN: DETAIL TIKET, LAMPIRAN MEDIA, TOMBOL AKSI STUDIO, & LIVE CHAT BROKER */}
-        <div className="lg:col-span-8 bg-white dark:bg-[#0B0F19] rounded-2xl border border-slate-200 dark:border-slate-800 shadow-xs flex flex-col">
+      {/* KOLOM KANAN: DETAIL TIKET, LAMPIRAN MEDIA, TOMBOL AKSI STUDIO, & LIVE CHAT BROKER */}
+      <div
+        className={`${
+          isSidebarOpen ? 'lg:col-span-8' : 'lg:col-span-12'
+        } bg-white dark:bg-[#0B0F19] rounded-2xl border border-slate-200 dark:border-slate-800 shadow-xs flex flex-col transition-all`}
+      >
+        {!isSidebarOpen && (
+          <div className="px-4 py-2.5 bg-slate-50/90 dark:bg-slate-900/70 border-b border-slate-200/80 dark:border-slate-800 flex items-center justify-between">
+            <button
+              type="button"
+              onClick={() => setIsSidebarOpen(true)}
+              className="inline-flex items-center gap-2 px-3 py-1.5 rounded-xl bg-white dark:bg-slate-800 text-indigo-600 dark:text-indigo-400 text-xs font-bold border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-750 transition cursor-pointer shadow-xs"
+            >
+              <PanelLeftOpen className="w-4 h-4" />
+              <span>Buka Daftar Tiket ({briefs.length})</span>
+            </button>
+            <span className="text-[11px] text-slate-400 font-medium hidden sm:inline">
+              Mode Kanvas Lebar (Fokus Pengerjaan &amp; Penelaahan)
+            </span>
+          </div>
+        )}
           {!selectedBrief ? (
             <div className="p-12 text-center my-auto space-y-2">
               <MessageCircle className="w-9 h-9 text-slate-300 dark:text-slate-700 mx-auto" />
