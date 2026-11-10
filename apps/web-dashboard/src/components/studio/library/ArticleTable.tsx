@@ -240,13 +240,13 @@ export function ArticleTable({
                   <td className="px-5 py-3.5 whitespace-nowrap text-right">
                     <div className="inline-flex items-center justify-end gap-1">
                       {/* Tombol Lihat Web Publik */}
-                      {isPublished && item.slug && (
+                      {isPublished && (
                         <a
-                          href={`${portalDomain}/artikel/${item.slug}`}
+                          href={isInfographic ? `${portalDomain}/infografis` : `${portalDomain}/artikel/${item.slug}`}
                           target="_blank"
                           rel="noopener noreferrer"
                           className="w-8 h-8 rounded-xl text-slate-400 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-950/40 inline-flex items-center justify-center transition-colors"
-                          title="Buka Website Publik (Artikel Tayang)"
+                          title={isInfographic ? 'Buka Galeri Infografis di Website Publik' : 'Buka Halaman Artikel di Website Publik'}
                           aria-label="Buka Website Publik"
                         >
                           <Globe className="h-4 w-4" />
@@ -298,7 +298,11 @@ export function ArticleTable({
                             ? 'text-amber-600 dark:text-amber-400 hover:bg-amber-50 dark:hover:bg-amber-950/40'
                             : 'text-emerald-600 dark:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-950/40'
                         }`}
-                        title={isPublished ? 'Tarik dari Tayangan Web Publik' : 'Tayangkan ke Website Publik'}
+                        title={
+                          isPublished
+                            ? (isInfographic ? 'Tarik dari Galeri Web Publik' : 'Tarik dari Tayangan Web Publik')
+                            : (isInfographic ? 'Tayangkan ke Galeri Web Publik' : 'Tayangkan ke Website Publik')
+                        }
                         aria-label={isPublished ? 'Tarik dari Tayangan' : 'Tayangkan ke Web'}
                       >
                         {isActionLoading ? (

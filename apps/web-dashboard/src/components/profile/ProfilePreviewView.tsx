@@ -115,8 +115,8 @@ export function ProfilePreviewView({
   const age = calculateAge(birthDate);
   const portalUrl = (subdomain || customDomain) ? getPortalUrl(subdomain, customDomain) : '#';
 
-  type SocialTab = 'ALL' | 'INSTAGRAM' | 'THREADS' | 'X' | 'TIKTOK';
-  const [activeSocialTab, setActiveSocialTab] = useState<SocialTab>('ALL');
+  type SocialTab = 'INSTAGRAM' | 'THREADS' | 'X' | 'TIKTOK';
+  const [activeSocialTab, setActiveSocialTab] = useState<SocialTab>('INSTAGRAM');
   const [lightboxIndex, setLightboxIndex] = useState<number | null>(null);
 
   useEffect(() => {
@@ -554,85 +554,63 @@ export function ProfilePreviewView({
                 </p>
               </div>
 
-              {/* TAB SELECTOR KANAL MEDSOS (BERSIH & TANPA SCROLLBAR JELEK) */}
-              <div className="flex items-center gap-1.5 p-1 bg-slate-100 dark:bg-slate-800/90 rounded-xl border border-slate-200/60 dark:border-slate-700/60 w-fit max-w-full overflow-x-auto [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
-                <button
-                  type="button"
-                  onClick={() => setActiveSocialTab('ALL')}
-                  className={`shrink-0 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
-                    activeSocialTab === 'ALL'
-                      ? 'bg-white dark:bg-slate-900 text-slate-900 dark:text-white shadow-xs'
-                      : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
-                  }`}
-                >
-                  <LayoutGrid className="w-3.5 h-3.5 opacity-70" />
-                  <span>Semua Saluran (4)</span>
-                </button>
-
+              {/* TAB SELECTOR KANAL MEDSOS (MENTOK LURUS SEJAJAR KARTU) */}
+              <div className="max-w-2xl w-full grid grid-cols-4 gap-1 p-1 bg-slate-100 dark:bg-slate-800/90 rounded-2xl border border-slate-200/60 dark:border-slate-700/60">
                 <button
                   type="button"
                   onClick={() => setActiveSocialTab('INSTAGRAM')}
-                  className={`shrink-0 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                  className={`inline-flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${
                     activeSocialTab === 'INSTAGRAM'
                       ? 'bg-gradient-to-r from-purple-600 to-rose-600 text-white shadow-xs'
                       : 'text-slate-600 dark:text-slate-400 hover:text-purple-600 dark:hover:text-purple-400'
                   }`}
                 >
                   <Instagram className="w-3.5 h-3.5" />
-                  <span>Instagram</span>
+                  <span className="truncate">Instagram</span>
                 </button>
 
                 <button
                   type="button"
                   onClick={() => setActiveSocialTab('THREADS')}
-                  className={`shrink-0 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                  className={`inline-flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${
                     activeSocialTab === 'THREADS'
                       ? 'bg-slate-900 dark:bg-white text-white dark:text-slate-900 shadow-xs'
                       : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
                   }`}
                 >
                   <Sparkles className="w-3.5 h-3.5" />
-                  <span>Threads</span>
+                  <span className="truncate">Threads</span>
                 </button>
 
                 <button
                   type="button"
                   onClick={() => setActiveSocialTab('X')}
-                  className={`shrink-0 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                  className={`inline-flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${
                     activeSocialTab === 'X'
                       ? 'bg-black text-white shadow-xs'
                       : 'text-slate-600 dark:text-slate-400 hover:text-black dark:hover:text-white'
                   }`}
                 >
                   <span className="font-mono text-xs font-black">𝕏</span>
-                  <span>Twitter</span>
+                  <span className="truncate">Twitter</span>
                 </button>
 
                 <button
                   type="button"
                   onClick={() => setActiveSocialTab('TIKTOK')}
-                  className={`shrink-0 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                  className={`inline-flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${
                     activeSocialTab === 'TIKTOK'
                       ? 'bg-gradient-to-r from-slate-900 to-slate-800 text-white shadow-xs'
                       : 'text-slate-600 dark:text-slate-400 hover:text-rose-500'
                   }`}
                 >
                   <span className="font-extrabold text-[11px] text-cyan-400">♪</span>
-                  <span>TikTok</span>
+                  <span className="truncate">TikTok</span>
                 </button>
               </div>
             </div>
 
             {/* TAB CONTENT CARDS */}
-            {activeSocialTab === 'ALL' && (
-              <div className="grid grid-cols-1 xl:grid-cols-2 gap-4 animate-in fade-in duration-200">
-                <InstagramConnectionCard isUnpaid={!!isUnpaid} />
-                <ThreadsConnectionCard isUnpaid={!!isUnpaid} />
-                <XConnectionCard isUnpaid={!!isUnpaid} />
-                <TikTokConnectionCard isUnpaid={!!isUnpaid} />
-              </div>
-            )}
-
             {activeSocialTab === 'INSTAGRAM' && (
               <div className="max-w-2xl animate-in fade-in duration-200">
                 <InstagramConnectionCard isUnpaid={!!isUnpaid} />

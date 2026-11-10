@@ -217,7 +217,7 @@ export default function ArticleLibraryPage() {
     safeCurrentPage * pageSize
   );
 
-  const portalDomain = getPortalUrl(profile?.subdomain);
+  const portalDomain = getPortalUrl(profile?.subdomain, profile?.customDomain);
 
   return (
     <div className="flex min-h-screen bg-slate-100/70 dark:bg-[#070A12] text-slate-900 dark:text-slate-100 font-sans theme-transition">
@@ -428,16 +428,31 @@ export default function ArticleLibraryPage() {
                     <span>Buka File Asli</span>
                   </a>
                 )}
-                {visualPreviewItem.status === 'PUBLISHED' && visualPreviewItem.slug && (
+                {visualPreviewItem.status === 'PUBLISHED' ? (
                   <a
-                    href={`${portalDomain}/artikel/${visualPreviewItem.slug}`}
+                    href={`${portalDomain}/infografis`}
                     target="_blank"
                     rel="noopener noreferrer"
                     className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-slate-200 dark:border-slate-700 font-bold text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+                    title="Buka Galeri Infografis di Website Publik Tokoh"
                   >
                     <ExternalLink className="w-3.5 h-3.5 text-blue-500" />
-                    <span>Halaman Web</span>
+                    <span>Lihat di Galeri Web</span>
                   </a>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const id = visualPreviewItem.id;
+                      handleTogglePublish(id, visualPreviewItem.status);
+                      setVisualPreviewItem((prev) => (prev ? { ...prev, status: 'PUBLISHED' } : null));
+                    }}
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white font-bold shadow-xs transition-colors cursor-pointer"
+                    title="Tayangkan Infografis ini ke Galeri Web Publik Tokoh"
+                  >
+                    <Globe className="w-3.5 h-3.5" />
+                    <span>Tayangkan ke Galeri Web</span>
+                  </button>
                 )}
               </div>
             </div>

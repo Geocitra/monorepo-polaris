@@ -154,10 +154,11 @@ export function BatchDetailModal({
                   </div>
                 ) : (
                   <div className="overflow-x-auto border border-slate-100 dark:border-slate-800 rounded-2xl">
-                    <table className="w-full text-left text-xs border-collapse min-w-[620px]">
+                    <table className="w-full text-left text-xs border-collapse min-w-[760px]">
                       <thead>
                         <tr className="bg-slate-50 dark:bg-slate-900 border-b border-slate-100 dark:border-slate-800 text-[10px] font-black uppercase text-slate-400 tracking-wider">
-                          <th className="py-2.5 px-3">Nomor Tagihan</th>
+                          <th className="py-2.5 px-3">Klien Dewan Pembayar</th>
+                          <th className="py-2.5 px-3">Nomor Tagihan &amp; Paket</th>
                           <th className="py-2.5 px-3">Tagihan Kotor (Gross)</th>
                           <th className="py-2.5 px-3">Biaya MDR Bank</th>
                           <th className="py-2.5 px-3">PPN 11%</th>
@@ -166,40 +167,66 @@ export function BatchDetailModal({
                           <th className="py-2.5 px-3 text-right">Status</th>
                         </tr>
                       </thead>
-                      <tbody className="divide-y divide-slate-100 dark:divide-slate-800/60 font-mono text-[11px]">
+                      <tbody className="divide-y divide-slate-100 dark:divide-slate-800/60 text-[11px]">
                         {matchedInvoices.map((inv: any) => (
                           <tr
                             key={inv.id}
                             className="hover:bg-slate-50/50 dark:hover:bg-slate-800/20"
                           >
-                            <td className="py-2.5 px-3 font-bold text-slate-900 dark:text-white">
-                              {inv.invoiceNumber}
-                            </td>
+                            {/* KLIEN DEWAN PEMBAYAR */}
                             <td className="py-2.5 px-3">
+                              <div className="font-extrabold text-slate-900 dark:text-white">
+                                {inv.tenantName || 'Pelanggan Non-Sistem'}
+                              </div>
+                              <div className="flex items-center gap-1.5 flex-wrap mt-0.5">
+                                <span className="text-[10px] text-slate-500 dark:text-slate-400 font-mono">
+                                  {inv.tenantEmail || '-'}
+                                </span>
+                                {inv.partyAffiliation && (
+                                  <span className="px-1.5 py-0.2 rounded-full text-[9px] font-bold bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700">
+                                    {inv.partyAffiliation}
+                                  </span>
+                                )}
+                              </div>
+                            </td>
+
+                            {/* NOMOR TAGIHAN & PAKET */}
+                            <td className="py-2.5 px-3 font-mono">
+                              <div className="font-bold text-slate-900 dark:text-white">
+                                {inv.invoiceNumber}
+                              </div>
+                              {inv.planTier && (
+                                <span className="inline-block px-1.5 py-0.2 rounded text-[9px] font-black uppercase bg-blue-50 text-blue-700 dark:bg-blue-950/60 dark:text-blue-300 border border-blue-200 dark:border-blue-800 mt-0.5">
+                                  PAKET {inv.planTier}
+                                </span>
+                              )}
+                            </td>
+
+                            <td className="py-2.5 px-3 font-mono">
                               Rp{' '}
                               {Number(
                                 inv.grossAmountIdr || inv.amountIdr
                               ).toLocaleString('id-ID')}
                             </td>
-                            <td className="py-2.5 px-3 text-amber-600">
+                            <td className="py-2.5 px-3 font-mono text-amber-600">
                               Rp {Number(inv.mdrFeeIdr || 0).toLocaleString('id-ID')}
                             </td>
-                            <td className="py-2.5 px-3 text-amber-600">
+                            <td className="py-2.5 px-3 font-mono text-amber-600">
                               Rp {Number(inv.vatFeeIdr || 0).toLocaleString('id-ID')}
                             </td>
-                            <td className="py-2.5 px-3 text-emerald-600 font-bold">
+                            <td className="py-2.5 px-3 font-mono text-emerald-600 font-bold">
                               Rp{' '}
                               {Number(
                                 inv.netAmountIdr || inv.amountIdr
                               ).toLocaleString('id-ID')}
                             </td>
-                            <td className="py-2.5 px-3 text-slate-400 text-[10px]">
+                            <td className="py-2.5 px-3 text-slate-400 text-[10px] font-mono">
                               {inv.paidAt
                                 ? new Date(inv.paidAt).toLocaleString('id-ID')
                                 : '-'}
                             </td>
                             <td className="py-2.5 px-3 text-right">
-                              <span className="px-2 py-0.5 rounded-full text-[9px] font-black uppercase bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300">
+                              <span className="px-2 py-0.5 rounded-full text-[9px] font-black uppercase bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300 font-mono">
                                 {inv.paymentStatus}
                               </span>
                             </td>
@@ -242,6 +269,19 @@ export function BatchDetailModal({
                             {d.resolutionStatus}
                           </span>
                         </div>
+
+                        {d.tenantName && (
+                          <div className="flex items-center gap-1.5 flex-wrap p-2 rounded-xl bg-blue-50/60 dark:bg-blue-950/30 border border-blue-200/60 dark:border-blue-900/40 text-[11px] text-blue-900 dark:text-blue-300">
+                            <span>Klien Dewan Terkait:</span>
+                            <strong className="font-bold">{d.tenantName}</strong>
+                            <span className="text-blue-600 dark:text-blue-400 font-mono">({d.tenantEmail})</span>
+                            {d.partyAffiliation && (
+                              <span className="px-1.5 py-0.2 rounded-full text-[9px] font-bold bg-white dark:bg-slate-800 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-800">
+                                {d.partyAffiliation}
+                              </span>
+                            )}
+                          </div>
+                        )}
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-slate-600 dark:text-slate-400">
                           <div>
                             Tipe Selisih:{' '}

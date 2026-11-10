@@ -46,7 +46,7 @@ const isUuid = (val?: string): boolean =>
 export class ReconciliationEngineService {
   private readonly logger = new Logger(ReconciliationEngineService.name);
 
-  constructor(private readonly redisService?: RedisService) {}
+  constructor(private readonly redisService?: RedisService) { }
 
   /**
    * Menjalankan siklus audit rekonsiliasi kas harian menggunakan Algoritma 5-Arah.
@@ -114,9 +114,9 @@ export class ReconciliationEngineService {
         .where(
           gatewayOrderIds.length > 0
             ? or(
-                inArray(invoiceTransactions.gatewayOrderId, gatewayOrderIds),
-                eq(invoiceTransactions.reconciliationStatus, 'UNRECONCILED')
-              )
+              inArray(invoiceTransactions.gatewayOrderId, gatewayOrderIds),
+              eq(invoiceTransactions.reconciliationStatus, 'UNRECONCILED')
+            )
             : eq(invoiceTransactions.reconciliationStatus, 'UNRECONCILED')
         );
 
@@ -513,17 +513,77 @@ export class ReconciliationEngineService {
       throw new NotFoundException('Batch rekonsiliasi tidak ditemukan.');
     }
 
-    const discrepancies = await db
-      .select()
+    const discrepanciesRaw = await db
+      .select({
+        id: reconciliationDiscrepancies.id,
+        batchId: reconciliationDiscrepancies.batchId,
+        invoiceId: reconciliationDiscrepancies.invoiceId,
+        gatewayOrderId: reconciliationDiscrepancies.gatewayOrderId,
+        discrepancyType: reconciliationDiscrepancies.discrepancyType,
+        internalStatus: reconciliationDiscrepancies.internalStatus,
+        gatewayStatus: reconciliationDiscrepancies.gatewayStatus,
+        internalAmountIdr: reconciliationDiscrepancies.internalAmountIdr,
+        gatewayAmountIdr: reconciliationDiscrepancies.gatewayAmountIdr,
+        discrepancyAmountIdr: reconciliationDiscrepancies.discrepancyAmountIdr,
+        resolutionStatus: reconciliationDiscrepancies.resolutionStatus,
+        resolutionNotes: reconciliationDiscrepancies.resolutionNotes,
+        resolvedBy: reconciliationDiscrepancies.resolvedBy,
+        resolvedAt: reconciliationDiscrepancies.resolvedAt,
+        createdAt: reconciliationDiscrepancies.createdAt,
+        tenantId: tenantMembers.id,
+        tenantName: tenantMembers.fullName,
+        tenantEmail: tenantMembers.email,
+        partyAffiliation: tenantMembers.partyAffiliation,
+      })
       .from(reconciliationDiscrepancies)
+      .leftJoin(invoiceTransactions, eq(reconciliationDiscrepancies.invoiceId, invoiceTransactions.id))
+      .leftJoin(subscriptions, eq(invoiceTransactions.subscriptionId, subscriptions.id))
+      .leftJoin(tenantMembers, eq(subscriptions.tenantId, tenantMembers.id))
       .where(eq(reconciliationDiscrepancies.batchId, batchId))
       .orderBy(desc(reconciliationDiscrepancies.createdAt));
 
-    const matchedInvoices = await db
-      .select()
+    const discrepancies = discrepanciesRaw.map((d) => ({
+      ...d,
+      tenantName: d.tenantName || null,
+      tenantEmail: d.tenantEmail || null,
+    }));
+
+    const matchedInvoicesRaw = await db
+      .select({
+        id: invoiceTransactions.id,
+        invoiceNumber: invoiceTransactions.invoiceNumber,
+        amountIdr: invoiceTransactions.amountIdr,
+        grossAmountIdr: invoiceTransactions.grossAmountIdr,
+        mdrFeeIdr: invoiceTransactions.mdrFeeIdr,
+        vatFeeIdr: invoiceTransactions.vatFeeIdr,
+        netAmountIdr: invoiceTransactions.netAmountIdr,
+        gatewayOrderId: invoiceTransactions.gatewayOrderId,
+        paymentMethod: invoiceTransactions.paymentMethod,
+        paymentStatus: invoiceTransactions.paymentStatus,
+        paidAt: invoiceTransactions.paidAt,
+        settlementTime: invoiceTransactions.settlementTime,
+        reconciliationStatus: invoiceTransactions.reconciliationStatus,
+        reconciliationBatchId: invoiceTransactions.reconciliationBatchId,
+        createdAt: invoiceTransactions.createdAt,
+        tenantId: tenantMembers.id,
+        tenantName: tenantMembers.fullName,
+        tenantEmail: tenantMembers.email,
+        partyAffiliation: tenantMembers.partyAffiliation,
+        legislativeLevel: tenantMembers.legislativeLevel,
+        customDapilName: tenantMembers.customDapilName,
+        planTier: subscriptions.planTier,
+      })
       .from(invoiceTransactions)
+      .leftJoin(subscriptions, eq(invoiceTransactions.subscriptionId, subscriptions.id))
+      .leftJoin(tenantMembers, eq(subscriptions.tenantId, tenantMembers.id))
       .where(eq(invoiceTransactions.reconciliationBatchId, batchId))
       .orderBy(desc(invoiceTransactions.paidAt));
+
+    const matchedInvoices = matchedInvoicesRaw.map((inv) => ({
+      ...inv,
+      tenantName: inv.tenantName || 'Pelanggan Non-Sistem',
+      tenantEmail: inv.tenantEmail || '-',
+    }));
 
     return {
       batch,
