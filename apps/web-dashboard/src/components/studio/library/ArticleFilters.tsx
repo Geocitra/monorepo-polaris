@@ -8,7 +8,8 @@ import {
   Sparkles, 
   LayoutGrid, 
   CheckCircle2, 
-  Clock 
+  Clock,
+  RotateCcw
 } from 'lucide-react';
 
 export type StatusFilter = 'ALL' | 'PUBLISHED' | 'DRAFT';
@@ -43,86 +44,171 @@ export function ArticleFilters({
   infographicCount,
   terpaduCount,
 }: ArticleFiltersProps) {
+  const isFiltered = activeStatusFilter !== 'ALL' || activeFormatFilter !== 'ALL' || searchQuery.trim() !== '';
+
+  const handleResetFilters = () => {
+    onFormatFilterChange('ALL');
+    onStatusFilterChange('ALL');
+    onSearchChange('');
+  };
+
   return (
-    <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-xs p-4 space-y-3.5">
-      {/* BARIS 1: Filter Format Konten & Pencarian */}
-      <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3">
-        {/* Tab Format Konten */}
-        <div className="flex items-center gap-1.5 flex-wrap">
-          <button
-            type="button"
-            onClick={() => onFormatFilterChange('ALL')}
-            className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
-              activeFormatFilter === 'ALL'
-                ? 'bg-slate-900 text-white dark:bg-white dark:text-slate-900 shadow-xs'
-                : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700'
-            }`}
-          >
-            <LayoutGrid className="w-3.5 h-3.5" />
-            <span>Semua Format</span>
-            <span className="ml-0.5 text-[10px] px-1.5 py-0.2 rounded-full opacity-75 bg-slate-800 text-white dark:bg-slate-200 dark:text-slate-900">
-              {totalCount}
-            </span>
-          </button>
+    <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/90 dark:border-slate-800 shadow-xs p-2.5 sm:p-3 transition-all">
+      <div className="flex flex-col 2xl:flex-row 2xl:items-center justify-between gap-2.5">
+        
+        {/* KELOMPOK FILTER (FORMAT & STATUS TERPADU) */}
+        <div className="flex items-center gap-2 flex-wrap min-w-0">
+          
+          {/* 1. Format Konten Segmented Bar */}
+          <div className="inline-flex items-center gap-1 p-1 rounded-xl bg-slate-100/90 dark:bg-slate-800/80 border border-slate-200/60 dark:border-slate-700/50 max-w-full overflow-x-auto scrollbar-none">
+            <button
+              type="button"
+              onClick={() => onFormatFilterChange('ALL')}
+              className={`shrink-0 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                activeFormatFilter === 'ALL'
+                  ? 'bg-white dark:bg-slate-900 text-slate-900 dark:text-white shadow-xs'
+                  : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-white/50 dark:hover:bg-slate-700/50'
+              }`}
+            >
+              <LayoutGrid className="w-3.5 h-3.5 opacity-70" />
+              <span>Semua Format</span>
+              <span className={`text-[10px] font-mono px-1.5 py-0.2 rounded-md ${
+                activeFormatFilter === 'ALL'
+                  ? 'bg-slate-100 dark:bg-slate-800 text-slate-900 dark:text-slate-100 font-extrabold'
+                  : 'bg-slate-200/70 dark:bg-slate-700 text-slate-600 dark:text-slate-300'
+              }`}>
+                {totalCount}
+              </span>
+            </button>
 
-          <button
-            type="button"
-            onClick={() => onFormatFilterChange('ARTICLE')}
-            className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
-              activeFormatFilter === 'ARTICLE'
-                ? 'bg-blue-600 text-white shadow-xs'
-                : 'bg-blue-50 dark:bg-blue-950/40 text-blue-700 dark:text-blue-300 border border-blue-200/60 dark:border-blue-900/60 hover:bg-blue-100 dark:hover:bg-blue-900/40'
-            }`}
-          >
-            <FileText className="w-3.5 h-3.5 text-blue-500 dark:text-blue-400" />
-            <span>Artikel Opini</span>
-            <span className="ml-0.5 text-[10px] px-1.5 py-0.2 rounded-full bg-blue-100 dark:bg-blue-900 text-blue-700 dark:text-blue-200">
-              {articleCount}
-            </span>
-          </button>
+            <button
+              type="button"
+              onClick={() => onFormatFilterChange('ARTICLE')}
+              className={`shrink-0 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                activeFormatFilter === 'ARTICLE'
+                  ? 'bg-blue-600 text-white shadow-xs'
+                  : 'text-slate-600 dark:text-slate-400 hover:text-blue-600 dark:hover:text-blue-400 hover:bg-white/50 dark:hover:bg-slate-700/50'
+              }`}
+            >
+              <FileText className={`w-3.5 h-3.5 ${activeFormatFilter === 'ARTICLE' ? 'text-white' : 'text-blue-500'}`} />
+              <span>Artikel Opini</span>
+              <span className={`text-[10px] font-mono px-1.5 py-0.2 rounded-md ${
+                activeFormatFilter === 'ARTICLE'
+                  ? 'bg-blue-700 text-white font-extrabold'
+                  : 'bg-blue-100/70 dark:bg-blue-950/60 text-blue-700 dark:text-blue-300'
+              }`}>
+                {articleCount}
+              </span>
+            </button>
 
-          <button
-            type="button"
-            onClick={() => onFormatFilterChange('INFOGRAPHIC')}
-            className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
-              activeFormatFilter === 'INFOGRAPHIC'
-                ? 'bg-purple-600 text-white shadow-xs'
-                : 'bg-purple-50 dark:bg-purple-950/40 text-purple-700 dark:text-purple-300 border border-purple-200/60 dark:border-purple-900/60 hover:bg-purple-100 dark:hover:bg-purple-900/40'
-            }`}
-          >
-            <ImageIcon className="w-3.5 h-3.5 text-purple-500 dark:text-purple-400" />
-            <span>Infografis & Visual</span>
-            <span className="ml-0.5 text-[10px] px-1.5 py-0.2 rounded-full bg-purple-100 dark:bg-purple-900 text-purple-700 dark:text-purple-200">
-              {infographicCount}
-            </span>
-          </button>
+            <button
+              type="button"
+              onClick={() => onFormatFilterChange('INFOGRAPHIC')}
+              className={`shrink-0 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                activeFormatFilter === 'INFOGRAPHIC'
+                  ? 'bg-purple-600 text-white shadow-xs'
+                  : 'text-slate-600 dark:text-slate-400 hover:text-purple-600 dark:hover:text-purple-400 hover:bg-white/50 dark:hover:bg-slate-700/50'
+              }`}
+            >
+              <ImageIcon className={`w-3.5 h-3.5 ${activeFormatFilter === 'INFOGRAPHIC' ? 'text-white' : 'text-purple-500'}`} />
+              <span>Infografis & Visual</span>
+              <span className={`text-[10px] font-mono px-1.5 py-0.2 rounded-md ${
+                activeFormatFilter === 'INFOGRAPHIC'
+                  ? 'bg-purple-700 text-white font-extrabold'
+                  : 'bg-purple-100/70 dark:bg-purple-950/60 text-purple-700 dark:text-purple-300'
+              }`}>
+                {infographicCount}
+              </span>
+            </button>
 
-          <button
-            type="button"
-            onClick={() => onFormatFilterChange('TERPADU')}
-            className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
-              activeFormatFilter === 'TERPADU'
-                ? 'bg-emerald-600 text-white shadow-xs'
-                : 'bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 border border-emerald-200/60 dark:border-emerald-900/60 hover:bg-emerald-100 dark:hover:bg-emerald-900/40'
-            }`}
-          >
-            <Sparkles className="w-3.5 h-3.5 text-emerald-500 dark:text-emerald-400" />
-            <span>Kampanye Terpadu</span>
-            <span className="ml-0.5 text-[10px] px-1.5 py-0.2 rounded-full bg-emerald-100 dark:bg-emerald-900 text-emerald-700 dark:text-emerald-200">
-              {terpaduCount}
-            </span>
-          </button>
+            <button
+              type="button"
+              onClick={() => onFormatFilterChange('TERPADU')}
+              className={`shrink-0 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                activeFormatFilter === 'TERPADU'
+                  ? 'bg-emerald-600 text-white shadow-xs'
+                  : 'text-slate-600 dark:text-slate-400 hover:text-emerald-600 dark:hover:text-emerald-400 hover:bg-white/50 dark:hover:bg-slate-700/50'
+              }`}
+            >
+              <Sparkles className={`w-3.5 h-3.5 ${activeFormatFilter === 'TERPADU' ? 'text-white' : 'text-emerald-500'}`} />
+              <span>Kampanye Terpadu</span>
+              <span className={`text-[10px] font-mono px-1.5 py-0.2 rounded-md ${
+                activeFormatFilter === 'TERPADU'
+                  ? 'bg-emerald-700 text-white font-extrabold'
+                  : 'bg-emerald-100/70 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300'
+              }`}>
+                {terpaduCount}
+              </span>
+            </button>
+          </div>
+
+          {/* Pemisah Vertikal Halus */}
+          <div className="hidden sm:block h-6 w-px bg-slate-200 dark:bg-slate-700 shrink-0 mx-0.5" />
+
+          {/* 2. Status Publikasi Segmented Bar */}
+          <div className="inline-flex items-center gap-1 p-1 rounded-xl bg-slate-100/90 dark:bg-slate-800/80 border border-slate-200/60 dark:border-slate-700/50 max-w-full overflow-x-auto scrollbar-none">
+            <button
+              type="button"
+              onClick={() => onStatusFilterChange('ALL')}
+              className={`shrink-0 px-2.5 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                activeStatusFilter === 'ALL'
+                  ? 'bg-white dark:bg-slate-900 text-slate-900 dark:text-white shadow-xs'
+                  : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-white/50 dark:hover:bg-slate-700/50'
+              }`}
+            >
+              Semua ({totalCount})
+            </button>
+
+            <button
+              type="button"
+              onClick={() => onStatusFilterChange('PUBLISHED')}
+              className={`shrink-0 inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                activeStatusFilter === 'PUBLISHED'
+                  ? 'bg-emerald-600 text-white shadow-xs'
+                  : 'text-slate-600 dark:text-slate-400 hover:text-emerald-600 dark:hover:text-emerald-400 hover:bg-white/50 dark:hover:bg-slate-700/50'
+              }`}
+            >
+              <CheckCircle2 className={`w-3 h-3 ${activeStatusFilter === 'PUBLISHED' ? 'text-white' : 'text-emerald-500'}`} />
+              <span>Tayang ({publishedCount})</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => onStatusFilterChange('DRAFT')}
+              className={`shrink-0 inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                activeStatusFilter === 'DRAFT'
+                  ? 'bg-amber-600 text-white shadow-xs'
+                  : 'text-slate-600 dark:text-slate-400 hover:text-amber-600 dark:hover:text-amber-400 hover:bg-white/50 dark:hover:bg-slate-700/50'
+              }`}
+            >
+              <Clock className={`w-3 h-3 ${activeStatusFilter === 'DRAFT' ? 'text-white' : 'text-amber-500'}`} />
+              <span>Draf ({draftCount})</span>
+            </button>
+          </div>
+
+          {/* Tombol Reset Filter jika aktif */}
+          {isFiltered && (
+            <button
+              type="button"
+              onClick={handleResetFilters}
+              title="Reset seluruh filter pencarian"
+              className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-xl text-xs font-bold text-slate-500 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/30 transition cursor-pointer"
+            >
+              <RotateCcw className="w-3 h-3" />
+              <span>Reset</span>
+            </button>
+          )}
         </div>
 
-        {/* Input Pencarian */}
-        <div className="relative w-full lg:w-72">
+        {/* INPUT PENCARIAN TERPADU */}
+        <div className="relative w-full 2xl:w-80 shrink-0">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-400" />
           <input
             type="text"
             value={searchQuery}
             onChange={(e) => onSearchChange(e.target.value)}
             placeholder="Cari topik atau judul konten..."
-            className="w-full pl-8 pr-8 py-1.5 rounded-xl border border-slate-200 dark:border-slate-700 text-xs text-slate-800 dark:text-slate-100 placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none focus:border-blue-600 dark:focus:border-blue-500 bg-slate-50/70 dark:bg-slate-800/60 transition-colors"
+            className="w-full pl-8.5 pr-8 py-1.5 rounded-xl border border-slate-200 dark:border-slate-700 text-xs text-slate-800 dark:text-slate-100 placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500 bg-slate-50/70 dark:bg-slate-800/60 transition-colors"
           />
           {searchQuery && (
             <button
@@ -134,48 +220,6 @@ export function ArticleFilters({
             </button>
           )}
         </div>
-      </div>
-
-      {/* BARIS 2: Filter Status Tayang (Sub-filter) */}
-      <div className="flex items-center gap-1 pt-2 border-t border-slate-100 dark:border-slate-800/80 overflow-x-auto scrollbar-none pb-0.5 max-w-full">
-        <span className="text-[11px] font-bold text-slate-400 dark:text-slate-500 mr-2 uppercase tracking-wider shrink-0">
-          Status:
-        </span>
-        <button
-          type="button"
-          onClick={() => onStatusFilterChange('ALL')}
-          className={`shrink-0 whitespace-nowrap px-2.5 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer ${
-            activeStatusFilter === 'ALL'
-              ? 'bg-slate-200 dark:bg-slate-700 text-slate-900 dark:text-white'
-              : 'text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800'
-          }`}
-        >
-          Semua ({totalCount})
-        </button>
-        <button
-          type="button"
-          onClick={() => onStatusFilterChange('PUBLISHED')}
-          className={`shrink-0 whitespace-nowrap inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer ${
-            activeStatusFilter === 'PUBLISHED'
-              ? 'bg-emerald-100 dark:bg-emerald-950/60 text-emerald-800 dark:text-emerald-300 font-extrabold'
-              : 'text-slate-500 dark:text-slate-400 hover:text-emerald-600 dark:hover:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-950/30'
-          }`}
-        >
-          <CheckCircle2 className="w-3 h-3 text-emerald-500" />
-          <span>Tayang di Web ({publishedCount})</span>
-        </button>
-        <button
-          type="button"
-          onClick={() => onStatusFilterChange('DRAFT')}
-          className={`shrink-0 whitespace-nowrap inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer ${
-            activeStatusFilter === 'DRAFT'
-              ? 'bg-amber-100 dark:bg-amber-950/60 text-amber-800 dark:text-amber-300 font-extrabold'
-              : 'text-slate-500 dark:text-slate-400 hover:text-amber-600 dark:hover:text-amber-400 hover:bg-amber-50 dark:hover:bg-amber-950/30'
-          }`}
-        >
-          <Clock className="w-3 h-3 text-amber-500" />
-          <span>Draf ({draftCount})</span>
-        </button>
       </div>
     </div>
   );

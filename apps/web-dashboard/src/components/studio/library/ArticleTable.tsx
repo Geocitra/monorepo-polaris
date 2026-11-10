@@ -102,9 +102,8 @@ export function ArticleTable({
         <table className="w-full text-left text-sm">
           <thead className="bg-slate-50 dark:bg-slate-800/60 border-b border-slate-200 dark:border-slate-800 text-[11px] font-bold uppercase text-slate-500 dark:text-slate-400 tracking-wider">
             <tr>
-              <th className="px-5 py-3.5">Konten & Format</th>
+              <th className="px-5 py-3.5">Konten</th>
               <th className="px-5 py-3.5">Status</th>
-              <th className="px-5 py-3.5">Panjang / Format</th>
               <th className="px-5 py-3.5">Tanggal</th>
               <th className="px-5 py-3.5 text-right">Tindakan</th>
             </tr>
@@ -225,112 +224,104 @@ export function ArticleTable({
                     </span>
                   </td>
 
-                  {/* Kolom Panjang Kata / Dimensi Format */}
-                  <td className="px-5 py-3.5 whitespace-nowrap font-mono text-slate-600 dark:text-slate-200">
-                    {isInfographic ? (
-                      <span className="text-[11px] font-sans font-semibold text-purple-600 dark:text-purple-400 bg-purple-50 dark:bg-purple-950/40 px-2 py-0.5 rounded-md border border-purple-200/60 dark:border-purple-800">
-                        Visual HD (16:9)
-                      </span>
-                    ) : item.wordCount ? (
-                      `${item.wordCount.toLocaleString('id-ID')} kata`
-                    ) : (
-                      '-'
-                    )}
-                  </td>
-
                   {/* Kolom Tanggal */}
-                  <td className="px-5 py-3.5 whitespace-nowrap text-slate-500 dark:text-slate-300">
-                    {formatDateIndonesian(item.publishedAt || item.createdAt)}
+                  <td className="px-5 py-3.5 whitespace-nowrap">
+                    <div className="text-slate-600 dark:text-slate-300 font-medium">
+                      {formatDateIndonesian(item.publishedAt || item.createdAt)}
+                    </div>
+                    {item.wordCount && !isInfographic ? (
+                      <div className="text-[11px] text-slate-400 dark:text-slate-500 font-mono">
+                        {item.wordCount.toLocaleString('id-ID')} kata
+                      </div>
+                    ) : null}
                   </td>
 
-                  {/* Kolom Tindakan */}
-                  <td className="px-5 py-3.5 whitespace-nowrap text-right space-x-1.5">
-                    {/* Tombol Lihat Web Publik */}
-                    {isPublished && item.slug && (
-                      <a
-                        href={`${portalDomain}/artikel/${item.slug}`}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg border border-slate-200 dark:border-slate-700 text-xs font-bold text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors"
-                        title="Lihat di Website Publik Anda"
-                      >
-                        <Globe className="h-3 w-3 text-blue-500" />
-                        <span className="hidden sm:inline">Web</span>
-                      </a>
-                    )}
-
-                    {/* Tombol Edit / Lihat Visual Berbasis Tipe */}
-                    {isInfographic ? (
-                      <button
-                        type="button"
-                        onClick={() => onViewVisual(item)}
-                        className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg border border-purple-200 dark:border-purple-800 text-xs font-bold text-purple-700 dark:text-purple-300 hover:bg-purple-50 dark:hover:bg-purple-950/40 transition-colors cursor-pointer"
-                        title="Pratinjau visual & unduh infografis"
-                      >
-                        <Eye className="h-3 w-3 text-purple-600" />
-                        <span>Visual</span>
-                      </button>
-                    ) : (
-                      <Link
-                        href={`/studio/${item.id}`}
-                        className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg border border-slate-200 dark:border-slate-700 text-xs font-bold text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
-                        title="Buka Editor Naskah"
-                      >
-                        <Edit3 className="h-3 w-3" />
-                        <span>Edit</span>
-                      </Link>
-                    )}
-
-                    {/* Tombol Magic Layers */}
-                    {item.thumbnailUrl && onMagicLayers && (
-                      <button
-                        type="button"
-                        onClick={() => onMagicLayers(item)}
-                        className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-purple-50 dark:bg-purple-950/40 border border-purple-200 dark:border-purple-800 text-xs font-bold text-purple-700 dark:text-purple-300 hover:bg-purple-100 dark:hover:bg-purple-900/60 transition-colors cursor-pointer"
-                        title="Buka Magic Layers Studio (Edit Teks & Objek AI)"
-                      >
-                        <Sparkles className="h-3 w-3 text-purple-600 dark:text-purple-400" />
-                        <span className="hidden sm:inline">Magic Layers</span>
-                      </button>
-                    )}
-
-                    {/* Tombol Toggle Terbitkan / Tarik */}
-                    <button
-                      type="button"
-                      disabled={isActionLoading}
-                      onClick={() => onTogglePublish(item.id, item.status)}
-                      className={`inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-bold transition-all shadow-xs cursor-pointer ${
-                        isPublished
-                          ? 'bg-amber-50 dark:bg-amber-950/50 text-amber-700 dark:text-amber-400 border border-amber-200 dark:border-amber-800 hover:bg-amber-100 dark:hover:bg-amber-900/60'
-                          : 'bg-emerald-600 text-white hover:bg-emerald-700'
-                      }`}
-                      title={isPublished ? 'Tarik dari tayangan website publik' : 'Tayangkan ke website publik'}
-                    >
-                      {isActionLoading ? (
-                        <Loader2 className="h-3 w-3 animate-spin" />
-                      ) : isPublished ? (
-                        <>
-                          <EyeOff className="h-3 w-3" />
-                          <span>Tarik</span>
-                        </>
-                      ) : (
-                        <>
-                          <Globe className="h-3 w-3" />
-                          <span>Tayang</span>
-                        </>
+                  {/* Kolom Tindakan (Icon-Only Clean Buttons) */}
+                  <td className="px-5 py-3.5 whitespace-nowrap text-right">
+                    <div className="inline-flex items-center justify-end gap-1">
+                      {/* Tombol Lihat Web Publik */}
+                      {isPublished && item.slug && (
+                        <a
+                          href={`${portalDomain}/artikel/${item.slug}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="w-8 h-8 rounded-xl text-slate-400 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-950/40 inline-flex items-center justify-center transition-colors"
+                          title="Buka Website Publik (Artikel Tayang)"
+                          aria-label="Buka Website Publik"
+                        >
+                          <Globe className="h-4 w-4" />
+                        </a>
                       )}
-                    </button>
 
-                    {/* Tombol Hapus Konten (Trash) */}
-                    <button
-                      type="button"
-                      disabled={isActionLoading}
-                      onClick={() => onDeleteArticle(item)}
-                      className="inline-flex items-center justify-center p-1.5 rounded-lg text-slate-400 hover:text-red-600 dark:hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/40 border border-transparent hover:border-red-200 dark:hover:border-red-800/80 transition-colors cursor-pointer"
-                      title="Hapus konten ini secara permanen"
-                    >
-                      <Trash2 className="h-3.5 w-3.5" />
-                    </button>
+                      {/* Tombol Edit / Lihat Visual Berbasis Tipe */}
+                      {isInfographic ? (
+                        <button
+                          type="button"
+                          onClick={() => onViewVisual(item)}
+                          className="w-8 h-8 rounded-xl text-purple-600 dark:text-purple-400 hover:bg-purple-50 dark:hover:bg-purple-950/40 inline-flex items-center justify-center transition-colors cursor-pointer"
+                          title="Pratinjau Visual & Unduh Infografis"
+                          aria-label="Pratinjau Visual"
+                        >
+                          <Eye className="h-4 w-4" />
+                        </button>
+                      ) : (
+                        <Link
+                          href={`/studio/${item.id}`}
+                          className="w-8 h-8 rounded-xl text-slate-500 hover:text-indigo-600 hover:bg-slate-100 dark:hover:bg-slate-800 inline-flex items-center justify-center transition-colors"
+                          title="Buka Editor Naskah Artikel"
+                          aria-label="Buka Editor Naskah"
+                        >
+                          <Edit3 className="h-4 w-4" />
+                        </Link>
+                      )}
+
+                      {/* Tombol Magic Layers */}
+                      {item.thumbnailUrl && onMagicLayers && (
+                        <button
+                          type="button"
+                          onClick={() => onMagicLayers(item)}
+                          className="w-8 h-8 rounded-xl text-purple-600 dark:text-purple-400 hover:bg-purple-50 dark:hover:bg-purple-950/40 inline-flex items-center justify-center transition-colors cursor-pointer"
+                          title="Buka Magic Layers Studio (Edit Teks & Objek AI)"
+                          aria-label="Magic Layers Studio"
+                        >
+                          <Sparkles className="h-4 w-4" />
+                        </button>
+                      )}
+
+                      {/* Tombol Toggle Terbitkan / Tarik */}
+                      <button
+                        type="button"
+                        disabled={isActionLoading}
+                        onClick={() => onTogglePublish(item.id, item.status)}
+                        className={`w-8 h-8 rounded-xl inline-flex items-center justify-center transition-all cursor-pointer ${
+                          isPublished
+                            ? 'text-amber-600 dark:text-amber-400 hover:bg-amber-50 dark:hover:bg-amber-950/40'
+                            : 'text-emerald-600 dark:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-950/40'
+                        }`}
+                        title={isPublished ? 'Tarik dari Tayangan Web Publik' : 'Tayangkan ke Website Publik'}
+                        aria-label={isPublished ? 'Tarik dari Tayangan' : 'Tayangkan ke Web'}
+                      >
+                        {isActionLoading ? (
+                          <Loader2 className="h-4 w-4 animate-spin text-slate-400" />
+                        ) : isPublished ? (
+                          <EyeOff className="h-4 w-4" />
+                        ) : (
+                          <Globe className="h-4 w-4" />
+                        )}
+                      </button>
+
+                      {/* Tombol Hapus Konten (Trash) */}
+                      <button
+                        type="button"
+                        disabled={isActionLoading}
+                        onClick={() => onDeleteArticle(item)}
+                        className="w-8 h-8 rounded-xl text-slate-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/40 inline-flex items-center justify-center transition-colors cursor-pointer"
+                        title="Hapus Konten Permanen"
+                        aria-label="Hapus Konten"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </button>
+                    </div>
                   </td>
                 </tr>
               );

@@ -25,6 +25,8 @@ import {
   ChevronLeft,
   ChevronRight,
   Lock,
+  LayoutGrid,
+  Instagram,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
@@ -113,6 +115,8 @@ export function ProfilePreviewView({
   const age = calculateAge(birthDate);
   const portalUrl = (subdomain || customDomain) ? getPortalUrl(subdomain, customDomain) : '#';
 
+  type SocialTab = 'ALL' | 'INSTAGRAM' | 'THREADS' | 'X' | 'TIKTOK';
+  const [activeSocialTab, setActiveSocialTab] = useState<SocialTab>('ALL');
   const [lightboxIndex, setLightboxIndex] = useState<number | null>(null);
 
   useEffect(() => {
@@ -535,27 +539,124 @@ export function ProfilePreviewView({
             )}
           </Card>
 
-          {/* SEKSI 4: SALURAN KOMUNIKASI PUBLIK RESMI (PALING BAWAH - SUSUN ATAS BAWAH LEGA) */}
+          {/* SEKSI 4: SALURAN KOMUNIKASI PUBLIK RESMI */}
           <div className="space-y-4 pt-2">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1 px-1">
-              <div className="flex items-center gap-2">
-                <ShieldCheck className="h-4 w-4 text-blue-600 dark:text-blue-400" />
-                <h3 className="text-sm font-black uppercase tracking-wider text-slate-900 dark:text-white">
-                  Saluran Komunikasi Publik Resmi Parlemen
-                </h3>
+            <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3 px-1">
+              <div>
+                <div className="flex items-center gap-2">
+                  <ShieldCheck className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+                  <h3 className="text-sm font-black uppercase tracking-wider text-slate-900 dark:text-white">
+                    Saluran Komunikasi Publik Resmi Parlemen
+                  </h3>
+                </div>
+                <p className="text-xs text-slate-500 dark:text-slate-400 font-medium mt-0.5">
+                  Kanal terverifikasi untuk sindikasi rilis pers &amp; opini dari Studio.
+                </p>
               </div>
-              <span className="text-xs text-slate-400 font-medium">
-                Kanal terverifikasi untuk sindikasi rilis pers &amp; opini dari Studio
-              </span>
+
+              {/* TAB SELECTOR KANAL MEDSOS */}
+              <div className="flex items-center gap-1 p-1 bg-slate-100 dark:bg-slate-800/90 rounded-xl border border-slate-200/60 dark:border-slate-700/60 self-start lg:self-auto max-w-full overflow-x-auto scrollbar-none">
+                <button
+                  type="button"
+                  onClick={() => setActiveSocialTab('ALL')}
+                  className={`shrink-0 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                    activeSocialTab === 'ALL'
+                      ? 'bg-white dark:bg-slate-900 text-slate-900 dark:text-white shadow-xs'
+                      : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+                  }`}
+                >
+                  <LayoutGrid className="w-3.5 h-3.5 opacity-70" />
+                  <span>Semua Saluran (4)</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setActiveSocialTab('INSTAGRAM')}
+                  className={`shrink-0 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                    activeSocialTab === 'INSTAGRAM'
+                      ? 'bg-gradient-to-r from-purple-600 to-rose-600 text-white shadow-xs'
+                      : 'text-slate-600 dark:text-slate-400 hover:text-purple-600 dark:hover:text-purple-400'
+                  }`}
+                >
+                  <Instagram className="w-3.5 h-3.5" />
+                  <span>Instagram</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setActiveSocialTab('THREADS')}
+                  className={`shrink-0 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                    activeSocialTab === 'THREADS'
+                      ? 'bg-slate-900 dark:bg-white text-white dark:text-slate-900 shadow-xs'
+                      : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+                  }`}
+                >
+                  <Sparkles className="w-3.5 h-3.5" />
+                  <span>Threads</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setActiveSocialTab('X')}
+                  className={`shrink-0 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                    activeSocialTab === 'X'
+                      ? 'bg-black text-white shadow-xs'
+                      : 'text-slate-600 dark:text-slate-400 hover:text-black dark:hover:text-white'
+                  }`}
+                >
+                  <span className="font-mono text-xs font-black">𝕏</span>
+                  <span>Twitter</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setActiveSocialTab('TIKTOK')}
+                  className={`shrink-0 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                    activeSocialTab === 'TIKTOK'
+                      ? 'bg-gradient-to-r from-slate-900 to-slate-800 text-white shadow-xs'
+                      : 'text-slate-600 dark:text-slate-400 hover:text-rose-500'
+                  }`}
+                >
+                  <span className="font-extrabold text-[11px] text-cyan-400">♪</span>
+                  <span>TikTok</span>
+                </button>
+              </div>
             </div>
 
-              <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
+            {/* TAB CONTENT CARDS */}
+            {activeSocialTab === 'ALL' && (
+              <div className="grid grid-cols-1 xl:grid-cols-2 gap-4 animate-in fade-in duration-200">
                 <InstagramConnectionCard isUnpaid={!!isUnpaid} />
                 <ThreadsConnectionCard isUnpaid={!!isUnpaid} />
                 <XConnectionCard isUnpaid={!!isUnpaid} />
                 <TikTokConnectionCard isUnpaid={!!isUnpaid} />
               </div>
-            </div>
+            )}
+
+            {activeSocialTab === 'INSTAGRAM' && (
+              <div className="max-w-2xl animate-in fade-in duration-200">
+                <InstagramConnectionCard isUnpaid={!!isUnpaid} />
+              </div>
+            )}
+
+            {activeSocialTab === 'THREADS' && (
+              <div className="max-w-2xl animate-in fade-in duration-200">
+                <ThreadsConnectionCard isUnpaid={!!isUnpaid} />
+              </div>
+            )}
+
+            {activeSocialTab === 'X' && (
+              <div className="max-w-2xl animate-in fade-in duration-200">
+                <XConnectionCard isUnpaid={!!isUnpaid} />
+              </div>
+            )}
+
+            {activeSocialTab === 'TIKTOK' && (
+              <div className="max-w-2xl animate-in fade-in duration-200">
+                <TikTokConnectionCard isUnpaid={!!isUnpaid} />
+              </div>
+            )}
+          </div>
           </div>
         </div>
 

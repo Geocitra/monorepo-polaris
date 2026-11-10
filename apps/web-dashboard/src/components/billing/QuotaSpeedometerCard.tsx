@@ -65,6 +65,8 @@ export function QuotaSpeedometerCard({
       ? Math.max(0, Math.min(100, Math.round((remainingQuota / totalQuotaAllocated) * 100)))
       : 0;
 
+  const usedQuota = Math.max(0, totalQuotaAllocated - remainingQuota);
+
   let daysLeft: number | null = null;
   if (currentPeriodEnd && isSubActive) {
     const endMs = new Date(currentPeriodEnd).getTime();
@@ -280,43 +282,44 @@ export function QuotaSpeedometerCard({
         </div>
       </div>
 
-      {/* 2B. RINCIAN KONSUMSI DUAL-AI (OPENAI VS GOOGLE GEMINI) */}
+      {/* 2B. RINGKASAN STATUS KUOTA REQUEST & NILAI LAYANAN */}
       <div className="pt-4 border-t border-slate-100 dark:border-slate-800/80 grid grid-cols-1 sm:grid-cols-2 gap-3.5">
-        <div className="p-3.5 rounded-2xl bg-emerald-50/40 dark:bg-emerald-950/20 border border-emerald-200/60 dark:border-emerald-900/50 flex items-center justify-between">
-          <div>
-            <span className="text-[10px] font-black uppercase tracking-wider text-emerald-700 dark:text-emerald-300 block">
-              Mesin OpenAI (GPT-4o & DALL-E 3)
+        {/* KARTU 1: STATUS PEMAKAIAN KUOTA REQUEST */}
+        <div className="p-3.5 sm:p-4 rounded-2xl bg-indigo-50/50 dark:bg-indigo-950/20 border border-indigo-100 dark:border-indigo-900/50 flex items-center justify-between">
+          <div className="space-y-1">
+            <span className="text-[10px] font-black uppercase tracking-wider text-indigo-700 dark:text-indigo-300 flex items-center gap-1.5">
+              <Zap className="w-3.5 h-3.5 text-indigo-500" />
+              <span>Sisa Kuota Request Anda</span>
             </span>
-            <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">
-              Sintesis naskah kebijakan 5-bab, riset &amp; RAG
+            <p className="text-[11px] text-slate-500 dark:text-slate-400">
+              {usedQuota} request telah diproduksi dari total {totalQuotaAllocated} request paket.
             </p>
           </div>
-          <div className="text-right font-mono">
-            <div className="text-sm font-black text-slate-900 dark:text-white">
-              {openaiTotalTokens.toLocaleString('id-ID')} tok
+          <div className="text-right shrink-0 ml-3">
+            <div className="text-xl font-black text-slate-900 dark:text-white font-mono">
+              {remainingQuota} <span className="text-xs font-bold text-slate-400 font-sans">Sisa</span>
             </div>
             <div className="text-[10px] font-bold text-emerald-600 dark:text-emerald-400">
-              {openaiImagesUsed} visual DALL-E
+              {percentRemaining}% Siap Diajukan
             </div>
           </div>
         </div>
 
-        <div className="p-3.5 rounded-2xl bg-indigo-50/40 dark:bg-indigo-950/20 border border-indigo-200/60 dark:border-indigo-900/50 flex items-center justify-between">
-          <div>
-            <span className="text-[10px] font-black uppercase tracking-wider text-indigo-700 dark:text-indigo-300 block">
-              Mesin Google Gemini (Flash & Imagen 3)
+        {/* KARTU 2: CAKUPAN HASIL 1 REQUEST */}
+        <div className="p-3.5 sm:p-4 rounded-2xl bg-emerald-50/50 dark:bg-emerald-950/20 border border-emerald-100 dark:border-emerald-900/50 flex items-center justify-between">
+          <div className="space-y-1">
+            <span className="text-[10px] font-black uppercase tracking-wider text-emerald-700 dark:text-emerald-300 flex items-center gap-1.5">
+              <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500" />
+              <span>Cakupan 1 Kuota Request</span>
             </span>
-            <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">
-              Ekstraksi bukti, OCR dokumen, kanvas infografis &amp; relayout
+            <p className="text-[11px] text-slate-500 dark:text-slate-400">
+              1 Naskah Opini Kebijakan + Poster Visual HD + Siaran Medsos Lengkap.
             </p>
           </div>
-          <div className="text-right font-mono">
-            <div className="text-sm font-black text-slate-900 dark:text-white">
-              {geminiTotalTokens.toLocaleString('id-ID')} tok
-            </div>
-            <div className="text-[10px] font-bold text-indigo-600 dark:text-indigo-400">
-              {geminiImagesUsed} visual Imagen
-            </div>
+          <div className="text-right shrink-0 ml-3">
+            <span className="inline-flex items-center text-[10px] font-black uppercase tracking-wider px-2.5 py-1 rounded-lg bg-emerald-100/80 dark:bg-emerald-900/60 text-emerald-800 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800">
+              All-in-One
+            </span>
           </div>
         </div>
       </div>

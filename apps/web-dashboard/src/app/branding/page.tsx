@@ -8,7 +8,7 @@ import { Sidebar } from '@/components/layout/sidebar';
 import { Topbar } from '@/components/layout/topbar';
 import { useToast } from '@/components/ui/toast';
 import { useTheme } from '@/contexts/ThemeContext';
-import { Palette, Globe, ExternalLink, Loader2, Monitor, Paintbrush, Instagram, Sparkles, Columns, Sliders, Eye, Save, Lock } from 'lucide-react';
+import { Palette, Globe, ExternalLink, Loader2, Monitor, Paintbrush, Columns, Sliders, Eye, Save, Lock } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 import { Button } from '@/components/ui/button';
@@ -30,7 +30,7 @@ const PARTY_COLOR_PRESETS = [
   { name: 'PAN', primary: '#003399', secondary: '#FFFFFF' },
 ];
 
-type ActiveTab = 'dashboard' | 'website' | 'documents' | 'instagram' | 'threads';
+type ActiveTab = 'dashboard' | 'website';
 type StudioViewMode = 'split' | 'editor' | 'preview';
 
 function BrandingContent() {
@@ -164,7 +164,7 @@ function BrandingContent() {
           subdomainSlug: subdomainSlug.trim() || undefined,
           customDomain: customDomain.trim() || undefined,
         }),
-      }).catch(() => {});
+      }).catch(() => { });
 
       toast({
         type: 'success',
@@ -269,8 +269,8 @@ function BrandingContent() {
               ? studioViewMode === 'split'
                 ? 'max-w-[1800px] space-y-4'
                 : studioViewMode === 'editor'
-                ? 'max-w-6xl space-y-4'
-                : 'max-w-[1800px] space-y-4'
+                  ? 'max-w-6xl space-y-4'
+                  : 'max-w-[1800px] space-y-4'
               : 'max-w-7xl space-y-6'
           )}
         >
@@ -307,11 +307,10 @@ function BrandingContent() {
             <button
               type="button"
               onClick={() => setActiveTab('dashboard')}
-              className={`shrink-0 whitespace-nowrap flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-bold transition-all cursor-pointer ${
-                activeTab === 'dashboard'
+              className={`shrink-0 whitespace-nowrap flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-bold transition-all cursor-pointer ${activeTab === 'dashboard'
                   ? 'bg-white dark:bg-slate-900 text-slate-900 dark:text-white shadow-sm'
                   : 'text-slate-500 hover:text-slate-700 dark:hover:text-slate-300'
-              }`}
+                }`}
             >
               <Paintbrush className="h-3.5 w-3.5" />
               <span>Tema Dashboard</span>
@@ -324,30 +323,6 @@ function BrandingContent() {
               <Monitor className="h-3.5 w-3.5 text-blue-500 group-hover:scale-110 transition-transform" />
               <span>Branding Website</span>
             </Link>
-            <button
-              type="button"
-              onClick={() => setActiveTab('instagram')}
-              className={`shrink-0 whitespace-nowrap flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-bold transition-all cursor-pointer ${
-                activeTab === 'instagram'
-                  ? 'bg-gradient-to-r from-purple-600 to-rose-600 text-white shadow-sm'
-                  : 'text-slate-500 hover:text-slate-700 dark:hover:text-slate-300'
-              }`}
-            >
-              <Instagram className="h-3.5 w-3.5" />
-              <span>Instagram Resmi</span>
-            </button>
-            <button
-              type="button"
-              onClick={() => setActiveTab('threads')}
-              className={`shrink-0 whitespace-nowrap flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-bold transition-all cursor-pointer ${
-                activeTab === 'threads'
-                  ? 'bg-slate-900 dark:bg-white text-white dark:text-slate-900 shadow-sm'
-                  : 'text-slate-500 hover:text-slate-700 dark:hover:text-slate-300'
-              }`}
-            >
-              <Sparkles className="h-3.5 w-3.5" />
-              <span>Meta Threads</span>
-            </button>
           </div>
 
           {/* TAB CONTENT */}
