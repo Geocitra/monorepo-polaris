@@ -4,7 +4,7 @@ import {
   BadRequestException,
   Logger,
 } from '@nestjs/common';
-import { eq, and, or, sql, desc, inArray } from 'drizzle-orm';
+import { eq, and, or, sql, desc, inArray, ilike } from 'drizzle-orm';
 import {
   db,
   reconciliationBatches,
@@ -490,6 +490,107 @@ export class ReconciliationEngineService {
 
     return {
       items: rows,
+      pagination: {
+        page,
+        limit,
+        totalItems: countResult?.count || 0,
+        totalPages: Math.ceil((countResult?.count || 0) / limit) || 1,
+      },
+    };
+  }
+
+  /**
+   * Mengambil seluruh buku transaksi pembayaran (invoiceTransactions)
+   * lengkap dengan relasi klien dewan pembayar (nama, email, fraksi partai, paket)
+   * untuk ditampilkan langsung di halaman rekonsiliasi kas.
+   */
+  async listAllTransactions(query: {
+    page?: number;
+    limit?: number;
+    status?: string;
+    search?: string;
+  }) {
+    const page = Math.max(1, query.page || 1);
+    const limit = Math.max(1, Math.min(50, query.limit || 10));
+    const offset = (page - 1) * limit;
+
+    let baseQuery = db
+      .select({
+        id: invoiceTransactions.id,
+        invoiceNumber: invoiceTransactions.invoiceNumber,
+        amountIdr: invoiceTransactions.amountIdr,
+        grossAmountIdr: invoiceTransactions.grossAmountIdr,
+        mdrFeeIdr: invoiceTransactions.mdrFeeIdr,
+        vatFeeIdr: invoiceTransactions.vatFeeIdr,
+        netAmountIdr: invoiceTransactions.netAmountIdr,
+        gatewayOrderId: invoiceTransactions.gatewayOrderId,
+        paymentMethod: invoiceTransactions.paymentMethod,
+        paymentStatus: invoiceTransactions.paymentStatus,
+        paidAt: invoiceTransactions.paidAt,
+        settlementTime: invoiceTransactions.settlementTime,
+        reconciliationStatus: invoiceTransactions.reconciliationStatus,
+        reconciliationBatchId: invoiceTransactions.reconciliationBatchId,
+        createdAt: invoiceTransactions.createdAt,
+        tenantId: tenantMembers.id,
+        tenantName: tenantMembers.fullName,
+        tenantEmail: tenantMembers.email,
+        partyAffiliation: tenantMembers.partyAffiliation,
+        legislativeLevel: tenantMembers.legislativeLevel,
+        customDapilName: tenantMembers.customDapilName,
+        planTier: subscriptions.planTier,
+      })
+      .from(invoiceTransactions)
+      .leftJoin(subscriptions, eq(invoiceTransactions.subscriptionId, subscriptions.id))
+      .leftJoin(tenantMembers, eq(subscriptions.tenantId, tenantMembers.id))
+      .$dynamic();
+
+    const conditions = [];
+
+    if (query.status && query.status !== 'ALL') {
+      conditions.push(eq(invoiceTransactions.paymentStatus, query.status as any));
+    }
+
+    if (query.search && query.search.trim()) {
+      const term = `%${query.search.trim()}%`;
+      conditions.push(
+        or(
+          ilike(invoiceTransactions.invoiceNumber, term),
+          ilike(tenantMembers.fullName, term),
+          ilike(tenantMembers.email, term)
+        )
+      );
+    }
+
+    if (conditions.length > 0) {
+      baseQuery = baseQuery.where(and(...conditions));
+    }
+
+    const rows = await baseQuery
+      .orderBy(desc(invoiceTransactions.createdAt))
+      .limit(limit)
+      .offset(offset);
+
+    let countQuery = db
+      .select({ count: sql<number>`count(*)::int` })
+      .from(invoiceTransactions)
+      .leftJoin(subscriptions, eq(invoiceTransactions.subscriptionId, subscriptions.id))
+      .leftJoin(tenantMembers, eq(subscriptions.tenantId, tenantMembers.id))
+      .$dynamic();
+
+    if (conditions.length > 0) {
+      countQuery = countQuery.where(and(...conditions));
+    }
+
+    const [countResult] = await countQuery;
+
+    const items = rows.map((inv) => ({
+      ...inv,
+      tenantName: inv.tenantName || 'Pelanggan Non-Sistem',
+      tenantEmail: inv.tenantEmail || '-',
+    }));
+
+    return {
+      items,
       pagination: {
         page,
         limit,

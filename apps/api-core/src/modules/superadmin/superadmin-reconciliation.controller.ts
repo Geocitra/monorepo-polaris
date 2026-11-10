@@ -28,6 +28,22 @@ export class SuperadminReconciliationController {
 
   constructor(private readonly reconEngine: ReconciliationEngineService) {}
 
+  @Get('transactions')
+  @HttpCode(HttpStatus.OK)
+  async listTransactions(
+    @Query('page') page?: string,
+    @Query('limit') limit?: string,
+    @Query('status') status?: string,
+    @Query('search') search?: string
+  ) {
+    return await this.reconEngine.listAllTransactions({
+      page: page ? Number(page) : 1,
+      limit: limit ? Number(limit) : 10,
+      status,
+      search,
+    });
+  }
+
   @Get('batches')
   @HttpCode(HttpStatus.OK)
   async listBatches(
