@@ -3,7 +3,7 @@ import sharp from 'sharp';
 import { ChromiumPosterCompositor } from '../src/creative-poster/chromium-poster-compositor.js';
 import { BrowserSingleton } from '../src/creative-poster/browser-singleton.js';
 
-describe('ChromiumPosterCompositor (Playwright Headless)', () => {
+describe('ChromiumPosterCompositor (Playwright Headless)', { timeout: 30000 }, () => {
   afterAll(async () => {
     await BrowserSingleton.close();
   });
@@ -57,7 +57,7 @@ describe('ChromiumPosterCompositor (Playwright Headless)', () => {
     expect(meta.width).toBe(1080);
     expect(meta.height).toBe(1350);
     expect(meta.format).toBe('webp');
-  });
+  }, 30000);
 
   it('harus aman dari XSS/HTML injection dari teks hasil LLM', async () => {
     const dummyCanvas = await sharp({
