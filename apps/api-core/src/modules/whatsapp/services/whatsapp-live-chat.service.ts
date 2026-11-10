@@ -553,7 +553,6 @@ export class WhatsAppLiveChatService {
           LiveChatSessionStatus.ACTIVE,
           LiveChatSessionStatus.AWAITING_FEEDBACK,
           LiveChatSessionStatus.CLOSED,
-          LiveChatSessionStatus.TIMEOUT_CLOSED,
         ])
       )
       .orderBy(desc(liveChatSessions.lastMessageAt), desc(liveChatSessions.startedAt))
