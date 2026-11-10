@@ -552,9 +552,12 @@ export class WhatsAppLiveChatService {
           LiveChatSessionStatus.WAITING_OPERATOR,
           LiveChatSessionStatus.ACTIVE,
           LiveChatSessionStatus.AWAITING_FEEDBACK,
+          LiveChatSessionStatus.CLOSED,
+          LiveChatSessionStatus.TIMEOUT_CLOSED,
         ])
       )
-      .orderBy(asc(liveChatSessions.startedAt));
+      .orderBy(desc(liveChatSessions.lastMessageAt), desc(liveChatSessions.startedAt))
+      .limit(100);
 
     return sessions.map(({ session, tenantName, tenantPhone, operatorName }) => ({
       id: session.id,

@@ -49,8 +49,9 @@ export function KnowledgeUploadModal({
       isOpen={isOpen}
       onClose={onClose}
       title="Unggah Dokumen Baru ke Knowledge Base Binaan"
+      maxWidth="max-w-xl"
     >
-      <form onSubmit={onSubmit} className="space-y-4 pt-2">
+      <form onSubmit={onSubmit} className="space-y-4 pt-1 pb-16">
         {/* Target Dewan Binaan */}
         <div>
           <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
@@ -227,7 +228,7 @@ export function KnowledgeUploadModal({
           </div>
         </div>
 
-        <div className="flex items-center justify-end gap-2 pt-3 border-t border-slate-100 dark:border-slate-800">
+        <div className="sticky bottom-0 -mx-6 -mb-6 p-4 bg-white/95 dark:bg-[#0E131F]/95 backdrop-blur-sm border-t border-slate-100 dark:border-slate-800 flex items-center justify-end gap-2 shadow-lg">
           <Button
             type="button"
             variant="outline"
@@ -239,7 +240,7 @@ export function KnowledgeUploadModal({
           <Button
             type="submit"
             disabled={isUploading || !uploadFile}
-            className="bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs flex items-center gap-2 cursor-pointer"
+            className="bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs flex items-center gap-2 cursor-pointer shadow-md shadow-indigo-500/20"
           >
             {isUploading ? (
               <>

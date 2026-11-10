@@ -246,7 +246,13 @@ export function OperatorLiveChatPanel({
   const filteredSessions = sessions.filter((s: LiveChatSessionItem) => {
     if (filterStatus === 'WAITING' && s.status !== 'WAITING_OPERATOR') return false;
     if (filterStatus === 'ACTIVE' && s.status !== 'ACTIVE') return false;
-    if (filterStatus === 'CLOSED' && s.status !== 'CLOSED' && s.status !== 'AWAITING_FEEDBACK') return false;
+    if (
+      filterStatus === 'CLOSED' &&
+      s.status !== 'CLOSED' &&
+      s.status !== 'AWAITING_FEEDBACK' &&
+      s.status !== 'TIMEOUT_CLOSED'
+    )
+      return false;
     if (searchQuery) {
       const q = searchQuery.toLowerCase();
       return (

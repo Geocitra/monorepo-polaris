@@ -11,9 +11,19 @@ export interface ModalProps {
   title: string;
   description?: string;
   children: React.ReactNode;
+  maxWidth?: string;
+  className?: string;
 }
 
-export function Modal({ isOpen, onClose, title, description, children }: ModalProps) {
+export function Modal({
+  isOpen,
+  onClose,
+  title,
+  description,
+  children,
+  maxWidth = 'max-w-lg',
+  className,
+}: ModalProps) {
   React.useEffect(() => {
     if (isOpen) {
       const originalOverflow = document.body.style.overflow;
@@ -29,8 +39,14 @@ export function Modal({ isOpen, onClose, title, description, children }: ModalPr
   return (
     <Portal>
       <div className="fixed inset-0 !m-0 z-[60] flex items-center justify-center p-4 bg-slate-950/70 backdrop-blur-sm animate-in fade-in">
-        <div className="w-full max-w-lg bg-white dark:bg-[#0E131F] text-slate-900 dark:text-slate-100 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-2xl overflow-hidden animate-in zoom-in-95 transition-colors duration-200">
-          <div className="flex items-center justify-between p-5 border-b border-slate-100 dark:border-slate-800/80">
+        <div
+          className={cn(
+            'w-full max-h-[90vh] flex flex-col bg-white dark:bg-[#0E131F] text-slate-900 dark:text-slate-100 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-2xl overflow-hidden animate-in zoom-in-95 transition-colors duration-200',
+            maxWidth,
+            className
+          )}
+        >
+          <div className="flex items-center justify-between p-5 border-b border-slate-100 dark:border-slate-800/80 shrink-0">
             <div>
               <h4 className="text-base font-extrabold text-slate-900 dark:text-white">{title}</h4>
               {description && <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">{description}</p>}
@@ -43,7 +59,7 @@ export function Modal({ isOpen, onClose, title, description, children }: ModalPr
             </button>
           </div>
 
-          <div className="p-6">{children}</div>
+          <div className="p-6 overflow-y-auto flex-1 overscroll-contain">{children}</div>
         </div>
       </div>
     </Portal>

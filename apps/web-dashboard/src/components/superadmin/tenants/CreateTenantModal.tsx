@@ -168,10 +168,10 @@ Catatan Keamanan: Silakan login di https://app.${rootDomain}/login. Anda akan di
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/60 backdrop-blur-sm animate-fade-in overflow-y-auto">
-      <div className="bg-white dark:bg-[#0B0F17] border border-slate-200 dark:border-slate-800 rounded-2xl w-full max-w-xl shadow-2xl overflow-hidden my-4 sm:my-6 theme-transition">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/60 backdrop-blur-sm animate-fade-in">
+      <div className="bg-white dark:bg-[#0B0F17] border border-slate-200 dark:border-slate-800 rounded-2xl w-full max-w-2xl max-h-[90vh] flex flex-col shadow-2xl overflow-hidden theme-transition">
         {/* HEADER */}
-        <div className="flex items-center justify-between p-4 border-b border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/50">
+        <div className="flex items-center justify-between p-4 border-b border-slate-200 dark:border-slate-800 bg-slate-50/80 dark:bg-slate-900/80 shrink-0">
           <div className="flex items-center gap-2.5">
             <div className="w-8 h-8 rounded-lg bg-blue-600/10 dark:bg-blue-500/20 text-blue-600 dark:text-blue-400 flex items-center justify-center font-bold">
               <UserPlus className="w-4 h-4" />
@@ -192,7 +192,7 @@ Catatan Keamanan: Silakan login di https://app.${rootDomain}/login. Anda akan di
               if (createdResult) onSuccess();
               else onClose();
             }}
-            className="p-2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg"
+            className="p-2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg cursor-pointer"
           >
             <X className="w-5 h-5" />
           </button>
@@ -200,7 +200,7 @@ Catatan Keamanan: Silakan login di https://app.${rootDomain}/login. Anda akan di
 
         {/* JIKA SUDAH SUKSES DIBUAT (CREDENTIAL HANDOVER SCREEN) */}
         {createdResult ? (
-          <div className="p-6 space-y-6">
+          <div className="p-6 space-y-6 overflow-y-auto flex-1 overscroll-contain">
             <div className="p-4 rounded-xl bg-emerald-50 dark:bg-emerald-950/30 border border-emerald-200 dark:border-emerald-800 text-emerald-900 dark:text-emerald-200 flex items-start gap-3">
               <Sparkles className="w-5 h-5 text-emerald-600 dark:text-emerald-400 shrink-0 mt-0.5" />
               <div className="text-xs space-y-1">
@@ -304,8 +304,9 @@ Catatan Keamanan: Silakan login di https://app.${rootDomain}/login. Anda akan di
           </div>
         ) : (
           /* FORM PEMBUATAN AKUN BARU */
-          <form onSubmit={handleSubmit} className="p-4 sm:p-5 space-y-3.5">
-            {initialLeadData && (
+          <form onSubmit={handleSubmit} className="flex flex-col flex-1 min-h-0 overflow-hidden">
+            <div className="p-4 sm:p-5 space-y-3.5 overflow-y-auto flex-1 overscroll-contain">
+              {initialLeadData && (
               <div className="p-3 rounded-xl bg-blue-50 dark:bg-blue-950/40 border border-blue-200 dark:border-blue-800 text-blue-900 dark:text-blue-200 text-xs flex items-center justify-between">
                 <div className="flex items-center gap-2">
                   <Sparkles className="w-4 h-4 text-blue-600 shrink-0" />
@@ -579,21 +580,22 @@ Catatan Keamanan: Silakan login di https://app.${rootDomain}/login. Anda akan di
                 </label>
               </div>
             </div>
+          </div>
 
-            {/* ACTION BUTTONS */}
-            <div className="flex items-center justify-end gap-3 pt-3 border-t border-slate-200 dark:border-slate-800">
+          {/* ACTION BUTTONS (STICKY FOOTER) */}
+          <div className="shrink-0 flex items-center justify-end gap-3 p-4 border-t border-slate-200 dark:border-slate-800 bg-slate-50/90 dark:bg-slate-900/90 backdrop-blur-sm">
               <button
                 type="button"
                 onClick={onClose}
                 disabled={loading}
-                className="px-4 py-2.5 text-xs font-bold text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl"
+                className="px-4 py-2 text-xs font-bold text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl cursor-pointer transition"
               >
                 Batal
               </button>
               <button
                 type="submit"
                 disabled={loading}
-                className="inline-flex items-center gap-2 px-5 py-2.5 text-xs font-bold text-white bg-blue-600 hover:bg-blue-700 rounded-xl transition-colors shadow-md disabled:opacity-50"
+                className="inline-flex items-center gap-2 px-5 py-2 text-xs font-bold text-white bg-blue-600 hover:bg-blue-700 rounded-xl transition-colors shadow-md disabled:opacity-50 cursor-pointer"
               >
                 <UserPlus className="w-4 h-4" />
                 {loading ? 'Menerbitkan Akun...' : 'Terbitkan Akun Dewan'}
