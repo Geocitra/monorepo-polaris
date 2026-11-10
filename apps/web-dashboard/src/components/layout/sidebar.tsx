@@ -116,15 +116,11 @@ export function Sidebar({ subdomain: propSubdomain, customDomain: propCustomDoma
           className="h-16 px-5 flex items-center gap-3 overflow-hidden"
           style={{ borderBottom: '1px solid var(--sidebar-border)' }}
         >
-          <div
-            className="h-10 w-10 rounded-xl flex items-center justify-center font-black text-lg shadow-sm shrink-0"
-            style={{
-              backgroundColor: 'var(--sidebar-logo-bg)',
-              color: 'var(--sidebar-logo-fg)',
-            }}
-          >
-            P
-          </div>
+          <img
+            src="/logo.png"
+            alt="POLARIS"
+            className="h-10 w-10 rounded-xl object-contain shrink-0 shadow-xs"
+          />
           {!collapsed && (
             <div className="animate-in fade-in duration-200">
               <span

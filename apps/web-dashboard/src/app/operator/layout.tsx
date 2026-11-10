@@ -59,9 +59,11 @@ export default function OperatorLayout({
         <div className="max-w-7xl mx-auto flex items-center justify-between gap-2">
           {/* BRANDING */}
           <div className="flex items-center space-x-2.5 sm:space-x-3 min-w-0">
-            <div className="w-9 h-9 rounded-xl bg-gradient-to-tr from-amber-500 via-indigo-600 to-indigo-800 flex items-center justify-center shadow-lg shadow-indigo-500/20 text-white font-black text-lg shrink-0">
-              P
-            </div>
+            <img
+              src="/logo.png"
+              alt="POLARIS"
+              className="w-9 h-9 rounded-xl object-contain shadow-xs shrink-0"
+            />
             <div className="min-w-0">
               <div className="flex items-center gap-1.5 flex-wrap">
                 <span className="font-bold tracking-tight text-slate-900 dark:text-white text-sm sm:text-base">

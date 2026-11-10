@@ -307,283 +307,282 @@ Catatan Keamanan: Silakan login di https://app.${rootDomain}/login. Anda akan di
           <form onSubmit={handleSubmit} className="flex flex-col flex-1 min-h-0 overflow-hidden">
             <div className="p-4 sm:p-5 space-y-3.5 overflow-y-auto flex-1 overscroll-contain">
               {initialLeadData && (
-              <div className="p-3 rounded-xl bg-blue-50 dark:bg-blue-950/40 border border-blue-200 dark:border-blue-800 text-blue-900 dark:text-blue-200 text-xs flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <Sparkles className="w-4 h-4 text-blue-600 shrink-0" />
-                  <span>
-                    Konversi Lead: <strong>{initialLeadData.fullName}</strong> ({initialLeadData.legislativeLevel})
+                <div className="p-3 rounded-xl bg-blue-50 dark:bg-blue-950/40 border border-blue-200 dark:border-blue-800 text-blue-900 dark:text-blue-200 text-xs flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <Sparkles className="w-4 h-4 text-blue-600 shrink-0" />
+                    <span>
+                      Konversi Lead: <strong>{initialLeadData.fullName}</strong> ({initialLeadData.legislativeLevel})
+                    </span>
+                  </div>
+                  <span className="text-[10px] uppercase font-bold tracking-wider px-2 py-0.5 rounded bg-blue-200 dark:bg-blue-900/60 text-blue-800 dark:text-blue-300">
+                    Lead Resmi
                   </span>
                 </div>
-                <span className="text-[10px] uppercase font-bold tracking-wider px-2 py-0.5 rounded bg-blue-200 dark:bg-blue-900/60 text-blue-800 dark:text-blue-300">
-                  Lead Resmi
-                </span>
-              </div>
-            )}
+              )}
 
-            {error && (
-              <div className="p-3 rounded-xl bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-800 text-rose-700 dark:text-rose-300 text-xs flex items-center gap-2">
-                <AlertCircle className="w-4 h-4 shrink-0" />
-                <span>{error}</span>
-              </div>
-            )}
+              {error && (
+                <div className="p-3 rounded-xl bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-800 text-rose-700 dark:text-rose-300 text-xs flex items-center gap-2">
+                  <AlertCircle className="w-4 h-4 shrink-0" />
+                  <span>{error}</span>
+                </div>
+              )}
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
-              {/* NAMA LENGKAP */}
-              <div className="space-y-1 sm:col-span-2">
-                <label className="font-bold text-slate-700 dark:text-slate-300">
-                  Nama Lengkap & Gelar Resmi <span className="text-rose-500">*</span>
-                </label>
-                <input
-                  type="text"
-                  required
-                  placeholder="Contoh: Dr. H. Ahmad Fauzi, S.H., M.Si."
-                  value={fullName}
-                  onChange={(e) => handleNameChange(e.target.value)}
-                  className="w-full px-3 py-2 rounded-xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
-                />
-              </div>
-
-              {/* EMAIL */}
-              <div className="space-y-1.5">
-                <label className="font-bold text-slate-700 dark:text-slate-300">
-                  Email Dinas / Pribadi <span className="text-rose-500">*</span>
-                </label>
-                <input
-                  type="email"
-                  required
-                  placeholder="dewan@dprd.go.id"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
-                />
-              </div>
-
-              {/* USERNAME */}
-              <div className="space-y-1.5">
-                <label className="font-bold text-slate-700 dark:text-slate-300">
-                  Username Login <span className="text-slate-400 font-normal">(Opsional)</span>
-                </label>
-                <input
-                  type="text"
-                  placeholder="ahmad-fauzi (otomatis jika kosong)"
-                  value={username}
-                  onChange={(e) => setUsername(e.target.value)}
-                  className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
-                />
-              </div>
-
-              {/* NOMOR WHATSAPP */}
-              <div className="space-y-1.5">
-                <label className="font-bold text-slate-700 dark:text-slate-300">
-                  Nomor WhatsApp <span className="text-rose-500">*</span>
-                </label>
-                <input
-                  type="tel"
-                  required
-                  placeholder="081234567890"
-                  value={phoneNumber}
-                  onChange={(e) => setPhoneNumber(e.target.value)}
-                  className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
-                />
-              </div>
-
-              {/* TINGKAT LEGISLATIF / KATEGORI JABATAN */}
-              <div className="space-y-1.5 sm:col-span-2">
-                <label className="font-bold text-slate-700 dark:text-slate-300 flex items-center gap-1.5">
-                  <ShieldAlert className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400" />
-                  Kategori & Tingkat Jabatan <span className="text-rose-500">*</span>
-                </label>
-                <select
-                  value={legislativeLevel}
-                  onChange={(e) => handleRoleChange(e.target.value)}
-                  className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-slate-900 dark:text-white font-semibold focus:outline-none focus:ring-2 focus:ring-blue-500"
-                >
-                  <optgroup label="🏢 Kepala Daerah & Eksekutif Wilayah">
-                    <option value="KEPALA_DAERAH_GUBERNUR">Gubernur / Wakil Gubernur (Pemerintah Provinsi)</option>
-                    <option value="KEPALA_DAERAH_WALIKOTA_BUPATI">Walikota / Bupati (Pemerintah Kab/Kota)</option>
-                  </optgroup>
-                  <optgroup label="🌟 Tokoh Publik & Institusi">
-                    <option value="PIMPINAN_LEMBAGA_REKTOR_SWASTA">Tokoh Publik Independen / Pimpinan Lembaga / Rektor</option>
-                  </optgroup>
-                  <optgroup label="💼 Birokrasi & Pejabat OPD">
-                    <option value="PEJABAT_BIROKRAT_DIRJEN_SEKJEN_OPD">Pejabat Eksekutif / Kadis OPD / Dirjen / Sekjen</option>
-                  </optgroup>
-                  <optgroup label="🏛️ Parlemen & Legislatif">
-                    <option value="DPR_RI">DPR RI (Parlemen Nasional)</option>
-                    <option value="DPD_RI">DPD RI (Senator Daerah)</option>
-                    <option value="MPR_RI">MPR RI</option>
-                    <option value="DPRD_PROVINSI">DPRD Provinsi (Tingkat I)</option>
-                    <option value="DPRD_KABUPATEN_KOTA">DPRD Kabupaten / Kota (Tingkat II)</option>
-                  </optgroup>
-                </select>
-              </div>
-
-              {/* FRAKSI / AFILIASI POLITIK */}
-              <div className="space-y-1.5">
-                <div className="flex items-center justify-between">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
+                {/* NAMA LENGKAP */}
+                <div className="space-y-1 sm:col-span-2">
                   <label className="font-bold text-slate-700 dark:text-slate-300">
-                    {isParliament ? 'Partai / Fraksi Politik' : 'Afiliasi / Status Politik'}
+                    Nama Lengkap & Gelar Resmi <span className="text-rose-500">*</span>
                   </label>
-                  <span className="text-[10px] text-slate-500">
-                    {isParliament ? 'Fraksi partai di parlemen' : 'Pilihan bebas / non-partai'}
-                  </span>
+                  <input
+                    type="text"
+                    required
+                    placeholder="Contoh: Dr. H. Ahmad Fauzi, S.H., M.Si."
+                    value={fullName}
+                    onChange={(e) => handleNameChange(e.target.value)}
+                    className="w-full px-3 py-2 rounded-xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  />
                 </div>
-                <input
-                  type="text"
-                  placeholder={isParliament ? 'Contoh: Fraksi Golkar, PDI-P, dll' : 'Contoh: Non-Partai / Independen'}
-                  value={partyAffiliation}
-                  onChange={(e) => setPartyAffiliation(e.target.value)}
-                  className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
-                />
-                {!isParliament && (
-                  <div className="flex flex-wrap gap-1.5 pt-0.5">
-                    {['Non-Partai / Independen', 'Pemerintah Daerah (Pemda)', 'Kementerian / Lembaga Negara'].map((opt) => (
-                      <button
-                        key={opt}
-                        type="button"
-                        onClick={() => setPartyAffiliation(opt)}
-                        className={`px-2 py-0.5 rounded text-[10px] font-semibold border transition-all ${
-                          partyAffiliation === opt
+
+                {/* EMAIL */}
+                <div className="space-y-1.5">
+                  <label className="font-bold text-slate-700 dark:text-slate-300">
+                    Email Dinas / Pribadi <span className="text-rose-500">*</span>
+                  </label>
+                  <input
+                    type="email"
+                    required
+                    placeholder="dewan@dprd.go.id"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  />
+                </div>
+
+                {/* USERNAME */}
+                <div className="space-y-1.5">
+                  <label className="font-bold text-slate-700 dark:text-slate-300">
+                    Username Login <span className="text-slate-400 font-normal">(Opsional)</span>
+                  </label>
+                  <input
+                    type="text"
+                    placeholder="ahmad-fauzi (otomatis jika kosong)"
+                    value={username}
+                    onChange={(e) => setUsername(e.target.value)}
+                    className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  />
+                </div>
+
+                {/* NOMOR WHATSAPP */}
+                <div className="space-y-1.5">
+                  <label className="font-bold text-slate-700 dark:text-slate-300">
+                    Nomor WhatsApp <span className="text-rose-500">*</span>
+                  </label>
+                  <input
+                    type="tel"
+                    required
+                    placeholder="081234567890"
+                    value={phoneNumber}
+                    onChange={(e) => setPhoneNumber(e.target.value)}
+                    className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  />
+                </div>
+
+                {/* TINGKAT LEGISLATIF / KATEGORI JABATAN */}
+                <div className="space-y-1.5 sm:col-span-2">
+                  <label className="font-bold text-slate-700 dark:text-slate-300 flex items-center gap-1.5">
+                    <ShieldAlert className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400" />
+                    Kategori & Tingkat Jabatan <span className="text-rose-500">*</span>
+                  </label>
+                  <select
+                    value={legislativeLevel}
+                    onChange={(e) => handleRoleChange(e.target.value)}
+                    className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-slate-900 dark:text-white font-semibold focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  >
+                    <optgroup label="🏢 Kepala Daerah & Eksekutif Wilayah">
+                      <option value="KEPALA_DAERAH_GUBERNUR">Gubernur / Wakil Gubernur (Pemerintah Provinsi)</option>
+                      <option value="KEPALA_DAERAH_WALIKOTA_BUPATI">Walikota / Bupati (Pemerintah Kab/Kota)</option>
+                    </optgroup>
+                    <optgroup label="🌟 Tokoh Publik & Institusi">
+                      <option value="PIMPINAN_LEMBAGA_REKTOR_SWASTA">Tokoh Publik Independen / Pimpinan Lembaga / Rektor</option>
+                    </optgroup>
+                    <optgroup label="💼 Birokrasi & Pejabat OPD">
+                      <option value="PEJABAT_BIROKRAT_DIRJEN_SEKJEN_OPD">Pejabat Eksekutif / Kadis OPD / Dirjen / Sekjen</option>
+                    </optgroup>
+                    <optgroup label="🏛️ Parlemen & Legislatif">
+                      <option value="DPR_RI">DPR RI (Parlemen Nasional)</option>
+                      <option value="DPD_RI">DPD RI (Senator Daerah)</option>
+                      <option value="MPR_RI">MPR RI</option>
+                      <option value="DPRD_PROVINSI">DPRD Provinsi (Tingkat I)</option>
+                      <option value="DPRD_KABUPATEN_KOTA">DPRD Kabupaten / Kota (Tingkat II)</option>
+                    </optgroup>
+                  </select>
+                </div>
+
+                {/* FRAKSI / AFILIASI POLITIK */}
+                <div className="space-y-1.5">
+                  <div className="flex items-center justify-between">
+                    <label className="font-bold text-slate-700 dark:text-slate-300">
+                      {isParliament ? 'Partai / Fraksi Politik' : 'Afiliasi / Status Politik'}
+                    </label>
+                    <span className="text-[10px] text-slate-500">
+                      {isParliament ? 'Fraksi partai di parlemen' : 'Pilihan bebas / non-partai'}
+                    </span>
+                  </div>
+                  <input
+                    type="text"
+                    placeholder={isParliament ? 'Contoh: Fraksi Golkar, PDI-P, dll' : 'Contoh: Non-Partai / Independen'}
+                    value={partyAffiliation}
+                    onChange={(e) => setPartyAffiliation(e.target.value)}
+                    className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  />
+                  {!isParliament && (
+                    <div className="flex flex-wrap gap-1.5 pt-0.5">
+                      {['Non-Partai / Independen', 'Pemerintah Daerah (Pemda)', 'Kementerian / Lembaga Negara'].map((opt) => (
+                        <button
+                          key={opt}
+                          type="button"
+                          onClick={() => setPartyAffiliation(opt)}
+                          className={`px-2 py-0.5 rounded text-[10px] font-semibold border transition-all ${partyAffiliation === opt
                             ? 'bg-blue-600 text-white border-blue-600'
                             : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-700 hover:border-blue-400'
-                        }`}
-                      >
-                        {opt}
-                      </button>
-                    ))}
+                            }`}
+                        >
+                          {opt}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+
+                {/* ASAL DAPIL / WILAYAH KERJA */}
+                <div className="space-y-1.5">
+                  <div className="flex items-center justify-between">
+                    <label className="font-bold text-slate-700 dark:text-slate-300">
+                      {isParliament
+                        ? 'Dapil (Daerah Pemilihan)'
+                        : isGovernor
+                          ? 'Wilayah Pemerintahan (Provinsi)'
+                          : isMayorBupati
+                            ? 'Wilayah Pemerintahan (Kab/Kota)'
+                            : isBureaucrat
+                              ? 'Instansi / Dinas / OPD'
+                              : 'Wilayah Pengabdian / Fokus Ruang Lingkup'}
+                    </label>
+                    {!isParliament && (
+                      <span className="text-[10px] text-slate-500">Boleh kosong (default otomatis)</span>
+                    )}
                   </div>
-                )}
-              </div>
-
-              {/* ASAL DAPIL / WILAYAH KERJA */}
-              <div className="space-y-1.5">
-                <div className="flex items-center justify-between">
-                  <label className="font-bold text-slate-700 dark:text-slate-300">
-                    {isParliament
-                      ? 'Dapil (Daerah Pemilihan)'
-                      : isGovernor
-                      ? 'Wilayah Pemerintahan (Provinsi)'
-                      : isMayorBupati
-                      ? 'Wilayah Pemerintahan (Kab/Kota)'
-                      : isBureaucrat
-                      ? 'Instansi / Dinas / OPD'
-                      : 'Wilayah Pengabdian / Fokus Ruang Lingkup'}
-                  </label>
-                  {!isParliament && (
-                    <span className="text-[10px] text-slate-500">Boleh kosong (default otomatis)</span>
-                  )}
-                </div>
-                <input
-                  type="text"
-                  placeholder={
-                    isParliament
-                      ? 'Contoh: Dapil Jabar VII / Kab. Bekasi'
-                      : isGovernor
-                      ? 'Contoh: Provinsi Jawa Barat'
-                      : isMayorBupati
-                      ? 'Contoh: Kabupaten Bekasi / Kota Bogor'
-                      : isBureaucrat
-                      ? 'Contoh: Dinas Bina Marga Prov. Jabar'
-                      : 'Contoh: Nasional / Regional / Lintas Sektor'
-                  }
-                  value={customDapilName}
-                  onChange={(e) => setCustomDapilName(e.target.value)}
-                  className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
-                />
-                {!isParliament && (
-                  <p className="text-[10px] text-slate-500">
-                    Jika dikosongkan, sistem otomatis mengisi cakupan wilayah resmi.
-                  </p>
-                )}
-              </div>
-
-              {/* DOMAIN WEBSITE RESMI */}
-              <div className="space-y-1.5 sm:col-span-2">
-                <div className="flex items-center justify-between">
-                  <label className="font-bold text-slate-700 dark:text-slate-300 flex items-center gap-1.5">
-                    <Globe className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400" />
-                    Domain Website Publik <span className="text-rose-500">*</span>
-                  </label>
-                  <span className="text-[11px] text-slate-500">Contoh: opinitaru.com atau ayublaksono.com</span>
-                </div>
-                <input
-                  type="text"
-                  required
-                  placeholder="opinitaru.com atau nama-anda"
-                  value={domainInput}
-                  onChange={(e) => handleDomainChange(e.target.value)}
-                  className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-slate-900 dark:text-white font-mono focus:outline-none focus:ring-2 focus:ring-blue-500"
-                />
-                <p className="text-[10.5px] text-slate-500">
-                  {domainInput.includes('.') ? (
-                    <span className="text-emerald-600 dark:text-emerald-400 font-medium">
-                      ✓ Menggunakan domain mandiri: <strong>https://{domainInput.toLowerCase().trim().replace(/^https?:\/\//, '').replace(/\/$/, '')}</strong>
-                    </span>
-                  ) : (
-                    <span>
-                      Masukkan domain pribadi (contoh: <code>opinitaru.com</code>) atau nama unik untuk portal.
-                    </span>
-                  )}
-                </p>
-              </div>
-            </div>
-
-            {/* SELEKSI MODEL AKTIVASI & PAKET */}
-            <div className="p-4 rounded-xl bg-slate-50 dark:bg-slate-900/60 border border-slate-200 dark:border-slate-800 space-y-3 text-xs">
-              <span className="font-bold text-slate-900 dark:text-white block">
-                Pilihan Lisensi & Mode Pembayaran
-              </span>
-
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <div>
-                  <label className="font-semibold text-slate-600 dark:text-slate-400 block mb-1">Tier Lisensi:</label>
-                  <select
-                    value={planTier}
-                    onChange={(e) => setPlanTier(e.target.value)}
-                    className="w-full px-3 py-2 rounded-lg bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 font-semibold text-slate-900 dark:text-white"
-                  >
-                    <option value="STARTER">STARTER (Standar Parlemen, AI Aktif, Subdomain)</option>
-                    <option value="PRO">PRO (Eksekutif Suite: Custom Domain, Bebas Layout, SPK & Pajak)</option>
-                  </select>
-                </div>
-
-                <div>
-                  <label className="font-semibold text-slate-600 dark:text-slate-400 block mb-1">Siklus Durasi:</label>
-                  <select
-                    value={billingCycle}
-                    onChange={(e) => setBillingCycle(e.target.value)}
-                    className="w-full px-3 py-2 rounded-lg bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 font-semibold text-slate-900 dark:text-white"
-                  >
-                    <option value="MONTHLY">1 Bulan (30 Hari)</option>
-                    <option value="SEMESTER">6 Bulan (180 Hari)</option>
-                    <option value="ANNUAL">1 Tahun (365 Hari)</option>
-                  </select>
-                </div>
-              </div>
-
-              <div className="pt-2 border-t border-slate-200 dark:border-slate-800">
-                <label className="flex items-start gap-2.5 cursor-pointer">
                   <input
-                    type="checkbox"
-                    checked={generatePrepaid}
-                    onChange={(e) => setGeneratePrepaid(e.target.checked)}
-                    className="mt-0.5 rounded text-blue-600 focus:ring-blue-500"
+                    type="text"
+                    placeholder={
+                      isParliament
+                        ? 'Contoh: Dapil Jabar VII / Kab. Bekasi'
+                        : isGovernor
+                          ? 'Contoh: Provinsi Jawa Barat'
+                          : isMayorBupati
+                            ? 'Contoh: Kabupaten Bekasi / Kota Bogor'
+                            : isBureaucrat
+                              ? 'Contoh: Dinas Bina Marga Prov. Jabar'
+                              : 'Contoh: Nasional / Regional / Lintas Sektor'
+                    }
+                    value={customDapilName}
+                    onChange={(e) => setCustomDapilName(e.target.value)}
+                    className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
                   />
-                  <div>
-                    <span className="font-bold text-slate-900 dark:text-white block">
-                      Terbitkan Tagihan Pra-Bayar Midtrans (Kirim VA/QRIS ke kantor dinas dulu)
-                    </span>
-                    <span className="text-slate-500 dark:text-slate-400 text-[11px]">
-                      Jika dicentang, akun dibuat dengan status PENDING_PAYMENT dan sistem otomatis meng-generate invoice resmi Midtrans Snap. Jika tidak, akun langsung ACTIVE dan dewan checkout mandiri di dashboard.
-                    </span>
+                  {!isParliament && (
+                    <p className="text-[10px] text-slate-500">
+                      Jika dikosongkan, sistem otomatis mengisi cakupan wilayah resmi.
+                    </p>
+                  )}
+                </div>
+
+                {/* DOMAIN WEBSITE RESMI */}
+                <div className="space-y-1.5 sm:col-span-2">
+                  <div className="flex items-center justify-between">
+                    <label className="font-bold text-slate-700 dark:text-slate-300 flex items-center gap-1.5">
+                      <Globe className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400" />
+                      Domain Website Publik <span className="text-rose-500">*</span>
+                    </label>
+                    <span className="text-[11px] text-slate-500">Contoh: opinitaru.com atau ayublaksono.com</span>
                   </div>
-                </label>
+                  <input
+                    type="text"
+                    required
+                    placeholder="opinitaru.com atau nama-anda"
+                    value={domainInput}
+                    onChange={(e) => handleDomainChange(e.target.value)}
+                    className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-slate-900 dark:text-white font-mono focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  />
+                  <p className="text-[10.5px] text-slate-500">
+                    {domainInput.includes('.') ? (
+                      <span className="text-emerald-600 dark:text-emerald-400 font-medium">
+                        ✓ Menggunakan domain mandiri: <strong>https://{domainInput.toLowerCase().trim().replace(/^https?:\/\//, '').replace(/\/$/, '')}</strong>
+                      </span>
+                    ) : (
+                      <span>
+                        Masukkan domain pribadi (contoh: <code>opinitaru.com</code>) atau nama unik untuk portal.
+                      </span>
+                    )}
+                  </p>
+                </div>
+              </div>
+
+              {/* SELEKSI MODEL AKTIVASI & PAKET */}
+              <div className="p-4 rounded-xl bg-slate-50 dark:bg-slate-900/60 border border-slate-200 dark:border-slate-800 space-y-3 text-xs">
+                <span className="font-bold text-slate-900 dark:text-white block">
+                  Pilihan Lisensi & Mode Pembayaran
+                </span>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div>
+                    <label className="font-semibold text-slate-600 dark:text-slate-400 block mb-1">Tier Lisensi:</label>
+                    <select
+                      value={planTier}
+                      onChange={(e) => setPlanTier(e.target.value)}
+                      className="w-full px-3 py-2 rounded-lg bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 font-semibold text-slate-900 dark:text-white"
+                    >
+                      <option value="STARTER">STARTER (Standar Parlemen, AI Aktif, Subdomain)</option>
+                      <option value="PRO">PRO (Eksekutif Suite: Custom Domain, Bebas Layout, SPK & Pajak)</option>
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="font-semibold text-slate-600 dark:text-slate-400 block mb-1">Siklus Durasi:</label>
+                    <select
+                      value={billingCycle}
+                      onChange={(e) => setBillingCycle(e.target.value)}
+                      className="w-full px-3 py-2 rounded-lg bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 font-semibold text-slate-900 dark:text-white"
+                    >
+                      <option value="MONTHLY">1 Bulan (30 Hari)</option>
+                      <option value="SEMESTER">6 Bulan (180 Hari)</option>
+                      <option value="ANNUAL">1 Tahun (365 Hari)</option>
+                    </select>
+                  </div>
+                </div>
+
+                <div className="pt-2 border-t border-slate-200 dark:border-slate-800">
+                  <label className="flex items-start gap-2.5 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={generatePrepaid}
+                      onChange={(e) => setGeneratePrepaid(e.target.checked)}
+                      className="mt-0.5 rounded text-blue-600 focus:ring-blue-500"
+                    />
+                    <div>
+                      <span className="font-bold text-slate-900 dark:text-white block">
+                        Terbitkan Tagihan Pra-Bayar Midtrans (Kirim VA/QRIS ke kantor dinas dulu)
+                      </span>
+                      <span className="text-slate-500 dark:text-slate-400 text-[11px]">
+                        Jika dicentang, akun dibuat dengan status PENDING_PAYMENT dan sistem otomatis meng-generate invoice resmi Midtrans Snap. Jika tidak, akun langsung ACTIVE dan dewan checkout mandiri di dashboard.
+                      </span>
+                    </div>
+                  </label>
+                </div>
               </div>
             </div>
-          </div>
 
-          {/* ACTION BUTTONS (STICKY FOOTER) */}
-          <div className="shrink-0 flex items-center justify-end gap-3 p-4 border-t border-slate-200 dark:border-slate-800 bg-slate-50/90 dark:bg-slate-900/90 backdrop-blur-sm">
+            {/* ACTION BUTTONS (STICKY FOOTER) */}
+            <div className="shrink-0 flex items-center justify-end gap-3 p-4 border-t border-slate-200 dark:border-slate-800 bg-slate-50/90 dark:bg-slate-900/90 backdrop-blur-sm">
               <button
                 type="button"
                 onClick={onClose}

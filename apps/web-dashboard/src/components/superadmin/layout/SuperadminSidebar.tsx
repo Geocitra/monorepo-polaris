@@ -86,9 +86,11 @@ export function SuperadminSidebar({ adminEmail }: { adminEmail?: string }) {
       <div className="flex-1 overflow-y-auto min-h-0">
         {/* BRAND LOGO HEADER: SAMA PERSIS DENGAN MAIN DASHBOARD */}
         <div className="h-16 px-5 flex items-center gap-3 overflow-hidden border-b border-slate-200 dark:border-slate-800">
-          <div className="h-10 w-10 rounded-xl bg-blue-600 text-white flex items-center justify-center font-black text-lg shadow-sm shrink-0">
-            P
-          </div>
+          <img
+            src="/logo.png"
+            alt="POLARIS"
+            className="h-10 w-10 rounded-xl object-contain shrink-0 shadow-xs"
+          />
           {!collapsed && (
             <div className="animate-in fade-in duration-200">
               <div className="flex items-center gap-1.5">

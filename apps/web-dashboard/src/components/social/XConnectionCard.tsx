@@ -38,6 +38,7 @@ export function XConnectionCard({ isUnpaid }: XConnectionCardProps) {
   const [account, setAccount] = useState<XAccountData | null>(null);
   const [loading, setLoading] = useState(true);
   const [actionLoading, setActionLoading] = useState(false);
+  const [imgError, setImgError] = useState(false);
 
   useEffect(() => {
     loadAccount();
@@ -157,10 +158,11 @@ export function XConnectionCard({ isUnpaid }: XConnectionCardProps) {
           {/* Info Akun Terhubung */}
           <div className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-850 border border-slate-200/80 dark:border-slate-800 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
             <div className="flex items-center gap-3">
-              {account.profilePictureUrl ? (
+              {account.profilePictureUrl && !imgError ? (
                 <img
                   src={account.profilePictureUrl}
-                  alt={account.accountHandle}
+                  alt=""
+                  onError={() => setImgError(true)}
                   className="w-12 h-12 rounded-full border border-slate-300 dark:border-slate-700 object-cover shrink-0"
                 />
               ) : (

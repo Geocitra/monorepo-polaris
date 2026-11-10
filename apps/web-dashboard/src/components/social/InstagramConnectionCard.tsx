@@ -42,6 +42,7 @@ export function InstagramConnectionCard({ isUnpaid }: InstagramConnectionCardPro
   const [account, setAccount] = useState<InstagramAccountData | null>(null);
   const [loading, setLoading] = useState(true);
   const [actionLoading, setActionLoading] = useState(false);
+  const [imgError, setImgError] = useState(false);
 
   useEffect(() => {
     loadAccount();
@@ -177,15 +178,16 @@ export function InstagramConnectionCard({ isUnpaid }: InstagramConnectionCardPro
         <div className="space-y-5">
           <div className="p-4 sm:p-5 rounded-2xl bg-gradient-to-br from-slate-50 via-white to-blue-50/30 dark:from-slate-800/60 dark:via-slate-900 dark:to-blue-950/20 border border-slate-200/90 dark:border-slate-700 flex flex-col gap-3.5">
             <div className="flex items-center gap-3.5 min-w-0">
-              {account.profilePictureUrl ? (
+              {account.profilePictureUrl && !imgError ? (
                 <img
                   src={account.profilePictureUrl}
-                  alt={account.accountHandle}
+                  alt=""
+                  onError={() => setImgError(true)}
                   className="h-12 w-12 sm:h-14 sm:w-14 rounded-2xl object-cover border-2 border-white dark:border-slate-700 shadow-md shrink-0"
                 />
               ) : (
-                <div className="h-12 w-12 sm:h-14 sm:w-14 rounded-2xl bg-gradient-to-tr from-purple-600 to-rose-500 text-white font-black text-xl flex items-center justify-center shadow-md shrink-0">
-                  {account.accountHandle[0]?.toUpperCase()}
+                <div className="h-12 w-12 sm:h-14 sm:w-14 rounded-2xl bg-gradient-to-tr from-amber-500 via-rose-500 to-purple-600 text-white font-black text-xl flex items-center justify-center shadow-md shrink-0">
+                  {account.accountHandle ? account.accountHandle[0]?.toUpperCase() : <Instagram className="h-6 w-6 text-white" />}
                 </div>
               )}
 
@@ -245,13 +247,6 @@ export function InstagramConnectionCard({ isUnpaid }: InstagramConnectionCardPro
                 <span>Putuskan</span>
               </Button>
             </div>
-          </div>
-
-          <div className="p-3.5 rounded-xl bg-slate-50 dark:bg-slate-800/50 border border-slate-200/80 dark:border-slate-700 text-xs text-slate-600 dark:text-slate-300 leading-relaxed flex items-start gap-2.5">
-            <Sparkles className="h-4 w-4 text-blue-600 dark:text-blue-400 shrink-0 mt-0.5" />
-            <span>
-              <strong>Siap Menerbitkan:</strong> Setiap kali menyusun naskah dan poster di <strong>Studio Konten AI</strong>, opsi penerbitan instan ke feed akun <strong>@{account.accountHandle}</strong> akan otomatis aktif.
-            </span>
           </div>
         </div>
       ) : (

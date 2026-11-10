@@ -540,11 +540,11 @@ export function ProfilePreviewView({
           </Card>
 
           {/* SEKSI 4: SALURAN KOMUNIKASI PUBLIK RESMI */}
-          <div className="space-y-4 pt-2">
-            <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3 px-1">
+          <div className="space-y-3.5 pt-2">
+            <div className="flex flex-col gap-3 px-1">
               <div>
                 <div className="flex items-center gap-2">
-                  <ShieldCheck className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+                  <ShieldCheck className="h-4 w-4 text-blue-600 dark:text-blue-400 shrink-0" />
                   <h3 className="text-sm font-black uppercase tracking-wider text-slate-900 dark:text-white">
                     Saluran Komunikasi Publik Resmi Parlemen
                   </h3>
@@ -554,8 +554,8 @@ export function ProfilePreviewView({
                 </p>
               </div>
 
-              {/* TAB SELECTOR KANAL MEDSOS */}
-              <div className="flex items-center gap-1 p-1 bg-slate-100 dark:bg-slate-800/90 rounded-xl border border-slate-200/60 dark:border-slate-700/60 self-start lg:self-auto max-w-full overflow-x-auto scrollbar-none">
+              {/* TAB SELECTOR KANAL MEDSOS (BERSIH & TANPA SCROLLBAR JELEK) */}
+              <div className="flex items-center gap-1.5 p-1 bg-slate-100 dark:bg-slate-800/90 rounded-xl border border-slate-200/60 dark:border-slate-700/60 w-fit max-w-full overflow-x-auto [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
                 <button
                   type="button"
                   onClick={() => setActiveSocialTab('ALL')}

@@ -70,46 +70,30 @@ export function AiModelMetricsCards({ metrics }: AiModelMetricsCardsProps) {
           return (
             <div
               key={m.model}
-              className={`p-5 rounded-2xl border transition-all duration-200 flex flex-col justify-between space-y-4 ${
-                isGemini
-                  ? 'bg-gradient-to-br from-indigo-50/30 via-white to-white dark:from-indigo-950/20 dark:via-[#0B0F17] dark:to-[#0B0F17] border-indigo-100 dark:border-indigo-950/60 shadow-xs'
-                  : 'bg-gradient-to-br from-emerald-50/30 via-white to-white dark:from-emerald-950/20 dark:via-[#0B0F17] dark:to-[#0B0F17] border-emerald-100 dark:border-emerald-950/60 shadow-xs'
-              }`}
+              className="p-5 rounded-2xl bg-white dark:bg-[#0B0F17] border border-slate-200 dark:border-slate-800 shadow-xs flex flex-col justify-between space-y-4 hover:border-slate-300 dark:hover:border-slate-700 transition-colors"
             >
-              {/* HEADER */}
+              {/* HEADER SIMPLE & CLEAN */}
               <div className="space-y-3">
-                <div className="flex items-center justify-between gap-2">
+                <div className="flex items-center gap-3">
                   <div className={`h-10 w-10 rounded-xl ${colorClass} flex items-center justify-center font-bold shadow-xs shrink-0`}>
-                    <Icon className="h-4 w-4" />
+                    <Icon className="h-5 w-5" />
                   </div>
-                  <div className="flex items-center gap-1.5 flex-wrap justify-end">
-                    <span
-                      className={`px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-wider ${
-                        isGemini
-                          ? 'bg-indigo-100 text-indigo-800 dark:bg-indigo-950 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800'
-                          : 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800'
-                      }`}
-                    >
-                      {prov}
-                    </span>
-                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700">
-                      <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" />
-                      <span>{m.qualityScore}</span>
+                  <div className="min-w-0 flex-1">
+                    <h4 className="font-extrabold text-slate-900 dark:text-white text-sm leading-tight truncate">
+                      {m.model}
+                    </h4>
+                    <span className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider block mt-0.5">
+                      {prov} Architecture
                     </span>
                   </div>
                 </div>
 
-                <div>
-                  <h4 className="font-extrabold text-slate-900 dark:text-white text-sm leading-tight">
-                    {m.model}
-                  </h4>
-                  <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-1 line-clamp-2 leading-relaxed">
-                    {m.useCase}
-                  </p>
-                </div>
+                <p className="text-xs text-slate-500 dark:text-slate-400 line-clamp-2 leading-relaxed">
+                  {m.useCase}
+                </p>
               </div>
 
-              {/* STATS STRIP (CLEAN & CONTRASTED, NO CLUNKY NESTED BOXES) */}
+              {/* STATS STRIP (CLEAN & CONTRASTED) */}
               <div className="pt-3 border-t border-slate-100 dark:border-slate-800/80 space-y-2">
                 <div className="flex items-baseline justify-between">
                   <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">

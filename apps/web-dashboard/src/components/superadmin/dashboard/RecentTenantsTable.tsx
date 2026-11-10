@@ -36,41 +36,46 @@ export function RecentTenantsTable({ tenants, onVerifyToggle }: RecentTenantsTab
         <table className="w-full text-left text-xs">
           <thead>
             <tr className="border-b border-slate-200 dark:border-slate-800 text-slate-500 dark:text-slate-400 font-bold uppercase text-[10px]">
-              <th className="pb-3 px-3">Nama Anggota</th>
+              <th className="pb-3 px-3">Nama Anggota &amp; Kredensial</th>
               <th className="pb-3 px-3">Fraksi Partai</th>
               <th className="pb-3 px-3">Tingkat Dewan</th>
-              <th className="pb-3 px-3">Status Verifikasi</th>
               <th className="pb-3 px-3">Status Akun</th>
-              <th className="pb-3 px-3 text-right">Aksi</th>
+              <th className="pb-3 px-3 text-right">Aksi Superadmin</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-100 dark:divide-slate-800/60">
             {tenants.map((t) => (
               <tr key={t.id} className="hover:bg-slate-50/80 dark:hover:bg-slate-800/30 transition-colors">
                 <td className="py-3 px-3">
-                  <div className="font-bold text-slate-900 dark:text-white">{t.fullName}</div>
-                  <div className="text-[11px] text-slate-500 dark:text-slate-400">{t.email}</div>
+                  <div className="flex items-center gap-1.5 flex-wrap">
+                    <span className="font-bold text-slate-900 dark:text-white">{t.fullName}</span>
+                    {t.isVerified ? (
+                      <span
+                        title="Klien Dewan Terverifikasi"
+                        className="inline-flex items-center gap-0.5 px-1.5 py-0.2 rounded-full text-[9px] font-black uppercase bg-emerald-50 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800"
+                      >
+                        <CheckCircle2 className="h-2.5 w-2.5 text-emerald-500" />
+                        <span>Terverifikasi</span>
+                      </span>
+                    ) : (
+                      <span
+                        title="Menunggu Verifikasi"
+                        className="inline-flex items-center gap-0.5 px-1.5 py-0.2 rounded-full text-[9px] font-bold bg-amber-50 text-amber-700 dark:bg-amber-950/60 dark:text-amber-300 border border-amber-200 dark:border-amber-800"
+                      >
+                        <AlertCircle className="h-2.5 w-2.5 text-amber-500" />
+                        <span>Belum Verifikasi</span>
+                      </span>
+                    )}
+                  </div>
+                  <div className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">{t.email}</div>
                 </td>
                 <td className="py-3 px-3">
                   <span className="px-2 py-0.5 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200 border border-slate-200 dark:border-slate-700 font-semibold text-[11px]">
                     {t.partyAffiliation || 'Independen'}
                   </span>
                 </td>
-                <td className="py-3 px-3 text-slate-600 dark:text-slate-300 font-mono text-[11px]">
-                  {t.legislativeLevel}
-                </td>
-                <td className="py-3 px-3">
-                  {t.isVerified ? (
-                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-500/20 text-[10px] font-bold">
-                      <CheckCircle2 className="h-3 w-3" />
-                      <span>Terverifikasi KPU</span>
-                    </span>
-                  ) : (
-                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-amber-50 text-amber-700 dark:bg-amber-500/10 dark:text-amber-400 border border-amber-200 dark:border-amber-500/20 text-[10px] font-bold">
-                      <AlertCircle className="h-3 w-3" />
-                      <span>Menunggu Verifikasi</span>
-                    </span>
-                  )}
+                <td className="py-3 px-3 text-slate-600 dark:text-slate-300 font-medium text-[11px]">
+                  {t.legislativeLevel ? t.legislativeLevel.replace(/_/g, ' ') : '-'}
                 </td>
                 <td className="py-3 px-3">
                   <span
@@ -96,7 +101,7 @@ export function RecentTenantsTable({ tenants, onVerifyToggle }: RecentTenantsTab
 
             {tenants.length === 0 && (
               <tr>
-                <td colSpan={6} className="py-6 text-center text-slate-400 text-xs italic">
+                <td colSpan={5} className="py-6 text-center text-slate-400 text-xs italic">
                   Belum ada anggota dewan yang terdaftar.
                 </td>
               </tr>
