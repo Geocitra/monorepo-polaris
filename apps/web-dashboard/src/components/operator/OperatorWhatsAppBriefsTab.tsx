@@ -35,10 +35,8 @@ import {
   BriefTicketCard,
   BriefPipelineProgress,
   BriefComponentStatusRow,
-  cleanSummaryDisplay,
   getPackageTypeInfo,
   getTargetHorizonBadge,
-  getStatusBadgeConfig,
   isBriefFinishedOrTerminal,
 } from './briefs';
 
@@ -51,22 +49,6 @@ interface OperatorWhatsAppBriefsTabProps {
   }) => void;
   onOpenLinkedArticle?: (publicationId: string, brief: ContentBriefItem) => void;
   onBriefStatsChanged?: () => void;
-}
-
-const PIPELINE_STEPS = [
-  { key: 'SUBMITTED', label: 'Bahan Masuk', icon: '📥' },
-  { key: 'IN_PROGRESS', label: 'Dikerjakan', icon: '⚙️' },
-  { key: 'READY_FOR_REVIEW', label: 'Review Klien', icon: '👀' },
-  { key: 'REVISION_REQUESTED', label: 'Revisi', icon: '✏️' },
-  { key: 'PUBLISHED', label: 'Tayang', icon: '✅' },
-];
-
-function getPipelineActiveIndex(status: string): number {
-  if (status === 'PUBLISHED' || status === 'APPROVED') return 4;
-  if (status === 'REVISION_REQUESTED') return 3;
-  if (status === 'READY_FOR_REVIEW') return 2;
-  if (status === 'IN_PROGRESS' || status === 'ACCEPTED' || status === 'NEED_CLARIFICATION') return 1;
-  return 0; // SUBMITTED
 }
 
 function isGreetingBubble(text?: string | null): boolean {
@@ -115,105 +97,6 @@ function checkClientSideContactLeak(text: string): string | null {
     }
   }
   return null;
-}
-
-function getStatusBadgeConfig(status: ContentBriefItem['status']) {
-  switch (status) {
-    case 'SUBMITTED':
-      return {
-        label: '📥 Baru Masuk',
-        cls: 'bg-amber-100 text-amber-900 dark:bg-amber-950/60 dark:text-amber-300 border-amber-300 dark:border-amber-700',
-      };
-    case 'IN_PROGRESS':
-    case 'ACCEPTED':
-      return {
-        label: '⚙️ Sedang Dikerjakan',
-        cls: 'bg-indigo-100 text-indigo-900 dark:bg-indigo-950/60 dark:text-indigo-300 border-indigo-300 dark:border-indigo-700',
-      };
-    case 'NEED_CLARIFICATION':
-      return {
-        label: '💬 Diskusi / Klarifikasi',
-        cls: 'bg-sky-100 text-sky-900 dark:bg-sky-950/60 dark:text-sky-300 border-sky-300 dark:border-sky-700',
-      };
-    case 'READY_FOR_REVIEW':
-      return {
-        label: '👀 Menunggu Review Klien',
-        cls: 'bg-violet-100 text-violet-900 dark:bg-violet-950/60 dark:text-violet-300 border-violet-300 dark:border-violet-700',
-      };
-    case 'REVISION_REQUESTED':
-      return {
-        label: '✏️ Minta Revisi',
-        cls: 'bg-rose-100 text-rose-900 dark:bg-rose-950/60 dark:text-rose-300 border-rose-300 dark:border-rose-700',
-      };
-    case 'QUEUED_NEXT_WEEK':
-      return {
-        label: '🗓️ Antrean Minggu Depan',
-        cls: 'bg-slate-200 text-slate-800 dark:bg-slate-800 dark:text-slate-300 border-slate-300 dark:border-slate-700',
-      };
-    case 'APPROVED':
-    case 'PUBLISHED':
-      return {
-        label: '✅ Selesai & Tayang',
-        cls: 'bg-emerald-100 text-emerald-900 dark:bg-emerald-950/60 dark:text-emerald-300 border-emerald-300 dark:border-emerald-700',
-      };
-    case 'CANCELLED':
-      return {
-        label: '❌ Dibatalkan Klien',
-        cls: 'bg-rose-50 text-rose-700 dark:bg-rose-950/60 dark:text-rose-400 border-rose-200 dark:border-rose-800',
-      };
-    case 'REJECTED':
-      return {
-        label: '❌ Ditolak (Refund Kuota)',
-        cls: 'bg-slate-100 text-slate-500 dark:bg-slate-900 dark:text-slate-500 border-slate-300 dark:border-slate-800',
-      };
-    default:
-      return {
-        label: status,
-        cls: 'bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300 border-slate-300',
-      };
-  }
-}
-
-function getTargetHorizonBadge(urgency: 'URGENT' | 'NORMAL', createdAtIso: string) {
-  try {
-    const d = new Date(createdAtIso);
-    // Hitung jam dalam zona WIB (UTC+7)
-    const wibHours = (d.getUTCHours() + 7) % 24;
-    if (wibHours >= 17 || wibHours < 7) {
-      return {
-        label: '🗓️ TARGET BESOK PAGI',
-        cls: 'bg-slate-100 text-slate-700 dark:bg-slate-850 dark:text-slate-300 border-slate-300 dark:border-slate-700',
-        hint: 'Masuk malam hari (≥ 17:00 WIB), dijadwalkan mulai pukul 08:00 besok pagi.',
-      };
-    }
-    if (urgency === 'URGENT') {
-      return {
-        label: '⚡ PRIORITAS HARI INI',
-        cls: 'bg-rose-100 text-rose-800 dark:bg-rose-950/60 dark:text-rose-300 border-rose-300 dark:border-rose-700',
-        hint: 'Breaking News / Topik hangat, diprioritaskan selesai hari ini.',
-      };
-    }
-    return {
-      label: '🟢 TAYANG HARI INI',
-      cls: 'bg-indigo-100 text-indigo-800 dark:bg-indigo-950/60 dark:text-indigo-300 border-indigo-300 dark:border-indigo-700',
-      hint: 'Masuk jam kerja reguler, ditargetkan siap tayang hari ini.',
-    };
-  } catch {
-    return {
-      label: urgency === 'URGENT' ? '⚡ MENDESAK' : '🟢 BIASA',
-      cls: 'bg-slate-100 text-slate-700 border-slate-300',
-      hint: '',
-    };
-  }
-}
-
-function cleanSummaryDisplay(summary: string): string {
-  if (!summary) return '';
-  // Bersihkan sapaan berulang di awal jika masih ada
-  const cleaned = summary
-    .replace(/^(?:hal|halp|hlp|halo|hallo|hai|hi|p|tes|test|permisi)\s+/gi, '')
-    .trim();
-  return cleaned || summary;
 }
 
 export function OperatorWhatsAppBriefsTab({
