@@ -20,7 +20,7 @@ import {
   Loader2,
   RotateCcw,
 } from 'lucide-react';
-import { PUBLIC_OFFICE_ROLE_OPTIONS, GENDER_OPTIONS } from './profile-constants';
+import { PUBLIC_OFFICE_ROLE_OPTIONS, GENDER_OPTIONS, COMMISSION_PRESETS_DPR_RI, COMMISSION_PRESETS_DPRD } from './profile-constants';
 import { removeImageBackground, upscaleImageToHD } from '@/lib/background-removal';
 
 interface OfficialIdentityFormProps {
@@ -66,6 +66,7 @@ export function OfficialIdentityForm({
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [showUrlInput, setShowUrlInput] = useState(false);
   const [urlInput, setUrlInput] = useState('');
+  const [showCommissionPresets, setShowCommissionPresets] = useState(false);
 
   // AI Background Removal & Super-Resolution HD States
   const [autoRemoveBg, setAutoRemoveBg] = useState(true);
@@ -150,8 +151,8 @@ export function OfficialIdentityForm({
         setPhotoUrl(originalData);
         alert(
           'Gagal memproses foto otomatis: ' +
-            (err instanceof Error ? err.message : String(err)) +
-            '. Foto asli tetap ditampilkan.'
+          (err instanceof Error ? err.message : String(err)) +
+          '. Foto asli tetap ditampilkan.'
         );
       } finally {
         setIsRemovingBg(false);
@@ -614,11 +615,10 @@ export function OfficialIdentityForm({
                   key={opt.value}
                   type="button"
                   onClick={() => setGender(opt.value)}
-                  className={`py-1.5 px-2 rounded-lg border text-xs font-bold transition-all flex items-center justify-center gap-1 cursor-pointer ${
-                    isSelected
+                  className={`py-1.5 px-2 rounded-lg border text-xs font-bold transition-all flex items-center justify-center gap-1 cursor-pointer ${isSelected
                       ? 'border-blue-600 bg-blue-50 text-blue-700 ring-1 ring-blue-600'
                       : 'border-slate-300 bg-white text-slate-600 hover:border-slate-400'
-                  }`}
+                    }`}
                 >
                   <User className="h-3 w-3" />
                   <span>{opt.label}</span>
@@ -713,11 +713,21 @@ export function OfficialIdentityForm({
       </div>
 
       {/* PENUGASAN KOMISI & AKD */}
-      <div>
-        <label className="block text-[10px] font-bold text-slate-700 uppercase mb-0.5 flex items-center gap-1">
-          <Layers className="h-3 w-3 text-blue-600" />
-          <span>Penugasan Komisi & Alat Kelengkapan Dewan (AKD)</span>
-        </label>
+      <div className="space-y-1.5">
+        <div className="flex items-center justify-between mb-0.5">
+          <label className="block text-[10px] font-bold text-slate-700 uppercase flex items-center gap-1">
+            <Layers className="h-3 w-3 text-blue-600" />
+            <span>Penugasan Komisi & Alat Kelengkapan Dewan (AKD)</span>
+          </label>
+          <button
+            type="button"
+            onClick={() => setShowCommissionPresets(!showCommissionPresets)}
+            className="text-[10px] font-bold text-blue-600 hover:text-blue-800 hover:underline flex items-center gap-1 cursor-pointer"
+          >
+            <Sparkles className="w-3 h-3 text-amber-500" />
+            {showCommissionPresets ? 'Tutup Rekomendasi' : '✨ Rekomendasi Komisi'}
+          </button>
+        </div>
         <input
           type="text"
           value={commissionName || ''}
@@ -725,6 +735,33 @@ export function OfficialIdentityForm({
           placeholder="Contoh: Komisi I (Pertahanan & Kominfo), Komisi A (Pemerintahan), atau Badan Anggaran"
           className="block w-full rounded-lg border border-slate-300 px-2.5 py-1.5 text-xs font-semibold text-slate-900 focus:border-blue-600 focus:outline-none focus:ring-1 focus:ring-blue-600 bg-white"
         />
+
+        {showCommissionPresets && (
+          <div className="p-2.5 rounded-lg bg-blue-50/70 border border-blue-200/80 space-y-1.5 animate-in fade-in duration-150">
+            <span className="text-[10px] font-bold text-blue-900 uppercase tracking-wider block">
+              Pilihan Cepat Komisi Resmi ({legislativeLevel === 'DPR_RI' ? 'DPR RI' : 'DPRD'}):
+            </span>
+            <div className="flex flex-wrap gap-1.5 max-h-36 overflow-y-auto">
+              {(legislativeLevel === 'DPR_RI' ? COMMISSION_PRESETS_DPR_RI : COMMISSION_PRESETS_DPRD).map((comm) => (
+                <button
+                  key={comm}
+                  type="button"
+                  onClick={() => {
+                    setCommissionName && setCommissionName(comm);
+                    setShowCommissionPresets(false);
+                  }}
+                  className={`px-2 py-0.5 rounded text-[11px] font-semibold border transition-all cursor-pointer ${commissionName === comm
+                      ? 'bg-blue-600 text-white border-blue-600 shadow-2xs'
+                      : 'bg-white text-slate-700 border-slate-200 hover:border-blue-400 hover:bg-blue-50'
+                    }`}
+                >
+                  {comm}
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+
         <span className="text-[10px] text-slate-500 font-medium block mt-1">
           Penugasan komisi digunakan POLARIS AI untuk memfilter kurasi berita parlemen, riset regulasi kementerian, dan pembuatan materi rilis pers harian.
         </span>

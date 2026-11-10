@@ -239,6 +239,10 @@ export class AdminCreateTenantDto {
   @IsString()
   customDapilName?: string;
 
+  @IsOptional()
+  @IsString()
+  commissionName?: string;
+
   @IsString()
   @IsOptional()
   subdomainSlug?: string;

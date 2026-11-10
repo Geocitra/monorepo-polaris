@@ -471,6 +471,7 @@ export class SuperadminTenantService {
           legislativeLevel: dto.legislativeLevel, // DIKUNCI OLEH ADMIN
           electoralDistrictId: dto.electoralDistrictId || null,
           customDapilName: resolvedDapil,
+          commissionName: dto.commissionName?.trim() || null,
           isVerified: true,
           mustChangePassword: true,
           temporaryPasswordPlaintextPreview: tempPassword,

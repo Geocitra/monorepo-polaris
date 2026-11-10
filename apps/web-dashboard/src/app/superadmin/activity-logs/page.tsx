@@ -194,14 +194,9 @@ function ActivityLogsContent() {
       {/* 1. HEADER SECTION */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <div className="flex items-center gap-2">
-            <h1 className="text-xl sm:text-2xl font-black text-slate-900 dark:text-white tracking-tight">
-              Audit Rekonsiliasi & Log Aktivitas AI Anggota Dewan
-            </h1>
-            <span className="px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase bg-emerald-50 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800/60">
-              100% Rupiah (Rp)
-            </span>
-          </div>
+          <h1 className="text-xl sm:text-2xl font-black text-slate-900 dark:text-white tracking-tight">
+            Audit Rekonsiliasi & Log Aktivitas AI Anggota Dewan
+          </h1>
           <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400 mt-1">
             Audit telemetri presisi per dewan, per operator, per kegiatan, dan per request AI (terpisah OpenAI vs Google Gemini) serta rekonsiliasi kuota paket
           </p>

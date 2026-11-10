@@ -140,6 +140,29 @@ export function ElectoralDistrictForm({
               className="block w-full rounded-lg border border-slate-300 px-2.5 py-1.5 text-xs font-semibold text-slate-900 focus:border-blue-600 focus:outline-none"
             />
           )}
+
+          {currentProvincePresets.dapils.length > 0 && (
+            <div className="flex flex-wrap gap-1 mt-1.5">
+              <span className="text-[9px] text-slate-400 font-bold uppercase tracking-wider block w-full">Rekomendasi Dapil:</span>
+              {currentProvincePresets.dapils.slice(0, 6).map((preset) => (
+                <button
+                  key={preset}
+                  type="button"
+                  onClick={() => {
+                    setIsManualInput(false);
+                    onDapilNameChange(preset);
+                  }}
+                  className={`text-[10px] px-2 py-0.5 rounded border transition-all cursor-pointer ${
+                    dapilName === preset
+                      ? 'bg-blue-600 text-white border-blue-600 font-bold shadow-2xs'
+                      : 'bg-slate-50 hover:bg-blue-50 text-slate-600 border-slate-200'
+                  }`}
+                >
+                  {preset}
+                </button>
+              ))}
+            </div>
+          )}
         </div>
 
         {/* Kode Dapil Referensi */}

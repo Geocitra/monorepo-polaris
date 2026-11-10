@@ -309,6 +309,41 @@ export const EDUCATION_LEVEL_OPTIONS = [
 ];
 
 // ==========================================
+// PRESET KOMISI & ALAT KELENGKAPAN DEWAN (AKD)
+// ==========================================
+export const COMMISSION_PRESETS_DPR_RI = [
+  'Komisi I (Pertahanan, Intelijen, LN & Kominfo)',
+  'Komisi II (Pemerintahan Dalam Negeri & Pemilu)',
+  'Komisi III (Hukum, HAM & Keamanan)',
+  'Komisi IV (Pertanian, Kehutanan & Kelautan)',
+  'Komisi V (Infrastruktur & Perhubungan)',
+  'Komisi VI (Perdagangan, BUMN & Koperasi)',
+  'Komisi VII (Perindustrian, UMKM & Pariwisata)',
+  'Komisi VIII (Agama, Sosial & Kebencanaan)',
+  'Komisi IX (Kesehatan & Ketenagakerjaan)',
+  'Komisi X (Pendidikan, Riset, Olahraga & Budaya)',
+  'Komisi XI (Keuangan & Perbankan)',
+  'Badan Anggaran (Banggar)',
+  'Badan Legislasi (Baleg)',
+  'Badan Akuntabilitas Keuangan Negara (BAKN)',
+  'Badan Kerjasama Antar Parlemen (BKSAP)',
+  'Pimpinan DPR RI',
+];
+
+export const COMMISSION_PRESETS_DPRD = [
+  'Komisi A (Pemerintahan, Hukum & Kepegawaian)',
+  'Komisi B (Perekonomian & Keuangan Daerah)',
+  'Komisi C (Pembangunan & Infrastruktur)',
+  'Komisi D (Pendidikan, Kesehatan & Kesra)',
+  'Komisi E (Sosial Budaya & Kesejahteraan)',
+  'Badan Anggaran (Banggar DPRD)',
+  'Badan Pembentukan Perda (Bapemperda)',
+  'Badan Kehormatan (BK)',
+  'Badan Musyawarah (Bamus)',
+  'Pimpinan DPRD',
+];
+
+// ==========================================
 // SARAN KURSUS / PELATIHAN POPULER DEWAN
 // ==========================================
 export const POPULAR_COURSES_SUGGESTIONS = [

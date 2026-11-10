@@ -272,15 +272,15 @@ export default function SuperadminReconciliationPage() {
 
   // Kalkulasi Ringkasan KPI Finansial
   const totalGrossAll = transactions.length > 0
-    ? transactions.reduce((acc, t) => acc + Number(t.grossAmountIdr || t.amountIdr || 0), 0)
-    : batches.reduce((acc, b) => acc + Number(b.totalGrossAmountIdr || 0), 0);
+    ? transactions.reduce((acc, t) => acc + (Number(t.grossAmountIdr) || Number(t.amountIdr) || 0), 0)
+    : batches.reduce((acc, b) => acc + (Number(b.totalGrossAmountIdr) || 0), 0);
   const totalMdrAll = transactions.length > 0
-    ? transactions.reduce((acc, t) => acc + Number(t.mdrFeeIdr || 0) + Number(t.vatFeeIdr || 0), 0)
-    : batches.reduce((acc, b) => acc + Number(b.totalMdrFeeIdr || 0), 0);
+    ? transactions.reduce((acc, t) => acc + (Number(t.mdrFeeIdr) || 0) + (Number(t.vatFeeIdr) || 0), 0)
+    : batches.reduce((acc, b) => acc + (Number(b.totalMdrFeeIdr) || 0), 0);
   const totalNetAll = transactions.length > 0
-    ? transactions.reduce((acc, t) => acc + Number(t.netAmountIdr || t.amountIdr || 0), 0)
-    : batches.reduce((acc, b) => acc + Number(b.totalNetAmountIdr || 0), 0);
-  const activeDiscrepanciesCount = batches.reduce((acc, b) => acc + Number(b.totalDiscrepancies || 0), 0);
+    ? transactions.reduce((acc, t) => acc + (Number(t.netAmountIdr) || Number(t.amountIdr) || 0), 0)
+    : batches.reduce((acc, b) => acc + (Number(b.totalNetAmountIdr) || 0), 0);
+  const activeDiscrepanciesCount = batches.reduce((acc, b) => acc + (Number(b.totalDiscrepancies) || 0), 0);
 
   return (
     <div className="space-y-6">
@@ -518,20 +518,22 @@ export default function SuperadminReconciliationPage() {
                       {/* 3. TAGIHAN KOTOR (GROSS) */}
                       <td className="py-3 px-3 font-mono">
                         <div className="font-bold text-slate-900 dark:text-white">
-                          Rp {Number(t.grossAmountIdr || t.amountIdr).toLocaleString('id-ID')}
+                          Rp {Math.round(Number(t.grossAmountIdr || t.amountIdr || 0)).toLocaleString('id-ID')}
                         </div>
                       </td>
 
                       {/* 4. MDR & PPN */}
                       <td className="py-3 px-3 font-mono text-amber-600 dark:text-amber-400">
-                        <div>Rp {Number((t.mdrFeeIdr || 0) + (t.vatFeeIdr || 0)).toLocaleString('id-ID')}</div>
+                        <div>
+                          Rp {Math.round((Number(t.mdrFeeIdr) || 0) + (Number(t.vatFeeIdr) || 0)).toLocaleString('id-ID')}
+                        </div>
                         <span className="text-[9px] text-slate-400">MDR + PPN 11%</span>
                       </td>
 
                       {/* 5. KAS BERSIH (NET) */}
                       <td className="py-3 px-3 font-mono font-bold text-emerald-600 dark:text-emerald-400">
                         <div>
-                          Rp {Number(t.netAmountIdr || t.amountIdr).toLocaleString('id-ID')}
+                          Rp {Math.round(Number(t.netAmountIdr || t.amountIdr || 0)).toLocaleString('id-ID')}
                         </div>
                       </td>
 

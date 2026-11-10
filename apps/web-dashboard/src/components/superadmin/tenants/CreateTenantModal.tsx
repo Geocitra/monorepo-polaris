@@ -1,9 +1,71 @@
 'use client';
 
 import React, { useState } from 'react';
-import { X, UserPlus, Copy, Check, ShieldAlert, CreditCard, Sparkles, AlertCircle, ExternalLink, Globe } from 'lucide-react';
+import { X, UserPlus, Copy, Check, ShieldAlert, CreditCard, Sparkles, AlertCircle, ExternalLink, Globe, Layers, MapPin } from 'lucide-react';
 import { AdminApiClient } from '@/lib/api-client';
 import { getRootDomain } from '@/lib/urls';
+
+const COMMISSION_PRESETS_DPR_RI = [
+  'Komisi I (Pertahanan, Intelijen, LN & Kominfo)',
+  'Komisi II (Pemerintahan Dalam Negeri & Pemilu)',
+  'Komisi III (Hukum, HAM & Keamanan)',
+  'Komisi IV (Pertanian, Kehutanan & Kelautan)',
+  'Komisi V (Infrastruktur & Perhubungan)',
+  'Komisi VI (Perdagangan, BUMN & Koperasi)',
+  'Komisi VII (Perindustrian, UMKM & Pariwisata)',
+  'Komisi VIII (Agama, Sosial & Kebencanaan)',
+  'Komisi IX (Kesehatan & Ketenagakerjaan)',
+  'Komisi X (Pendidikan, Riset, Olahraga & Budaya)',
+  'Komisi XI (Keuangan & Perbankan)',
+  'Badan Anggaran (Banggar)',
+  'Badan Legislasi (Baleg)',
+  'Pimpinan DPR RI',
+];
+
+const COMMISSION_PRESETS_DPRD = [
+  'Komisi A (Pemerintahan, Hukum & Kepegawaian)',
+  'Komisi B (Perekonomian & Keuangan Daerah)',
+  'Komisi C (Pembangunan & Infrastruktur)',
+  'Komisi D (Pendidikan, Kesehatan & Kesra)',
+  'Komisi E (Sosial Budaya & Kesejahteraan)',
+  'Badan Anggaran (Banggar DPRD)',
+  'Badan Pembentukan Perda (Bapemperda)',
+  'Badan Kehormatan (BK)',
+  'Pimpinan DPRD',
+];
+
+const DAPIL_PRESETS_DPR_RI = [
+  'Jawa Barat I (Bandung - Cimahi)',
+  'Jawa Barat VII (Bekasi - Karawang - Purwakarta)',
+  'DKI Jakarta I (Jakarta Timur)',
+  'DKI Jakarta II (Jakpus - Jaksel - LN)',
+  'DKI Jakarta III (Jakbar - Jakut - Kep. Seribu)',
+  'Jawa Tengah I (Semarang - Kendal - Salatiga)',
+  'Jawa Timur I (Surabaya - Sidoarjo)',
+  'Banten III (Tangerang Raya)',
+  'Sumatera Utara I (Medan - Deli Serdang)',
+  'Sulawesi Selatan I (Makassar - Gowa)',
+];
+
+const DAPIL_PRESETS_DPRD_PROV = [
+  'Dapil Jabar 1 (Kota Bandung & Kota Cimahi)',
+  'Dapil Jabar 2 (Kabupaten Bandung)',
+  'Dapil Jabar 7 (Kota/Kab Cirebon, Indramayu)',
+  'Dapil Jabar 9 (Kabupaten Bekasi)',
+  'Dapil DKI 1 (Jakarta Pusat)',
+  'Dapil DKI 4 (Jakarta Timur)',
+  'Dapil Jateng 1 (Kota Semarang)',
+  'Dapil Jatim 1 (Kota Surabaya)',
+];
+
+const DAPIL_PRESETS_DPRD_KAB_KOTA = [
+  'Dapil 1 (Kecamatan Pusat)',
+  'Dapil 2',
+  'Dapil 3',
+  'Dapil 4',
+  'Dapil 5',
+  'Dapil 6',
+];
 
 export interface InitialLeadData {
   inquiryId?: string;
@@ -32,6 +94,9 @@ export function CreateTenantModal({ onClose, onSuccess, initialLeadData }: Creat
   const [partyAffiliation, setPartyAffiliation] = useState(initialLeadData?.partyAffiliation || '');
   const [legislativeLevel, setLegislativeLevel] = useState(initialLeadData?.legislativeLevel || 'DPRD_PROVINSI');
   const [customDapilName, setCustomDapilName] = useState(initialLeadData?.customDapilName || '');
+  const [commissionName, setCommissionName] = useState('');
+  const [showDapilHelper, setShowDapilHelper] = useState(false);
+  const [showCommissionHelper, setShowCommissionHelper] = useState(false);
   const [domainInput, setDomainInput] = useState('');
   const [customDomain, setCustomDomain] = useState('');
   const [subdomainSlug, setSubdomainSlug] = useState('');
@@ -125,6 +190,7 @@ export function CreateTenantModal({ onClose, onSuccess, initialLeadData }: Creat
         partyAffiliation: partyAffiliation.trim() || undefined,
         legislativeLevel,
         customDapilName: customDapilName.trim() || undefined,
+        commissionName: commissionName.trim() || undefined,
         subdomainSlug: effectiveSlug,
         customDomain: effectiveCustomDomain || undefined,
         planTier,
@@ -455,9 +521,10 @@ Catatan Keamanan: Silakan login di https://app.${rootDomain}/login. Anda akan di
                 </div>
 
                 {/* ASAL DAPIL / WILAYAH KERJA */}
-                <div className="space-y-1.5">
+                <div className="space-y-1.5 sm:col-span-2">
                   <div className="flex items-center justify-between">
-                    <label className="font-bold text-slate-700 dark:text-slate-300">
+                    <label className="font-bold text-slate-700 dark:text-slate-300 flex items-center gap-1.5">
+                      <MapPin className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400" />
                       {isParliament
                         ? 'Dapil (Daerah Pemilihan)'
                         : isGovernor
@@ -468,15 +535,20 @@ Catatan Keamanan: Silakan login di https://app.${rootDomain}/login. Anda akan di
                               ? 'Instansi / Dinas / OPD'
                               : 'Wilayah Pengabdian / Fokus Ruang Lingkup'}
                     </label>
-                    {!isParliament && (
-                      <span className="text-[10px] text-slate-500">Boleh kosong (default otomatis)</span>
-                    )}
+                    <button
+                      type="button"
+                      onClick={() => setShowDapilHelper(!showDapilHelper)}
+                      className="text-[11px] font-bold text-blue-600 dark:text-blue-400 hover:underline flex items-center gap-1"
+                    >
+                      <Sparkles className="w-3 h-3 text-amber-500" />
+                      {showDapilHelper ? 'Tutup Saran' : '✨ Rekomendasi Dapil'}
+                    </button>
                   </div>
                   <input
                     type="text"
                     placeholder={
                       isParliament
-                        ? 'Contoh: Dapil Jabar VII / Kab. Bekasi'
+                        ? 'Contoh: Jawa Barat I (Bandung - Cimahi) atau Dapil Jabar VII'
                         : isGovernor
                           ? 'Contoh: Provinsi Jawa Barat'
                           : isMayorBupati
@@ -489,12 +561,106 @@ Catatan Keamanan: Silakan login di https://app.${rootDomain}/login. Anda akan di
                     onChange={(e) => setCustomDapilName(e.target.value)}
                     className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
                   />
-                  {!isParliament && (
+                  {showDapilHelper && (
+                    <div className="p-2.5 rounded-xl bg-blue-50/70 dark:bg-blue-950/40 border border-blue-200 dark:border-blue-800 space-y-2">
+                      <span className="text-[10px] font-bold text-blue-900 dark:text-blue-300 uppercase tracking-wider block">
+                        Pilihan Cepat Dapil & Wilayah:
+                      </span>
+                      <div className="flex flex-wrap gap-1.5 max-h-36 overflow-y-auto pr-1">
+                        {(legislativeLevel === 'DPR_RI'
+                          ? DAPIL_PRESETS_DPR_RI
+                          : legislativeLevel === 'DPRD_PROVINSI'
+                            ? DAPIL_PRESETS_DPRD_PROV
+                            : legislativeLevel === 'DPRD_KABUPATEN_KOTA'
+                              ? DAPIL_PRESETS_DPRD_KAB_KOTA
+                              : [
+                                'Provinsi Jawa Barat',
+                                'Provinsi DKI Jakarta',
+                                'Provinsi Jawa Tengah',
+                                'Provinsi Jawa Timur',
+                                'Kota Bandung',
+                                'Kabupaten Bekasi',
+                                'Nasional',
+                              ]
+                        ).map((dapil) => (
+                          <button
+                            key={dapil}
+                            type="button"
+                            onClick={() => {
+                              setCustomDapilName(dapil);
+                              setShowDapilHelper(false);
+                            }}
+                            className={`px-2.5 py-1 rounded-lg text-[11px] font-semibold transition-all border ${
+                              customDapilName === dapil
+                                ? 'bg-blue-600 text-white border-blue-600 shadow-sm'
+                                : 'bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 border-slate-200 dark:border-slate-700 hover:border-blue-400 hover:bg-blue-50/50'
+                            }`}
+                          >
+                            {dapil}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                  {!isParliament && !showDapilHelper && (
                     <p className="text-[10px] text-slate-500">
                       Jika dikosongkan, sistem otomatis mengisi cakupan wilayah resmi.
                     </p>
                   )}
                 </div>
+
+                {/* PENUGASAN KOMISI / AKD DEWAN */}
+                {isParliament && (
+                  <div className="space-y-1.5 sm:col-span-2">
+                    <div className="flex items-center justify-between">
+                      <label className="font-bold text-slate-700 dark:text-slate-300 flex items-center gap-1.5">
+                        <Layers className="w-3.5 h-3.5 text-indigo-600 dark:text-indigo-400" />
+                        Penugasan Komisi & Alat Kelengkapan Dewan (AKD)
+                      </label>
+                      <button
+                        type="button"
+                        onClick={() => setShowCommissionHelper(!showCommissionHelper)}
+                        className="text-[11px] font-bold text-indigo-600 dark:text-indigo-400 hover:underline flex items-center gap-1"
+                      >
+                        <Sparkles className="w-3 h-3 text-amber-500" />
+                        {showCommissionHelper ? 'Tutup Saran' : '✨ Rekomendasi Komisi'}
+                      </button>
+                    </div>
+                    <input
+                      type="text"
+                      placeholder="Contoh: Komisi I (Pertahanan, Intelijen & Kominfo) atau Komisi A"
+                      value={commissionName}
+                      onChange={(e) => setCommissionName(e.target.value)}
+                      className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                    />
+                    {showCommissionHelper && (
+                      <div className="p-2.5 rounded-xl bg-indigo-50/70 dark:bg-indigo-950/40 border border-indigo-200 dark:border-indigo-800 space-y-2">
+                        <span className="text-[10px] font-bold text-indigo-900 dark:text-indigo-300 uppercase tracking-wider block">
+                          Pilihan Cepat Komisi Resmi (Klik untuk Isi Langsung):
+                        </span>
+                        <div className="flex flex-wrap gap-1.5 max-h-40 overflow-y-auto pr-1">
+                          {(legislativeLevel === 'DPR_RI' ? COMMISSION_PRESETS_DPR_RI : COMMISSION_PRESETS_DPRD).map((comm) => (
+                            <button
+                              key={comm}
+                              type="button"
+                              onClick={() => {
+                                setCommissionName(comm);
+                                setShowCommissionHelper(false);
+                              }}
+                              className={`px-2.5 py-1 rounded-lg text-[11px] font-semibold transition-all border ${
+                                commissionName === comm
+                                  ? 'bg-indigo-600 text-white border-indigo-600 shadow-sm'
+                                  : 'bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 border-slate-200 dark:border-slate-700 hover:border-indigo-400 hover:bg-indigo-50/50'
+                              }`}
+                            >
+                              {comm}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )}
 
                 {/* DOMAIN WEBSITE RESMI */}
                 <div className="space-y-1.5 sm:col-span-2">
