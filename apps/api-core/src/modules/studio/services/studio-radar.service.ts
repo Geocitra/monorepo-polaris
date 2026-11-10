@@ -264,6 +264,7 @@ export class StudioRadarService {
         customDapil: tenantMembers.customDapilName,
         personalCoverage: tenantMembers.personalCoverage,
         commissionName: tenantMembers.commissionName,
+        issueInterests: tenantMembers.issueInterests,
       })
       .from(tenantMembers)
       .where(eq(tenantMembers.id, tenantId))
@@ -287,20 +288,32 @@ export class StudioRadarService {
       ? member.personalCoverage
       : dapil?.regencyCoverage || [];
 
-    // Ambil berita daerah terkini sebagai sinyal
+    // Ambil berita daerah & nasional terkini sebagai sinyal grounding AI
     let recentHeadlines: string[] = [];
     try {
       const scopeConditions = [
         eq(mediaDiscourses.regionScope, dapilName),
         ...(provinceName ? [eq(mediaDiscourses.regionScope, provinceName)] : []),
+        eq(mediaDiscourses.regionScope, 'NASIONAL'),
       ];
       const newsRows = await db
         .select({ title: mediaDiscourses.articleTitle })
         .from(mediaDiscourses)
         .where(or(...scopeConditions))
         .orderBy(desc(mediaDiscourses.publishedAt))
-        .limit(3);
-      recentHeadlines = newsRows.map((n) => n.title);
+        .limit(5);
+
+      recentHeadlines = newsRows.map((n) => n.title).filter(Boolean);
+
+      // Jika masih kosong, ambil 5 berita apapun yang terbaru dari mediaDiscourses
+      if (recentHeadlines.length === 0) {
+        const fallbackNews = await db
+          .select({ title: mediaDiscourses.articleTitle })
+          .from(mediaDiscourses)
+          .orderBy(desc(mediaDiscourses.publishedAt))
+          .limit(5);
+        recentHeadlines = fallbackNews.map((n) => n.title).filter(Boolean);
+      }
     } catch {}
 
     const topics = await PromptRefinerService.generateTrendingTopics({
@@ -311,6 +324,7 @@ export class StudioRadarService {
       partyAffiliation: member.party || undefined,
       legislativeLevel: member.level || undefined,
       commissionName: member.commissionName || undefined,
+      issueInterests: member.issueInterests || [],
       recentNewsHeadlines: recentHeadlines,
       tenantId,
     });
@@ -318,6 +332,9 @@ export class StudioRadarService {
     return {
       dapilName,
       memberName: member.fullName,
+      partyAffiliation: member.party || null,
+      commissionName: member.commissionName || null,
+      issueInterests: member.issueInterests || [],
       topics,
     };
   }

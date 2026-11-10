@@ -65,6 +65,10 @@ export class IdentityService {
     return await this.profileService.getCommissions(level);
   }
 
+  async getElectoralDistricts(province?: string, search?: string) {
+    return await this.profileService.getElectoralDistricts(province, search);
+  }
+
   // --- Domain: Keamanan Akun & Kredensial ---
   async forceChangeInitialPassword(tenantId: string, dto: ForceChangeInitialPasswordDto) {
     return await this.securityService.forceChangeInitialPassword(tenantId, dto);

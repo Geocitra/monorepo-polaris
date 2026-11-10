@@ -374,4 +374,27 @@ export class IdentityProfileService {
     }
     return rows;
   }
+
+  async getElectoralDistricts(province?: string, search?: string) {
+    const rows = await db
+      .select()
+      .from(electoralDistricts)
+      .orderBy(electoralDistricts.dapilName);
+
+    let filtered = rows;
+    if (province && province !== 'ALL') {
+      const cleanProv = province.trim().toLowerCase();
+      filtered = filtered.filter((r) => r.provinceName.toLowerCase() === cleanProv);
+    }
+    if (search && search.trim()) {
+      const cleanSearch = search.trim().toLowerCase();
+      filtered = filtered.filter(
+        (r) =>
+          r.dapilName.toLowerCase().includes(cleanSearch) ||
+          r.dapilCode.toLowerCase().includes(cleanSearch) ||
+          (Array.isArray(r.regencyCoverage) && r.regencyCoverage.some((reg) => reg.toLowerCase().includes(cleanSearch)))
+      );
+    }
+    return filtered;
+  }
 }

@@ -25,6 +25,7 @@ export interface GenerateDapilTopicsOptions {
   partyAffiliation?: string;
   legislativeLevel?: string;
   commissionName?: string;
+  issueInterests?: string[];
   recentNewsHeadlines?: string[];
   tenantId?: string;
 }
@@ -135,6 +136,7 @@ Aturan:
       partyAffiliation,
       legislativeLevel,
       commissionName,
+      issueInterests = [],
       recentNewsHeadlines = [],
     } = options;
 
@@ -174,8 +176,9 @@ Buatlah 4 topik isu hangat daerah yang paling relevan, mendesak, dan realistis u
 - Jabatan: ${legislativeLevel || 'Anggota DPRD'}
 - Dapil: ${dapilName} ${provinceName ? `(${provinceName})` : ''}
 ${regencyCoverage.length > 0 ? `- Cakupan Wilayah: ${regencyCoverage.slice(0, 4).join(', ')}` : ''}
-${commissionName ? `- Komisi/Bidang: ${commissionName}` : ''}
-${partyAffiliation ? `- Fraksi: ${partyAffiliation}` : ''}
+${commissionName ? `- Penugasan Komisi: ${commissionName}` : ''}
+${partyAffiliation ? `- Fraksi Partai: ${partyAffiliation}` : ''}
+${issueInterests.length > 0 ? `- Minat Kebijakan & Isu Fokus Tokoh: ${issueInterests.join(', ')}` : ''}
 ${partyIdeologyHint ? `${partyIdeologyHint}\n` : ''}${recentNewsHeadlines.length > 0 ? `- Sinyal Berita Daerah Terbaru: ${recentNewsHeadlines.slice(0, 3).join('; ')}` : ''}
 
 Aturan:

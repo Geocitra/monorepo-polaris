@@ -2,6 +2,7 @@ import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import postgres from '../packages/database/node_modules/postgres/src/index.js';
+import { MASTER_COMMISSIONS_DATA, ELECTORAL_DISTRICTS_DATA } from './seed-dapil-commissions.mjs';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -82,56 +83,37 @@ async function runSeed() {
     const partyCount = await sql`SELECT count(*) FROM master_political_parties;`;
     console.log(`  -> ${partyCount[0].count} master political parties seeded.`);
 
-    console.log('\n[3/6] Seeding Master Komisi DPR RI...');
-    await sql.unsafe(`
-      INSERT INTO master_commissions (legislative_level, code, name, focus_areas, partner_ministries)
-      VALUES
-        ('DPR_RI', 'KOMISI_I', 'Komisi I (Pertahanan, Luar Negeri, Intelijen, Kominfo)', 
-         ARRAY['Pertahanan Nasional', 'Diplomasi Internasional', 'Keamanan Siber & Intelijen', 'Penyiaran & Komunikasi'], 
-         ARRAY['Kemenhan', 'Kemenlu', 'Kemenkominfo', 'BIN', 'TNI', 'BSSN']),
-        ('DPR_RI', 'KOMISI_II', 'Komisi II (Pemerintahan Dalam Negeri, Otonomi Daerah, Pemilu)', 
-         ARRAY['Otonomi Daerah', 'Birokrasi & ASN', 'Kepemiluan & Pilkada', 'Agraria & Tata Ruang'], 
-         ARRAY['Kemendagri', 'KemenPAN-RB', 'KPU', 'Bawaslu', 'ATR/BPN']),
-        ('DPR_RI', 'KOMISI_III', 'Komisi III (Hukum, HAM, dan Keamanan)', 
-         ARRAY['Penegakan Hukum', 'Perundang-undangan', 'Hak Asasi Manusia', 'Pemberantasan Korupsi'], 
-         ARRAY['Kemenkumham', 'Polri', 'Kejaksaan Agung', 'KPK', 'Mahkamah Agung', 'Mahkamah Konstitusi']),
-        ('DPR_RI', 'KOMISI_IV', 'Komisi IV (Pertanian, Lingkungan Hidup, Kehutanan, Kelautan)', 
-         ARRAY['Ketahanan Pangan', 'Kelautan & Perikanan', 'Konservasi Sumber Daya Alam', 'Kesejahteraan Petani'], 
-         ARRAY['Kementan', 'KLHK', 'KKP', 'Bapanas', 'Perum BULOG']),
-        ('DPR_RI', 'KOMISI_V', 'Komisi V (Infrastruktur dan Perhubungan)', 
-         ARRAY['Jalan & Jembatan', 'Transportasi Darat/Laut/Udara', 'Perumahan Rakyat', 'Meteorologi & SAR'], 
-         ARRAY['KemenPUPR', 'Kemenhub', 'BMKG', 'Basarnas']),
-        ('DPR_RI', 'KOMISI_VI', 'Komisi VI (Perdagangan, Koperasi, UMKM, BUMN)', 
-         ARRAY['Tata Niaga Pasar', 'BUMN & Investasi', 'Pemberdayaan Koperasi & UMKM', 'Persaingan Usaha'], 
-         ARRAY['Kemendag', 'KemenkopUKM', 'KemenBUMN', 'KPPU']),
-        ('DPR_RI', 'KOMISI_X', 'Komisi X (Pendidikan, Riset, Olahraga, Pariwisata)', 
-         ARRAY['Kurikulum & Guru', 'Pariwisata & Budaya', 'Ekonomi Kreatif', 'Perpustakaan Nasional'], 
-         ARRAY['Kemendikbudristek', 'Kemenparekraf', 'Kemenpora', 'Perpusnas']),
-        ('DPR_RI', 'KOMISI_XI', 'Komisi XI (Keuangan, Perencanaan Pembangunan, Perbankan)', 
-         ARRAY['APBN & Kebijakan Fiskal', 'Stabilitas Moneter', 'Sektor Jasa Keuangan', 'Lembaga Keuangan'], 
-         ARRAY['Kemenkeu', 'Bappenas', 'Bank Indonesia', 'OJK', 'LPS', 'BPK'])
-      ON CONFLICT DO NOTHING;
-    `);
+    console.log('\n[3/6] Seeding Master Komisi (DPR RI, DPRD Provinsi, DPRD Kab/Kota)...');
+    for (const comm of MASTER_COMMISSIONS_DATA) {
+      await sql.unsafe(`
+        INSERT INTO master_commissions (legislative_level, code, name, focus_areas, partner_ministries)
+        SELECT 
+          $1::legislative_level, 
+          $2, 
+          $3, 
+          $4::text[], 
+          $5::text[]
+        WHERE NOT EXISTS (
+          SELECT 1 FROM master_commissions 
+          WHERE legislative_level = $1::legislative_level AND code = $2
+        );
+      `, [comm.legislative_level, comm.code, comm.name, comm.focus_areas, comm.partner_ministries]);
+    }
     const commissionCount = await sql`SELECT count(*) FROM master_commissions;`;
-    console.log(`  -> ${commissionCount[0].count} master commissions seeded.`);
+    console.log(`  -> ${commissionCount[0].count} master commissions & AKD seeded.`);
 
     console.log('\n[4/6] Seeding Master Daerah Pemilihan (Electoral Districts)...');
-    await sql.unsafe(`
-      INSERT INTO electoral_districts (dapil_code, dapil_name, province_name, regency_coverage, total_voters)
-      VALUES
-        ('DAPIL-DKI-1', 'DKI JAKARTA I', 'DKI JAKARTA', ARRAY['Kota Jakarta Timur'], 2383972),
-        ('DAPIL-DKI-2', 'DKI JAKARTA II', 'DKI JAKARTA', ARRAY['Kota Jakarta Pusat', 'Kota Jakarta Selatan', 'Luar Negeri'], 4346875),
-        ('DAPIL-DKI-3', 'DKI JAKARTA III', 'DKI JAKARTA', ARRAY['Kota Jakarta Barat', 'Kota Jakarta Utara', 'Kabupaten Kepulauan Seribu'], 2448356),
-        ('DAPIL-JABAR-1', 'JAWA BARAT I', 'JAWA BARAT', ARRAY['Kota Bandung', 'Kota Cimahi'], 2484674),
-        ('DAPIL-JABAR-2', 'JAWA BARAT II', 'JAWA BARAT', ARRAY['Kabupaten Bandung', 'Kabupaten Bandung Barat'], 3658210),
-        ('DAPIL-JATIM-1', 'JAWA TIMUR I', 'JAWA TIMUR', ARRAY['Kota Surabaya', 'Kabupaten Sidoarjo'], 3678540),
-        ('DAPIL-JATENG-1', 'JAWA TENGAH I', 'JAWA TENGAH', ARRAY['Kota Semarang', 'Kabupaten Semarang', 'Kabupaten Kendal', 'Kota Salatiga'], 3209840)
-      ON CONFLICT (dapil_code) DO UPDATE SET
-        dapil_name = EXCLUDED.dapil_name,
-        province_name = EXCLUDED.province_name,
-        regency_coverage = EXCLUDED.regency_coverage,
-        total_voters = EXCLUDED.total_voters;
-    `);
+    for (const dapil of ELECTORAL_DISTRICTS_DATA) {
+      await sql.unsafe(`
+        INSERT INTO electoral_districts (dapil_code, dapil_name, province_name, regency_coverage, total_voters)
+        VALUES ($1, $2, $3, $4::text[], $5)
+        ON CONFLICT (dapil_code) DO UPDATE SET
+          dapil_name = EXCLUDED.dapil_name,
+          province_name = EXCLUDED.province_name,
+          regency_coverage = EXCLUDED.regency_coverage,
+          total_voters = EXCLUDED.total_voters;
+      `, [dapil.dapil_code, dapil.dapil_name, dapil.province_name, dapil.regency_coverage, dapil.total_voters]);
+    }
     const dapilCount = await sql`SELECT count(*) FROM electoral_districts;`;
     console.log(`  -> ${dapilCount[0].count} electoral districts seeded.`);
 

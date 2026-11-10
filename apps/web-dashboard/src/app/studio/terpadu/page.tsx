@@ -41,6 +41,13 @@ function KampanyeTerpaduContent() {
   const [selectedLength, setSelectedLength] = useState<LengthTarget>('MEDIUM');
   const [attachedFiles, setAttachedFiles] = useState<AttachedFileItem[]>([]);
   const [suggestedTopics, setSuggestedTopics] = useState<string[]>(DEFAULT_TOPICS);
+  const [loadingAiTopics, setLoadingAiTopics] = useState(false);
+  const [aiContextInfo, setAiContextInfo] = useState<{
+    dapilName?: string;
+    partyAffiliation?: string;
+    commissionName?: string;
+    issueInterests?: string[];
+  }>({});
 
   // Hasil
   const [generatedResult, setGeneratedResult] = useState<any>(null);
@@ -73,7 +80,32 @@ function KampanyeTerpaduContent() {
     }
   }, [searchParams]);
 
-  // Muat data profil, billing, riwayat sesi, dan isu prioritas dari cron job briefing
+  // Muat data profil, billing, riwayat sesi, dan isu prioritas dari cron job briefing & AI
+  const fetchAiTrendingTopics = async () => {
+    setLoadingAiTopics(true);
+    try {
+      const res = await ApiClient.request<any>('/studio/trending-topics');
+      if (res?.topics && Array.isArray(res.topics) && res.topics.length > 0) {
+        setSuggestedTopics(res.topics);
+        setAiContextInfo({
+          dapilName: res.dapilName,
+          partyAffiliation: res.partyAffiliation,
+          commissionName: res.commissionName,
+          issueInterests: res.issueInterests,
+        });
+        toast({
+          title: '✨ Rekomendasi Isu AI Diperbarui',
+          description: `Isu diselaraskan dengan Dapil ${res.dapilName || ''}, komisi, fraksi, dan berita daerah terkini.`,
+          type: 'success',
+        });
+      }
+    } catch (err: any) {
+      console.warn('Gagal memuat rekomendasi topik AI:', err);
+    } finally {
+      setLoadingAiTopics(false);
+    }
+  };
+
   useEffect(() => {
     async function init() {
       try {
@@ -90,13 +122,32 @@ function KampanyeTerpaduContent() {
           : [];
         setSessions(terpaduSessions);
 
-        // Sinkronisasi isu prioritas dari cron job crawler
-        if (briefing?.priorityIssues && briefing.priorityIssues.length > 0) {
-          const crawledTitles = briefing.priorityIssues.map(
-            (issue: any) => `${issue.title} (${issue.location})`
-          );
-          setSuggestedTopics([...crawledTitles, ...DEFAULT_TOPICS].slice(0, 5));
-        }
+        // Ambil rekomendasi AI berbasis korelasi Dapil, Partai, Komisi, Minat Isu & Berita
+        ApiClient.request<any>('/studio/trending-topics')
+          .then((res) => {
+            if (res?.topics && Array.isArray(res.topics) && res.topics.length > 0) {
+              setSuggestedTopics(res.topics);
+              setAiContextInfo({
+                dapilName: res.dapilName,
+                partyAffiliation: res.partyAffiliation,
+                commissionName: res.commissionName,
+                issueInterests: res.issueInterests,
+              });
+            } else if (briefing?.priorityIssues && briefing.priorityIssues.length > 0) {
+              const crawledTitles = briefing.priorityIssues.map(
+                (issue: any) => `${issue.title} (${issue.location})`
+              );
+              setSuggestedTopics([...crawledTitles, ...DEFAULT_TOPICS].slice(0, 5));
+            }
+          })
+          .catch(() => {
+            if (briefing?.priorityIssues && briefing.priorityIssues.length > 0) {
+              const crawledTitles = briefing.priorityIssues.map(
+                (issue: any) => `${issue.title} (${issue.location})`
+              );
+              setSuggestedTopics([...crawledTitles, ...DEFAULT_TOPICS].slice(0, 5));
+            }
+          });
       } catch (err) {
         console.error('Failed to init profile in kampanye terpadu', err);
       }
@@ -892,6 +943,9 @@ function KampanyeTerpaduContent() {
               generationStep={generationStep}
               onSubmit={handleGenerate}
               suggestedTopics={suggestedTopics}
+              loadingAiTopics={loadingAiTopics}
+              onRefreshAiTopics={fetchAiTrendingTopics}
+              aiContextInfo={aiContextInfo}
               hasResult={!!generatedResult}
               chatMessages={chatMessages}
               onSendRevision={handleRefineContent}

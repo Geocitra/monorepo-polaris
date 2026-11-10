@@ -63,6 +63,14 @@ interface CampaignFormProps {
   generationStep: number;
   onSubmit: (e: React.FormEvent) => void;
   suggestedTopics: string[];
+  loadingAiTopics?: boolean;
+  onRefreshAiTopics?: () => void;
+  aiContextInfo?: {
+    dapilName?: string;
+    partyAffiliation?: string;
+    commissionName?: string;
+    issueInterests?: string[];
+  };
 
   // Mode Chat / Revisi Terpadu
   hasResult?: boolean;
@@ -91,6 +99,9 @@ export function CampaignForm({
   generationStep,
   onSubmit,
   suggestedTopics,
+  loadingAiTopics = false,
+  onRefreshAiTopics,
+  aiContextInfo,
   hasResult = false,
   chatMessages = [],
   onSendRevision,
@@ -256,9 +267,8 @@ export function CampaignForm({
               title={chatExpanded ? 'Sembunyikan Obrolan' : 'Tampilkan Obrolan'}
             >
               <ChevronDown
-                className={`w-4 h-4 transition-transform duration-200 ${
-                  chatExpanded ? '' : '-rotate-90'
-                }`}
+                className={`w-4 h-4 transition-transform duration-200 ${chatExpanded ? '' : '-rotate-90'
+                  }`}
               />
             </button>
           </div>
@@ -270,9 +280,8 @@ export function CampaignForm({
             {chatMessages.map((msg) => (
               <div
                 key={msg.id}
-                className={`flex gap-2.5 text-xs ${
-                  msg.role === 'user' ? 'justify-end' : 'justify-start'
-                }`}
+                className={`flex gap-2.5 text-xs ${msg.role === 'user' ? 'justify-end' : 'justify-start'
+                  }`}
               >
                 {msg.role === 'assistant' && (
                   <div className="h-7 w-7 rounded-xl bg-blue-600 text-white flex items-center justify-center shrink-0 shadow-2xs mt-0.5">
@@ -281,11 +290,10 @@ export function CampaignForm({
                 )}
 
                 <div
-                  className={`max-w-[85%] rounded-2xl p-3 space-y-1.5 ${
-                    msg.role === 'user'
+                  className={`max-w-[85%] rounded-2xl p-3 space-y-1.5 ${msg.role === 'user'
                       ? 'bg-blue-600 text-white shadow-2xs rounded-tr-xs'
                       : 'bg-slate-100 dark:bg-slate-800/80 text-slate-800 dark:text-slate-200 border border-slate-200/70 dark:border-slate-700/60 rounded-tl-xs'
-                  }`}
+                    }`}
                 >
                   <div className="flex items-center justify-between gap-3 text-[10px] opacity-80 border-b pb-1 border-white/20 dark:border-slate-700">
                     <span className="font-bold">
@@ -388,9 +396,8 @@ export function CampaignForm({
             <SlidersHorizontal className="w-3.5 h-3.5" />
             <span>Sesuaikan Gaya Penulisan & Lampiran Berkas</span>
             <ChevronDown
-              className={`w-3.5 h-3.5 transition-transform duration-200 ${
-                showAdvancedSettings ? 'rotate-180' : ''
-              }`}
+              className={`w-3.5 h-3.5 transition-transform duration-200 ${showAdvancedSettings ? 'rotate-180' : ''
+                }`}
             />
           </button>
 
@@ -420,11 +427,10 @@ export function CampaignForm({
                     handleFileSelection(e.dataTransfer.files);
                   }}
                   onClick={() => fileInputRef.current?.click()}
-                  className={`cursor-pointer rounded-2xl border-2 border-dashed p-3 text-center transition-all ${
-                    isDragging
+                  className={`cursor-pointer rounded-2xl border-2 border-dashed p-3 text-center transition-all ${isDragging
                       ? 'border-blue-500 bg-blue-50/50 dark:bg-blue-950/40'
                       : 'border-slate-200 dark:border-slate-700 hover:border-blue-400 dark:hover:border-blue-500 bg-white dark:bg-slate-800/40'
-                  }`}
+                    }`}
                 >
                   <input
                     type="file"
@@ -568,11 +574,56 @@ export function CampaignForm({
             </div>
           )}
 
-          {/* ISU TERKINI */}
+          {/* REKOMENDASI ISU AI TERKINI */}
           <div className="pt-2.5">
-            <span className="text-[10px] font-bold text-slate-400 dark:text-slate-500 block mb-1.5">
-              Isu Terkini di Daerah Anda:
-            </span>
+            <div className="flex items-center justify-between mb-1.5 gap-2">
+              <span className="text-[10px] font-bold text-slate-500 dark:text-slate-400 flex items-center gap-1.5">
+                <Sparkles className="w-3.5 h-3.5 text-amber-500 shrink-0" />
+                <span>Rekomendasi Isu AI Daerah (Korelasi Dapil, Fraksi &amp; Berita Terkini):</span>
+              </span>
+              {onRefreshAiTopics && (
+                <button
+                  type="button"
+                  onClick={onRefreshAiTopics}
+                  disabled={loadingAiTopics}
+                  className="text-[10px] font-bold text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 hover:underline flex items-center gap-1 cursor-pointer disabled:opacity-50 shrink-0"
+                  title="Analisis ulang preferensi dapil, komisi dewan, fraksi partai, dan berita daerah terkini dengan AI"
+                >
+                  <Sparkles className={`w-3 h-3 text-amber-500 ${loadingAiTopics ? 'animate-spin' : ''}`} />
+                  <span>{loadingAiTopics ? 'Menganalisis Isu...' : 'Segarkan dengan AI'}</span>
+                </button>
+              )}
+            </div>
+
+            {/* AI Grounding Context Tags */}
+            {aiContextInfo && (aiContextInfo.dapilName || aiContextInfo.partyAffiliation || aiContextInfo.commissionName || (aiContextInfo.issueInterests && aiContextInfo.issueInterests.length > 0)) && (
+              <div className="flex flex-wrap items-center gap-1 mb-2">
+                {aiContextInfo.dapilName && (
+                  <span className="text-[9.5px] px-2 py-0.5 rounded-md bg-blue-50 dark:bg-blue-950/40 text-blue-700 dark:text-blue-300 border border-blue-200/60 font-semibold flex items-center gap-1">
+                    <span>📍</span>
+                    <span>{aiContextInfo.dapilName}</span>
+                  </span>
+                )}
+                {aiContextInfo.partyAffiliation && (
+                  <span className="text-[9.5px] px-2 py-0.5 rounded-md bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 border border-emerald-200/60 font-semibold flex items-center gap-1">
+                    <span>🏛️</span>
+                    <span>{aiContextInfo.partyAffiliation}</span>
+                  </span>
+                )}
+                {aiContextInfo.commissionName && (
+                  <span className="text-[9.5px] px-2 py-0.5 rounded-md bg-violet-50 dark:bg-violet-950/40 text-violet-700 dark:text-violet-300 border border-violet-200/60 font-semibold truncate max-w-xs flex items-center gap-1">
+                    <span>⚖️</span>
+                    <span>{aiContextInfo.commissionName}</span>
+                  </span>
+                )}
+                {aiContextInfo.issueInterests && aiContextInfo.issueInterests.length > 0 && (
+                  <span className="text-[9.5px] px-2 py-0.5 rounded-md bg-amber-50 dark:bg-amber-950/40 text-amber-800 dark:text-amber-300 border border-amber-200/60 font-semibold">
+                    🎯 {aiContextInfo.issueInterests.slice(0, 2).join(', ')}
+                  </span>
+                )}
+              </div>
+            )}
+
             <div className="flex flex-wrap gap-1.5">
               {suggestedTopics.map((sug) => (
                 <button
@@ -611,11 +662,10 @@ export function CampaignForm({
               handleFileSelection(e.dataTransfer.files);
             }}
             onClick={() => fileInputRef.current?.click()}
-            className={`cursor-pointer rounded-2xl border-2 border-dashed p-3 sm:p-4 text-center transition-all ${
-              isDragging
+            className={`cursor-pointer rounded-2xl border-2 border-dashed p-3 sm:p-4 text-center transition-all ${isDragging
                 ? 'border-blue-500 bg-blue-50/50 dark:bg-blue-950/40'
                 : 'border-slate-200 dark:border-slate-700 hover:border-blue-400 dark:hover:border-blue-500 bg-slate-50/50 dark:bg-slate-800/40'
-            }`}
+              }`}
           >
             <input
               type="file"
@@ -722,11 +772,10 @@ export function CampaignForm({
           </div>
           <div className="space-y-1.5 text-xs text-slate-700 dark:text-slate-300 font-medium">
             <div
-              className={`flex items-center gap-2 ${
-                generationStep >= 1
+              className={`flex items-center gap-2 ${generationStep >= 1
                   ? 'text-blue-700 dark:text-blue-400 font-bold'
                   : 'text-slate-400 dark:text-slate-600'
-              }`}
+                }`}
             >
               {generationStep > 1 ? (
                 <CheckCircle2 className="h-3.5 w-3.5 text-green-600 shrink-0" />
@@ -736,11 +785,10 @@ export function CampaignForm({
               <span>Membaca tautan & dokumen yang dilampirkan</span>
             </div>
             <div
-              className={`flex items-center gap-2 ${
-                generationStep >= 2
+              className={`flex items-center gap-2 ${generationStep >= 2
                   ? 'text-blue-700 dark:text-blue-400 font-bold'
                   : 'text-slate-400 dark:text-slate-600'
-              }`}
+                }`}
             >
               {generationStep > 2 ? (
                 <CheckCircle2 className="h-3.5 w-3.5 text-green-600 shrink-0" />
@@ -750,11 +798,10 @@ export function CampaignForm({
               <span>Mencari rujukan peraturan terkait</span>
             </div>
             <div
-              className={`flex items-center gap-2 ${
-                generationStep >= 3
+              className={`flex items-center gap-2 ${generationStep >= 3
                   ? 'text-blue-700 dark:text-blue-400 font-bold'
                   : 'text-slate-400 dark:text-slate-600'
-              }`}
+                }`}
             >
               {generationStep > 3 ? (
                 <CheckCircle2 className="h-3.5 w-3.5 text-green-600 shrink-0" />
@@ -764,11 +811,10 @@ export function CampaignForm({
               <span>Menulis naskah lengkap</span>
             </div>
             <div
-              className={`flex items-center gap-2 ${
-                generationStep >= 4
+              className={`flex items-center gap-2 ${generationStep >= 4
                   ? 'text-blue-700 dark:text-blue-400 font-bold'
                   : 'text-slate-400 dark:text-slate-600'
-              }`}
+                }`}
             >
               {generationStep > 4 ? (
                 <CheckCircle2 className="h-3.5 w-3.5 text-green-600 shrink-0" />
