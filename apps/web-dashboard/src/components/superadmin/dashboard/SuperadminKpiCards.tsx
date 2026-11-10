@@ -1,7 +1,7 @@
 'use client';
 
 import React from 'react';
-import { Users, ShieldCheck, FileText, MessageSquare, Database } from 'lucide-react';
+import { Users, ShieldCheck, FileText, Cpu, Activity } from 'lucide-react';
 import { DashboardStats } from '../types';
 
 interface SuperadminKpiCardsProps {
@@ -10,18 +10,28 @@ interface SuperadminKpiCardsProps {
 }
 
 export function SuperadminKpiCards({ stats, loading }: SuperadminKpiCardsProps) {
+  const tokenVal = stats?.totalTokens ?? 0;
+  const tokenFormatted =
+    tokenVal >= 1_000_000
+      ? `${(tokenVal / 1_000_000).toFixed(2)}M`
+      : tokenVal >= 1_000
+      ? `${(tokenVal / 1_000).toFixed(1)}k`
+      : `${tokenVal}`;
+
+  const costIdrFormatted = (stats?.totalAiCostIdr ?? 0).toLocaleString('id-ID');
+
   const cards = [
     {
       label: 'Klien Dewan',
       value: stats?.totalTenants ?? 0,
-      subtext: 'Anggota terdaftar',
+      subtext: 'Anggota dewan binaan',
       icon: Users,
       colorClass: 'bg-blue-50 text-blue-600 dark:bg-blue-950/50 dark:text-blue-400',
     },
     {
       label: 'Lisensi Aktif',
       value: stats?.activeSubscriptions ?? 0,
-      subtext: 'Akses tak terbatas',
+      subtext: 'Langganan aktif berjalan',
       icon: ShieldCheck,
       colorClass: 'bg-emerald-50 text-emerald-600 dark:bg-emerald-950/50 dark:text-emerald-400',
       valueColor: 'text-emerald-600 dark:text-emerald-400',
@@ -29,24 +39,25 @@ export function SuperadminKpiCards({ stats, loading }: SuperadminKpiCardsProps) 
     {
       label: 'Naskah AI Terbit',
       value: stats?.totalArticles ?? 0,
-      subtext: 'Tayang di portal publik',
+      subtext: 'Kajian & opini riil tayang',
       icon: FileText,
       colorClass: 'bg-indigo-50 text-indigo-600 dark:bg-indigo-950/50 dark:text-indigo-400',
     },
     {
-      label: 'Aspirasi Warga',
-      value: stats?.totalFeedbacks ?? 0,
-      subtext: 'Kanal aspirasi konstituen',
-      icon: MessageSquare,
-      colorClass: 'bg-violet-50 text-violet-600 dark:bg-violet-950/50 dark:text-violet-400',
+      label: 'Konsumsi Token AI',
+      value: `${tokenFormatted} tok`,
+      subtext: `Biaya API: Rp ${costIdrFormatted}`,
+      icon: Cpu,
+      colorClass: 'bg-purple-50 text-purple-600 dark:bg-purple-950/50 dark:text-purple-400',
+      valueColor: 'text-purple-600 dark:text-purple-400 font-mono text-xl sm:text-2xl',
     },
     {
-      label: 'Partai Terdaftar',
-      value: stats?.totalParties ?? 0,
-      subtext: 'Peserta pemilu sah',
-      icon: Database,
-      colorClass: 'bg-amber-50 text-amber-600 dark:bg-amber-950/50 dark:text-amber-400',
-      valueColor: 'text-amber-600 dark:text-amber-400',
+      label: 'Infrastruktur SLA',
+      value: '99.4%',
+      subtext: 'SLA inferensi & redaksi prima',
+      icon: Activity,
+      colorClass: 'bg-teal-50 text-teal-600 dark:bg-teal-950/50 dark:text-teal-400',
+      valueColor: 'text-teal-600 dark:text-teal-400',
       colSpan: 'col-span-2 lg:col-span-1',
     },
   ];

@@ -2,13 +2,12 @@
 
 import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
-import { Database, Users } from 'lucide-react';
+import { Database, Users, Award, ArrowRight } from 'lucide-react';
 import { AdminApiClient } from '@/lib/api-client';
 import { DashboardStats, RecentTenant } from '@/components/superadmin/types';
 import { SuperadminKpiCards } from '@/components/superadmin/dashboard/SuperadminKpiCards';
 import { SuperadminLaunchpad } from '@/components/superadmin/dashboard/SuperadminLaunchpad';
 import { RecentTenantsTable } from '@/components/superadmin/dashboard/RecentTenantsTable';
-import { OperatorKpiLeaderboard } from '@/components/superadmin/dashboard/OperatorKpiLeaderboard';
 
 export default function SuperadminDashboardPage() {
   const [stats, setStats] = useState<DashboardStats | null>(null);
@@ -90,8 +89,35 @@ export default function SuperadminDashboardPage() {
       {/* 3. MODULAR QUICK OPERATIONS LAUNCHPAD */}
       <SuperadminLaunchpad />
 
-      {/* 4. MODULAR OPERATOR KPI & SLA SCORECARD */}
-      <OperatorKpiLeaderboard />
+      {/* 4. MODULAR OPERATOR KPI & SLA CARD */}
+      <div className="p-5 sm:p-6 rounded-2xl bg-white dark:bg-[#0B0F17] border border-slate-200 dark:border-slate-800 shadow-xs flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <div className="flex items-center gap-3.5">
+          <div className="w-11 h-11 rounded-2xl bg-amber-500/10 border border-amber-500/20 text-amber-600 dark:text-amber-400 flex items-center justify-center shrink-0">
+            <Award className="w-5 h-5" />
+          </div>
+          <div>
+            <div className="flex items-center gap-2">
+              <h3 className="text-sm font-black text-slate-900 dark:text-white">
+                Evaluasi Kinerja &amp; KPI Operator Redaksi (SLA &amp; CSAT)
+              </h3>
+              <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-50 text-amber-700 dark:bg-amber-950/40 dark:text-amber-300 border border-amber-200 dark:border-amber-800">
+                Scorecard Terpusat
+              </span>
+            </div>
+            <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+              Pantau first response time (FRT), kepuasan klien dewan, dan kecepatan penyelesaian naskah redaksi di halaman dedikasi operator.
+            </p>
+          </div>
+        </div>
+
+        <Link
+          href="/superadmin/operators?tab=kpi"
+          className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-indigo-50 dark:bg-indigo-950/60 hover:bg-indigo-100 dark:hover:bg-indigo-900/60 text-indigo-700 dark:text-indigo-300 text-xs font-bold border border-indigo-200 dark:border-indigo-800 transition shadow-2xs whitespace-nowrap self-start md:self-auto cursor-pointer"
+        >
+          <span>Buka Evaluasi Kinerja Lengkap</span>
+          <ArrowRight className="w-3.5 h-3.5" />
+        </Link>
+      </div>
 
       {/* 5. MODULAR RECENT CLIENTS TABLE */}
       <RecentTenantsTable

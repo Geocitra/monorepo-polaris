@@ -3,6 +3,8 @@ export interface DashboardStats {
   activeSubscriptions: number;
   totalArticles: number;
   totalFeedbacks: number;
+  totalTokens?: number;
+  totalAiCostIdr?: number;
   totalParties: number;
 }
 

@@ -1,7 +1,9 @@
 'use client';
 
-import React, { useEffect, useState, useMemo } from 'react';
+import React, { useEffect, useState, useMemo, Suspense } from 'react';
+import { useSearchParams } from 'next/navigation';
 import { AdminApiClient } from '@/lib/api-client';
+import { OperatorKpiLeaderboard } from '@/components/superadmin/dashboard/OperatorKpiLeaderboard';
 import {
   UserCheck,
   UserPlus,
@@ -22,6 +24,7 @@ import {
   ChevronRight,
   UserMinus,
   Sparkles,
+  Award,
 } from 'lucide-react';
 
 interface OperatorRow {
@@ -60,7 +63,10 @@ interface AssignmentDetail {
   photoUrl: string | null;
 }
 
-export default function SuperadminOperatorsPage() {
+function OperatorsContent() {
+  const searchParams = useSearchParams();
+  const initialTab = searchParams.get('tab') === 'kpi' ? 'KPI' : 'STAFF';
+  const [activeMainTab, setActiveMainTab] = useState<'STAFF' | 'KPI'>(initialTab);
   const [operators, setOperators] = useState<OperatorRow[]>([]);
   const [tenantsList, setTenantsList] = useState<TenantItem[]>([]);
   const [loading, setLoading] = useState(true);
@@ -343,7 +349,7 @@ export default function SuperadminOperatorsPage() {
         <div className="flex items-center space-x-3">
           <button
             onClick={() => setIsCreateModalOpen(true)}
-            className="flex items-center space-x-2 px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold shadow-lg shadow-indigo-500/20 transition active:scale-95"
+            className="flex items-center space-x-2 px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold shadow-lg shadow-indigo-500/20 transition active:scale-95 cursor-pointer"
           >
             <UserPlus className="w-3.5 h-3.5" />
             <span>Tambah Operator Baru</span>
@@ -351,7 +357,42 @@ export default function SuperadminOperatorsPage() {
         </div>
       </div>
 
-      {/* 2. STATS KPI CARDS */}
+      {/* TAB SWITCHER: STAF & PENUGASAN vs EVALUASI KINERJA & KPI */}
+      <div className="flex items-center gap-1.5 p-1 bg-slate-100 dark:bg-slate-800/80 rounded-xl w-fit max-w-full overflow-x-auto scrollbar-none">
+        <button
+          type="button"
+          onClick={() => setActiveMainTab('STAFF')}
+          className={`shrink-0 inline-flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+            activeMainTab === 'STAFF'
+              ? 'bg-white dark:bg-slate-900 text-slate-900 dark:text-white shadow-xs'
+              : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+          }`}
+        >
+          <UserCheck className="w-4 h-4 text-indigo-500" />
+          <span>Daftar Staf &amp; Penugasan ({stats.total})</span>
+        </button>
+
+        <button
+          type="button"
+          onClick={() => setActiveMainTab('KPI')}
+          className={`shrink-0 inline-flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+            activeMainTab === 'KPI'
+              ? 'bg-white dark:bg-slate-900 text-slate-900 dark:text-white shadow-xs'
+              : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+          }`}
+        >
+          <Award className="w-4 h-4 text-amber-500" />
+          <span>Evaluasi Kinerja &amp; KPI Scorecard (SLA &amp; CSAT)</span>
+        </button>
+      </div>
+
+      {activeMainTab === 'KPI' ? (
+        <div className="animate-in fade-in duration-200">
+          <OperatorKpiLeaderboard />
+        </div>
+      ) : (
+        <>
+          {/* 2. STATS KPI CARDS */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         <div className="bg-white dark:bg-[#0B0F19] rounded-2xl p-4 border border-slate-200 dark:border-slate-800 shadow-sm">
           <div className="flex items-center justify-between text-slate-500 dark:text-slate-400 mb-2">
@@ -567,6 +608,8 @@ export default function SuperadminOperatorsPage() {
           </table>
         </div>
       </div>
+        </>
+      )}
 
       {/* =========================================================================
           MODAL 1: TAMBAH OPERATOR (CREATE)
@@ -969,5 +1012,19 @@ export default function SuperadminOperatorsPage() {
         </div>
       )}
     </div>
+  );
+}
+
+export default function OperatorsPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="p-8 text-center text-slate-400">
+          Memuat data manajemen operator...
+        </div>
+      }
+    >
+      <OperatorsContent />
+    </Suspense>
   );
 }

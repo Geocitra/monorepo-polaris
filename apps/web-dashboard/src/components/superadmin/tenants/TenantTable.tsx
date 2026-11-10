@@ -91,12 +91,11 @@ export function TenantTable({
         <table className="w-full min-w-[1080px] text-left text-xs">
           <thead>
             <tr className="bg-slate-50 dark:bg-slate-950/80 border-b border-slate-200 dark:border-slate-800 text-slate-500 dark:text-slate-400 font-bold uppercase text-[10px] tracking-wider">
-              <th className="py-3 px-4 w-[24%] min-w-[220px]">Nama Dewan &amp; Kredensial</th>
-              <th className="py-3 px-4 w-[20%] min-w-[200px]">Tingkat &amp; Dapil</th>
-              <th className="py-3 px-4 w-[16%] min-w-[160px]">Portal Publik</th>
-              <th className="py-3 px-4 w-[13%] min-w-[140px]">Verifikasi KPU</th>
-              <th className="py-3 px-4 w-[13%] min-w-[140px]">Lisensi &amp; Masa Aktif</th>
-              <th className="py-3 px-4 w-[14%] min-w-[220px] text-right">Tindakan Superadmin</th>
+              <th className="py-3 px-4 w-[28%] min-w-[240px]">Nama Dewan &amp; Kredensial</th>
+              <th className="py-3 px-4 w-[22%] min-w-[200px]">Tingkat &amp; Dapil</th>
+              <th className="py-3 px-4 w-[18%] min-w-[180px]">Portal Publik</th>
+              <th className="py-3 px-4 w-[18%] min-w-[180px]">Lisensi &amp; Masa Aktif</th>
+              <th className="py-3 px-4 w-[14%] min-w-[200px] text-right">Tindakan Superadmin</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-100 dark:divide-slate-800/60">
@@ -111,8 +110,19 @@ export function TenantTable({
                 >
                   {/* 1. NAMA & KREDENSIAL */}
                   <td className="py-3.5 px-4 align-top">
-                    <div className="font-extrabold text-slate-900 dark:text-white text-sm">
-                      {t.fullName}
+                    <div className="flex items-center gap-1.5 flex-wrap">
+                      <span className="font-extrabold text-slate-900 dark:text-white text-sm">
+                        {t.fullName}
+                      </span>
+                      {t.isVerified && (
+                        <span
+                          title="Klien Dewan Terverifikasi"
+                          className="inline-flex items-center gap-0.5 px-1.5 py-0.2 rounded-full text-[9px] font-black uppercase bg-emerald-50 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800"
+                        >
+                          <CheckCircle2 className="h-2.5 w-2.5 text-emerald-500" />
+                          <span>Terverifikasi</span>
+                        </span>
+                      )}
                     </div>
                     <div className="flex items-center gap-1.5 mt-0.5 text-slate-500 dark:text-slate-400 text-[11px]">
                       <span className="truncate max-w-[160px]">{t.email}</span>
@@ -221,22 +231,7 @@ export function TenantTable({
                     )}
                   </td>
 
-                  {/* 4. VERIFIKASI */}
-                  <td className="py-3.5 px-4 align-top whitespace-nowrap">
-                    {t.isVerified ? (
-                      <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-bold bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800/60">
-                        <CheckCircle2 className="h-3.5 w-3.5 text-emerald-500 shrink-0" />
-                        <span>Terverifikasi KPU</span>
-                      </span>
-                    ) : (
-                      <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-amber-50 text-amber-700 dark:bg-amber-950/40 dark:text-amber-300 border border-amber-200 dark:border-amber-800/60">
-                        <AlertCircle className="h-3.5 w-3.5 text-amber-500 shrink-0" />
-                        <span>Belum Verifikasi</span>
-                      </span>
-                    )}
-                  </td>
-
-                  {/* 5. LISENSI */}
+                  {/* 4. LISENSI */}
                   <td className="py-3.5 px-4 align-top whitespace-nowrap">
                     <div className="flex items-center gap-2">
                       <span

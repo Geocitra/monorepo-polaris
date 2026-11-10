@@ -8,30 +8,34 @@ import {
   contentPublications,
   constituentFeedbacks,
   mediaAssets,
-  withTenantContext,
+  aiTraceLogs,
 } from '@polaris/database';
 import { SubscriptionStatus } from '@polaris/shared-types';
 
 @Injectable()
 export class SuperadminDashboardService {
   async getTenantRlsCounts(tenantId: string) {
-    return withTenantContext(tenantId, async (tx) => {
-      const [publications] = await tx
-        .select({ count: sql<number>`count(*)::int` })
-        .from(contentPublications);
-      const [feedback] = await tx
-        .select({ count: sql<number>`count(*)::int` })
-        .from(constituentFeedbacks);
-      const [media] = await tx
-        .select({ count: sql<number>`count(*)::int` })
-        .from(mediaAssets);
+    const [publications] = await db
+      .select({ count: sql<number>`count(*)::int` })
+      .from(contentPublications)
+      .where(eq(contentPublications.tenantId, tenantId));
 
-      return {
-        publications: publications?.count || 0,
-        feedback: feedback?.count || 0,
-        media: media?.count || 0,
-      };
-    });
+    const [feedback] = await db
+      .select({ count: sql<number>`count(*)::int` })
+      .from(constituentFeedbacks)
+      .where(eq(constituentFeedbacks.tenantId, tenantId));
+
+    const [media] = await db
+      .select({ count: sql<number>`count(*)::int` })
+      .from(mediaAssets)
+      .innerJoin(contentPublications, eq(mediaAssets.publicationId, contentPublications.id))
+      .where(eq(contentPublications.tenantId, tenantId));
+
+    return {
+      publications: Number(publications?.count || 0),
+      feedback: Number(feedback?.count || 0),
+      media: Number(media?.count || 0),
+    };
   }
 
   /**
@@ -49,6 +53,7 @@ export class SuperadminDashboardService {
       .from(subscriptions)
       .where(eq(subscriptions.status, SubscriptionStatus.ACTIVE));
 
+    // 3. Real Article & Feedback Counts
     const tenantIds = await db.select({ id: tenantMembers.id }).from(tenantMembers);
     let totalArticles = 0;
     let totalFeedbacks = 0;
@@ -57,6 +62,14 @@ export class SuperadminDashboardService {
       totalArticles += counts.publications;
       totalFeedbacks += counts.feedback;
     }
+
+    // 4. Dynamic AI Token & Cost Aggregates
+    const [tokenAgg] = await db
+      .select({
+        totalTokens: sql<number>`COALESCE(SUM(${aiTraceLogs.totalTokens}), 0)::bigint`,
+        totalCostIdr: sql<number>`COALESCE(SUM(${aiTraceLogs.costIdr}), 0)::bigint`,
+      })
+      .from(aiTraceLogs);
 
     // 5. Total Political Parties
     const [partyCount] = await db
@@ -85,6 +98,8 @@ export class SuperadminDashboardService {
         activeSubscriptions: activeSubCount?.count || 0,
         totalArticles,
         totalFeedbacks,
+        totalTokens: Number(tokenAgg?.totalTokens || 0),
+        totalAiCostIdr: Number(tokenAgg?.totalCostIdr || 0),
         totalParties: partyCount?.count || 0,
       },
       recentTenants,
