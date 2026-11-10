@@ -31,6 +31,16 @@ import {
   TenantWeeklyBriefQuota,
   BriefMessageItem,
 } from './types';
+import {
+  BriefTicketCard,
+  BriefPipelineProgress,
+  BriefComponentStatusRow,
+  cleanSummaryDisplay,
+  getPackageTypeInfo,
+  getTargetHorizonBadge,
+  getStatusBadgeConfig,
+  isBriefFinishedOrTerminal,
+} from './briefs';
 
 interface OperatorWhatsAppBriefsTabProps {
   selectedDewan: AssignedTenant;
@@ -711,90 +721,18 @@ export function OperatorWhatsAppBriefsTab({
                 </p>
               </div>
             ) : (
-              paginatedBriefs.map((item) => {
-                const isSelected = selectedBrief?.id === item.id;
-                const badge = getStatusBadgeConfig(item.status);
-                const horizonBadge = getTargetHorizonBadge(item.clientUrgency, item.createdAt);
-                const mediaCount = item.messages.filter(
-                  (m) => m.direction === 'INBOUND' && (m.messageType === 'IMAGE' || m.messageType === 'DOCUMENT')
-                ).length;
-
-                return (
-                  <button
-                    key={item.id}
-                    type="button"
-                    onClick={() => {
-                      setSelectedBriefId(item.id);
-                      setShowRejectBox(false);
-                      setActionFeedback(null);
-                    }}
-                    className={`w-full text-left p-3.5 transition cursor-pointer block ${
-                      isSelected
-                        ? 'bg-indigo-50/70 dark:bg-indigo-950/30 border-l-4 border-l-indigo-600'
-                        : 'hover:bg-slate-50 dark:hover:bg-slate-900/50'
-                    }`}
-                  >
-                    <div className="flex items-center justify-between gap-2">
-                      <div className="flex items-center gap-1.5 flex-wrap">
-                        <span className="font-mono text-xs font-black text-indigo-600 dark:text-indigo-400">
-                          #{item.briefCode}
-                        </span>
-                        {item.packageType === 'POSTER_ONLY' ? (
-                          <span className="px-1.5 py-0.5 rounded text-[9px] font-black bg-purple-100 text-purple-900 dark:bg-purple-950 dark:text-purple-300 border border-purple-200">
-                            🎨 Poster (1)
-                          </span>
-                        ) : item.packageType === 'INFOGRAPHIC_ONLY' ? (
-                          <span className="px-1.5 py-0.5 rounded text-[9px] font-black bg-emerald-100 text-emerald-900 dark:bg-emerald-950 dark:text-emerald-300 border border-emerald-200">
-                            📊 Infografis (1)
-                          </span>
-                        ) : item.packageType === 'ARTICLE_ONLY' ? (
-                          <span className="px-1.5 py-0.5 rounded text-[9px] font-black bg-blue-100 text-blue-900 dark:bg-blue-950 dark:text-blue-300 border border-blue-200">
-                            📝 Artikel (1)
-                          </span>
-                        ) : (
-                          <span className="px-1.5 py-0.5 rounded text-[9px] font-black bg-indigo-100 text-indigo-900 dark:bg-indigo-950 dark:text-indigo-300 border border-indigo-200">
-                            📦 Bundling (2)
-                          </span>
-                        )}
-                        <span className={`px-1.5 py-0.5 rounded text-[9px] font-black border ${horizonBadge.cls}`}>
-                          {horizonBadge.label}
-                        </span>
-                        {item.isUrgentOverquota && (
-                          <span className="px-1.5 py-0.5 rounded text-[9px] font-black bg-amber-500 text-white border border-amber-600 shadow-xs flex items-center gap-0.5">
-                            ⚡ DARURAT (BIAYA X2)
-                          </span>
-                        )}
-                      </div>
-                      <span className={`px-2 py-0.5 rounded-full text-[9.5px] font-bold border ${badge.cls}`}>
-                        {badge.label}
-                      </span>
-                    </div>
-
-                    <p className="text-xs font-bold text-slate-800 dark:text-slate-200 line-clamp-2 mt-1.5 leading-snug">
-                      {cleanSummaryDisplay(item.topicSummary)}
-                    </p>
-
-                    <div className="flex items-center justify-between text-[10px] text-slate-400 mt-2">
-                      <div className="flex items-center gap-1.5 flex-wrap">
-                        <span>📎 {mediaCount} berkas</span>
-                        {item.revisionUsed > 0 && (
-                          <span className="px-1.5 py-0.5 rounded text-[9.5px] font-black bg-rose-100 text-rose-800 dark:bg-rose-950 dark:text-rose-300">
-                            Revisi {item.revisionUsed}/{item.revisionLimit}
-                          </span>
-                        )}
-                      </div>
-                      <span>
-                        {new Date(item.updatedAt).toLocaleDateString('id-ID', {
-                          day: '2-digit',
-                          month: 'short',
-                          hour: '2-digit',
-                          minute: '2-digit',
-                        })}
-                      </span>
-                    </div>
-                  </button>
-                );
-              })
+              paginatedBriefs.map((item) => (
+                <BriefTicketCard
+                  key={item.id}
+                  item={item}
+                  isSelected={selectedBrief?.id === item.id}
+                  onSelect={(briefId) => {
+                    setSelectedBriefId(briefId);
+                    setShowRejectBox(false);
+                    setActionFeedback(null);
+                  }}
+                />
+              ))
             )}
           </div>
 
@@ -843,33 +781,20 @@ export function OperatorWhatsAppBriefsTab({
                 <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-3">
                   <div className="space-y-1">
                     <div className="flex items-center gap-2 flex-wrap">
-                      <span className="font-mono text-xs font-black text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-950/80 px-2 py-0.5 rounded-md border border-indigo-200 dark:border-indigo-800">
+                      <span className="font-mono text-xs font-bold text-slate-500 dark:text-slate-400 bg-slate-100 dark:bg-slate-800 px-2 py-0.5 rounded-md border border-slate-200 dark:border-slate-700">
                         #{selectedBrief.briefCode}
                       </span>
 
-                      {selectedBrief.packageType === 'POSTER_ONLY' ? (
-                        <span className="px-2.5 py-0.5 rounded-full text-[10.5px] font-bold bg-purple-50 text-purple-700 dark:bg-purple-950/60 dark:text-purple-300 border border-purple-200/80 dark:border-purple-800">
-                          🎨 Poster Visual (1 Kuota)
-                        </span>
-                      ) : selectedBrief.packageType === 'INFOGRAPHIC_ONLY' ? (
-                        <span className="px-2.5 py-0.5 rounded-full text-[10.5px] font-bold bg-emerald-50 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-300 border border-emerald-200/80 dark:border-emerald-800">
-                          📊 Infografis Data (1 Kuota)
-                        </span>
-                      ) : selectedBrief.packageType === 'ARTICLE_ONLY' ? (
-                        <span className="px-2.5 py-0.5 rounded-full text-[10.5px] font-bold bg-blue-50 text-blue-700 dark:bg-blue-950/60 dark:text-blue-300 border border-blue-200/80 dark:border-blue-800">
-                          📝 Naskah Artikel (1 Kuota)
-                        </span>
-                      ) : (
-                        <span className="px-2.5 py-0.5 rounded-full text-[10.5px] font-bold bg-indigo-50 text-indigo-700 dark:bg-indigo-950/60 dark:text-indigo-300 border border-indigo-200/80 dark:border-indigo-800">
-                          📦 Paket Kampanye Lengkap (2 Kuota)
-                        </span>
-                      )}
+                      <span className="px-2.5 py-0.5 rounded-full text-[11px] font-medium bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700">
+                        {getPackageTypeInfo(selectedBrief.packageType).icon} {getPackageTypeInfo(selectedBrief.packageType).label}
+                      </span>
 
-                      {selectedBrief.clientUrgency === 'URGENT' && (
-                        <span className="px-2 py-0.5 rounded-full text-[10px] font-black bg-rose-500 text-white animate-pulse">
-                          ⚡ Mendesak
-                        </span>
-                      )}
+                      {!isBriefFinishedOrTerminal(selectedBrief.status) &&
+                        (selectedBrief.clientUrgency === 'URGENT' || selectedBrief.isUrgentOverquota) && (
+                          <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-100 text-amber-800 dark:bg-amber-950/60 dark:text-amber-300 border border-amber-300/60">
+                            ⚡ Darurat
+                          </span>
+                        )}
 
                       <span className="text-[11px] text-slate-400 font-mono ml-auto">
                         WA: {selectedBrief.tenantMaskedPhone}
@@ -934,37 +859,7 @@ export function OperatorWhatsAppBriefsTab({
                 </div>
 
                 {/* 5-STEP PIPELINE PROGRESS TRACKER */}
-                <div className="bg-slate-50/80 dark:bg-slate-900/60 rounded-xl p-3 border border-slate-200/80 dark:border-slate-800 flex items-center justify-between gap-1 overflow-x-auto scrollbar-none">
-                  {PIPELINE_STEPS.map((step, idx) => {
-                    const activeIdx = getPipelineActiveIndex(selectedBrief.status);
-                    const isCompleted = idx < activeIdx;
-                    const isCurrent = idx === activeIdx;
-
-                    return (
-                      <div key={step.key} className="flex items-center gap-1.5 shrink-0">
-                        <div
-                          className={`flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[11px] font-bold transition-all ${
-                            isCurrent
-                              ? 'bg-indigo-600 text-white shadow-xs ring-2 ring-indigo-500/20'
-                              : isCompleted
-                              ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300'
-                              : 'text-slate-400 bg-white/60 dark:bg-slate-800/60'
-                          }`}
-                        >
-                          <span>{isCompleted ? '✓' : step.icon}</span>
-                          <span>{step.label}</span>
-                        </div>
-                        {idx < PIPELINE_STEPS.length - 1 && (
-                          <div
-                            className={`w-3 sm:w-5 h-0.5 rounded-full ${
-                              idx < activeIdx ? 'bg-emerald-500' : 'bg-slate-200 dark:bg-slate-700'
-                            }`}
-                          />
-                        )}
-                      </div>
-                    );
-                  })}
-                </div>
+                <BriefPipelineProgress status={selectedBrief.status} />
 
                 {/* KARTU HIGHLIGHT ARAHAN REVISI KLIEN */}
                 {(selectedBrief.status === 'REVISION_REQUESTED' || selectedBrief.revisionUsed > 0) && (
@@ -1029,26 +924,8 @@ export function OperatorWhatsAppBriefsTab({
 
                 {/* BARIS KONTROL PENERIMAAN / PENOLAKAN TIKET & STATUS KOMPONEN REVISI */}
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pt-2 border-t border-slate-100 dark:border-slate-800/80">
-                  <div className="flex items-center gap-2 flex-wrap text-xs">
-                    <span className="font-bold text-slate-400">Komponen:</span>
-                    {selectedBrief.articleStatus !== 'NOT_APPLICABLE' && (
-                      <span className="px-2.5 py-1 rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 font-medium">
-                        📰 Naskah: <strong className="text-slate-900 dark:text-white font-bold">{selectedBrief.articleStatus}</strong>
-                      </span>
-                    )}
-                    {selectedBrief.imageStatus !== 'NOT_APPLICABLE' && (
-                      <span className="px-2.5 py-1 rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 font-medium">
-                        🖼️ Poster: <strong className="text-slate-900 dark:text-white font-bold">{selectedBrief.imageStatus}</strong>
-                      </span>
-                    )}
-                    {selectedBrief.captionStatus !== 'NOT_APPLICABLE' && (
-                      <span className="px-2.5 py-1 rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 font-medium">
-                        💬 Caption: <strong className="text-slate-900 dark:text-white font-bold">{selectedBrief.captionStatus}</strong>
-                      </span>
-                    )}
-                    <span className="px-2.5 py-1 rounded-lg bg-amber-50 dark:bg-amber-950/40 text-amber-800 dark:text-amber-300 font-bold border border-amber-200 dark:border-amber-800">
-                      🔄 Putaran Revisi: {selectedBrief.revisionUsed} / {selectedBrief.revisionLimit}
-                    </span>
+                  <div className="flex-1">
+                    <BriefComponentStatusRow brief={selectedBrief} />
                   </div>
 
                   {(selectedBrief.status === 'SUBMITTED' || selectedBrief.status === 'QUEUED_NEXT_WEEK') && (() => {
