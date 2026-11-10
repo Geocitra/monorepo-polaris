@@ -7,6 +7,7 @@ import {
   masterPoliticalParties,
   contentPublications,
   constituentFeedbacks,
+  portalConfigs,
   mediaAssets,
   aiTraceLogs,
 } from '@polaris/database';
@@ -23,7 +24,8 @@ export class SuperadminDashboardService {
     const [feedback] = await db
       .select({ count: sql<number>`count(*)::int` })
       .from(constituentFeedbacks)
-      .where(eq(constituentFeedbacks.tenantId, tenantId));
+      .innerJoin(portalConfigs, eq(constituentFeedbacks.portalId, portalConfigs.id))
+      .where(eq(portalConfigs.tenantId, tenantId));
 
     const [media] = await db
       .select({ count: sql<number>`count(*)::int` })
