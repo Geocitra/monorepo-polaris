@@ -95,7 +95,7 @@ export class ArtCollagePosterPipeline {
       ? `${params.variationKey || Date.now()}:c${params.candidateIndex}:${archetype}`
       : `${params.variationKey || Date.now()}:${archetype}`;
     const seed = seedFromString(seedKey);
-    const mutation = pickArtCollageMutation(archetype, seed);
+    const mutation = pickArtCollageMutation(archetype, seed, { topic: params.topic });
 
     const isInfographic = params.isInfographic || isInfographicArchetype(archetype);
 
@@ -121,6 +121,35 @@ export class ArtCollagePosterPipeline {
       styleReference,
     });
 
+    const secondaryImageBuffers: Buffer[] = [];
+    if (archetype !== 'INFOGRAPHIC_NARRATIVE_WAVE' && dna.allowMultiImage && process.env.CHRONICLE_MULTI_IMAGE !== 'false') {
+      try {
+        console.log(
+          `[ArtCollagePipeline] Aturan Multi-Image aktif untuk ${archetype}: men-generate gambar dokumenter tambahan ke-2 via 9Router...`
+        );
+        const secondaryPrompt = [
+          `Create a high-resolution, print-quality 2x2 MULTI-PHOTO ARCHIVAL DOCUMENTARY CONTACT SHEET (vertical 4:5 ratio) showing 4 DIFFERENT supplementary Indonesian field scenes about: ${copy.visualSubject}.`,
+          `Show wide-angle community impact, public infrastructure details, field workers in action, and citizen beneficiaries in Indonesia.`,
+          `Each quadrant must be a clean, realistic documentary photograph separated by thin warm cream borders (#F4EFE6) with ABSOLUTELY ZERO text, zero numbers, and zero labels.`,
+        ].join('\n');
+        const secondaryImage = await this.imageAdapter.generateArtCollage({
+          prompt: secondaryPrompt,
+          aspectRatio: '4:5',
+          tenantId: params.tenantId,
+        });
+        if (secondaryImage?.imageBuffer) {
+          secondaryImageBuffers.push(secondaryImage.imageBuffer);
+          console.log(
+            `[ArtCollagePipeline] Sukses men-generate gambar dokumenter ke-2 untuk ${archetype} (${secondaryImage.imageBuffer.length} bytes).`
+          );
+        }
+      } catch (secErr: any) {
+        console.warn(
+          `[ArtCollagePipeline] Generasi gambar ke-2 opsional dilewati (${secErr?.message}), menggunakan 4 kuadran dari kanvas multi-foto utama.`
+        );
+      }
+    }
+
     const layout = await VisionLayoutLocator.locate({
       imageBuffer: image.imageBuffer,
       mimeType: image.mimeType,
@@ -131,6 +160,7 @@ export class ArtCollagePosterPipeline {
 
     return {
       imageBuffer: image.imageBuffer,
+      secondaryImageBuffers: secondaryImageBuffers.length > 0 ? secondaryImageBuffers : undefined,
       imageMimeType: image.mimeType,
       archetype,
       blueprintId: blueprint.id,

@@ -834,24 +834,54 @@ Full-frame organic photographic scene with realistic depth, suitable for archiva
 ${infographicZeroMandate}
       `.trim();
     } else if (blueprint.archetype === 'INFOGRAPHIC_ADVOCACY_PILLARS') {
-      // INFOGRAPHIC 04: 5 PILAR ADVOKASI AKAR RUMPUT
+      // INFOGRAPHIC 04: ADVOKASI DATA & 5 PILAR AKSI KERAKYATAN (TEMPLATE 04 GOLD STANDARD)
       englishPrompt = `
-[ROLE & EDITORIAL ADVOCACY DOCUMENTARY ART DIRECTION]
-Warm, human-centered documentary photojournalism capturing civic advocacy, community empowerment, and public welfare regarding: "${cleanTopic}".
-Authentic Indonesian grassroots community scenes, dedicated public servants, social progress, and civic dialogue in natural daylight.
-Rich documentary realism, authentic warm color grading with vibrant green and orange earth tones, 35mm film texture.
-Full-frame realistic environment with natural organic textures.
+[ROLE & EDITORIAL ADVOCACY DOCUMENTARY ART DIRECTION - TEMPLATE 04 GOLD STANDARD]
+Authentic Indonesian advocacy infographic poster artwork matching the iconic Template 04 reference standard:
+CRITICAL FULL-BLEED ZERO-MOCKUP MANDATE: The composition MUST BE 100% FULL BLEED EDGE-TO-EDGE across the entire image frame. ABSOLUTELY ZERO white borders, ZERO white padding, ZERO outer margins, ZERO surrounding white frame, ZERO drop shadow canvas edges, and ZERO poster mockup perspective! DO NOT draw a sheet of paper lying on a desk!
+
+CRITICAL GHOST NUMBERS, LETTERS & DIGIT BAN: ABSOLUTELY ZERO painted numbers, ZERO digits ("01", "02", "03", "04", "05", "1", "2", "3", "4", "5"), ZERO letters ("P", "U", "T", "U", "S"), ZERO badges, ZERO text labels, and ZERO bullet points on the background canvas! All typography, numbers, and pillar badges are rendered cleanly by the compositor!
+
+VISUAL BACKDROP & TEXTURE:
+- Rich warm terracotta, burnt ochre, and golden amber earth tone background (#C25E2B / #B45309 / #C67D48) with subtle, authentic, traditional Indonesian batik pattern watermark (parang, kawung, or floral megamendung motif) softly textured into the backdrop.
+- Authentic editorial broadsheet grain, warm cultural advocacy aesthetic.
+
+CRITICAL SCENERY & DRONE PHOTO BAN:
+- ABSOLUTELY ZERO generic outdoor landscape vistas, ZERO empty terraced rice fields, ZERO drone mountain panoramas, and ZERO vehicles alone without prominent human figures!
+- The background is NOT an outdoor photograph. The canvas background MUST BE warm terracotta and golden amber (#C25E2B / #EA580C) with Indonesian batik watermark pattern.
+
+DOCUMENTARY SUBJECT ANCHOR (CENTER-RIGHT):
+- Anchored in the center-right window (between Y=32% and Y=56%, width approx 40%), feature a poignant, respectful, dignified warm editorial illustration or close-up portrait cutout of Indonesian grassroots citizens, workers, farmers, families, or struggling mother and child related to: "${cleanTopic}".
+- Authentic warm lighting, natural expressions of resilience and community hope. This human anchor is the emotional soul of the advocacy poster.
+
+NEGATIVE SPACE CLEARANCE ZONES (WAJIB KOSONG):
+1. TOP 22% (Y=0% to Y=22%): Completely empty, calm, unobstructed warm terracotta/amber surface for the giant centered masthead headline and kicker.
+2. MIDDLE-LEFT (Y=24% to Y=58%, X=0% to X=55%): Completely clean, calm space for green statistical data cards.
+3. LOWER 42% (Y=58% to Y=100%): Completely clean, unobstructed, calm surface across the full width for the 5 vertical solution pillar cards and official legislative footer bar!
 
 ${infographicZeroMandate}
       `.trim();
     } else if (blueprint.archetype === 'INFOGRAPHIC_NARRATIVE_WAVE') {
-      // INFOGRAPHIC 01: PITA NARASI GELOMBANG
+      // INFOGRAPHIC 01: PITA NARASI GELOMBANG (GOLD REFERENCE STANDARD - DYNAMIC PALETTE)
+      const waveColor = accentColorName || 'deep crimson-red';
+      const waveHex = rawAccentHex || '#991B1B';
       englishPrompt = `
 [ROLE & NARRATIVE EDITORIAL DOCUMENTARY ART DIRECTION]
-Evocative documentary editorial photography capturing multifaceted public progress and civic life concerning: "${cleanTopic}".
-Authentic environmental perspective showing community resilience, modern public facilities, and cultural civic engagement in Indonesia.
-Dramatic natural lighting, rich textures, expressive mood with deep shadows and clean highlights.
-Full-frame authentic photographic capture.
+Authentic Indonesian editorial broadsheet infographic artwork matching the gold reference standard (Humana / Sukabumi):
+CRITICAL FULL-BLEED ZERO-MOCKUP MANDATE: The composition MUST BE 100% FULL BLEED EDGE-TO-EDGE across the entire image frame. ABSOLUTELY ZERO white borders, ZERO white padding, ZERO outer margins, ZERO surrounding white frame, ZERO drop shadow canvas edges, and ZERO poster mockup perspective! DO NOT draw a sheet of paper lying on a white background, desk, or studio table! The background paper texture (#F8F6F0) and the deep ${waveColor} wave (${waveHex}) must bleed all the way to the absolute pixel edges of the image (coordinates 0,0 to 100%,100%) without any surrounding white border or desk!
+Warm textured cream newsprint paper background (#F8F6F0) bleeding to all four outer edges.
+- Top Masthead Expanse (Y: 0% to 18%, X: 0% to 100%): The entire top band across the full width of the canvas MUST be 100% SOLID FLAT WARM CREAM NEWSPRINT PAPER (#F8F6F0). The ${waveColor} wave must dip down and strictly begin BELOW Y=18%! ABSOLUTELY ZERO colored wave ink rising above Y=18% across the entire width of the canvas.
+Rich mixed-media editorial montage with 2 to 4 authentic Indonesian documentary photographs/cutouts:
+- Upper-left (X: 5% to 35%, Y: 18% to 33%): Authentic high-contrast black-and-white documentary photo cutout of a smiling Indonesian citizen, student, or worker (real photographic portrait cutout with visible realistic facial features and clothing texture — NOT a flat black shadow silhouette!). Strictly a HEADSHOT / BUST PORTRAIT ONLY (head, neck, collar only, bounded strictly above Y=33% / Y=445px). ABSOLUTELY ZERO HANDS HOLDING PLANTS, ZERO RICE STALKS, ZERO CROPS, ZERO SICKLES, ZERO TOOLS, ZERO BOOKS EXTENDING BELOW CHIN, ZERO FOREARMS REACHING DOWN, AND ZERO TORSO/BODY PARTS DESCENDING BELOW Y=33%!
+- Upper-right (X: 88% to 98%, Y: 20% to 32%): Small compact reaching hand, tool, or botanical element cutout strictly elevated in the far-right upper corner above Y=32% and hugging the extreme right edge (X >= 88%).
+- UPPER-RIGHT WAVE IS 100% SOLID ${waveColor.toUpperCase()} (X: 42% to 85%, Y: 18% to 38%): ZERO crowd faces, ZERO human heads, and ZERO photo cutouts anywhere in the upper wave above Y=38%! This area must be 100% pure, flat, unbroken solid ${waveColor} ink (${waveHex}) prepared for direct white typography.
+- Center: THIN, SLENDER diagonal ribbon of crowd faces (width <= 14%, strictly bounded between X: 34% and X: 48%, and STRICTLY starting BELOW Y=44%). The crowd faces ribbon MUST NEVER rise above Y=42% and NEVER fan out to the right (never cross X=50%)! ABSOLUTELY ZERO floating heads or cut-off faces above Y=42%!
+- Lower-center (X: 44% to 56%, Y: 82% to 92%): Small compact seated citizen figure or subtle botanical vignette.
+A massive, bold, sweeping solid deep ${waveColor} color field (${waveHex}) flowing down the entire right-hand flank (from X: 52% to 100%, Y: 18% to 92%), providing smooth unbroken solid colored ink surfaces prepared specifically for direct white typography with ZERO crowd faces and ZERO cards on the right.
+A pristine, 100% clean, completely flat warm cream paper clearing on the entire lower-left (from Y: 32% down to 95%, X: 0% to 48%) reserved for direct dark-ink data visualization and donut charts. ABSOLUTELY ZERO PHOTOS, ZERO WORKERS, ZERO PEOPLE, ZERO ASPHALT, ZERO ROAD SCENES, ZERO VEHICLES, ZERO MACHINERY, ZERO RICE STALKS, ZERO CROPS, ZERO PLANTS, ZERO TOOLS, and ZERO PHOTO SPILLS below Y=32% on the left half! ONLY the upper-left portrait cutout (strictly head and collar above Y=32%) is allowed on the entire left half of the canvas! Below Y=32% on the left, the paper is 100% STERILE BLANK WARM CREAM NEWSPRINT PAPER (#F8F6F0).
+CRITICAL GHOST NUMBERS & DIGIT BAN: ABSOLUTELY ZERO NUMBERS, ZERO DIGITS, ZERO NUMBERED WATERMARKS, ZERO GHOST TEXT ("01", "02", "03", "04", "05", "06", etc.) AND ZERO DIAGRAM LABELS ("1", "2", "3", "4") PAINTED ANYWHERE ON THE ARTWORK! The ${waveColor} color field MUST be 100% solid, smooth, pure unnumbered ink. ZERO airbrushed numbers, zero decorative numerals, zero ghost digits!
+ZERO EMPTY SPACE & PERFECT DENSITY: The composition is richly balanced, vibrant, and purposeful across all four quadrants matching the Humana gold reference standard. Every quadrant is active and structured.
+ABSOLUTELY ZERO floating cards, zero white boxes, zero container rectangles, zero drop shadows!
 
 ${infographicZeroMandate}
       `.trim();

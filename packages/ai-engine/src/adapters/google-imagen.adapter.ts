@@ -1,5 +1,11 @@
 import { GoogleGenAI } from '@google/genai';
-import { googleGenAiClient } from '../client.js';
+import {
+  googleGenAiClient,
+  createGoogleGenAiClient,
+  routerClient,
+  normalizeGeminiModel,
+  isRouterEnabled,
+} from '../client.js';
 import { AiTelemetryService } from '../telemetry/ai-telemetry.service.js';
 import { sanitizeImageGenerationPrompt } from '../creative-poster/prompt-compiler.js';
 
@@ -16,7 +22,7 @@ export class GoogleImagenAdapter {
 
   constructor(apiKey?: string) {
     if (apiKey) {
-      this.client = new GoogleGenAI({ apiKey });
+      this.client = createGoogleGenAiClient(apiKey);
     } else {
       this.client = googleGenAiClient;
     }
@@ -29,19 +35,8 @@ export class GoogleImagenAdapter {
   public async generateImage(
     params: GenerateGoogleImagenParams
   ): Promise<{ temporaryImageUrl: string; canonicalTraceId: string }> {
-    const apiKey =
-      process.env.GEMINI_API_KEY ||
-      process.env.GOOGLE_API_KEY ||
-      process.env.GOOGLE_GENAI_API_KEY;
-
-    if (!this.client && apiKey) {
-      this.client = new GoogleGenAI({ apiKey });
-    }
-
     if (!this.client) {
-      throw new Error(
-        '[GoogleImagenAdapter] GEMINI_API_KEY belum disetel pada file environment (.env).'
-      );
+      this.client = googleGenAiClient;
     }
 
     const preferredModel =
@@ -110,67 +105,41 @@ export class GoogleImagenAdapter {
 
       const negativePrompt = negativeList.join(', ');
 
-      // Jalur 1: Google AI Studio Multimodal Image Model (gemini-3.1-flash-image / Imagen via Developer API)
+      // Jalur Eksklusif: 9Router Images Generations API (TIDAK BOLEH OpenAI)
       const studioImageModel =
         process.env.GOOGLE_IMAGE_MODEL && !process.env.GOOGLE_IMAGE_MODEL.startsWith('imagen-')
           ? process.env.GOOGLE_IMAGE_MODEL
-          : 'gemini-3.1-flash-image';
+          : 'ag/gemini-3.1-flash-image';
 
-      // Selaraskan larangan Jalur 1 agar menghormati elemen yang diizinkan (allowed: banner, frame, border)
-      const forbiddenLayoutTerms = ['UI cards', 'boxes', 'graphic layout templates'];
-      if (!allowed.includes('frame')) forbiddenLayoutTerms.push('frames');
-      if (!allowed.includes('banner')) forbiddenLayoutTerms.push('banners');
-      if (!allowed.includes('border')) forbiddenLayoutTerms.push('borders');
-      const forbiddenLayoutStr = forbiddenLayoutTerms.join(', ');
-
-      try {
-        const contentResponse = await this.client.models.generateContent({
-          model: studioImageModel,
-          contents: `${refinedPrompt}. Visual aspect ratio: ${aspectRatio}. Generate a pure, textless photograph or illustration artwork only. DO NOT design a poster, DO NOT draw any ${forbiddenLayoutStr}, and DO NOT render any letters, words, numbers, or hex color codes anywhere in the image. Strict negative constraint: clean background, no text, no typography, no words, no human portrait in center, no double subjects.`,
-        });
-
-        const parts = contentResponse.candidates?.[0]?.content?.parts || [];
-        for (const p of parts) {
-          if (p.inlineData && p.inlineData.data) {
-            const mime = p.inlineData.mimeType || 'image/jpeg';
-            temporaryImageUrl = `data:${mime};base64,${p.inlineData.data}`;
-            break;
+      if (isRouterEnabled && routerClient) {
+        try {
+          const routerImageModel = normalizeGeminiModel(studioImageModel);
+          console.log(`[GoogleImagenAdapter] Menghasilkan kanvas dasar via 9Router (${routerImageModel})...`);
+          const routerRes = await routerClient.images.generate({
+            model: routerImageModel,
+            prompt: `${refinedPrompt}. Strict negative constraint: clean background, no text, no typography.`,
+          });
+          const b64 = routerRes.data?.[0]?.b64_json;
+          if (b64) {
+            temporaryImageUrl = `data:image/jpeg;base64,${b64}`;
           }
+        } catch (routerErr: any) {
+          console.error(
+            `[GoogleImagenAdapter] 9Router image generation gagal: ${routerErr.message}`
+          );
+          throw new Error(
+            `[9RouterImageError] Gagal generate gambar via 9Router (${studioImageModel}): ${routerErr.message}`
+          );
         }
-      } catch (studioErr: any) {
-        console.warn(
-          `[GoogleImagenAdapter] Jalur AI Studio (${studioImageModel}) memberi sinyal: ${studioErr.message}. Beralih ke jalur Vertex Imagen...`
+      } else {
+        throw new Error(
+          '[GoogleImagenAdapter] 9Router tidak aktif atau routerClient tidak tersedia. Pembuatan gambar hanya diizinkan via 9Router.'
         );
-      }
-
-      // Jalur 2: Vertex AI Enterprise Imagen (imagen-3.0-generate-002 / imagen-4.0)
-      if (!temporaryImageUrl) {
-        const enterpriseModel =
-          process.env.GOOGLE_IMAGE_MODEL && process.env.GOOGLE_IMAGE_MODEL.startsWith('imagen-')
-            ? process.env.GOOGLE_IMAGE_MODEL
-            : 'imagen-3.0-generate-002';
-
-        const response = await this.client.models.generateImages({
-          model: enterpriseModel,
-          prompt: refinedPrompt,
-          config: {
-            numberOfImages: 1,
-            aspectRatio: aspectRatio as any,
-            outputMimeType: 'image/jpeg',
-            negativePrompt,
-          },
-        });
-
-        const generated = response.generatedImages?.[0];
-        const imageBytes = generated?.image?.imageBytes;
-        if (imageBytes) {
-          temporaryImageUrl = `data:image/jpeg;base64,${imageBytes}`;
-        }
       }
 
       if (!temporaryImageUrl) {
         throw new Error(
-          'Google Imagen / Gemini AI tidak mengembalikan bytes gambar yang valid.'
+          '9Router tidak mengembalikan data gambar yang valid.'
         );
       }
 
@@ -215,15 +184,14 @@ export class GoogleImagenAdapter {
     tenantId?: string;
     styleReference?: { mimeType: string; base64: string };
   }): Promise<{ imageBuffer: Buffer; mimeType: string; provider: string; usedStyleReference: boolean }> {
-    const apiKey =
-      process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY || process.env.GOOGLE_GENAI_API_KEY;
-    if (!this.client && apiKey) this.client = new GoogleGenAI({ apiKey });
     if (!this.client) {
-      throw new Error('[GoogleImagenAdapter] GEMINI_API_KEY belum disetel pada file environment (.env).');
+      this.client = googleGenAiClient;
     }
 
     const aspectRatio = params.aspectRatio || '4:5';
-    const geminiModel = process.env.POSTER_COLLAGE_IMAGE_MODEL || 'gemini-3.1-flash-image';
+    const geminiModel = normalizeGeminiModel(
+      process.env.POSTER_COLLAGE_IMAGE_MODEL || 'gemini-3.1-flash-image'
+    );
     const telemetry = AiTelemetryService.startTrace({
       operation: 'art-collage-generation',
       model: geminiModel,
@@ -236,64 +204,42 @@ export class GoogleImagenAdapter {
       mimeType: mime,
     });
 
-    // Jalur 1: Gemini multimodal image (prompt + referensi gaya opsional)
-    const tryGemini = async (withReference: boolean) => {
-      const parts: any[] = [];
-      if (withReference && params.styleReference) {
-        parts.push({ inlineData: { mimeType: params.styleReference.mimeType, data: params.styleReference.base64 } });
-      }
-      parts.push({
-        text: `CRITICAL INSTRUCTION: Do NOT render any text, words, letters, signatures, numbers, typography, headings, or captions anywhere on this image canvas. DO NOT draw any frosted glass cards, blur rectangles, UI boxes, empty capsules, blank pillar shapes, timeline bars with dots, flowchart containers, blank chalkboards, or fake QR codes. DO NOT draw cartoons, anime, 3D CGI renders, vector clipart, sketches, or drawings. The visual must be a pure, high-quality scenic composition (realistic documentary photograph or scenic artwork matching the prompt). The clearing area must remain completely flat, plain, and clean.\n\n${params.prompt}`,
-      });
-      const res = await this.client!.models.generateContent({
-        model: geminiModel,
-        contents: [{ role: 'user', parts }],
-        config: { responseModalities: ['IMAGE'], imageConfig: { aspectRatio } } as any,
-      });
-      for (const p of res.candidates?.[0]?.content?.parts || []) {
-        if (p.inlineData?.data) return decode(p.inlineData.data, p.inlineData.mimeType || 'image/png');
-      }
-      throw new Error('Gemini image tidak mengembalikan bytes gambar.');
-    };
-
     try {
       let result: { imageBuffer: Buffer; mimeType: string } | undefined;
       let provider = geminiModel;
       let usedStyleReference = false;
 
-      if (params.styleReference) {
+      // Jalur Eksklusif: 9Router Images Generations API (Dilarang OpenAI)
+      if (routerClient) {
         try {
-          result = await tryGemini(true);
-          usedStyleReference = true;
-        } catch (err: any) {
-          console.warn(`[GoogleImagenAdapter] Art-collage dengan referensi gagal (${err.message}); mencoba tanpa referensi.`);
+          console.log(`[GoogleImagenAdapter] Render kanvas art-collage via 9Router (${geminiModel})...`);
+          const routerRes = await routerClient.images.generate({
+            model: geminiModel,
+            prompt: `CRITICAL INSTRUCTION: Do NOT render any text, words, letters, signatures, numbers, typography, headings, or captions anywhere on this image canvas. DO NOT draw any frosted glass cards, blur rectangles, UI boxes, empty capsules, blank pillar shapes, timeline bars with dots, flowchart containers, blank chalkboards, or fake QR codes. DO NOT draw cartoons, anime, 3D CGI renders, vector clipart, sketches, or drawings.
+CRITICAL FULL-BLEED ZERO-MOCKUP MANDATE: The composition MUST BE 100% FULL BLEED EDGE-TO-EDGE across the entire image frame. ABSOLUTELY ZERO white borders, ZERO white padding, ZERO outer margins, ZERO surrounding white frame, ZERO drop shadow canvas edges, and ZERO poster mockup perspective! DO NOT draw a sheet of paper lying on a white background, desk, or studio table! The background paper texture (#F8F6F0) and the deep crimson red wave (#991B1B) must bleed all the way to the absolute pixel edges of the image (coordinates 0,0 to 100%,100%) without any surrounding white border or desk! The clearing area must remain completely flat, plain, and clean.\n\n${params.prompt}`,
+          });
+          const b64 = routerRes.data?.[0]?.b64_json;
+          if (b64) {
+            result = decode(b64, 'image/jpeg');
+            provider = `9router:${geminiModel}`;
+            console.log('[GoogleImagenAdapter] Sukses generate kanvas melalui 9Router!');
+          }
+        } catch (routerErr: any) {
+          console.error(
+            `[GoogleImagenAdapter] 9Router image model (${geminiModel}) gagal: ${routerErr.message}`
+          );
+          throw new Error(
+            `[ArtCollageImageError] 9Router image generation gagal (${geminiModel}): ${routerErr.message}`
+          );
         }
-      }
-      if (!result) {
-        try {
-          result = await tryGemini(false);
-        } catch (err: any) {
-          console.warn(`[GoogleImagenAdapter] Art-collage Gemini gagal (${err.message}); beralih ke Imagen.`);
-        }
+      } else {
+        throw new Error(
+          '[GoogleImagenAdapter] 9Router client tidak tersedia. Image generation hanya diizinkan via 9Router.'
+        );
       }
 
-      // Jalur 2: Imagen (tanpa referensi gambar); negative prompt hanya melarang teks & identitas
       if (!result) {
-        provider = process.env.POSTER_COLLAGE_IMAGEN_MODEL || 'imagen-3.0-generate-002';
-        const response = await this.client.models.generateImages({
-          model: provider,
-          prompt: params.prompt,
-          config: {
-            numberOfImages: 1,
-            aspectRatio: aspectRatio as any,
-            outputMimeType: 'image/png',
-            negativePrompt:
-              'text, letters, words, numbers, typography, captions, signage, labels, logo, emblem, watermark, signature, fake writing, gibberish text, politician, recognizable public figure, cartoon, anime, 3d render, cgi, vector art, illustration, drawing, sketch, comics, clipart, line art, frosted glass cards, blur rectangles, ui boxes, empty capsules, blank pillars, timeline bars, charts, diagram boxes',
-          },
-        });
-        const bytes = response.generatedImages?.[0]?.image?.imageBytes;
-        if (!bytes) throw new Error('Imagen tidak mengembalikan bytes gambar.');
-        result = decode(bytes, 'image/png');
+        throw new Error('9Router gagal mengembalikan kanvas gambar yang valid.');
       }
 
       await telemetry.endTrace({

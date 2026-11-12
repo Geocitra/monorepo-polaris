@@ -2,7 +2,7 @@ import * as fs from 'fs';
 import * as path from 'path';
 import * as dotenv from 'dotenv';
 import { GoogleGenAI } from '@google/genai';
-import { googleGenAiClient } from '../client.js';
+import { googleGenAiClient, normalizeGeminiModel } from '../client.js';
 import type { ArtCollageCopy } from '../creative-poster/art-collage/art-collage.types.js';
 
 export interface Img2ImgPassOptions {
@@ -333,22 +333,20 @@ export class Img2ImgPassAdapter {
       .join('\n');
 
     // =========================================================================
-    // 1. GOOGLE GEMINI MULTIMODAL IMAGE RE-LAYOUT PASS (PRIORITAS UTAMA #1)
+    // 1. GOOGLE GEMINI MULTIMODAL IMAGE RE-LAYOUT PASS (OPSIONAL VIA ENV)
+    // Default dinonaktifkan agar tata letak vektor tajam hasil Chromium (4 varian)
+    // tidak tertimpa difusi ulang dan kuota 9Router tidak terpakai 2x.
     // =========================================================================
-    if (geminiApiKey) {
+    const enableExternalRelayout = process.env.ENABLE_EXTERNAL_GEMINI_RELAYOUT === 'true';
+    if (enableExternalRelayout && geminiApiKey) {
       const client = googleGenAiClient || new GoogleGenAI({ apiKey: geminiApiKey });
-      const primaryModel =
+      const primaryModel = normalizeGeminiModel(
         process.env.POSTER_COLLAGE_IMAGE_MODEL ||
         process.env.GOOGLE_IMAGE_MODEL ||
-        'gemini-3.1-flash-image';
+        'ag/gemini-3.1-flash-image'
+      );
 
-      const modelsToTry = Array.from(
-        new Set([
-          primaryModel,
-          'gemini-3.1-flash-image',
-          'gemini-3.1-flash-image-preview',
-        ])
-      ).filter((m) => !m.startsWith('imagen-'));
+      const modelsToTry = [primaryModel].filter((m) => !m.startsWith('imagen-'));
 
       const { mime } = detectImageMimeAndExt(options.imageBuffer);
       const base64Draft = options.imageBuffer.toString('base64');

@@ -28,6 +28,10 @@ export interface ArtCollageDna {
   anchors: ArtCollageAnchor[];
   /** Perkiraan nada kertas: menentukan default warna tinta bila Vision gagal. */
   paperTone: 'LIGHT' | 'DARK';
+  /** Izin khusus bagi arketipe multi-foto (seperti INFOGRAPHIC_CHRONICLE_GRID) untuk men-generate >1 gambar. */
+  allowMultiImage?: boolean;
+  /** Jumlah target bingkai foto dokumenter pada template. */
+  targetPhotoCount?: number;
 }
 
 export interface ArtCollageMutation {
@@ -83,6 +87,8 @@ export interface VisionLayoutResult {
 
 export interface ArtCollagePosterResult {
   imageBuffer: Buffer;
+  /** Koleksi buffer gambar dokumenter tambahan bila template mengizinkan multi-image generation (>1 gambar). */
+  secondaryImageBuffers?: Buffer[];
   imageMimeType: string;
   archetype: CreativePosterArchetype;
   blueprintId: string;

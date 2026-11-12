@@ -1,7 +1,11 @@
 import { Redis } from 'ioredis';
 import * as dotenv from 'dotenv';
 
-dotenv.config({ path: '../../.env' });
+import * as path from 'path';
+
+dotenv.config();
+dotenv.config({ path: path.resolve(process.cwd(), '.env') });
+dotenv.config({ path: path.resolve(process.cwd(), '../../.env') });
 
 const redisUrl = process.env.REDIS_URL || 'redis://localhost:6379';
 

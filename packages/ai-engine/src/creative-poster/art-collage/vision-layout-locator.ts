@@ -10,7 +10,7 @@
  * output LLM bukan sumber kebenaran mutlak.
  */
 
-import { googleGenAiClient, openaiClient } from '../../client.js';
+import { googleGenAiClient, openaiClient, routerClient, normalizeGeminiModel } from '../../client.js';
 import type {
   ArtCollageAnchor,
   NormalizedBox,
@@ -202,8 +202,14 @@ function extractJson(text: string): any {
 
 async function locateWithGemini(imageBase64: string, mimeType: string, prompt: string): Promise<any> {
   if (!googleGenAiClient) throw new Error('Gemini client tidak tersedia.');
+  const rawModel =
+    process.env.POSTER_VISION_MODEL ||
+    process.env.GEMINI_VISION_MODEL ||
+    process.env.GEMINI_TEXT_MODEL ||
+    'gemini-3.8-flash';
+  const model = normalizeGeminiModel(rawModel);
   const response = await googleGenAiClient.models.generateContent({
-    model: process.env.POSTER_VISION_MODEL || process.env.GEMINI_TEXT_MODEL || 'gemini-3.8-flash',
+    model,
     contents: [
       {
         role: 'user',
@@ -217,8 +223,13 @@ async function locateWithGemini(imageBase64: string, mimeType: string, prompt: s
 }
 
 async function locateWithOpenAI(imageBase64: string, mimeType: string, prompt: string): Promise<any> {
-  const response = await openaiClient.chat.completions.create({
-    model: process.env.POSTER_VISION_OPENAI_MODEL || 'gpt-4o-mini',
+  const clientToUse = routerClient || openaiClient;
+  const rawModel =
+    process.env.POSTER_VISION_OPENAI_MODEL ||
+    (routerClient ? 'ag/gemini-3.8-flash' : 'gpt-4o-mini');
+  const response = await clientToUse.chat.completions.create({
+    model: rawModel,
+    stream: false,
     temperature: 0.1,
     response_format: { type: 'json_object' },
     messages: [

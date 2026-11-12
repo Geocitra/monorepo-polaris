@@ -231,6 +231,7 @@ export class StudioInfographicGenerationHandler {
 
       const composed = await ChromiumPosterCompositor.compose({
         canvasBuffer: artCollage.imageBuffer,
+        secondaryCanvasBuffers: artCollage.secondaryImageBuffers,
         copy: artCollage.copy,
         zones: artCollage.layout,
         palette: {
@@ -331,7 +332,12 @@ export class StudioInfographicGenerationHandler {
       // (terutama chart background, KPI duplikat, atau pita menimpa teks), sistem
       // diizinkan mengenerate kanvas kandidat ke-2 yang bersih di latar belakang.
       // =========================================================================
-      if (artCollage.archetype === 'INFOGRAPHIC_NARRATIVE_WAVE') {
+      if (
+        artCollage.archetype === 'INFOGRAPHIC_NARRATIVE_WAVE' ||
+        artCollage.archetype === 'INFOGRAPHIC_CHRONICLE_GRID' ||
+        artCollage.archetype === 'INFOGRAPHIC_RADIAL_CLOCK' ||
+        artCollage.archetype === 'INFOGRAPHIC_ADVOCACY_PILLARS'
+      ) {
         try {
           await StudioContextHelper.emitProgress(
             tenantId,
@@ -399,7 +405,11 @@ export class StudioInfographicGenerationHandler {
                 candidateIndex: 2,
                 remedyPrompt:
                   evalResult.remedyInstructions ||
-                  'MANDAT KRUSIAL: Area 42% bawah wajib 100% kertas krem polos (#F8F6F0) tanpa chart fiktif apapun, 1 baris KPI tunggal tanpa duplikasi, dan pita merah dibatasi di atas 58% tinggi poster.',
+                  (artCollage.archetype === 'INFOGRAPHIC_CHRONICLE_GRID'
+                    ? 'MANDAT KRUSIAL KRONIK BROADSHEET GRID: Hasilkan 4 adegan foto dokumenter Indonesia yang berbeda dalam grid 2x2 (Top-Left, Top-Right, Bottom-Left, Bottom-Right) di atas kertas krem (#F4EFE6) tanpa teks atau angka di dalam foto.'
+                    : artCollage.archetype === 'INFOGRAPHIC_ADVOCACY_PILLARS'
+                    ? 'MANDAT KRUSIAL ADVOKASI 5 PILAR (TEMPLATE 04): Wajib 100% kanvas latar belakang berwarna terracotta / amber hangat (#C25E2B / #EA580C) dengan watermark motif batik Indonesia halus (megamendung/kawung). DILARANG KERAS foto pemandangan sawah terbuka biasa atau drone scenery! Di kuadran tengah-kanan (Y=32%-56%), hadirkan ilustrasi / cutout figur rakyat kecil Indonesia (warga pekerja/keluarga prasejahtera) sebagai jangkar empati humanis. Seluruh area atas (22%), kiri tengah (55%), dan bawah (42%) WAJIB BERSIH DARI TEKS ATAU ELEMEN LAIN.'
+                    : 'MANDAT KRUSIAL: Area 42% bawah wajib 100% kertas krem polos (#F8F6F0) tanpa chart fiktif apapun, 1 baris KPI tunggal tanpa duplikasi, dan pita merah dibatasi di atas 58% tinggi poster.'),
                 reuseCopy: artCollage.copy,
               });
 

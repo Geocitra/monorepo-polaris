@@ -1,5 +1,5 @@
 import { GoogleGenAI } from '@google/genai';
-import { googleGenAiClient, openaiClient } from '../../client.js';
+import { googleGenAiClient, openaiClient, routerClient, normalizeGeminiModel } from '../../client.js';
 import type { ArtCollageCopy } from '../art-collage/art-collage.types.js';
 import {
   db,
@@ -106,7 +106,12 @@ export class PosterVisionCritic {
     const base64Image = imageBuffer.toString('base64');
     const mime = 'image/png';
 
+    const isNarrativeWave = archetype === 'INFOGRAPHIC_NARRATIVE_WAVE';
+    const isChronicleGrid = archetype === 'INFOGRAPHIC_CHRONICLE_GRID';
+    const isRadialClock = archetype === 'INFOGRAPHIC_RADIAL_CLOCK';
+    const isAdvocacyPillars = archetype === 'INFOGRAPHIC_ADVOCACY_PILLARS';
     const criticPrompt = `You are a Senior Art Director and Automated Quality Inspector for Indonesian Civic Infographics.
+${isNarrativeWave ? 'SPECIAL ARCHETYPE RULE (INFOGRAPHIC_NARRATIVE_WAVE): This template is the GOLD STANDARD HUMANA NARRATIVE WAVE (matching media_1794280714361_bf7b797b.webp & template-01). It features a full-width masthead on cream paper, a documentary photo/cutout in the upper-left, a sweeping crimson wave in the upper-right (holding Point 01 and Point 02 in a 2-column dual hero with gold badges), a sleek horizontal 4-column KPI belt across the middle (Y=492px-576px), a cream paper clearing in the lower-left holding a 100% SVG Donut Chart and Point 04, and a flowing crimson wave in the lower-right holding Point 03, Point 05, and Point 06. CRITICAL AUDIT CHECKS: (1) Verify full-width masthead header on cream paper with zero text collision, (2) Verify 2-column dual hero in upper-right red wave with gold badges, (3) Verify horizontal 4-column KPI belt in the middle, (4) Verify 100% Donut Chart and Point 04 directly on lower-left cream paper clearing (ZERO white container cards, zero drop shadows), (5) Verify Points 03, 05, 06 in lower-right crimson wave directly on red surface (ZERO brown floating cards, zero drop shadows), (6) Verify zero diffusion typos or ghost text, (7) Verify official closing callout pill and signature footer bar at bottom, (8) Verify ZERO FLOATING CARDS or drop-shadow boxes (direct-inked typography), (9) Verify multi-photo documentary collage (2-4 photo cutouts) seamlessly integrated into the broadsheet montage.' : ''}${isChronicleGrid ? 'SPECIAL ARCHETYPE RULE (INFOGRAPHIC_CHRONICLE_GRID): This template is a MULTI-PHOTO BROADSHEET CHRONICLE (matching template-02-biography-timeline-grid.jpg). Modular chronicle cards with orange (#EA580C) and forest green (#15803D) headers and 4 framed documentary photographs are REQUIRED and EXPECTED (set floatingCardsDetected = false). Verify that all 4 photo frames contain real documentary photos (never empty orange boxes), zero background photo leaks behind the outer card margins, zero duplicate KPIs, zero duplicate card headers vs bullet titles, and zero off-topic hardcoded text.' : ''}${isRadialClock ? 'SPECIAL ARCHETYPE RULE (INFOGRAPHIC_RADIAL_CLOCK): This template is a MULTI-PHOTO RADIAL POLICY CHRONICLE (Option D). It features a vertical title spine, a central civic symbolic anchor (Policy Compass for v0, Official Gold Seal for v1, Progress Gauge Meter for v2, Milestone Cycle Hub for v3), 6 radial wedge sectors with colored stage stamps, and documentary photographs distributed in a dynamic S-curve orbital flow (set floatingCardsDetected = false, set pieChartDetected = true because the central symbolic centerpiece serves as the circular data anchor). CRITICAL AUDIT CHECKS: (1) Verify that photos are NOT stacked in a single monotonous vertical column (must follow dynamic S-curve orbital flow), (2) Verify that the bottom half is NOT empty (bottomVoidDetected = false, must be solidly filled with bottom anchor photo and Bottom Accountability Belt), (3) Verify zero duplicate KPIs, zero duplicate stage stamps, and zero off-topic hardcoded text.' : ''}${isAdvocacyPillars ? `SPECIAL ARCHETYPE RULE (INFOGRAPHIC_ADVOCACY_PILLARS): This template is TEMPLATE 04: ADVOKASI DATA DAN 5 PILAR AKSI KERAKYATAN (matching template-04-advocacy-data-pillars.jpg). It requires: (1) Rich warm terracotta/amber background (#C25E2B to #B45309) with delicate Indonesian batik pattern watermark across the canvas (ZERO generic plain photorealistic rural scenery or rice terrace landscapes without terracotta warmth), (2) Monumental display title with THICK WHITE OUTLINE STROKE (-webkit-text-stroke: 3.5px #FFFFFF; color: #EA580C or #DC2626) standing out boldly, (3) Center-right human empathy anchor: Poignant documentary or warm editorial illustration cutout of Indonesian grassroots citizens, workers, families, or struggling mother and child (NOT a random plain rural scenery or motorcycle photo!), (4) Middle-left green data cards (#15803D, border-radius: 20px) with dominant stat and stacked impact capsules, (5) Transition action banner: "✦ 5 PILAR AKSI: PUTUSKAN RANTAI KEMISKINAN / TUNTASKAN KRISIS ✦", (6) 5 Vertical Solution Pillars (P-U-T-U-S) in vibrant leaf green (#15803D, border-radius: 22px) with round amber letter badges, clear bold titles, and rich illustrative badges or icons at the bottom of each pillar (ZERO half-empty green towers). CRITICAL DEFECTS: If the background is a generic landscape without terracotta warmth, or if 5 pillars are empty half-height towers, or if title lacks white outline stroke, flag defects and trigger candidate 2 auto-repair!` : ''}
 Conduct an EXHAUSTIVE, DEEP, MULTI-DIMENSIONAL AUDIT of the attached generated poster/infografis image.
 Archetype: "${archetype}"
 Topic: "${topic}"
@@ -132,6 +137,9 @@ B. PENEMPATAN KONTEN & HIERARKI VISUAL (CONTENT PLACEMENT & HIERARCHY):
 
 C. RUANG KOSONG & KEBERSIHAN KANVAS (NEGATIVE SPACE & PAPER PURITY):
    - Is there at least 48px margin breathing room from the outer edges?
+   - Upper-left cutout confinement: Verify that the upper-left cutout (worker/citizen) stays strictly above Y=38% and does NOT leak giant vehicle machinery, roller drums, or wheels down into the lower-left Donut Chart area.
+   - Crowd ribbon confinement: Verify that the central crowd montage is a slender diagonal ribbon that does NOT spread past X=52%, so Points 03, 05, 06 sit cleanly on solid crimson red without colliding with crowd faces.
+   - Upper-right tool/hand elevation: Verify that the reaching hand cutout is positioned above the middle KPI belt.
    - Is the lower-left area clean, unprinted cream broadsheet paper (#F8F6F0) hosting the Donut Chart and Point 04?
    - Is the documentary photo window in the upper-left clean and free of text overlaps?
 
@@ -160,7 +168,8 @@ CRITICAL BOOLEAN CHECKLIST:
 11. bottomVoidDetected (boolean): Is there an awkward empty void or unutilized blank gap (>160px) in the lower half of the poster before the closing footer? (Must be false, content must fill the vertical space)
 12. silhouetteInHeaderDetected (boolean): Are there silhouettes, pedestrians, stick figures, or buildings drawn in the top header zone (0-18% height) or doodle stick figures at the bottom? (Must be false)
 13. fontScaleAdequate (boolean): Are the title, KPI metrics, and point headings rendered with large, bold, authoritative broadsheet scale filling the space adequately? (Must be true)
-14. indicatorPlacementVaried (boolean): Is the indicator/KPI placement structured cleanly according to the variant (Belt, Bento Grid 2x2, Hero Triad, or Executive Strip)? (Must be true)
+14. ghostNumbersDetected (boolean): Are there any phantom airbrushed numbers ("01", "02", "03", "04", "05", "06", etc.) painted by the AI model in the background wave? (Must be false)
+15. indicatorPlacementVaried (boolean): Is the indicator/KPI placement structured cleanly according to the variant (Belt, Bento Grid 2x2, Hero Triad, or Executive Strip)? (Must be true)
 
 OUTPUT SPECIFICATION:
 - "critiqueNotes": Provide an array of AT LEAST 5 DETAILED TECHNICAL OBSERVATIONS in Indonesian covering:
@@ -214,8 +223,9 @@ Return ONLY raw JSON (no markdown formatting, no code fence):
     if (geminiApiKey) {
       try {
         const client = googleGenAiClient || new GoogleGenAI({ apiKey: geminiApiKey });
-        const visionModel =
-          process.env.GEMINI_VISION_MODEL || process.env.GEMINI_TEXT_MODEL || 'gemini-3.8-flash';
+        const visionModel = normalizeGeminiModel(
+          process.env.GEMINI_VISION_MODEL || process.env.POSTER_VISION_MODEL || process.env.GEMINI_TEXT_MODEL || 'gemini-3.8-flash'
+        );
         const res = await client.models.generateContent({
           model: visionModel,
           contents: [
@@ -245,14 +255,14 @@ Return ONLY raw JSON (no markdown formatting, no code fence):
           parsed.passed &&
           score >= 85 &&
           !parsed.checklist?.textOnPhotoDetected &&
-          !parsed.checklist?.floatingCardsDetected &&
+          (isChronicleGrid || isRadialClock || !parsed.checklist?.floatingCardsDetected) &&
           !parsed.checklist?.duplicateKpiDetected &&
           !parsed.checklist?.duplicatePieChartDetected &&
           !parsed.checklist?.textWaveOverlapDetected &&
           !parsed.checklist?.bottomVoidDetected &&
           !parsed.checklist?.silhouetteInHeaderDetected &&
           Boolean(parsed.checklist?.fontScaleAdequate ?? true) &&
-          parsed.checklist?.pieChartDetected
+          (isRadialClock || parsed.checklist?.pieChartDetected)
         );
 
         return {
@@ -284,11 +294,14 @@ Return ONLY raw JSON (no markdown formatting, no code fence):
       }
     }
 
-    // 2. Fallback OpenAI Vision jika Gemini gagal
-    if (openaiClient) {
+    // 2. Fallback 9Router / OpenAI Vision jika Gemini SDK gagal
+    const fallbackClient = routerClient || openaiClient;
+    if (fallbackClient) {
       try {
-        const completion = await openaiClient.chat.completions.create({
-          model: 'gpt-4o-mini',
+        const fallbackModel = routerClient ? normalizeGeminiModel('gemini-3.8-flash') : 'gpt-4o-mini';
+        const completion = await fallbackClient.chat.completions.create({
+          model: fallbackModel,
+          stream: false,
           temperature: 0.2,
           max_tokens: 600,
           response_format: { type: 'json_object' },
@@ -317,14 +330,14 @@ Return ONLY raw JSON (no markdown formatting, no code fence):
           parsed.passed &&
           score >= 85 &&
           !parsed.checklist?.textOnPhotoDetected &&
-          !parsed.checklist?.floatingCardsDetected &&
+          (isChronicleGrid || isRadialClock || !parsed.checklist?.floatingCardsDetected) &&
           !parsed.checklist?.duplicateKpiDetected &&
           !parsed.checklist?.duplicatePieChartDetected &&
           !parsed.checklist?.textWaveOverlapDetected &&
           !parsed.checklist?.bottomVoidDetected &&
           !parsed.checklist?.silhouetteInHeaderDetected &&
           Boolean(parsed.checklist?.fontScaleAdequate ?? true) &&
-          parsed.checklist?.pieChartDetected
+          (isRadialClock || parsed.checklist?.pieChartDetected)
         );
 
         return {
