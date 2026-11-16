@@ -19,6 +19,7 @@ import {
 import { ContentStatus, ResearchJobStatus } from '@polaris/shared-types';
 import { StudioContextHelper } from '../studio-context.helper.js';
 import { ParsedAttachmentDocument } from './studio-attachment-pipeline.service.js';
+import { redisSearchQuotaGuard } from '../../../services/search-quota.guard.js';
 
 export interface SynthesizeArticleOptions {
   tenantId: string;
@@ -145,6 +146,7 @@ export class StudioArticleSynthesizerService {
           queryEmbedding: queryVector || undefined,
           attachedDocuments: parsedDocuments,
           providedUrls: externalUrls || referencedUrls || [],
+          quotaGuard: redisSearchQuotaGuard,
           onProgress: async (step, pct) => {
             const scaledPct = Math.round(20 + (pct / 100) * 15);
             await StudioContextHelper.emitProgress(tenantId, jobId, scaledPct, step);

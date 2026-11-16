@@ -1,5 +1,5 @@
-import { GoogleGenAI } from '@google/genai';
 import dns from 'node:dns';
+import { createGoogleGenAiClient, googleGenAiClient, normalizeGeminiModel } from '../client.js';
 import { AiTelemetryService } from '../telemetry/ai-telemetry.service.js';
 import { PartyIdeologyResolver } from '../party/party-ideology.resolver.js';
 
@@ -38,18 +38,14 @@ export class PromptRefinerService {
    */
   public static async refinePrompt(options: RefinePromptOptions): Promise<{ refinedPrompt: string }> {
     const { rawPrompt, style = 'poster', dapilName, memberName, partyAffiliation, commissionName } = options;
-    const apiKey =
-      process.env.GEMINI_API_KEY ||
-      process.env.GOOGLE_GENAI_API_KEY ||
-      process.env.GOOGLE_API_KEY;
+    const client = googleGenAiClient ?? createGoogleGenAiClient();
 
-    if (!apiKey || !rawPrompt || !rawPrompt.trim()) {
+    if (!client || !rawPrompt || !rawPrompt.trim()) {
       return { refinedPrompt: rawPrompt || '' };
     }
 
     try {
-      const client = new GoogleGenAI({ apiKey });
-      const model = process.env.GEMINI_LITE_MODEL || 'gemini-3.1-flash-lite';
+      const model = normalizeGeminiModel(process.env.GEMINI_LITE_MODEL || 'gemini-3.1-flash-lite');
 
       let instruction = '';
       if (style === 'article_agenda') {
@@ -140,10 +136,7 @@ Aturan:
       recentNewsHeadlines = [],
     } = options;
 
-    const apiKey =
-      process.env.GEMINI_API_KEY ||
-      process.env.GOOGLE_GENAI_API_KEY ||
-      process.env.GOOGLE_API_KEY;
+    const client = googleGenAiClient ?? createGoogleGenAiClient();
 
     // Fallback cerdas jika API key belum dikonfigurasi
     const fallbackTopics = [
@@ -153,11 +146,10 @@ Aturan:
       `Akses Modal Usaha UMKM & Lapangan Kerja Pemuda di ${dapilName || 'Dapil'}`,
     ];
 
-    if (!apiKey) return fallbackTopics;
+    if (!client) return fallbackTopics;
 
     try {
-      const client = new GoogleGenAI({ apiKey });
-      const model = process.env.GEMINI_LITE_MODEL || 'gemini-3.1-flash-lite';
+      const model = normalizeGeminiModel(process.env.GEMINI_LITE_MODEL || 'gemini-3.1-flash-lite');
 
       let partyIdeologyHint = '';
       if (partyAffiliation) {

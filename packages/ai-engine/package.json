@@ -16,12 +16,14 @@
   },
   "dependencies": {
     "@google/genai": "^2.30.0",
+    "@mozilla/readability": "^0.6.0",
     "@polaris/core-domain": "workspace:*",
     "@polaris/database": "workspace:*",
     "@polaris/shared-types": "workspace:*",
     "dotenv": "^16.4.7",
     "drizzle-orm": "^0.39.3",
     "langfuse": "^3.35.0",
+    "linkedom": "^0.18.15",
     "mammoth": "^1.13.0",
     "openai": "^4.85.4",
     "pdf-parse": "^2.4.5"

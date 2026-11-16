@@ -1,6 +1,6 @@
-import { openaiClient } from '../client.js';
+import { getTextCompletionClient } from '../client.js';
 import { AiTelemetryService } from '../telemetry/ai-telemetry.service.js';
-import { QuestionIntent } from '@polaris/shared-types';
+import { PolicySector, QuestionIntent } from '@polaris/shared-types';
 
 export interface ResearchPlanInput {
   userPrompt: string;
@@ -22,10 +22,11 @@ export interface PlannedResearchQuestion {
 export interface ResearchPlanOutput {
   mainTopic: string;
   coreProblemStatement: string;
+  searchLocale?: 'id' | 'global';
   questions: PlannedResearchQuestion[];
   internalRetrievalPlan: {
     regulationKeywords: string[];
-    mediaSector?: string;
+    mediaSector?: PolicySector;
     mediaKeywords: string[];
   };
   academicQueries: string[];
@@ -38,9 +39,11 @@ export class ResearchPlannerEngine {
    * Mencegah query dangkal 1-2 kata dan mewajibkan causal question & parameter bukti.
    */
   public static async createPlan(input: ResearchPlanInput): Promise<ResearchPlanOutput> {
+    const { client, resolveModel } = getTextCompletionClient();
+    const model = resolveModel('gpt-4o', 'gemini-2.5-flash');
     const telemetry = AiTelemetryService.startTrace({
       operation: 'autonomous-research-planner',
-      model: 'gpt-4o',
+      model,
       tenantId: input.tenantId,
       metadata: { targetRegion: input.targetRegion, promptLength: input.userPrompt.length },
     });
@@ -71,6 +74,7 @@ Format Output WAJIB berupa JSON murni dengan skema:
 {
   "mainTopic": "Judul investigasi tanpa tanda titik dua",
   "coreProblemStatement": "Ringkasan 2-3 kalimat mengenai akar masalah yang diselidiki",
+  "searchLocale": "id" | "global",
   "questions": [
     {
       "question": "Kalimat pertanyaan riset lengkap dan berbobot",
@@ -83,12 +87,13 @@ Format Output WAJIB berupa JSON murni dengan skema:
   ],
   "internalRetrievalPlan": {
     "regulationKeywords": ["kata kunci perda/regulasi"],
-    "mediaSector": "INFRASTRUKTUR" | "PERTANIAN" | "PENDIDIKAN" | "KESEHATAN" | "BANSOS_UMKM" | "LAINNYA",
+    "mediaSector": "FISKAL_ANGGARAN" | "INFRASTRUKTUR_RUANG" | "PANGAN_PERTANIAN" | "SOSIAL_KEMISKINAN" | "LAYANAN_DASAR" | "TATA_KELOLA_HUKUM" | "EKONOMI_KETENAGAKERJAAN" | "LINGKUNGAN_BENCANA" | null,
     "mediaKeywords": ["kata kunci berita lokal"]
   },
   "academicQueries": ["query jurnal/penelitian komparatif"],
   "externalWebQueries": ["query portal berita nasional / data kementerian"]
-}`;
+}
+Catatan searchLocale: Gunakan "id" secara default untuk isu nasional/daerah Indonesia, dan gunakan "global" hanya jika isu membahas makroekonomi internasional, ekspor-impor, atau geopolitik dunia.`;
 
     const userContent = `WILAYAH SASARAN: ${input.targetRegion}
 ARAHAN / PROMPT PENGGUNA:
@@ -99,8 +104,8 @@ ${input.providedUrls && input.providedUrls.length > 0 ? `\nTAUTAN DILAMPIRKAN:\n
 Susun rencana riset otonom terlengkap sekarang.`;
 
     try {
-      const response = await openaiClient.chat.completions.create({
-        model: 'gpt-4o',
+      const response = await client.chat.completions.create({
+        model,
         temperature: 0.2,
         response_format: { type: 'json_object' },
         messages: [
@@ -116,6 +121,16 @@ Susun rencana riset otonom terlengkap sekarang.`;
       if (parsed.mainTopic) {
         parsed.mainTopic = parsed.mainTopic.replace(/:/g, ' - ').replace(/\s+/g, ' ').trim();
       }
+
+      // Validasi mediaSector terhadap enum PolicySector resmi agar tidak terjadi silent SQL mismatch
+      const validSectors = new Set<string>(Object.values(PolicySector));
+      if (parsed.internalRetrievalPlan) {
+        const rawSector = parsed.internalRetrievalPlan.mediaSector;
+        parsed.internalRetrievalPlan.mediaSector =
+          rawSector && validSectors.has(rawSector) ? (rawSector as PolicySector) : undefined;
+      }
+
+      parsed.searchLocale = parsed.searchLocale === 'global' ? 'global' : 'id';
 
       await telemetry.endTrace({
         inputTokens: response.usage?.prompt_tokens || 0,

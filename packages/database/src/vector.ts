@@ -79,6 +79,75 @@ export async function findSimilarKnowledgeChunks(
   }
 }
 
+export interface SimilarMediaDiscourseResult {
+  id: string;
+  portalName: string;
+  articleTitle: string;
+  cleanSummary: string;
+  fullTextExcerpt: string | null;
+  originalUrl: string;
+  sentimentScore: number;
+  sector: string | null;
+  publishedAt: Date;
+  similarityScore: number;
+}
+
+/**
+ * Mencari berita media_discourses yang paling dekat secara semantik menggunakan pgvector.
+ */
+export async function findSimilarMediaDiscourses(
+  queryEmbedding: number[],
+  regionScopes: string[],
+  policySector?: string,
+  limit: number = 4,
+  minSimilarityScore: number = 0.55
+): Promise<SimilarMediaDiscourseResult[]> {
+  if (!Array.isArray(queryEmbedding) || queryEmbedding.length !== 1536) {
+    return [];
+  }
+
+  const hasVector = await checkPgVectorSupport();
+  if (!hasVector) {
+    return [];
+  }
+
+  try {
+    const sanitizedVectorString = `[${queryEmbedding.map((n) => (isNaN(n) ? 0 : n)).join(',')}]`;
+    const scopes = regionScopes.length > 0 ? regionScopes : ['NASIONAL', 'ALL'];
+
+    const results = await db.execute(sql`
+      WITH media_matches AS (
+        SELECT
+          md.id,
+          md.news_portal_name AS "portalName",
+          md.article_title AS "articleTitle",
+          md.clean_summary AS "cleanSummary",
+          md.full_text_excerpt AS "fullTextExcerpt",
+          md.original_url AS "originalUrl",
+          md.sentiment_score AS "sentimentScore",
+          md.sector,
+          md.published_at AS "publishedAt",
+          (1 - (md.vector_embedding <=> ${sanitizedVectorString}::vector)) AS "similarityScore"
+        FROM media_discourses md
+        WHERE md.vector_embedding IS NOT NULL
+          AND md.region_scope IN (${sql.join(scopes.map((s) => sql`${s}`), sql`, `)})
+          ${policySector ? sql`AND (md.sector = ${policySector} OR md.sector IS NULL)` : sql``}
+      )
+      SELECT *
+      FROM media_matches
+      WHERE "similarityScore" >= ${minSimilarityScore}
+      ORDER BY "similarityScore" DESC, "publishedAt" DESC
+      LIMIT ${limit};
+    `);
+
+    const rows = (results as any)?.rows || results;
+    return Array.isArray(rows) ? (rows as SimilarMediaDiscourseResult[]) : [];
+  } catch (err: any) {
+    console.warn(`[VectorQuery] Pencarian vektor media_discourses dilewati: ${err?.message || err}`);
+    return [];
+  }
+}
+
 export interface DatahubSimilarChunkResult {
   id: string;
   fileId: string;

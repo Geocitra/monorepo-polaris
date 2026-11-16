@@ -124,5 +124,22 @@ export async function registerScheduledCrawlers() {
     });
   }
 
-  console.log(`[ScraperQueue] ${VERIFIED_NEWS_FEEDS.length} feed berita terverifikasi dijadwalkan.`);
+  // Jadwalkan discovery berbasis cluster minat isu (issueInterests + wilayah) 2x sehari
+  await scraperQueue.add(
+    'interest-cluster-discovery',
+    {
+      jobType: 'INTEREST_CLUSTER_DISCOVERY',
+      regionScope: 'CLUSTERED',
+      feedUrl: 'internal://interest-cluster-discovery',
+      sourceName: 'POLARIS Interest Cluster Discovery',
+    },
+    {
+      repeat: {
+        pattern: '0 6,15 * * *',
+        tz: 'Asia/Jakarta',
+      },
+    }
+  );
+
+  console.log(`[ScraperQueue] ${VERIFIED_NEWS_FEEDS.length} feed berita + 1 interest cluster discovery dijadwalkan.`);
 }

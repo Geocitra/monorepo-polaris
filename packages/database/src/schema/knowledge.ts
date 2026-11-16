@@ -1,4 +1,4 @@
-import { pgTable, uuid, varchar, text, integer, real, timestamp, customType, check, index } from 'drizzle-orm/pg-core';
+import { pgTable, uuid, varchar, text, integer, real, boolean, jsonb, timestamp, customType, check, index, unique } from 'drizzle-orm/pg-core';
 import { sql } from 'drizzle-orm';
 import { tenantMembers } from './identity.js';
 import { docTypeEnum, legalStatusEnum } from './enums.js';
@@ -43,12 +43,18 @@ export const mediaDiscourses = pgTable('media_discourses', {
   regionScope: varchar('region_scope', { length: 100 }).notNull(),
   newsPortalName: varchar('news_portal_name', { length: 100 }).notNull(),
   originalUrl: text('original_url').notNull().unique(),
+  canonicalUrl: text('canonical_url'),
+  contentHash: varchar('content_hash', { length: 64 }),
   articleTitle: varchar('article_title', { length: 255 }).notNull(),
   cleanSummary: text('clean_summary').notNull(),
+  fullTextExcerpt: text('full_text_excerpt'),
   sentimentScore: real('sentiment_score').notNull(),
   sector: varchar('sector', { length: 50 }),
   relevanceScore: real('relevance_score'),
   primaryKeywords: text('primary_keywords').array(),
+  entities: jsonb('entities').$type<{ locations?: string[]; agencies?: string[]; figures?: string[] }>().default({}),
+  vectorEmbedding: pgVector1536('vector_embedding'),
+  discoveryChannel: varchar('discovery_channel', { length: 30 }).default('RSS').notNull(),
   publishedAt: timestamp('published_at', { withTimezone: true }).notNull(),
   createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
 }, (table) => ({
@@ -65,6 +71,21 @@ export const mediaDiscourses = pgTable('media_discourses', {
   ),
   sectorRegionPublishedAtIndex: index('idx_media_discourses_sector_region')
     .on(table.sector, table.regionScope, table.publishedAt),
+  canonicalUrlIndex: index('idx_media_discourses_canonical_url').on(table.canonicalUrl),
+  contentHashIndex: index('idx_media_discourses_content_hash').on(table.contentHash),
+}));
+
+export const tenantNewsMatches = pgTable('tenant_news_matches', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  tenantId: uuid('tenant_id').notNull().references(() => tenantMembers.id, { onDelete: 'cascade' }),
+  discourseId: uuid('discourse_id').notNull().references(() => mediaDiscourses.id, { onDelete: 'cascade' }),
+  relevanceScore: real('relevance_score').notNull(),
+  matchedInterest: varchar('matched_interest', { length: 150 }),
+  isRead: boolean('is_read').default(false).notNull(),
+  createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+}, (table) => ({
+  unqTenantDiscourse: unique('unq_tenant_news_matches_pair').on(table.tenantId, table.discourseId),
+  tenantScoreIdx: index('idx_tenant_news_matches_score').on(table.tenantId, table.relevanceScore),
 }));
 
 export const memberWritingMemories = pgTable('member_writing_memories', {

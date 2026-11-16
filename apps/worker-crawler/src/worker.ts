@@ -56,10 +56,13 @@ dalleWorker.on('failed', (job, err) => {
   console.error(`[Worker DALL-E] Tugas #${job?.id} gagal: ${err.message}`);
 });
 
-// 2. Worker Antrean Penyerapan Berita Daerah (Concurrency 2)
+// 2. Worker Antrean Penyerapan Berita Daerah & Cluster Minat Isu (Concurrency 2)
 const scraperWorker = new Worker<ScraperJobPayload>(
   SCRAPER_QUEUE_NAME,
   async (job) => {
+    if (job.data.jobType === 'INTEREST_CLUSTER_DISCOVERY') {
+      return await NewsCrawlerProcessor.processInterestClusterDiscovery();
+    }
     return await NewsCrawlerProcessor.processFeedScraping(job.data);
   },
   { connection: redisConnection, concurrency: 2 }

@@ -6,6 +6,7 @@ import {
   electoralDistricts,
   tenantMembers,
   mediaDiscourses,
+  tenantNewsMatches,
   constituentFeedbacks,
 } from '@polaris/database';
 import { PolicySector } from '@polaris/shared-types';
@@ -177,7 +178,8 @@ export class StudioRadarService {
       eq(mediaDiscourses.regionScope, 'NASIONAL'),
       ...regionAliases.map((alias) => sql`${normalizedNewsRegion} = ${alias}`),
     ];
-    const recentNews = await db
+    // 1. Prioritaskan berita yang sudah di-match khusus dengan issueInterests & dapil user
+    const matchedNewsRows = await db
       .select({
         id: mediaDiscourses.id,
         title: mediaDiscourses.articleTitle,
@@ -188,26 +190,67 @@ export class StudioRadarService {
         publishedAt: mediaDiscourses.publishedAt,
         regionScope: mediaDiscourses.regionScope,
         sector: mediaDiscourses.sector,
-        relevanceScore: mediaDiscourses.relevanceScore,
+        relevanceScore: tenantNewsMatches.relevanceScore,
+        matchedInterest: tenantNewsMatches.matchedInterest,
       })
-      .from(mediaDiscourses)
+      .from(tenantNewsMatches)
+      .innerJoin(mediaDiscourses, eq(tenantNewsMatches.discourseId, mediaDiscourses.id))
       .where(
         and(
-          gte(mediaDiscourses.publishedAt, sevenDaysAgo),
-          or(...newsScopeConditions),
-          isNotNull(mediaDiscourses.sector),
-          gte(mediaDiscourses.relevanceScore, 0.65),
-          ...(preferredSectors.length > 0
-            ? [inArray(mediaDiscourses.sector, preferredSectors)]
-            : [])
+          eq(tenantNewsMatches.tenantId, tenantId),
+          gte(mediaDiscourses.publishedAt, sevenDaysAgo)
         )
       )
-      .orderBy(
-        sql`CASE WHEN ${mediaDiscourses.regionScope} = 'NASIONAL' THEN 1 ELSE 0 END`,
-        desc(mediaDiscourses.relevanceScore),
-        desc(mediaDiscourses.publishedAt)
-      )
+      .orderBy(desc(tenantNewsMatches.relevanceScore), desc(mediaDiscourses.publishedAt))
       .limit(5);
+
+    const matchedIds = new Set(matchedNewsRows.map((row) => row.id));
+    let recentNews = [...matchedNewsRows];
+
+    // 2. Backfill dari media_discourses umum jika hasil personalisasi < 5
+    if (recentNews.length < 5) {
+      const generalNews = await db
+        .select({
+          id: mediaDiscourses.id,
+          title: mediaDiscourses.articleTitle,
+          portal: mediaDiscourses.newsPortalName,
+          url: mediaDiscourses.originalUrl,
+          summary: mediaDiscourses.cleanSummary,
+          sentiment: mediaDiscourses.sentimentScore,
+          publishedAt: mediaDiscourses.publishedAt,
+          regionScope: mediaDiscourses.regionScope,
+          sector: mediaDiscourses.sector,
+          relevanceScore: mediaDiscourses.relevanceScore,
+        })
+        .from(mediaDiscourses)
+        .where(
+          and(
+            gte(mediaDiscourses.publishedAt, sevenDaysAgo),
+            or(...newsScopeConditions),
+            isNotNull(mediaDiscourses.sector),
+            gte(mediaDiscourses.relevanceScore, 0.65),
+            ...(preferredSectors.length > 0
+              ? [inArray(mediaDiscourses.sector, preferredSectors)]
+              : [])
+          )
+        )
+        .orderBy(
+          sql`CASE WHEN ${mediaDiscourses.regionScope} = 'NASIONAL' THEN 1 ELSE 0 END`,
+          desc(mediaDiscourses.relevanceScore),
+          desc(mediaDiscourses.publishedAt)
+        )
+        .limit(5);
+
+      for (const item of generalNews) {
+        if (matchedIds.has(item.id) || recentNews.length >= 5) continue;
+        matchedIds.add(item.id);
+        recentNews.push({
+          ...item,
+          relevanceScore: item.relevanceScore ?? 0.65,
+          matchedInterest: null,
+        });
+      }
+    }
 
     const averageSentiment = recentNews.length
       ? recentNews.reduce((total, news) => total + news.sentiment, 0) / recentNews.length

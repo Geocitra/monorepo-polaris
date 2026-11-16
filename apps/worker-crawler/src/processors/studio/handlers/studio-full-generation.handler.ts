@@ -59,6 +59,7 @@ export class StudioFullGenerationHandler {
           photoUrl: tenantMembers.photoUrl,
           commissionName: tenantMembers.commissionName,
           legislativeLevel: tenantMembers.legislativeLevel,
+          issueInterests: tenantMembers.issueInterests,
         })
         .from(tenantMembers)
         .where(eq(tenantMembers.id, tenantId))

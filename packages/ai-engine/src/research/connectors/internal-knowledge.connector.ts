@@ -1,4 +1,12 @@
-import { db, mediaDiscourses, findSimilarKnowledgeChunks, SimilarChunkResult, sql, desc } from '@polaris/database';
+import {
+  db,
+  mediaDiscourses,
+  findSimilarKnowledgeChunks,
+  findSimilarMediaDiscourses,
+  sql,
+  desc,
+} from '@polaris/database';
+import { resolveRegionScopes } from '../utils/region-hierarchy.util.js';
 
 
 export interface InternalRegulationMatch {
@@ -66,32 +74,77 @@ export class InternalKnowledgeConnector {
       }
     }
 
-    // 2. Ambil Diskursus Berita Media Lokal dari tabel media_discourses
+    // 2. Ambil Diskursus Berita Media Lokal: Prioritaskan Vector Search (pgvector), lalu backfill SQL terbaru
     let news: InternalMediaDiscourseMatch[] = [];
     try {
-      const region = params.targetRegion.toUpperCase();
-      const whereClause = sql`
-        (${mediaDiscourses.regionScope} = ${region} OR ${mediaDiscourses.regionScope} = 'NASIONAL' OR ${mediaDiscourses.regionScope} = 'ALL')
-        ${params.policySector ? sql`AND (${mediaDiscourses.sector} = ${params.policySector} OR ${mediaDiscourses.sector} IS NULL)` : sql``}
-      `;
+      const regionScopes = resolveRegionScopes(params.targetRegion);
+      const seenIds = new Set<string>();
 
-      const rows = await db
-        .select({
-          id: mediaDiscourses.id,
-          portalName: mediaDiscourses.newsPortalName,
-          articleTitle: mediaDiscourses.articleTitle,
-          cleanSummary: mediaDiscourses.cleanSummary,
-          originalUrl: mediaDiscourses.originalUrl,
-          sentimentScore: mediaDiscourses.sentimentScore,
-          sector: mediaDiscourses.sector,
-          publishedAt: mediaDiscourses.publishedAt,
-        })
-        .from(mediaDiscourses)
-        .where(whereClause)
-        .orderBy(desc(mediaDiscourses.publishedAt))
-        .limit(maxNews);
+      if (params.queryEmbedding && params.queryEmbedding.length === 1536) {
+        const vectorNews = await findSimilarMediaDiscourses(
+          params.queryEmbedding,
+          regionScopes,
+          params.policySector,
+          maxNews,
+          0.55
+        );
+        for (const item of vectorNews) {
+          seenIds.add(item.id);
+          news.push({
+            id: item.id,
+            portalName: item.portalName,
+            articleTitle: item.articleTitle,
+            cleanSummary: item.fullTextExcerpt || item.cleanSummary,
+            originalUrl: item.originalUrl,
+            sentimentScore: item.sentimentScore,
+            sector: item.sector,
+            publishedAt: new Date(item.publishedAt),
+          });
+        }
+      }
 
-      news = rows;
+      if (news.length < maxNews) {
+        const remaining = maxNews - news.length;
+        const whereClause = sql`
+          ${mediaDiscourses.regionScope} IN (${sql.join(
+            regionScopes.map((scope) => sql`${scope}`),
+            sql`, `
+          )})
+          ${params.policySector ? sql`AND (${mediaDiscourses.sector} = ${params.policySector} OR ${mediaDiscourses.sector} IS NULL)` : sql``}
+        `;
+
+        const rows = await db
+          .select({
+            id: mediaDiscourses.id,
+            portalName: mediaDiscourses.newsPortalName,
+            articleTitle: mediaDiscourses.articleTitle,
+            cleanSummary: mediaDiscourses.cleanSummary,
+            fullTextExcerpt: mediaDiscourses.fullTextExcerpt,
+            originalUrl: mediaDiscourses.originalUrl,
+            sentimentScore: mediaDiscourses.sentimentScore,
+            sector: mediaDiscourses.sector,
+            publishedAt: mediaDiscourses.publishedAt,
+          })
+          .from(mediaDiscourses)
+          .where(whereClause)
+          .orderBy(desc(mediaDiscourses.publishedAt))
+          .limit(remaining + seenIds.size);
+
+        for (const row of rows) {
+          if (seenIds.has(row.id) || news.length >= maxNews) continue;
+          seenIds.add(row.id);
+          news.push({
+            id: row.id,
+            portalName: row.portalName,
+            articleTitle: row.articleTitle,
+            cleanSummary: row.fullTextExcerpt || row.cleanSummary,
+            originalUrl: row.originalUrl,
+            sentimentScore: row.sentimentScore,
+            sector: row.sector,
+            publishedAt: row.publishedAt,
+          });
+        }
+      }
     } catch (err: any) {
       console.warn(`[InternalKnowledgeConnector] Gagal mengambil media discourses: ${err.message}`);
     }

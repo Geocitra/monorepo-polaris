@@ -17,6 +17,8 @@ import { ResearchPlannerEngine, ResearchPlanInput, ResearchPlanOutput } from './
 import { AcademicDiscoveryConnector } from './connectors/academic-discovery.connector.js';
 import { InternalKnowledgeConnector } from './connectors/internal-knowledge.connector.js';
 import { WebDiscoveryConnector } from './connectors/web-discovery.connector.js';
+import { NewsDiscoveryCoordinator } from './services/news-discovery.coordinator.js';
+import { SearchQuotaGuard } from './connectors/search-discovery.types.js';
 import { SourceCredibilityAssessor } from './source-credibility.assessor.js';
 import { ClaimEvidenceExtractor } from './claim-evidence.extractor.js';
 import { DeterministicQualityGates } from './deterministic-gates.js';
@@ -29,6 +31,7 @@ export interface AutonomousResearchJobInput {
   queryEmbedding?: number[];
   attachedDocuments?: Array<{ name: string; type: string; extractedContent: string }>;
   providedUrls?: string[];
+  quotaGuard?: SearchQuotaGuard;
   onProgress?: (step: string, percent: number) => Promise<void> | void;
   repository?: IResearchJobRepositoryPort;
 }
@@ -137,9 +140,35 @@ export class AutonomousResearchOrchestrator {
         ? await AcademicDiscoveryConnector.searchCrossref(plan.academicQueries[0], 3)
         : [];
 
-      const webCandidates = input.providedUrls && input.providedUrls.length > 0
+      const manualWebCandidates = input.providedUrls && input.providedUrls.length > 0
         ? await WebDiscoveryConnector.fetchMultipleUrls(input.providedUrls)
         : [];
+
+      // Aktifkan externalWebQueries (sebelumnya orphan) secara hemat kuota jika bukti internal + manual kurang
+      const hasSufficientInternal = internalKnowledge.news.length >= 2 && internalKnowledge.regulations.length >= 1;
+      let autoWebCandidates: Awaited<ReturnType<typeof WebDiscoveryConnector.fetchMultipleUrls>> = [];
+      if (!hasSufficientInternal && plan.externalWebQueries && plan.externalWebQueries.length > 0) {
+        await emit('Menelusuri berita eksternal terbaru untuk melengkapi bukti...', 36);
+        const discovery = await NewsDiscoveryCoordinator.discoverAndFetchArticles({
+          queries: plan.externalWebQueries,
+          locale: plan.searchLocale || 'id',
+          targetRegion: input.targetRegion,
+          tenantId: input.tenantId,
+          maxUrlsToFetch: 4,
+          allowPaidFallback: internalKnowledge.news.length === 0,
+          preferredPaidProvider: 'TAVILY',
+          quotaGuard: input.quotaGuard,
+          cacheToMediaDiscourses: true,
+        });
+        autoWebCandidates = discovery.fetchedArticles;
+      }
+
+      const seenWebUrls = new Set<string>();
+      const webCandidates = [...manualWebCandidates, ...autoWebCandidates].filter((item) => {
+        if (seenWebUrls.has(item.canonicalUrl)) return false;
+        seenWebUrls.add(item.canonicalUrl);
+        return true;
+      });
 
       // 4. TAHAP 3: Source Registry, Deduplication & Credibility Assessment
       await repo.updateJobStatus(jobId, ResearchJobStatus.EVALUATING);

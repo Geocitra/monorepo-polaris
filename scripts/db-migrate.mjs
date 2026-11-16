@@ -675,6 +675,24 @@ async function runMigration() {
         created_at TIMESTAMPTZ NOT NULL DEFAULT now()
       );
 
+      ALTER TABLE media_discourses ADD COLUMN IF NOT EXISTS canonical_url TEXT;
+      ALTER TABLE media_discourses ADD COLUMN IF NOT EXISTS content_hash VARCHAR(64);
+      ALTER TABLE media_discourses ADD COLUMN IF NOT EXISTS full_text_excerpt TEXT;
+      ALTER TABLE media_discourses ADD COLUMN IF NOT EXISTS entities JSONB DEFAULT '{}'::jsonb;
+      ALTER TABLE media_discourses ADD COLUMN IF NOT EXISTS vector_embedding ${vectorColType};
+      ALTER TABLE media_discourses ADD COLUMN IF NOT EXISTS discovery_channel VARCHAR(30) NOT NULL DEFAULT 'RSS';
+
+      CREATE TABLE IF NOT EXISTS tenant_news_matches (
+        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        tenant_id UUID NOT NULL REFERENCES tenant_members(id) ON DELETE CASCADE,
+        discourse_id UUID NOT NULL REFERENCES media_discourses(id) ON DELETE CASCADE,
+        relevance_score REAL NOT NULL,
+        matched_interest VARCHAR(150),
+        is_read BOOLEAN NOT NULL DEFAULT false,
+        created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+        CONSTRAINT unq_tenant_news_matches_pair UNIQUE (tenant_id, discourse_id)
+      );
+
       -- 6. Constituent & UU PDP Vault
       CREATE TABLE IF NOT EXISTS constituent_feedbacks (
         id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -829,6 +847,9 @@ async function runMigration() {
       CREATE INDEX IF NOT EXISTS idx_inquiry_status_level ON license_inquiries (status, legislative_level);
       CREATE INDEX IF NOT EXISTS idx_tenant_members_username ON tenant_members(username);
       CREATE INDEX IF NOT EXISTS idx_media_discourses_sector_region ON media_discourses (sector, region_scope, published_at DESC);
+      CREATE INDEX IF NOT EXISTS idx_media_discourses_canonical_url ON media_discourses (canonical_url);
+      CREATE INDEX IF NOT EXISTS idx_media_discourses_content_hash ON media_discourses (content_hash);
+      CREATE INDEX IF NOT EXISTS idx_tenant_news_matches_score ON tenant_news_matches (tenant_id, relevance_score DESC);
       CREATE INDEX IF NOT EXISTS idx_social_accounts_tenant ON connected_social_accounts (tenant_id, platform, status);
       CREATE INDEX IF NOT EXISTS idx_social_accounts_token_refresh ON connected_social_accounts (status, token_expires_at);
       CREATE INDEX IF NOT EXISTS idx_content_briefs_tenant_status ON content_briefs(tenant_id, status, created_at DESC);
@@ -846,6 +867,7 @@ async function runMigration() {
         await sql.unsafe(`
           CREATE INDEX IF NOT EXISTS idx_knowledge_chunks_vector ON knowledge_chunks USING hnsw (vector_embedding vector_cosine_ops);
           CREATE INDEX IF NOT EXISTS idx_member_writing_memories_vector ON member_writing_memories USING hnsw (writing_style_embedding vector_cosine_ops);
+          CREATE INDEX IF NOT EXISTS idx_media_discourses_vector ON media_discourses USING hnsw (vector_embedding vector_cosine_ops);
         `);
         console.log('  -> HNSW Cosine Similarity indexes verified.');
       } catch (err) {
