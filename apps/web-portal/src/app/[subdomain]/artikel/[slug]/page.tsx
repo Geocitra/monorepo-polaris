@@ -2,6 +2,7 @@ import React from 'react';
 import { notFound } from 'next/navigation';
 import type { Metadata } from 'next';
 import { fetchPortalData, getNormalizedApiUrl } from '@/lib/api';
+import { normalizePublicArticle } from '@/lib/article-normalizer';
 import { PortalTemplateId } from '@polaris/shared-types';
 import { getFallbackArticle } from '@/components/article/fallback-articles';
 import { ArticleTemplateRenderer } from '@/components/article/ArticleTemplateRenderer';
@@ -110,10 +111,7 @@ export default async function TenantArticlePage({
     ? `https://${portal.customDomain}/artikel/${slug}`
     : (article.canonicalUrl || `${baseUrl}/artikel/${slug}`);
 
-  const articleWithCanonical = {
-    ...article,
-    canonicalUrl,
-  };
+  const articleWithCanonical = normalizePublicArticle(article, canonicalUrl);
 
   const articleJsonLd = buildArticleJsonLd({
     article,
