@@ -35,7 +35,7 @@ export class WebDiscoveryConnector {
 
     try {
       const { document } = parseHTML(html);
-      const reader = new Readability(document as unknown as Document);
+      const reader = new Readability(document as unknown as ConstructorParameters<typeof Readability>[0]);
       const article = reader.parse();
       const readableText = (article?.textContent || '')
         .replace(/[ \t]+/g, ' ')
