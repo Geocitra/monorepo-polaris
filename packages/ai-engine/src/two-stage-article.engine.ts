@@ -1,9 +1,17 @@
 import { GenerateArticleParams, GeneratedArticleResult } from '@polaris/core-domain';
-import { openaiClient } from './client.js';
+import { getTextCompletionClient } from './client.js';
 import { PromptTemplates } from './prompts.js';
 import { AiTelemetryService } from './telemetry/ai-telemetry.service.js';
 import { MasterEditorialSanitizer } from './master-editorial-sanitizer.js';
 import { PartyIdeologyResolver } from './party/party-ideology.resolver.js';
+import { ArticleLengthPlan, ArticleLengthPlanner } from './editorial/article-length.planner.js';
+import {
+  EditorialStyleProfile,
+  EditorialStyleProfileResolver,
+  MASTER_EDITORIAL_CORE_RULES,
+} from './editorial/editorial-style.resolver.js';
+
+export { EditorialStyleProfile, EditorialStyleProfileResolver, ArticleLengthPlanner };
 
 export interface ChapterBlueprint {
   chapterNumber: string;
@@ -39,177 +47,12 @@ export interface OutlineResult {
   chapters: ChapterBlueprint[];
 }
 
-export interface EditorialStyleProfile {
-  style: 'AKADEMIS' | 'SOLUTIF' | 'KRITIS' | 'POPULER';
-  label: string;
-  chapterAnatomyDirectives: string[];
-  headingFormat: 'FORMAL_NUMBERED' | 'JOURNALISTIC_FLOW';
-  toneDirective: string;
-  lexicalMandates: string[];
-  framingMandate: string;
-  chapterPromptGuidelines: string;
-}
-
-/**
- * EditorialStyleProfileResolver (GRASP: Information Expert & Polymorphism)
- *
- * Menerjemahkan kombinasi writingStyle ('AKADEMIS' | 'SOLUTIF' | 'KRITIS' | 'POPULER')
- * dan framingStance menjadi aturan deterministik: anatomi alur bab, aturan pemformatan heading,
- * rasio pembahasan masalah vs solusi, serta mandat leksikal dan pembobotan dewan.
- */
-export class EditorialStyleProfileResolver {
-  public static resolve(writingStyle?: string, framingStance?: string): EditorialStyleProfile {
-    const rawStyle = (writingStyle || '').toUpperCase().trim();
-    let style: 'AKADEMIS' | 'SOLUTIF' | 'KRITIS' | 'POPULER' = 'SOLUTIF';
-
-    if (rawStyle.includes('AKADEMIS') || rawStyle.includes('RESEARCH') || rawStyle.includes('ILMIAH')) {
-      style = 'AKADEMIS';
-    } else if (rawStyle.includes('KRITIS') || rawStyle.includes('PENGAWASAN') || rawStyle.includes('AUDIT')) {
-      style = 'KRITIS';
-    } else if (rawStyle.includes('POPULER') || rawStyle.includes('WARGA') || rawStyle.includes('OPINI')) {
-      style = 'POPULER';
-    } else {
-      style = 'SOLUTIF';
-    }
-
-    // BR-03: Sinergi Framing Stance
-    let framingMandate = '';
-    const rawFraming = (framingStance || '').toUpperCase();
-    if (rawFraming.includes('ANGGARAN') || rawFraming.includes('FISKAL')) {
-      framingMandate =
-        'FOKUS FRAMING ANGGARAN: Minimal 1 sub-poin bab wajib membedah alokasi APBD/APBN, efisiensi belanja daerah, pos anggaran sektoral dinas, dan mitigasi pemborosan fiskal.';
-    } else if (rawFraming.includes('PENGAWASAN') || rawFraming.includes('KRITIS')) {
-      framingMandate =
-        'FOKUS FRAMING PENGAWASAN & KRITIS: Sub-poin bab wajib menyoroti fungsi pengawasan komisi dewan terhadap deviasi target dinas/OPD mitra dan penegakan akuntabilitas birokrasi.';
-    } else if (rawFraming.includes('HUMANIS') || rawFraming.includes('LAPANGAN')) {
-      framingMandate =
-        'FOKUS FRAMING HUMANIS & LAPANGAN: Sub-poin bab wajib menonjolkan dampak sosial-ekonomi langsung bagi warga, petani, nelayan, atau kelompok rentan di Dapil.';
-    }
-
-    if (style === 'AKADEMIS') {
-      return {
-        style: 'AKADEMIS',
-        label: 'Akademis & Riset Kebijakan (Evidence-Based)',
-        headingFormat: 'FORMAL_NUMBERED',
-        chapterAnatomyDirectives: [
-          'Bab 1: Kerangka Konseptual & Urgensi Masalah (NARRATIVE_ONLY) - telaah latar belakang teoretis dan justifikasi ilmiah.',
-          'Bab 2: Bukti Empiris & Statistik Lapangan (NARRATIVE_WITH_TABLE atau NARRATIVE_WITH_CHART) - dekomposisi data sekunder & primer.',
-          'Bab 3: Harmonisasi Regulasi & Tata Kelola (NARRATIVE_WITH_ROOT_CAUSE) - telaah yuridis, hierarki aturan, dan hambatan struktural.',
-          'Bab 4+: Rekomendasi Kebijakan Institusional (NARRATIVE_WITH_ROADMAP) - kerangka intervensi berbasis kausalitas dan indikator terukur.',
-        ],
-        toneDirective: 'Objektif, Metodologis, Berimbang (Cover-Both-Sides), Teknokratis Tinggi.',
-        lexicalMandates: [
-          'Kepadatan sitasi bukti [^EV-x] maksimal untuk memvalidasi setiap postulat argumen.',
-          'Gunakan penalaran deduktif-analitis dan terminologi kebijakan publik baku (signifikansi statistik, kausalitas, dekomposisi, benchmark nasional).',
-          'Hindari klaim emosional tanpa sandaran data atau regulasi resmi.',
-        ],
-        framingMandate,
-        chapterPromptGuidelines: `GAYA AKADEMIS & EVIDENCE-BASED:
-- Format heading bab: ## Bab [Nomor]. [Judul Substantif Tanpa Titik Dua]
-- Kepadatan sitasi [^EV-x] wajib maksimal. Tautkan setiap klaim data ke token bukti yang disediakan.
-- Struktur kalimat deduktif, tenang, berwibawa, dan menyajikan analisis komparatif yang cermat.
-- Tabel/grafik harus memuat perbandingan indikator atau variabel penelitian yang jelas.`,
-      };
-    }
-
-    if (style === 'KRITIS') {
-      return {
-        style: 'KRITIS',
-        label: 'Kritis & Pengawasan Kinerja Daerah (Investigatif)',
-        headingFormat: 'FORMAL_NUMBERED',
-        chapterAnatomyDirectives: [
-          'Bab 1: Paradoks Klaim vs Realita Warga (NARRATIVE_ONLY) - kontras tajam antara janji dinas/klaim eksekutif dengan fakta lapangan.',
-          'Bab 2: Audit Deviasi Target & Alokasi Anggaran (NARRATIVE_WITH_TABLE) - tabel audit perbandingan target RPJMD vs realisasi dinas.',
-          'Bab 3: Anatomi Sumbatan Birokrasi & Tata Kelola (NARRATIVE_WITH_ROOT_CAUSE) - membedah akar kelalaian OPD dan celah pengawasan.',
-          'Bab 4+: Ultimatum Evaluasi & Rekomendasi Parlemen (NARRATIVE_WITH_ROADMAP) - langkah pengawasan komisi, desakan audit khusus, dan timeline perbaikan.',
-        ],
-        toneDirective: 'Investigatif, Tajam, Kritis, Menuntut Akuntabilitas Teknis Sektoral.',
-        lexicalMandates: [
-          'Awali paragraf dengan kalimat pendek menohok (high burstiness) untuk menegaskan ketimpangan temuan.',
-          'Gunakan verba evaluatif tajam: membedah deviasi, menguji kepatuhan, menelusuri kelalaian, menuntut pertanggungjawaban.',
-          'Tabel wajib membandingkan Klaim Dinas vs Temuan Lapangan atau Deviasi Anggaran.',
-        ],
-        framingMandate,
-        chapterPromptGuidelines: `GAYA KRITIS & PENGAWASAN PARLEMEN:
-- Format heading bab: ## Bab [Nomor]. [Judul Investigatif Tanpa Titik Dua]
-- Awali bab dengan membongkar paradoks atau jurang antara target dinas dengan kondisi riil warga.
-- Sajikan tabel audit komparasi klaim vs fakta deviasi anggaran/target.
-- Nada tegas wakil rakyat yang mengawal uang rakyat dan integritas pelayanan publik.`,
-      };
-    }
-
-    if (style === 'POPULER') {
-      return {
-        style: 'POPULER',
-        label: 'Populer & Suara Warga (Human Interest)',
-        headingFormat: 'JOURNALISTIC_FLOW',
-        chapterAnatomyDirectives: [
-          'Bagian 1: Potret Keseharian & Suara Warga (NARRATIVE_ONLY) - cerita pembuka humanis tentang kondisi nyata di akar rumput.',
-          'Bagian 2: Dampak Langsung bagi Keluarga & Komunitas (NARRATIVE_ONLY) - mengapa isu ini penting bagi kehidupan warga.',
-          'Bagian 3: Fakta Ringkas di Balik Layar (NARRATIVE_WITH_TABLE atau NARRATIVE_WITH_CHART) - ringkasan data yang mudah dicerna.',
-          'Bagian 4+: Langkah Bersama Mengawal Perubahan (NARRATIVE_WITH_ROADMAP) - ajakan partisipasi warga dan komitmen perjuangan dewan.',
-        ],
-        toneDirective: 'Komunikatif, Mengalir, Hangat, Ramah Pembaca HP, Berpihak pada Keseharian Warga.',
-        lexicalMandates: [
-          'DILARANG MENGGUNAKAN JARGON BIROKRASI KAKU (terjemahkan istilah dinas ke dalam bahasa percakapan cerdas sehari-hari).',
-          'Gunakan format heading jurnalistik mengalir: ## [Judul Menarik] (DILARANG mencantumkan kata "Bab I", "Bab II", dll).',
-          'Paragraf pendek dan bernapas (3-4 kalimat per paragraf), mengutamakan kenyamanan membaca di ponsel.',
-          'Bab pembuka wajib menyajikan sketsa cerita / vignette warga di Dapil.',
-        ],
-        framingMandate,
-        chapterPromptGuidelines: `GAYA POPULER & HUMAN INTEREST:
-- Format heading: ## [Judul Subbab Jurnalistik Mengalir] (JANGAN GUNAKAN KATA "BAB I", "BAB II", dll!).
-- Gaya bahasa komunikatif, lugas, segar, tanpa istilah birokratis yang membingungkan warga.
-- Pembuka naskah wajib diawali dengan potret kehidupan warga sehari-hari.
-- Jaga ritme bacaan tetap renyah, visual, dan memikat pembaca umum.`,
-      };
-    }
-
-    // Default: SOLUTIF
-    return {
-      style: 'SOLUTIF',
-      label: 'Solutif & Eksekutif (Quick Wins & Kebijakan Aksi)',
-      headingFormat: 'FORMAL_NUMBERED',
-      chapterAnatomyDirectives: [
-        'Bab 1: Pemetaan Masalah & Urgensi Lapangan (NARRATIVE_ONLY) - identifikasi kendala prioritas yang membutuhkan intervensi cepat.',
-        'Bab 2: Diagnosa Kapasitas Fiskal & Anggaran (NARRATIVE_WITH_TABLE) - tabel alokasi anggaran dan efisiensi belanja program.',
-        'Bab 3: Terobosan Taktis Dewan & Solusi Cepat (NARRATIVE_WITH_CHART atau NARRATIVE_ONLY) - skema solusi dan quick wins.',
-        'Bab 4+: Matriks Rencana Aksi & Peran OPD Mitra (NARRATIVE_WITH_ROADMAP) - pembagian tugas dinas, target waktu, dan indikator keberhasilan.',
-      ],
-      toneDirective: 'Eksekutif, Konstruktif, Berorientasi Solusi, Taktis, Lugas.',
-      lexicalMandates: [
-        'Rasio bahasan: 30% Masalah, 70% Solusi Konkret. Setiap kendala langsung dipasangkan dengan opsi solusi.',
-        'Gunakan verba eksekusi aktif: mengalokasikan, memangkas hambatan, menginisiasi, mengeksekusi, menuntaskan.',
-        'Fokus pada Quick Wins dan kepastian regulasi daerah.',
-      ],
-      framingMandate,
-      chapterPromptGuidelines: `GAYA SOLUTIF & EKSEKUTIF:
-- Format heading bab: ## Bab [Nomor]. [Judul Taktis Tanpa Titik Dua]
-- Tekankan 30% identifikasi masalah dan 70% perumusan solusi konkret.
-- Pastikan ada rekomendasi langkah cepat (quick wins) dan pembagian peran OPD mitra yang jelas.
-- Verba aktif dan optimisme terukur dalam menggerakkan pembangunan daerah.`,
-    };
-  }
-}
-
 export class TwoStageArticleEngine {
   /**
-   * Mengatur target panjang naskah & distribusi kata per bab
+   * Mengatur target panjang naskah & distribusi kata per bab secara dinamis
    */
-  private static resolveLengthPlan(targetLength?: string): {
-    totalTargetWords: number;
-    chapterCount: number;
-    wordsPerChapter: number;
-  } {
-    const raw = (targetLength || '').toUpperCase();
-    if (raw.includes('750') || raw.includes('SHORT')) {
-      return { totalTargetWords: 850, chapterCount: 2, wordsPerChapter: 450 };
-    }
-    if (raw.includes('1500') || raw.includes('1.500') || raw.includes('MEDIUM')) {
-      return { totalTargetWords: 1750, chapterCount: 4, wordsPerChapter: 450 };
-    }
-    // Default LONG: 3.000 - 3.500 kata (5 Bab eksekutif)
-    return { totalTargetWords: 3500, chapterCount: 5, wordsPerChapter: 700 };
+  public static resolveLengthPlan(targetLength?: string): ArticleLengthPlan {
+    return ArticleLengthPlanner.resolve(targetLength);
   }
 
   /**
@@ -243,36 +86,26 @@ ${profile.headingFormat === 'JOURNALISTIC_FLOW'
       }
 
 DEKOMPOSISI DETAIL BERTINGKAT (AUTO-DETAIL EXPANSION - BR-02):
-Untuk setiap bab pada "chapters", Anda WAJIB membedah rencana penulisan ke dalam sub-elemen berikut:
+Untuk setiap bab pada "chapters" (WAJIB tepat ${lengthPlan.chapterCount} bab/bagian), bedah rencana penulisan ke dalam sub-elemen berikut:
 1. "coreThesis": 1 kalimat proposisi pokok yang ingin dibuktikan atau diargumentasikan di bab tersebut.
-2. "paragraphSubPoints": Array berisi 3-4 string rencana alur bahasan rinci dari paragraf pertama hingga paragraf penutup bab (misal: ["Paragraf 1: Potret situasi di lapangan...", "Paragraf 2: Tinjauan data alokasi kuota...", "Paragraf 3: Evaluasi regulasi Perda terkait...", "Paragraf 4: Sikap rekomendasi komisi dewan..."]).
+2. "paragraphSubPoints": Array berisi tepat ${lengthPlan.subPointsPerChapter} string rencana alur bahasan rinci dari paragraf pertama hingga paragraf penutup bab agar mencapai target ~${lengthPlan.wordsPerChapter} kata per bab.
 3. "assignedEvidenceTokens": Array string berisi token bukti (misal: ["EV-1", "EV-2"]) yang relevan untuk dikutip di bab ini dari konteks data riset agar sitasi tersebar proporsional.
+
+${MASTER_EDITORIAL_CORE_RULES}
 
 PEDOMAN PERUMUSAN JUDUL (SANGAT PENTING - WAJIB DIPATUHI):
 1. DILARANG KERAS MENGGUNAKAN TANDA TITIK DUA (":") baik pada judul artikel maupun judul bab!
-2. HINDARI FORMULA KLISE AKADEMIS/MAKALAH seperti pola "Topik: Subjudul Penjelas".
-   Contoh DILARANG: "Transformasi Infrastruktur Desa: Jalan Menuju Kemajuan Berkelanjutan" (Ini sangat kaku, malas, dan terkesan seperti skripsi!).
-3. Buatlah judul artikel sebagai SATU KESATUAN TAJUK (HEADLINE) JURNALISTIK EKSEKUTIF yang utuh, bertenaga, mengalir alami, dan memikat (seperti tajuk investigasi Tempo, kolom opini Kompas, The Economist, atau Project Syndicate).
-   - Pola judul yang SANGAT DIANJURKAN:
-     * "Menepis Sengkarut Infrastruktur Demi Masa Depan Warga Desa"
-     * "Mengapa Pemerataan Pembangunan Desa Tak Boleh Lagi Ditunda"
-     * "Membangun Desa Tanpa Menumpuk Beban Utang Daerah"
-     * "Langkah Taktis Membuka Urat Nadi Ekonomi dari Pelosok"
-     * "Menata Ulang Tata Kelola Logistik Pedesaan Menuju Ketahanan Pangan"
-4. Judul bab ("title" pada chapters) juga DILARANG memakai tanda titik dua (":") dan em dash ("—"). Gunakan frasa bab yang substantif dan langsung menyentuh substansi masalah.
-
-PANTANGAN MASTER EDITORIAL & GARIS PEMISAH (ZERO-TOLERANCE):
-- DILARANG KERAS menggunakan kata "sekadar".
-- DILARANG KERAS menggunakan kata "nyata" (misal: "dampak nyata", "langkah nyata", "ikhtiar nyata", "perubahan nyata"). Gunakan penjelasan bukti atau capaian konkret.
-- DILARANG KERAS menggunakan tanda baca em dash (—). Gunakan koma, titik, atau tanda kurung.
-- DILARANG KERAS menyisipkan garis pemisah horizontal ("---", "***", "___", atau deretan tanda hubung) di bawah judul, antar-bab, maupun di sela paragraf. Teks harus mengalir alami tanpa pemisah mekanis.
+2. DILARANG pola judul dua frasa yang digabung dengan koma (misal "Membangun Desa, Menjaga Masa Depan") dan judul puitis abstrak ("Perjalanan yang Belum Selesai").
+3. HINDARI FORMULA KLISE AKADEMIS/MAKALAH seperti pola "Topik: Subjudul Penjelas".
+4. Buatlah judul artikel sebagai SATU KESATUAN TAJUK (HEADLINE) JURNALISTIK EKSEKUTIF yang spesifik, menunjukkan persoalan/kebijakan/aktor utama, dan mengalir alami.
+5. Judul bab ("title" pada chapters) juga DILARANG memakai tanda titik dua (":") dan em dash ("—").
 
 PEDOMAN VARIASI STRUKTURAL ORGANIK:
-- Bab I / Bagian 1 (Latar Belakang / Refleksi Awal): Format NARRATIVE_ONLY.
+- Bab I / Bagian 1 (Menetapkan Persoalan): Format NARRATIVE_ONLY.
 - Bab Data / Kondisi Lapangan: Format NARRATIVE_WITH_TABLE atau NARRATIVE_WITH_CHART.
-- Bab Akar Masalah: Format NARRATIVE_WITH_ROOT_CAUSE (bullet points analisis sebab-akibat).
-- Bab Solusi / Rekomendasi: Format NARRATIVE_WITH_ROADMAP (matriks langkah tindak konkret).
-- Bab Penutup: NARRATIVE_ONLY (persuasif, komitmen masa depan).
+- Bab Akar Masalah & Mekanisme Kebijakan: Format NARRATIVE_WITH_ROOT_CAUSE atau NARRATIVE_ONLY.
+- Bab Solusi / Implikasi: Format NARRATIVE_WITH_ROADMAP atau NARRATIVE_ONLY.
+- Bab Penutup (Sintesis Analitis): NARRATIVE_ONLY (akhiri dengan sintesis implikasi kebijakan konkret, DILARANG slogan motivasional).
 Jika ada bab yang cocok untuk visualisasi foto/infografis lapangan di tengah naskah, set includeVisualSlot: true dengan visualSlotCaption dan visualSlotPrompt yang relevan.
 
 Keluarkan hasil HANYA dalam format JSON valid berikut:
@@ -299,14 +132,16 @@ Keluarkan hasil HANYA dalam format JSON valid berikut:
   ]
 }`;
 
-    const completion = await openaiClient.chat.completions.create({
-      model: 'gpt-4o',
+    const { client, resolveModel } = getTextCompletionClient();
+    const model = resolveModel('gpt-4o', 'gemini-2.5-pro');
+    const completion = await client.chat.completions.create({
+      model,
       temperature: 0.35,
       response_format: { type: 'json_object' },
       messages: [
         {
           role: 'system',
-          content: 'Anda adalah perancang outline naskah eksekutif terkemuka. Keluarkan output JSON valid tanpa titik dua pada judul.',
+          content: 'Anda adalah perancang outline naskah eksekutif terkemuka. Keluarkan output JSON valid tanpa titik dua dan tanpa pola koma dua-frasa pada judul.',
         },
         { role: 'user', content: outlinePrompt },
       ],
@@ -474,100 +309,119 @@ ${evidenceDirective}
 ${params.regionalContextData ? params.regionalContextData.slice(0, 4000) : 'Gunakan penalaran kebijakan faktual tanpa mengarang pasal fiktif.'}
 ===================================================================================
 
-TARGET KATA NARASI MURNI: Minimal ${chapter.targetWords} kata narasi murni (HANYA MENGHITUNG TEKS PARAGRAF).
-MANDAT VOLUME & KEDALAMAN PARAGRAF (SANGAT PENTING):
-- Bab ini WAJIB diuraikan secara mendalam mengikuti panduan rencana alur paragraf di atas secara berurutan.
-- DILARANG MERINGKAS, DILARANG MENYINGKAT, dan DILARANG menghasilkan teks pendek! Kembangkan setiap poin argumen dengan rincian kronologis, data pendukung, telaah hukum/regulasi, serta analisis dampak kebijakan secara menyeluruh.
-PRINSIP DUAL-STREAM BUDGETING: Tabel, grafik, atau matriks adalah BONUS STRUKTURAL, BUKAN pengganti panjang paragraf narasi! Paragraf argumen harus tetap padat, mengalir, dan mendalam.
+TARGET KATA NARASI MURNI: Minimal ${chapter.targetWords} kata narasi murni (HANYA MENGHITUNG TEKS PARAGRAF, bukan tabel/grafik).
+MANDAT VOLUME & KEDALAMAN PARAGRAF (WAJIB):
+- Uraikan setiap sub-poin paragraf di atas menjadi paragraf penuh yang padat (minimal 100-130 kata per sub-poin) agar total bab mencapai minimal ${chapter.targetWords} kata.
+- Jelaskan mekanisme kerja kebijakan, aktor yang terlibat, sumber daya/anggaran, insentif, konsekuensi, serta perspektif tandingan bila relevan.
+- DILARANG MERINGKAS atau menghasilkan teks pendek! Tabel, grafik, atau matriks adalah BONUS STRUKTURAL, bukan pengganti panjang paragraf narasi.
 
 ${previousChapterSummary ? `KONTEKS BAB SEBELUMNYA (JAGA KONTINUITAS & HINDARI REPETISI):\n"${previousChapterSummary}"` : ''}
 
 ${structuralMandate}
 
+${MASTER_EDITORIAL_CORE_RULES}
+
 ATURAN KHUSUS PROFIL ${profile.style}:
 ${profile.chapterPromptGuidelines}
 
-ATURAN TATA BAHASA, EJAAN & MIKROLINGUISTIK (SANGAT PENTING - WAJIB DIPATUHI):
-1. PENEGAKAN STRUKTUR SPOK AKTIF (ACTOR-DRIVEN SYNTAX):
-   - Setiap klausa argumen WAJIB mencantumkan subjek pelaku/aktor kebijakan yang jelas di depan (contoh: "Pemerintah Daerah", "DPRD", "Dinas Bina Marga", "Badan Anggaran", "Warga petani").
-   - DILARANG KERAS menggunakan kalimat pasif mengambang tanpa subjek seperti:
-     * DILARANG: "Diharapkan program ini dapat berjalan optimal..." -> WAJIB: "Pemerintah Daerah harus memastikan program ini berjalan optimal..."
-     * DILARANG: "Perlu dilakukan evaluasi mendalam..." -> WAJIB: "Komisi Terkait mendesak evaluasi mendalam..."
-     * DILARANG: "Melalui langkah ini dinilai mampu mendorong..." -> WAJIB: "Alokasi anggaran ini mendorong percepatan..."
+ATURAN TATA BAHASA, EJAAN & MIKROLINGUISTIK:
+1. PENEGAKAN STRUKTUR SPOK AKTIF: Cantumkan subjek pelaku/aktor kebijakan yang jelas di depan klausa.
+2. LARANGAN OXFORD COMMA: Pada perincian 3+ elemen, dilarang koma sebelum "dan", "atau", "serta".
+3. PREPOSISI ALAMI: "di antaranya", "di mana", "ke depan" (dipisah spasi).
+4. KAMUS HITAM DIKSI KLISE AI: Dilarang "angin segar", "tonggak bersejarah", "garda terdepan", "merajut asa", "sinergi yang komprehensif", "pada hakikatnya", "seyogianya", "niscaya", "bukan sekadar... melainkan juga...".
+5. RITME KALIMAT VARIATIF: Selingi kalimat pendek tegas (5-8 kata) dengan kalimat analisis elaboratif (15-20 kata).
+6. LARANGAN PEMBUKA KLISE: Dilarang "Dalam era globalisasi...", "Sebagaimana kita ketahui...", "Seiring perkembangan zaman...".
+7. SITASI BUKTI: Sematkan [^EV-x] sesuai konteks data; jangan mengarang ID bukti fiktif.
 
-2. LARANGAN OXFORD COMMA PADA PERINCIAN ELEMEN (GAYA JURNALISTIK ALAMI):
-   - Pada perincian 3 elemen atau lebih, DILARANG meletakkan tanda koma sebelum kata sambung "dan", "atau", "serta".
-   - CONTOH SALAH (GAYA AI KLISE): "...kucing, anjing, dan ikan" / "...pendidikan, kesehatan, dan infrastruktur"
-   - CONTOH BENAR (GAYA ALAMI): "...kucing, anjing dan ikan" / "...pendidikan, kesehatan dan infrastruktur"
+FORMAT OUTPUT WAJIB:
+- Keluarkan LANGSUNG dalam format Markdown murni (JANGAN bungkus dengan JSON atau code block \`\`\`markdown).
+- Awali tepat dengan heading: ${headingDirective}
+- Di baris paling akhir setelah seluruh paragraf selesai, tambahkan tepat 1 baris penanda ringkasan:
+<!-- CHAPTER_SUMMARY: Ringkasan 2 kalimat fakta kunci dan argumen bab ini -->`;
 
-3. PANDUAN KATA BAKU & PREPOSISI ALAMI:
-   - Penulisan preposisi tempat wajib dipisah spasi: "di antaranya" (BUKAN "diantaranya"), "di mana", "ke depan".
-   - Gunakan kata baku yang wajar, komunikatif, dan mengalir natural, tidak kaku seperti mesin terjemahan.
+    const { client, resolveModel } = getTextCompletionClient();
+    const model = resolveModel('gpt-4o', 'gemini-2.5-pro');
+    const maxTokens = Math.min(6000, Math.max(2400, Math.ceil(chapter.targetWords * 4.5)));
 
-4. KAMUS HITAM DIKSI KLISE AI (AI SLOP BLACKLIST):
-   - DILARANG KERAS menggunakan metafora basi yang diobral AI:
-     * "angin segar"
-     * "tonggak bersejarah" / "tonggak penting"
-     * "garda terdepan"
-     * "menatap masa depan yang gemilang" / "merajut asa" / "membuka tabir"
-     * "sinergi yang komprehensif"
-     * "pada hakikatnya" / "seyogianya" / "niscaya"
-     * Pola berulang: "bukan sekadar... melainkan juga..."
-   - GANTI dengan verba tindakan teknokratis terukur: memitigasi, meninjau ulang, memangkas deviasi, mengalokasikan, mengaudit, mengesahkan, mengevaluasi.
-
-5. RITME KALIMAT VARIATIF (SENTENCE BURSTINESS):
-   - Selingi naskah dengan kalimat pendek tegas (5-8 kata) sebagai penegasan tesis, lalu lanjutkan dengan kalimat analisis elaboratif (15-20 kata). JANGAN membuat semua kalimat sama panjangnya!
-
-6. LARANGAN KALIMAT PEMBUKA KLISE:
-   - Dilarang membuka bab dengan: "Dalam era globalisasi saat ini...", "Sebagaimana kita ketahui bersama...", "Seiring dengan perkembangan zaman...".
-   - Awali langsung dengan proposisi tajam, data lapangan, atau situasi riil warga.
-   - Output WAJIB diawali dengan heading: ${headingDirective} (DILARANG menggunakan titik dua dan em dash).
-
-7. INTEGRASI SITASI BUKTI TERVERIFIKASI (EVIDENCE GROUNDING CITATION):
-   - Jika pada konteks data terdapat penanda bukti seperti [EV-1], [EV-2], dst., sematkan rujukan bukti tersebut di akhir klausa atau kalimat argumen yang bersangkutan dengan format: [^EV-1] atau [^EV-2].
-   - DILARANG KERAS mengarang ID bukti baru di luar yang tercantum dalam konteks data!
-
-8. PANTANGAN MASTER EDITORIAL & LARANGAN GARIS PEMISAH (ZERO-TOLERANCE):
-   - DILARANG KERAS menggunakan kata "sekadar" dalam konteks apa pun.
-   - DILARANG KERAS menggunakan kata "nyata" sebagai penegas generik (seperti "dampak nyata", "bukti nyata", "langkah nyata", "ikhtiar nyata"). Paparkan fakta, data, atau indikator secara spesifik dengan istilah konkret.
-   - DILARANG KERAS menggunakan tanda baca em dash (—). Gunakan tanda koma atau tanda kurung sesuai kebutuhan sintaksis.
-   - DILARANG KERAS MENYISIPKAN GARIS PEMISAH HORIZONTAL (seperti "---", "***", "___", atau deretan tanda hubung "------") di bawah judul bab, di antara subbab, maupun di sela-sela paragraf narasi. Transisi antar-paragraf dan antar-bab wajib murni mengalir alami melalui spasi paragraf normal tanpa garis pemisah mekanis.
-
-Keluarkan hasil dalam format JSON:
-
-{
-  "chapterMarkdown": "Isi lengkap bab dalam format Markdown...",
-  "keyTakeawaysSummary": "Ringkasan 2 kalimat fakta kunci & argumen bab ini untuk dioper ke bab berikutnya"
-}`;
-
-    const completion = await openaiClient.chat.completions.create({
-      model: 'gpt-4o',
+    const completion = await client.chat.completions.create({
+      model,
       temperature: 0.35,
-      max_tokens: 3500,
-      response_format: { type: 'json_object' },
+      max_tokens: maxTokens,
       messages: [
         {
           role: 'system',
           content:
-            'Anda adalah penulis kebijakan eksekutif papan atas. Patuhi seluruh kaidah mikrolinguistik, SPOK aktif, dan hapus koma sebelum kata dan.',
+            'Anda adalah penulis kebijakan & editorial eksekutif papan atas. Tulis Markdown langsung secara mendalam sesuai target kata tanpa membungkus JSON.',
         },
         { role: 'user', content: chapterPrompt },
       ],
     });
 
-    const parsed = JSON.parse(completion.choices[0]?.message?.content || '{}');
-    const inputTokens = completion.usage?.prompt_tokens || 0;
-    const outputTokens = completion.usage?.completion_tokens || 0;
-    const tokens = inputTokens + outputTokens;
+    let rawContent = (completion.choices[0]?.message?.content || '').trim();
+    let inputTokens = completion.usage?.prompt_tokens || 0;
+    let outputTokens = completion.usage?.completion_tokens || 0;
 
-    const rawMarkdown = parsed.chapterMarkdown || `${headingDirective}\n\n(Konten bab)`;
-    const sanitizedMarkdown = TwoStageArticleEngine.normalizeFormattingSpaces(
-      MasterEditorialSanitizer.sanitize(rawMarkdown)
+    // Ekstrak dan bersihkan marker ringkasan bab
+    let extractedSummary = '';
+    const summaryMatch = rawContent.match(/<!--\s*CHAPTER_SUMMARY:\s*([\s\S]*?)-->/i);
+    if (summaryMatch) {
+      extractedSummary = summaryMatch[1].trim();
+      rawContent = rawContent.replace(/<!--\s*CHAPTER_SUMMARY:[\s\S]*?-->/gi, '').trim();
+    }
+
+    let sanitizedMarkdown = TwoStageArticleEngine.normalizeFormattingSpaces(
+      MasterEditorialSanitizer.sanitize(rawContent || `${headingDirective}\n\n(Konten bab)`)
     );
+
+    // Mitigasi Panjang Kata: Maksimal 1x Expansion Pass jika narasi murni masih < 75% target bab
+    const currentNarrativeWords = ArticleLengthPlanner.countNarrativeWords(sanitizedMarkdown);
+    const minAcceptableWords = Math.floor(chapter.targetWords * 0.75);
+    if (chapter.targetWords >= 400 && currentNarrativeWords < minAcceptableWords) {
+      const deficitWords = chapter.targetWords - currentNarrativeWords;
+      const expandPrompt = `Bab berikut baru memiliki ~${currentNarrativeWords} kata narasi, sedangkan target minimumnya adalah ${chapter.targetWords} kata (kurang ~${deficitWords} kata).
+Lanjutkan dan perdalam pembahasan bab ini dengan menambahkan ${Math.max(200, deficitWords)} kata narasi baru berupa analisis mekanisme implementasi, perspektif tandingan yang terukur, dan implikasi jangka menengah tanpa mengulang kalimat yang sudah ada.
+Kembalikan HANYA paragraf Markdown tambahan (tanpa mengulang heading bab atau menulis ringkasan).
+
+Naskah Bab Saat Ini:
+${sanitizedMarkdown.slice(0, 5000)}`;
+
+      try {
+        const expandCompletion = await client.chat.completions.create({
+          model,
+          temperature: 0.35,
+          max_tokens: Math.min(3500, Math.max(1200, Math.ceil(deficitWords * 4.5))),
+          messages: [
+            {
+              role: 'system',
+              content:
+                'Anda adalah editor substansi senior. Perdalam analisis bab tanpa basa-basi, patuhi SPOK aktif, tanpa kata "sekadar", "nyata", em dash, atau garis pemisah.',
+            },
+            { role: 'user', content: expandPrompt },
+          ],
+        });
+
+        const expandedText = (expandCompletion.choices[0]?.message?.content || '').trim();
+        inputTokens += expandCompletion.usage?.prompt_tokens || 0;
+        outputTokens += expandCompletion.usage?.completion_tokens || 0;
+
+        if (expandedText.length >= 100) {
+          const cleanExpansion = TwoStageArticleEngine.normalizeFormattingSpaces(
+            MasterEditorialSanitizer.sanitize(expandedText)
+          );
+          sanitizedMarkdown = TwoStageArticleEngine.normalizeFormattingSpaces(
+            `${sanitizedMarkdown}\n\n${cleanExpansion}`
+          );
+        }
+      } catch (expandErr: any) {
+        console.warn(`[TwoStageArticleEngine] Gagal menjalankan expansion pass bab: ${expandErr?.message}`);
+      }
+    }
+
+    const tokens = inputTokens + outputTokens;
 
     return {
       chapterMarkdown: sanitizedMarkdown,
-      chapterSummary: parsed.keyTakeawaysSummary ? MasterEditorialSanitizer.sanitize(parsed.keyTakeawaysSummary) : '',
+      chapterSummary: extractedSummary ? MasterEditorialSanitizer.sanitize(extractedSummary) : '',
       tokensUsed: tokens,
       inputTokens,
       outputTokens,

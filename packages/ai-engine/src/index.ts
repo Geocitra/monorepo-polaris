@@ -6,6 +6,8 @@ export * from './knowledge/platform-facts.js';
 export * from './guardrails/prompt-sanitizer.js';
 export * from './prompts/concierge.prompt.js';
 export * from './telemetry/ai-telemetry.service.js';
+export * from './editorial/article-length.planner.js';
+export * from './editorial/editorial-style.resolver.js';
 export * from './two-stage-article.engine.js';
 export * from './research/research-planner.engine.js';
 export * from './research/source-credibility.assessor.js';
