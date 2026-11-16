@@ -134,18 +134,18 @@ describe('ChromiumPosterCompositor (Playwright Headless)', { timeout: 30000 }, (
     const texts = manifest!.layers.filter((l) => l.kind === 'text');
     const textOf = (t: string) => texts.find((l) => l.kind === 'text' && l.text === t);
 
-    // Setiap elemen kartu adalah layer teks tersendiri
-    expect(textOf('◈ 01')).toBeTruthy();
+    // Setiap elemen kartu adalah layer teks tersendiri (Template 04 memakai huruf akronim P-U-T-U-S)
+    expect(textOf('P')).toBeTruthy();
     expect(textOf('PILAR UJI 1')).toBeTruthy();
     expect(textOf(points[0].text)).toBeTruthy();
     expect(textOf('STAT A')).toBeTruthy();
     expect(textOf('JUDUL UTAMA PENGUJIAN')).toBeTruthy();
 
-    // Badge membawa kotak latarnya sendiri (pill)
-    const badge = textOf('◈ 01');
+    // Badge membawa kotak latarnya sendiri (lingkaran/pill)
+    const badge = textOf('P');
     expect(badge && badge.kind === 'text' && badge.box?.fill).toBeTruthy();
 
     // Kotak panel kartu tersedia sebagai frame
-    expect(manifest!.layers.some((l) => l.kind === 'frame' && l.role === 'apillars-cols-container')).toBe(true);
+    expect(manifest!.layers.some((l) => l.kind === 'frame' && l.role === 'apillars-grid-container')).toBe(true);
   });
 });
