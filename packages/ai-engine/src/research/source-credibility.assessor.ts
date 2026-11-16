@@ -1,4 +1,4 @@
-import { openaiClient } from '../client.js';
+import { getTextCompletionClient } from '../client.js';
 import { PublisherType, SourceLifecycle } from '@polaris/shared-types';
 import { AiTelemetryService } from '../telemetry/ai-telemetry.service.js';
 
@@ -130,8 +130,9 @@ Keluarkan JSON murni:
     });
 
     try {
-      const completion = await openaiClient.chat.completions.create({
-        model: 'gpt-4o-mini',
+      const { client, resolveModel } = getTextCompletionClient();
+      const completion = await client.chat.completions.create({
+        model: resolveModel('gpt-4o-mini', 'gemini-2.5-flash'),
         temperature: 0.1,
         response_format: { type: 'json_object' },
         messages: [{ role: 'user', content: evaluationPrompt }],

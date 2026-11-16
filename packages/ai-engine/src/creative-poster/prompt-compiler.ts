@@ -9,7 +9,7 @@ import {
   LAYOUT_BLOCK_SCHEMA,
   LayoutBlockSpec,
 } from './types.js';
-import { openaiClient } from '../client.js';
+import { getTextCompletionClient } from '../client.js';
 import { AiTelemetryService } from '../telemetry/ai-telemetry.service.js';
 import { resolveHarmoniousPalette, getRandomHarmoniousPalette } from './palettes.js';
 import { TwoStageArticleEngine } from '../two-stage-article.engine.js';
@@ -316,8 +316,9 @@ Keluarkan output HANYA dalam format JSON murni:
     });
 
     try {
-      const response = await openaiClient.chat.completions.create({
-        model: 'gpt-4o-mini',
+      const { client, resolveModel } = getTextCompletionClient();
+      const response = await client.chat.completions.create({
+        model: resolveModel('gpt-4o-mini', 'gemini-2.5-flash'),
         temperature: 0.25,
         response_format: { type: 'json_object' },
         messages: [{ role: 'system', content: systemPrompt }],

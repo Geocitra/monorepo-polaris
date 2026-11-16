@@ -1,4 +1,4 @@
-import { openaiClient } from '../client.js';
+import { getTextCompletionClient } from '../client.js';
 import { ClaimStatus, SupportType } from '@polaris/shared-types';
 import { AiTelemetryService } from '../telemetry/ai-telemetry.service.js';
 
@@ -105,8 +105,9 @@ Hasilkan JSON murni dengan format:
     });
 
     try {
-      const response = await openaiClient.chat.completions.create({
-        model: 'gpt-4o',
+      const { client, resolveModel } = getTextCompletionClient();
+      const response = await client.chat.completions.create({
+        model: resolveModel('gpt-4o', 'gemini-2.5-pro'),
         temperature: 0.1,
         response_format: { type: 'json_object' },
         messages: [{ role: 'user', content: extractionPrompt }],

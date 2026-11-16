@@ -1,5 +1,5 @@
 import { DatahubCategory } from '@polaris/shared-types';
-import { googleGenAiClient } from '../client.js';
+import { googleGenAiClient, normalizeGeminiModel } from '../client.js';
 import { AiTelemetryService } from '../telemetry/ai-telemetry.service.js';
 
 export interface ClassificationResult {
@@ -197,7 +197,7 @@ Kembalikan format JSON persis seperti ini (tanpa markdown backtick):
   "suggestedTitle": "Judul resmi yang rapi dan deskriptif"
 }`;
 
-    const modelName = process.env.GEMINI_TEXT_MODEL || 'gemini-3.8-flash';
+    const modelName = normalizeGeminiModel(process.env.GEMINI_TEXT_MODEL || 'gemini-3.8-flash');
     const telemetry = AiTelemetryService.startTrace({
       operation: 'datahub-document-classifier',
       model: modelName,

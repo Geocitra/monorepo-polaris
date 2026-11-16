@@ -1,6 +1,6 @@
 import { PDFParse } from 'pdf-parse';
 import mammoth from 'mammoth';
-import { googleGenAiClient } from '../client.js';
+import { googleGenAiClient, normalizeGeminiModel } from '../client.js';
 import { AiTelemetryService } from '../telemetry/ai-telemetry.service.js';
 
 export interface ExtractionResult {
@@ -274,7 +274,9 @@ Tugas Anda adalah membaca dan menyalin (transkrip) seluruh isi berkas/gambar ini
 - Abaikan coretan watermark yang tidak terbaca, tapi jangan buang data apapun.
 - Kembalikan langsung teks hasil ekstraksi dalam format Markdown bersih tanpa kalimat basa-basi seperti "Berikut transkripnya".`;
 
-    const modelName = process.env.GEMINI_VISION_MODEL || process.env.GEMINI_TEXT_MODEL || 'gemini-3.8-flash';
+    const modelName = normalizeGeminiModel(
+      process.env.GEMINI_VISION_MODEL || process.env.GEMINI_TEXT_MODEL || 'gemini-3.8-flash'
+    );
     const telemetry = AiTelemetryService.startTrace({
       operation: 'datahub-gemini-vision-ocr',
       model: modelName,

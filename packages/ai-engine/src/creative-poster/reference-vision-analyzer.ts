@@ -1,4 +1,4 @@
-import { openaiClient } from '../client.js';
+import { getTextCompletionClient } from '../client.js';
 import { AiTelemetryService } from '../telemetry/ai-telemetry.service.js';
 import { PreAnalyzedPosterBlueprint, CreativePosterArchetype } from './types.js';
 
@@ -115,8 +115,9 @@ Ekstrak geometri, palet warna, dan blueprint desain sesuai instruksi.`;
     });
 
     try {
-      const response = await openaiClient.chat.completions.create({
-        model: 'gpt-4o',
+      const { client, resolveModel } = getTextCompletionClient();
+      const response = await client.chat.completions.create({
+        model: resolveModel('gpt-4o', 'gemini-2.5-pro'),
         response_format: { type: 'json_object' },
         messages: [
           { role: 'system', content: systemPrompt },

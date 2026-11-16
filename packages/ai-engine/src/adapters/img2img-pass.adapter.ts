@@ -1,8 +1,7 @@
 import * as fs from 'fs';
 import * as path from 'path';
 import * as dotenv from 'dotenv';
-import { GoogleGenAI } from '@google/genai';
-import { googleGenAiClient, normalizeGeminiModel } from '../client.js';
+import { createGoogleGenAiClient, googleGenAiClient, normalizeGeminiModel } from '../client.js';
 import { AiTelemetryService } from '../telemetry/ai-telemetry.service.js';
 import type { ArtCollageCopy } from '../creative-poster/art-collage/art-collage.types.js';
 
@@ -344,8 +343,9 @@ export class Img2ImgPassAdapter {
     // tidak tertimpa difusi ulang dan kuota 9Router tidak terpakai 2x.
     // =========================================================================
     const enableExternalRelayout = process.env.ENABLE_EXTERNAL_GEMINI_RELAYOUT === 'true';
-    if (enableExternalRelayout && geminiApiKey) {
-      const client = googleGenAiClient || new GoogleGenAI({ apiKey: geminiApiKey });
+    const geminiClient = googleGenAiClient ?? createGoogleGenAiClient(geminiApiKey);
+    if (enableExternalRelayout && geminiClient) {
+      const client = geminiClient;
       const primaryModel = normalizeGeminiModel(
         process.env.POSTER_COLLAGE_IMAGE_MODEL ||
         process.env.GOOGLE_IMAGE_MODEL ||
