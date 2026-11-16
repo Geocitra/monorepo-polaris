@@ -146,6 +146,6 @@ describe('ChromiumPosterCompositor (Playwright Headless)', { timeout: 30000 }, (
     expect(badge && badge.kind === 'text' && badge.box?.fill).toBeTruthy();
 
     // Kotak panel kartu tersedia sebagai frame
-    expect(manifest!.layers.some((l) => l.kind === 'frame' && l.role === 'apillars-grid-container')).toBe(true);
+    expect(manifest!.layers.some((l) => l.kind === 'frame' && l.role === 'apillar-card')).toBe(true);
   });
 });
