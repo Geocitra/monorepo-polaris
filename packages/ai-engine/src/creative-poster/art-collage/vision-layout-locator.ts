@@ -10,7 +10,7 @@
  * output LLM bukan sumber kebenaran mutlak.
  */
 
-import { googleGenAiClient, openaiClient } from '../../client.js';
+import { googleGenAiClient, getTextCompletionClient, normalizeGeminiModel } from '../../client.js';
 import { AiTelemetryService } from '../../telemetry/ai-telemetry.service.js';
 import type {
   ArtCollageAnchor,
@@ -203,7 +203,12 @@ function extractJson(text: string): any {
 
 async function locateWithGemini(imageBase64: string, mimeType: string, prompt: string, tenantId?: string): Promise<any> {
   if (!googleGenAiClient) throw new Error('Gemini client tidak tersedia.');
-  const modelName = process.env.POSTER_VISION_MODEL || process.env.GEMINI_TEXT_MODEL || 'gemini-3.8-flash';
+  const modelName = normalizeGeminiModel(
+    process.env.POSTER_VISION_MODEL ||
+      process.env.GEMINI_VISION_MODEL ||
+      process.env.GEMINI_TEXT_MODEL ||
+      'gemini-3.8-flash'
+  );
   const telemetry = AiTelemetryService.startTrace({
     operation: 'vision-layout-locator-gemini',
     model: modelName,
@@ -241,15 +246,18 @@ async function locateWithGemini(imageBase64: string, mimeType: string, prompt: s
 }
 
 async function locateWithOpenAI(imageBase64: string, mimeType: string, prompt: string, tenantId?: string): Promise<any> {
-  const modelName = process.env.POSTER_VISION_OPENAI_MODEL || 'gpt-4o-mini';
+  const { client: clientToUse, isRouter, resolveModel } = getTextCompletionClient();
+  const baseOpenAiModel = process.env.POSTER_VISION_OPENAI_MODEL || 'gpt-4o-mini';
+  const modelName = isRouter ? resolveModel(baseOpenAiModel, 'gemini-3.8-flash') : baseOpenAiModel;
   const telemetry = AiTelemetryService.startTrace({
     operation: 'vision-layout-locator-openai',
     model: modelName,
     tenantId,
   });
   try {
-    const response = await openaiClient.chat.completions.create({
+    const response = await clientToUse.chat.completions.create({
       model: modelName,
+      stream: false,
       temperature: 0.1,
       response_format: { type: 'json_object' },
       messages: [

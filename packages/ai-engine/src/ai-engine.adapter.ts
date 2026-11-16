@@ -8,7 +8,7 @@ import {
   GeneratedConciergeResult,
 } from '@polaris/core-domain';
 import { InfographicDataSpecDto } from '@polaris/shared-types';
-import { openaiClient } from './client.js';
+import { openaiClient, routerClient, isRouterEnabled, normalizeGeminiModel } from './client.js';
 import { PromptTemplates } from './prompts.js';
 import { PromptSanitizer } from './guardrails/prompt-sanitizer.js';
 import { AiTelemetryService } from './telemetry/ai-telemetry.service.js';
@@ -142,8 +142,54 @@ export class OpenAIAIEngineAdapter implements ILLMProviderPort {
     tenantId?: string,
     size: '1024x1792' | '1024x1024' | '1792x1024' = '1024x1792'
   ): Promise<{ temporaryImageUrl: string; canonicalTraceId: string }> {
-    const preferredModel = process.env.OPENAI_IMAGE_MODEL || 'chatgpt-image-latest';
+    // Local dev mode (`AI_USE_ROUTER=true`): gunakan 9Router
+    if (isRouterEnabled && routerClient) {
+      const model = normalizeGeminiModel(process.env.GOOGLE_IMAGE_MODEL || 'gemini-3.1-flash-image');
+      const telemetry = AiTelemetryService.startTrace({
+        operation: '9router-image-generation',
+        channel: 'WEB_STUDIO',
+        activityType: 'STUDIO_INFOGRAPHIC_GENERATION',
+        model,
+        tenantId,
+        metadata: { promptLength: englishPrompt.length, requestedSize: size },
+      });
 
+      try {
+        console.log(`[AIEngineAdapter] Menghasilkan gambar via 9Router (${model})...`);
+        const response = await routerClient.images.generate({
+          model,
+          prompt: `${englishPrompt}. Strict negative constraint: clean background, no text, no typography.`,
+        });
+        const b64 = response.data?.[0]?.b64_json;
+        if (!b64) {
+          throw new Error('9Router tidak mengembalikan data gambar yang valid.');
+        }
+        const temporaryImageUrl = `data:image/jpeg;base64,${b64}`;
+        await telemetry.endTrace({
+          inputTokens: 0,
+          outputTokens: 0,
+          status: 'SUCCESS',
+          actualModel: model,
+          imageCalls: 1,
+          outputPreview: { temporaryImageUrl: temporaryImageUrl.slice(0, 100), model },
+        });
+        return {
+          temporaryImageUrl,
+          canonicalTraceId: telemetry.canonicalTraceId,
+        };
+      } catch (err: any) {
+        await telemetry.endTrace({
+          inputTokens: 0,
+          outputTokens: 0,
+          status: 'FAILED',
+          errorMessage: err.message || String(err),
+        });
+        throw new Error(`[9RouterImageError] Gagal generate gambar via 9Router: ${err.message}`);
+      }
+    }
+
+    // Production mode: gunakan OpenAI Images API langsung
+    const preferredModel = process.env.OPENAI_IMAGE_MODEL || 'chatgpt-image-latest';
     const telemetry = AiTelemetryService.startTrace({
       operation: 'dalle-image-generation',
       channel: 'WEB_STUDIO',
@@ -169,13 +215,12 @@ export class OpenAIAIEngineAdapter implements ILLMProviderPort {
       try {
         activeModel = modelToTry;
 
-        // Pemetaan dimensi yang didukung oleh masing-masing model
         let resolvedSize: any = size;
         if (modelToTry === 'chatgpt-image-latest') {
           if (size === '1024x1792') {
-            resolvedSize = '1024x1536'; // Rasio tegak portrait poster didukung oleh chatgpt-image-latest
+            resolvedSize = '1024x1536';
           } else if (size === '1792x1024') {
-            resolvedSize = '1536x1024'; // Rasio lanskap didukung oleh chatgpt-image-latest
+            resolvedSize = '1536x1024';
           } else {
             resolvedSize = '1024x1024';
           }
@@ -188,7 +233,6 @@ export class OpenAIAIEngineAdapter implements ILLMProviderPort {
           n: 1,
         };
 
-        // dall-e-3 mendukung opsi quality, chatgpt-image-latest menentukan kualitas secara dinamis
         if (modelToTry === 'dall-e-3') {
           requestParams.quality = 'standard';
         }
@@ -215,32 +259,25 @@ export class OpenAIAIEngineAdapter implements ILLMProviderPort {
           imageCalls: 1,
           outputPreview: { temporaryImageUrl: temporaryImageUrl.slice(0, 100), model: activeModel },
         });
-
         return {
           temporaryImageUrl,
           canonicalTraceId: telemetry.canonicalTraceId,
         };
       } catch (err: any) {
-        lastError = err;
-        console.warn(`[AIEngineAdapter] Model gambar '${modelToTry}' gagal: ${err.message}. Mencoba fallback berikutnya...`);
-        // Jika error adalah model does not exist atau izin model, lanjutkan ke model berikutnya di loop
+        lastError = err instanceof Error ? err : new Error(String(err));
+        console.warn(`[AIEngineAdapter] Model ${modelToTry} gagal (${lastError.message}), mencoba fallback...`);
       }
     }
 
-    const finalErrorMessage = lastError ? lastError.message : 'Semua model gambar gagal diinisialisasi.';
     await telemetry.endTrace({
       inputTokens: 0,
       outputTokens: 0,
       status: 'FAILED',
-      errorMessage: finalErrorMessage,
+      errorMessage: lastError?.message || 'Semua model image generation gagal.',
     });
-
-    throw new Error(`[AIEngineDalleError] Gagal me-render poster DALL-E: ${finalErrorMessage}`);
+    throw new Error(`[AIEngineImageError] ${lastError?.message || 'Gagal menghasilkan gambar.'}`);
   }
 
-  /**
-   * Menghasilkan kanvas dasar menggunakan Google Imagen 3 (native 4:5 + negative prompt)
-   */
   public async generateGoogleImagen(params: {
     prompt: string;
     aspectRatio?: '4:5' | '1:1' | '16:9' | '9:16' | '3:4' | '4:3';
@@ -311,24 +348,24 @@ export class OpenAIAIEngineAdapter implements ILLMProviderPort {
           imageNegativeAllow: blueprint.fixedConstraints?.imageNegativeAllow,
         });
       } catch (googleError: any) {
-        console.warn(
-          `[AIEngineAdapter] Google Imagen 3 gagal (${googleError.message}). Mengaktifkan failover otomatis ke OpenAI DALL-E...`
+        console.error(
+          `[AIEngineAdapter] Google Imagen / 9Router gagal (${googleError.message}). Failover OpenAI dinonaktifkan.`
         );
-        imageResult = await this.generateDalleImage(
-          compiledPrompt.englishPrompt,
-          params.tenantId,
-          targetSize
-        );
+        throw googleError;
       }
     } else {
       console.log(
-        `[AIEngineAdapter] Menghasilkan kanvas seni Layer 1 via OpenAI DALL-E (target size: ${targetSize})...`
+        `[AIEngineAdapter] Menghasilkan kanvas seni Layer 1 via 9Router (target size: ${targetSize})...`
       );
-      imageResult = await this.generateDalleImage(
-        compiledPrompt.englishPrompt,
-        params.tenantId,
-        targetSize
-      );
+      imageResult = await this.generateGoogleImagen({
+        prompt: compiledPrompt.englishPrompt,
+        aspectRatio: (compiledPrompt.aspectRatio as any) || '4:5',
+        tenantId: params.tenantId,
+        stylePromptSuffix: blueprint.scenePromptHint
+          ? PosterPromptCompiler.sanitizeImageGenerationPrompt(blueprint.scenePromptHint)
+          : undefined,
+        imageNegativeAllow: blueprint.fixedConstraints?.imageNegativeAllow,
+      });
     }
 
     return {

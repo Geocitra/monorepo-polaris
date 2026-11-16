@@ -20,15 +20,50 @@ export const openaiClient = new OpenAI({
   apiKey,
 });
 
-const geminiApiKey =
-  process.env.GEMINI_API_KEY ||
-  process.env.GOOGLE_GENAI_API_KEY ||
-  process.env.GOOGLE_API_KEY ||
-  '';
+export const routerBaseUrl =
+  process.env.ROUTER_BASE_URL ||
+  (process.env.GEMINI_BASE_URL ? `${process.env.GEMINI_BASE_URL.replace(/\/$/, '')}/v1` : 'http://127.0.0.1:20128/v1');
 
-export const googleGenAiClient = geminiApiKey
-  ? new GoogleGenAI({ apiKey: geminiApiKey })
-  : null;
+export const routerApiKey =
+  process.env.ROUTER_API_KEY ||
+  process.env.GEMINI_API_KEY ||
+  'sk-07939b504321369e-o98z03-e6b9ce2e';
+
+export const routerClient = new OpenAI({
+  apiKey: routerApiKey,
+  baseURL: routerBaseUrl,
+  maxRetries: 1,
+  timeout: 120000, // 120 detik: generasi gambar difusi dan copy LLM membutuhkan waktu 15-40 detik
+});
+
+export const geminiBaseUrl =
+  process.env.GEMINI_BASE_URL ||
+  (process.env.ROUTER_BASE_URL ? process.env.ROUTER_BASE_URL.replace(/\/v1\/?$/, '') : 'http://127.0.0.1:20128');
+
+export const isRouterEnabled = true;
+
+export function normalizeGeminiModel(modelName: string): string {
+  if (!modelName) return modelName;
+  if (modelName.startsWith('gemini-') || modelName.startsWith('claude-')) {
+    return `ag/${modelName}`;
+  }
+  return modelName;
+}
+
+export function createGoogleGenAiClient(apiKey?: string): GoogleGenAI {
+  const key = apiKey || routerApiKey;
+  return new GoogleGenAI({
+    apiKey: key,
+    httpOptions: {
+      baseUrl: geminiBaseUrl,
+      headers: {
+        Authorization: `Bearer ${key}`,
+      },
+    },
+  });
+}
+
+export const googleGenAiClient = createGoogleGenAiClient(routerApiKey);
 
 export const langfuseClient = new Langfuse({
   publicKey: process.env.LANGFUSE_PUBLIC_KEY || '',

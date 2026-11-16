@@ -1,3 +1,11 @@
+import * as dotenv from 'dotenv';
+import * as path from 'path';
+
+// Pastikan konfigurasi .env root monorepo dimuat pertama kali
+dotenv.config();
+dotenv.config({ path: path.resolve(process.cwd(), '.env') });
+dotenv.config({ path: path.resolve(process.cwd(), '../../.env') });
+
 import { Worker } from 'bullmq';
 import { redisConnection } from './config/redis.connection.js';
 import { DALLE_QUEUE_NAME, DalleJobPayload } from './queues/dalle.queue.js';
