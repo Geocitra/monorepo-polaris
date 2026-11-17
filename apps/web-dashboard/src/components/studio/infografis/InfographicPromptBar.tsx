@@ -77,19 +77,26 @@ const REVISION_CHIPS = [
   'Tingkatkan kesan resmi dan wibawa kebijakan',
 ];
 
+const POSTER_STYLE_FAMILIES = [
+  { id: 'AUTO', label: '✨ Otomatis (AI Art Director)', desc: 'AI memilih gaya poster terbaik sesuai isi topik' },
+  { id: 'KINETIC_MOTION', label: '⚡ Kinetic Hero', desc: 'Tipografi raksasa ekspresif & kontras tinggi ala Fly High' },
+  { id: 'POP_MAGAZINE_COLLAGE', label: '🖍️ Highlight Zine', desc: 'Judul stabilo miring & kolase stiker editorial' },
+  { id: 'STREET_JOURNALISM', label: '📰 Risograph Brutalist', desc: 'Bingkai tegas, blok kontras & kolase dokumenter' },
+  { id: 'SWISS_DUOTONE_EDITORIAL', label: '📐 Minimal Manifesto', desc: 'Ruang negatif lega, watermark angka & grid Swiss' },
+  { id: 'STATEMENT_PROFILE', label: '🏛️ Magazine Cover', desc: 'Sampul majalah klasik, kutipan tebal & fokus wibawa' },
+  { id: 'RETRO_CAMPAIGN', label: '📜 Vintage Chronicle', desc: 'Bingkai arsip retro & tiket sorotan klasik' },
+];
+
 export function InfographicPromptBar({
   prompt,
   onPromptChange,
   selectedStyle,
   onStyleChange,
-  selectedAspectRatio,
   onAspectRatioChange,
   onSubmit,
   loading,
   isUnpaid,
   hasExistingIteration,
-  includeUserPhoto = false,
-  onIncludeUserPhotoChange,
   selectedArchetype = 'AUTO',
   onArchetypeChange,
   selectedLayoutVariant = 'AUTO',
@@ -99,10 +106,9 @@ export function InfographicPromptBar({
 }: InfographicPromptBarProps) {
   const handleSelectStyle = (opt: (typeof STYLE_OPTIONS)[number]) => {
     onStyleChange(opt.id);
-    if (opt.id === 'poster' && (selectedAspectRatio === '16:9' || selectedAspectRatio === '4:3')) {
-      onAspectRatioChange('4:5');
-    } else if (opt.id === 'infographic' && selectedAspectRatio !== '4:5') {
-      onAspectRatioChange('4:5');
+    onAspectRatioChange('4:5');
+    if (onArchetypeChange) {
+      onArchetypeChange('AUTO');
     }
   };
 
@@ -119,7 +125,7 @@ export function InfographicPromptBar({
           </span>
         </div>
 
-        {/* CONTROLS: 2 PILIHAN FORMAT UTAMA (INFOGRAFIS VS POSTER) & RASIO */}
+        {/* CONTROLS: 2 PILIHAN FORMAT UTAMA (INFOGRAFIS VS POSTER) & INDIKATOR RASIO */}
         <div className="flex flex-wrap items-center gap-2.5">
           {/* 2 PILIHAN UTAMA: INFOGRAFIS vs POSTER */}
           <div className="flex items-center gap-1 bg-slate-100 dark:bg-slate-800/80 p-1 rounded-xl border border-slate-200/80 dark:border-slate-700/60">
@@ -132,11 +138,10 @@ export function InfographicPromptBar({
                   key={opt.id}
                   type="button"
                   onClick={() => handleSelectStyle(opt)}
-                  className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
-                    isSelected
+                  className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${isSelected
                       ? 'bg-white dark:bg-slate-900 text-blue-600 dark:text-blue-400 shadow-2xs'
                       : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
-                  }`}
+                    }`}
                   title={opt.desc}
                 >
                   <Icon className="h-3.5 w-3.5" />
@@ -146,87 +151,43 @@ export function InfographicPromptBar({
             })}
           </div>
 
-          {/* PILIHAN RASIO ASPEK (UKURAN TARGET) */}
-          <div className="flex items-center gap-1 bg-slate-100 dark:bg-slate-800/80 p-1 rounded-xl border border-slate-200/80 dark:border-slate-700/60">
-            <span className="text-[10px] font-bold text-slate-400 dark:text-slate-500 px-1 hidden sm:inline">
-              Rasio:
-            </span>
-            {ASPECT_RATIOS.map((r) => {
-              const isSelected = selectedAspectRatio === r.id;
-
-              return (
-                <button
-                  key={r.id}
-                  type="button"
-                  onClick={() => onAspectRatioChange(r.id)}
-                  className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-[11px] font-mono font-bold transition-all cursor-pointer ${
-                    isSelected
-                      ? 'bg-blue-600 text-white shadow-2xs'
-                      : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
-                  }`}
-                  title={`${r.label} — ${r.desc}`}
-                >
-                  <span>{r.label}</span>
-                </button>
-              );
-            })}
+          {/* INDIKATOR RASIO STANDAR 4:5 PORTRAIT HD */}
+          <div
+            className="inline-flex items-center gap-1.5 bg-slate-100 dark:bg-slate-800/80 px-3 py-1.5 rounded-xl border border-slate-200/80 dark:border-slate-700/60 text-[11px] font-mono font-bold text-slate-600 dark:text-slate-300"
+            title="Standar kanvas vertikal resolusi tinggi (1080×1350 px)"
+          >
+            <span>Rasio 4:5 HD</span>
           </div>
         </div>
       </div>
 
-      {/* CHECKBOX SEDERHANA & INTUITIF: PASANG FOTO SAYA DI POSTER */}
-      {isPoster && onIncludeUserPhotoChange && (
-        <div
-          role="button"
-          tabIndex={0}
-          onClick={() => onIncludeUserPhotoChange(!includeUserPhoto)}
-          onKeyDown={(e) => {
-            if (e.key === 'Enter' || e.key === ' ') {
-              e.preventDefault();
-              onIncludeUserPhotoChange(!includeUserPhoto);
-            }
-          }}
-          className={`flex items-center justify-between p-3.5 px-4 rounded-2xl border transition-all cursor-pointer select-none ${
-            includeUserPhoto
-              ? 'bg-blue-50/70 dark:bg-blue-950/30 border-blue-400 dark:border-blue-600 shadow-2xs'
-              : 'bg-slate-50/80 dark:bg-slate-800/40 border-slate-200 dark:border-slate-800 hover:border-slate-300 dark:hover:border-slate-700'
-          }`}
-        >
-          <div className="flex items-center gap-3.5">
-            {/* CHECKBOX KOTAK REAL CHECKMARK */}
-            <div
-              className={`w-5 h-5 rounded-md flex items-center justify-center transition-all shrink-0 ${
-                includeUserPhoto
-                  ? 'bg-blue-600 text-white ring-2 ring-blue-600/30 shadow-2xs'
-                  : 'border-2 border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900'
-              }`}
-            >
-              {includeUserPhoto && <Check className="w-3.5 h-3.5 stroke-[3]" />}
-            </div>
-
-            <div>
-              <div className="text-xs font-bold text-slate-900 dark:text-slate-100 flex items-center gap-2">
-                <span>Pasang foto saya di poster</span>
-                {includeUserPhoto ? (
-                  <span className="text-[10px] bg-blue-100 dark:bg-blue-900/60 text-blue-700 dark:text-blue-300 px-2 py-0.5 rounded-full font-bold">
-                    ✓ Aktif
-                  </span>
-                ) : (
-                  <span className="text-[10px] bg-slate-200 dark:bg-slate-800 text-slate-600 dark:text-slate-400 px-2 py-0.5 rounded-full font-medium">
-                    Tidak
-                  </span>
-                )}
-              </div>
-              <div className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">
-                {includeUserPhoto
-                  ? 'Foto profil resmi Anda akan dipotong rapi dan dipasang di sudut kanan bawah.'
-                  : 'Centang bila ingin menyertakan foto wajah. Bila tidak, poster hanya menampilkan latar visual kebijakan.'}
-              </div>
-            </div>
+      {/* KATALOG GAYA POSTER EKSPRESIF (ATM PINTEREST) */}
+      {isPoster && onArchetypeChange && (
+        <div className="space-y-2">
+          <div className="flex items-center justify-between">
+            <span className="text-[11px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+              Gaya Desain Poster (ATM Referensi):
+            </span>
           </div>
-
-          <div className="text-[11px] font-semibold text-slate-400 dark:text-slate-500 hidden sm:block">
-            {includeUserPhoto ? 'Wajah Asli Aktif' : 'Tanpa Wajah'}
+          <div className="flex flex-wrap gap-2">
+            {POSTER_STYLE_FAMILIES.map((fam) => {
+              const active = (selectedArchetype || 'AUTO') === fam.id;
+              return (
+                <button
+                  key={fam.id}
+                  type="button"
+                  disabled={loading}
+                  onClick={() => onArchetypeChange(fam.id)}
+                  title={fam.desc}
+                  className={`px-3 py-1.5 rounded-xl text-xs font-bold border transition-all cursor-pointer ${active
+                      ? 'bg-blue-600 text-white border-blue-600 shadow-2xs'
+                      : 'bg-slate-50 dark:bg-slate-800/60 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-700 hover:border-blue-400'
+                    }`}
+                >
+                  {fam.label}
+                </button>
+              );
+            })}
           </div>
         </div>
       )}
@@ -253,8 +214,8 @@ export function InfographicPromptBar({
               hasExistingIteration
                 ? `Ketik instruksi revisi (contoh: "Perjelas kutipan headline dan sesuaikan warna aksen...")`
                 : isPoster
-                ? `Tuliskan topik poster kebijakan atau aspirasi publik yang ingin dirancang (contoh: "Poster advokasi peningkatan beasiswa santri dan siswa berprestasi di pedesaan...")`
-                : `Tuliskan ide infografis data atau indikator capaian yang ingin divisualisasikan (contoh: "Infografis pemerataan akses internet di sekolah 3T dengan data alokasi dana desa...")`
+                  ? `Tuliskan topik poster kebijakan atau aspirasi publik yang ingin dirancang (contoh: "Poster advokasi peningkatan beasiswa santri dan siswa berprestasi di pedesaan...")`
+                  : `Tuliskan ide infografis data atau indikator capaian yang ingin divisualisasikan (contoh: "Infografis pemerataan akses internet di sekolah 3T dengan data alokasi dana desa...")`
             }
             className="w-full p-4 rounded-2xl border border-slate-200 dark:border-slate-700 bg-slate-50/70 dark:bg-slate-800/60 text-xs sm:text-sm text-slate-900 dark:text-slate-100 placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none focus:border-blue-600 dark:focus:border-blue-500 focus:bg-white dark:focus:bg-slate-800 transition-all resize-none"
           />
@@ -264,8 +225,8 @@ export function InfographicPromptBar({
               {hasExistingIteration
                 ? `Setiap revisi akan otomatis menciptakan iterasi/versi baru dalam format ${selectedAspectRatio}.`
                 : isPoster
-                ? `AI akan merancang poster kebijakan resmi berstandar publikasi editorial sesuai arahan dan rasio ${selectedAspectRatio}.`
-                : `AI akan menyusun infografis data kebijakan terstruktur sesuai arahan dan rasio ${selectedAspectRatio}.`}
+                  ? `AI akan merancang poster kebijakan resmi berstandar publikasi editorial sesuai arahan dan rasio ${selectedAspectRatio}.`
+                  : `AI akan menyusun infografis data kebijakan terstruktur sesuai arahan dan rasio ${selectedAspectRatio}.`}
             </span>
 
             <div className="flex items-center gap-2 ml-auto">
@@ -310,8 +271,8 @@ export function InfographicPromptBar({
                       {hasExistingIteration
                         ? 'Buat Versi Baru'
                         : isPoster
-                        ? 'Rancang Poster'
-                        : 'Rancang Infografis'}
+                          ? 'Rancang Poster'
+                          : 'Rancang Infografis'}
                     </span>
                   </>
                 )}

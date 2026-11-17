@@ -39,6 +39,7 @@ function KampanyeTerpaduContent() {
   const [topic, setTopic] = useState('');
   const [selectedStyle, setSelectedStyle] = useState<WritingStyle>('SOLUTIF');
   const [selectedLength, setSelectedLength] = useState<LengthTarget>('MEDIUM');
+  const [visualFormat, setVisualFormat] = useState<'poster' | 'infographic'>('poster');
   const [attachedFiles, setAttachedFiles] = useState<AttachedFileItem[]>([]);
   const [suggestedTopics, setSuggestedTopics] = useState<string[]>(DEFAULT_TOPICS);
   const [loadingAiTopics, setLoadingAiTopics] = useState(false);
@@ -620,6 +621,8 @@ function KampanyeTerpaduContent() {
           targetLength: lengthWordMap[selectedLength],
           writingStyle: selectedStyle,
           generateDallePoster: true,
+          visualFormat,
+          style: visualFormat,
           isUrgentOverquota,
           attachments: attachedFiles.map((f) => ({
             name: f.name,
@@ -935,6 +938,8 @@ function KampanyeTerpaduContent() {
               onStyleChange={setSelectedStyle}
               selectedLength={selectedLength}
               onLengthChange={setSelectedLength}
+              visualFormat={visualFormat}
+              onVisualFormatChange={setVisualFormat}
               attachedFiles={attachedFiles}
               onAddFiles={handleAddFiles}
               onRemoveFile={handleRemoveFile}
@@ -971,6 +976,7 @@ function KampanyeTerpaduContent() {
               partyAffiliation={profile?.partyAffiliation || ''}
               userSubdomain={profile?.subdomain}
               userCustomDomain={profile?.customDomain}
+              visualFormat={visualFormat}
             />
           </div>
 

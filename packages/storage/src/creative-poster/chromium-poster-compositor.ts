@@ -7,6 +7,7 @@ import { ChromiumFontFace } from './chromium-font-face.js';
 import type { PosterLayerManifest } from './poster-layer-manifest.js';
 import { PosterColorHarmonizer, isColorDark } from './poster-color-harmonizer.js';
 import { renderExtendedInfographicLayout, buildEditorialPieChartHtml } from './infographic-templates-extended.js';
+import { renderPosterArchetypeLayout } from './chromium-poster-layouts.js';
 
 /** Escape teks dinamis (hasil AI / input user) sebelum disisipkan ke HTML. */
 function esc(value: unknown): string {
@@ -149,14 +150,14 @@ function renderInfographicArchetypeLayout(params: {
   const resolvedVariant = typeof params.layoutVariant === 'number'
     ? Math.abs(params.layoutVariant) % 4
     : (() => {
-        let hash = 0;
-        const seed = `${params.headlineText}:${params.copy.kicker || ''}:${params.copy.points?.[0]?.label || ''}`;
-        for (let i = 0; i < seed.length; i++) {
-          hash = ((hash << 5) - hash) + seed.charCodeAt(i);
-          hash |= 0;
-        }
-        return Math.abs(hash) % 4;
-      })();
+      let hash = 0;
+      const seed = `${params.headlineText}:${params.copy.kicker || ''}:${params.copy.points?.[0]?.label || ''}`;
+      for (let i = 0; i < seed.length; i++) {
+        hash = ((hash << 5) - hash) + seed.charCodeAt(i);
+        hash |= 0;
+      }
+      return Math.abs(hash) % 4;
+    })();
 
   const points = copy.points || [];
 
@@ -280,11 +281,11 @@ function renderInfographicArchetypeLayout(params: {
         Array.isArray(rawSlices) && rawSlices.length >= 3
           ? rawSlices.slice(0, 4)
           : [
-              { label: 'PEMBANGUNAN UTAMA', percentage: 50 },
-              { label: 'PERBAIKAN BERKALA', percentage: 30 },
-              { label: 'PEMELIHARAAN RUTIN', percentage: 15 },
-              { label: 'STUDI KELAYAKAN', percentage: 5 },
-            ]
+            { label: 'PEMBANGUNAN UTAMA', percentage: 50 },
+            { label: 'PERBAIKAN BERKALA', percentage: 30 },
+            { label: 'PEMELIHARAAN RUTIN', percentage: 15 },
+            { label: 'STUDI KELAYAKAN', percentage: 5 },
+          ]
       );
       const chartTitle = (copy.chart?.title || 'PROPORSI ALOKASI ANGGARAN').replace(/\s*\(\s*100%\s*\)\s*/gi, '').trim();
       const colors = ['#1E293B', accentColor, '#D97706', '#0284C7'];
@@ -348,11 +349,11 @@ function renderInfographicArchetypeLayout(params: {
           Array.isArray(rawSlices) && rawSlices.length >= 3
             ? rawSlices.slice(0, 4)
             : [
-                { label: 'PEMBANGUNAN UTAMA', percentage: 50 },
-                { label: 'PERBAIKAN BERKALA', percentage: 30 },
-                { label: 'PEMELIHARAAN RUTIN', percentage: 15 },
-                { label: 'STUDI KELAYAKAN', percentage: 5 },
-              ]
+              { label: 'PEMBANGUNAN UTAMA', percentage: 50 },
+              { label: 'PERBAIKAN BERKALA', percentage: 30 },
+              { label: 'PEMELIHARAAN RUTIN', percentage: 15 },
+              { label: 'STUDI KELAYAKAN', percentage: 5 },
+            ]
         );
         const chartTitle = (copy.chart?.title || 'TARGET CAPAIAN & REALISASI KEBIJAKAN').replace(/\s*\(\s*100%\s*\)\s*/gi, '').trim();
         const colors = [accentColor, '#1E293B', '#D97706', '#0284C7'];
@@ -1154,12 +1155,12 @@ function renderInfographicArchetypeLayout(params: {
               </div>
               <div class="cg-body chart-body" style="padding: 10px 14px; height: 195px; box-sizing: border-box;">
                 ${buildEditorialPieChartHtml({
-                  copy,
-                  accentColor: '#EA580C',
-                  titleColor: '#0F172A',
-                  bodyColor: '#334155',
-                  halo: universalInkHalo,
-                })}
+        copy,
+        accentColor: '#EA580C',
+        titleColor: '#0F172A',
+        bodyColor: '#334155',
+        halo: universalInkHalo,
+      })}
               </div>
             </div>
 
@@ -1271,12 +1272,12 @@ function renderInfographicArchetypeLayout(params: {
               </div>
               <div class="cg-body chart-body" style="padding: 10px 14px; height: 195px; box-sizing: border-box;">
                 ${buildEditorialPieChartHtml({
-                  copy,
-                  accentColor: '#EA580C',
-                  titleColor: '#0F172A',
-                  bodyColor: '#334155',
-                  halo: universalInkHalo,
-                })}
+        copy,
+        accentColor: '#EA580C',
+        titleColor: '#0F172A',
+        bodyColor: '#334155',
+        halo: universalInkHalo,
+      })}
               </div>
             </div>
 
@@ -1456,12 +1457,12 @@ function renderInfographicArchetypeLayout(params: {
             </div>
             <div class="cg-body chart-body" style="padding: 10px 24px; height: 190px; box-sizing: border-box;">
               ${buildEditorialPieChartHtml({
-                copy,
-                accentColor: '#EA580C',
-                titleColor: '#0F172A',
-                bodyColor: '#334155',
-                halo: universalInkHalo,
-              })}
+        copy,
+        accentColor: '#EA580C',
+        titleColor: '#0F172A',
+        bodyColor: '#334155',
+        halo: universalInkHalo,
+      })}
             </div>
           </div>
 
@@ -1620,12 +1621,12 @@ function renderInfographicArchetypeLayout(params: {
                 </div>
                 <div class="cg-body chart-body" style="padding: 8px 12px; height: 320px; box-sizing: border-box;">
                   ${buildEditorialPieChartHtml({
-                    copy,
-                    accentColor: '#EA580C',
-                    titleColor: '#0F172A',
-                    bodyColor: '#334155',
-                    halo: universalInkHalo,
-                  })}
+        copy,
+        accentColor: '#EA580C',
+        titleColor: '#0F172A',
+        bodyColor: '#334155',
+        halo: universalInkHalo,
+      })}
                 </div>
               </div>
 
@@ -2198,14 +2199,14 @@ function renderInfographicArchetypeLayout(params: {
         <circle cx="140" cy="140" r="108" fill="none" stroke="#6B4423" stroke-width="1.2" />
         <circle cx="140" cy="140" r="98" fill="none" stroke="#3A2010" stroke-width="0.8" />
         ${Array.from({ length: 72 })
-          .map((_, i) => {
-            const deg = i * 5;
-            const isMajor = i % 9 === 0;
-            const isMid = i % 3 === 0;
-            const len = isMajor ? 12 : isMid ? 8 : 4;
-            return `<line x1="140" y1="${24}" x2="140" y2="${24 + len}" stroke="#3A2010" stroke-width="${isMajor ? 2.5 : isMid ? 1.5 : 0.8}" transform="rotate(${deg}, 140, 140)" />`;
-          })
-          .join('')}
+        .map((_, i) => {
+          const deg = i * 5;
+          const isMajor = i % 9 === 0;
+          const isMid = i % 3 === 0;
+          const len = isMajor ? 12 : isMid ? 8 : 4;
+          return `<line x1="140" y1="${24}" x2="140" y2="${24 + len}" stroke="#3A2010" stroke-width="${isMajor ? 2.5 : isMid ? 1.5 : 0.8}" transform="rotate(${deg}, 140, 140)" />`;
+        })
+        .join('')}
         <!-- 8-Point Compass Rose -->
         <polygon points="140,140 140,65 147,133" fill="#D97706" transform="rotate(45, 140, 140)" />
         <polygon points="140,140 140,65 133,133" fill="#FDE68A" transform="rotate(45, 140, 140)" />
@@ -2256,11 +2257,11 @@ function renderInfographicArchetypeLayout(params: {
           </linearGradient>
         </defs>
         ${Array.from({ length: 48 })
-          .map((_, i) => {
-            const deg = i * 7.5;
-            return `<polygon points="140,6 144,18 136,18" fill="#B45309" stroke="#451A03" stroke-width="0.8" transform="rotate(${deg}, 140, 140)" />`;
-          })
-          .join('')}
+        .map((_, i) => {
+          const deg = i * 7.5;
+          return `<polygon points="140,6 144,18 136,18" fill="#B45309" stroke="#451A03" stroke-width="0.8" transform="rotate(${deg}, 140, 140)" />`;
+        })
+        .join('')}
         <circle cx="140" cy="140" r="130" fill="url(#sealBezelGrad)" stroke="#351403" stroke-width="4" />
         <circle cx="140" cy="140" r="122" fill="none" stroke="#FEF08A" stroke-width="2" stroke-dasharray="3 2" />
         <circle cx="140" cy="140" r="116" fill="url(#sealGoldGrad)" stroke="#78350F" stroke-width="3" />
@@ -2322,18 +2323,18 @@ function renderInfographicArchetypeLayout(params: {
         <circle cx="140" cy="140" r="124" fill="none" stroke="#FEF08A" stroke-width="2" stroke-dasharray="4 2" />
         <circle cx="140" cy="140" r="95" fill="none" stroke="rgba(254,240,138,0.3)" stroke-width="24" />
         ${[
-          { angle: 0, label: '01' },
-          { angle: 90, label: '02' },
-          { angle: 180, label: '03' },
-          { angle: 270, label: '04' },
-        ]
-          .map(({ angle, label }) => `
+        { angle: 0, label: '01' },
+        { angle: 90, label: '02' },
+        { angle: 180, label: '03' },
+        { angle: 270, label: '04' },
+      ]
+        .map(({ angle, label }) => `
             <g transform="rotate(${angle}, 140, 140)">
               <circle cx="140" cy="45" r="16" fill="#D97706" stroke="#FEF08A" stroke-width="2" />
               <text x="140" y="50" text-anchor="middle" font-family="'Bebas Neue', sans-serif" font-size="14" font-weight="900" fill="#FFFFFF">${label}</text>
             </g>
           `)
-          .join('')}
+        .join('')}
         <circle cx="140" cy="140" r="48" fill="#B45309" stroke="#FEF08A" stroke-width="2.5" />
         <text x="140" y="136" text-anchor="middle" font-family="'Bebas Neue', sans-serif" font-size="20" font-weight="900" fill="#FFFFFF" letter-spacing="1">SIKLUS</text>
         <text x="140" y="152" text-anchor="middle" font-family="'Bebas Neue', sans-serif" font-size="12" font-weight="800" fill="#FEF08A" letter-spacing="1">TERPADU</text>
@@ -5711,8 +5712,8 @@ export class ChromiumPosterCompositor {
     const blendModeUsed: 'multiply' | 'normal' = isInfographic
       ? 'normal'
       : isLightPaper
-      ? 'multiply'
-      : 'normal';
+        ? 'multiply'
+        : 'normal';
 
     const primaryColor = isLightPaper ? '#111827' : '#FFFFFF';
     const accentColor = safeHex(palette.accentHex, isLightPaper ? '#DC2626' : '#FBBF24');
@@ -5774,8 +5775,8 @@ export class ChromiumPosterCompositor {
     if (isInfographic) {
       const photoSlots =
         archetype === 'INFOGRAPHIC_CHRONICLE_GRID' ||
-        archetype === 'INFOGRAPHIC_RADIAL_CLOCK' ||
-        archetype === 'INFOGRAPHIC_NARRATIVE_WAVE'
+          archetype === 'INFOGRAPHIC_RADIAL_CLOCK' ||
+          archetype === 'INFOGRAPHIC_NARRATIVE_WAVE'
           ? await extractInfographicPhotoSlots(effectiveCanvasBuffer, bgBase64, params.secondaryCanvasBuffers)
           : undefined;
 
@@ -5799,118 +5800,25 @@ export class ChromiumPosterCompositor {
       mainContentHtml = infoLayout.html;
       customLayoutCss = infoLayout.css;
     } else {
-      const posterPoints = (copy.points || [])
-        .map(
-          (p: ChromiumPosterPoint) => `
-          <div class="point-item">
-            <div class="point-label">
-              ✦ ${esc(p.label)}
-            </div>
-            <div class="point-text">
-              ${esc(p.text)}
-            </div>
-          </div>
-        `
-        )
-        .join('');
-
-      customLayoutCss = `
-        /* Unified Editorial Flow Column: Menjamin teks tidak bertumpuk */
-        .editorial-flow-zone {
-          position: absolute;
-          top: ${flowTop}px;
-          left: ${flowLeft}px;
-          width: ${safeFlowWidth}px;
-          max-height: ${flowMaxHeight}px;
-          box-sizing: border-box;
-          display: flex;
-          flex-direction: column;
-          text-shadow: ${textShadow};
-        }
-
-        .kicker {
-          font-size: 15px;
-          font-weight: 800;
-          color: ${accentColor};
-          letter-spacing: 2.5px;
-          text-transform: uppercase;
-          margin-bottom: 6px;
-        }
-
-        .headline {
-          font-family: 'Bebas Neue', 'Anton', sans-serif;
-          font-size: ${titleFontSize}px;
-          line-height: 0.94;
-          color: ${primaryColor};
-          letter-spacing: 1.5px;
-          margin-bottom: 12px;
-          word-break: break-word;
-        }
-
-        .deck {
-          font-family: 'Playfair Display', serif;
-          font-size: 21px;
-          line-height: 1.35;
-          color: ${secondaryColor};
-          font-style: italic;
-          font-weight: 500;
-          max-width: 96%;
-          margin-bottom: 16px;
-        }
-
-        .points-container {
-          display: flex;
-          flex-direction: column;
-          gap: 12px;
-          margin-bottom: 12px;
-        }
-
-        .point-item {
-          display: flex;
-          flex-direction: column;
-        }
-
-        .point-label {
-          font-size: 14px;
-          font-weight: 800;
-          color: ${accentColor};
-          letter-spacing: 1.5px;
-          text-transform: uppercase;
-          margin-bottom: 2px;
-        }
-
-        .point-text {
-          font-size: 17px;
-          line-height: 1.35;
-          color: ${secondaryColor};
-          font-weight: 500;
-        }
-
-        .closing-line {
-          font-size: 14.5px;
-          font-weight: 700;
-          color: ${primaryColor};
-          margin-top: 6px;
-          background: ${isLightPaper ? 'rgba(255, 255, 255, 0.92)' : 'rgba(15, 23, 42, 0.88)'};
-          border-left: 4px solid ${accentColor};
-          padding: 8px 14px;
-          border-radius: 6px;
-          line-height: 1.35;
-          box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
-        }
-      `;
-
-      mainContentHtml = `
-        <div class="editorial-flow-zone">
-          <div class="kicker">${esc(copy.kicker || 'TELAAH KEBIJAKAN')}</div>
-          <div class="headline">${esc(headlineText)}</div>
-          ${copy.deck ? `<div class="deck">${esc(copy.deck)}</div>` : ''}
-          <div class="points-container">
-            ${posterPoints}
-          </div>
-          ${copy.closingLine ? `<div class="closing-line">${esc(copy.closingLine)}</div>` : ''}
-        </div>
-      `;
+      const posterLayout = renderPosterArchetypeLayout({
+        archetype,
+        layoutVariant: params.layoutVariant,
+        copy,
+        headlineText,
+        primaryColor,
+        accentColor,
+        secondaryColor,
+        isLightPaper,
+        textShadow,
+        flowTop,
+        flowLeft,
+        safeFlowWidth,
+        flowMaxHeight,
+        titleFontSize,
+        currentYear,
+      });
+      mainContentHtml = posterLayout.html;
+      customLayoutCss = posterLayout.css;
     }
 
     const html = `<!DOCTYPE html>

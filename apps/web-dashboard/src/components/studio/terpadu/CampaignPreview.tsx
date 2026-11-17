@@ -44,6 +44,7 @@ interface CampaignPreviewProps {
   isBackgroundRenderingPoster?: boolean;
   userSubdomain?: string;
   userCustomDomain?: string;
+  visualFormat?: 'poster' | 'infographic';
 }
 
 export function CampaignPreview({
@@ -60,6 +61,7 @@ export function CampaignPreview({
   isBackgroundRenderingPoster = false,
   userSubdomain,
   userCustomDomain,
+  visualFormat = 'poster',
 }: CampaignPreviewProps) {
   const { toast } = useToast();
   const [copiedAll, setCopiedAll] = useState(false);
@@ -146,12 +148,13 @@ export function CampaignPreview({
     setRegeneratingPoster(true);
     toast({
       type: 'info',
-      title: 'Merender Visual Poster...',
-      description: 'Sistem sedang memproses poster visual baru di antrean background.',
+      title: visualFormat === 'infographic' ? 'Merender Infografis Data...' : 'Merender Visual Poster...',
+      description: 'Sistem sedang memproses materi visual baru di antrean background.',
     });
     try {
       const res = await ApiClient.request<any>(`/studio/articles/${publicationId}/poster/regenerate`, {
         method: 'POST',
+        body: JSON.stringify({ visualFormat }),
       });
       const jobId = res?.jobId;
       if (jobId) {

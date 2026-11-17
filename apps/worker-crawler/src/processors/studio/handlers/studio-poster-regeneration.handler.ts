@@ -1,11 +1,8 @@
 import { Job } from 'bullmq';
-import { and, eq } from 'drizzle-orm';
+import { and, eq, inArray } from 'drizzle-orm';
 import {
-  db,
   contentPublications,
   mediaAssets,
-  tenantMembers,
-  electoralDistricts,
   withTenantContext,
 } from '@polaris/database';
 import { OpenAIAIEngineAdapter } from '@polaris/ai-engine';
@@ -54,63 +51,55 @@ export class StudioPosterRegenerationHandler {
         throw new Error('Naskah artikel tidak tersedia untuk pembuatan poster.');
       }
 
-      // 1. Ambil data profil dewan dan resolusi dapil
-      const [member] = await db
-        .select({
-          fullName: tenantMembers.fullName,
-          partyAffiliation: tenantMembers.partyAffiliation,
-          dapilId: tenantMembers.electoralDistrictId,
-          customDapil: tenantMembers.customDapilName,
-          photoUrl: tenantMembers.photoUrl,
-          commissionName: tenantMembers.commissionName,
-          legislativeLevel: tenantMembers.legislativeLevel,
-        })
-        .from(tenantMembers)
-        .where(eq(tenantMembers.id, tenantId))
-        .limit(1);
+      // 1. Resolusi profil tokoh dan wilayah
+      const { member, dapilName } = await StudioContextHelper.resolveMemberAndRegion(tenantId);
 
-      let dapilName = member?.customDapil || 'Dapil';
-      if (member?.dapilId) {
-        const [dapil] = await db
-          .select({ dapilName: electoralDistricts.dapilName })
-          .from(electoralDistricts)
-          .where(eq(electoralDistricts.id, member.dapilId))
-          .limit(1);
-        if (dapil && !member.customDapil) dapilName = dapil.dapilName;
-      }
-
-      // 2. Cek blueprint poster sebelumnya agar regenerasi menghasilkan arketipe/variasi layout yang segar
+      // 2. Cek blueprint visual sebelumnya agar regenerasi menghasilkan variasi baru
       let lastBlueprintId: string | undefined;
+      let previousVisualFormat: 'poster' | 'infographic' | undefined;
       const [existingAsset] = await withTenantContext(tenantId, async (tx) => {
         return await tx
-          .select({ promptUsed: mediaAssets.promptUsed })
+          .select({ promptUsed: mediaAssets.promptUsed, assetType: mediaAssets.assetType })
           .from(mediaAssets)
           .where(
             and(
               eq(mediaAssets.publicationId, publicationId),
-              eq(mediaAssets.assetType, AssetType.DALLE_POSTER)
+              inArray(mediaAssets.assetType, [AssetType.DALLE_POSTER, AssetType.INFOGRAPHIC_PNG])
             )
           )
           .limit(1);
       });
 
+      if (existingAsset?.assetType === AssetType.INFOGRAPHIC_PNG) {
+        previousVisualFormat = 'infographic';
+      }
       if (existingAsset?.promptUsed) {
         try {
           const parsed = JSON.parse(existingAsset.promptUsed);
           lastBlueprintId = parsed.blueprintId || parsed.blueprint;
+          if (parsed.visualFormat === 'infographic' || parsed.visualFormat === 'poster') {
+            previousVisualFormat = parsed.visualFormat;
+          }
         } catch {}
       }
+
+      const resolvedVisualFormat: 'poster' | 'infographic' =
+        job.data.visualFormat === 'infographic' || job.data.style === 'infographic'
+          ? 'infographic'
+          : job.data.visualFormat === 'poster' || job.data.style === 'poster'
+          ? 'poster'
+          : previousVisualFormat || 'poster';
 
       await StudioContextHelper.emitProgress(
         tenantId,
         jobId,
         40,
-        'Menghasilkan kanvas seni kolase baru...'
+        `Menghasilkan desain ${resolvedVisualFormat === 'infographic' ? 'infografis' : 'poster'} baru...`
       );
 
       const revisionPrompt = job.data.prompt?.trim();
       const customGroundedEvidence = revisionPrompt
-        ? `[INSTRUKSI KHUSUS PROMPT REVISI POSTER DARI OPERATOR / KLIEN]:\n${revisionPrompt}`
+        ? `[INSTRUKSI KHUSUS PROMPT REVISI DARI OPERATOR / KLIEN]:\n${revisionPrompt}`
         : undefined;
 
       const posterResult = await StudioPosterSynthesizerService.synthesizePoster({
@@ -124,12 +113,16 @@ export class StudioPosterRegenerationHandler {
         groundedEvidenceText: customGroundedEvidence,
         member,
         dapilName,
+        visualFormat: resolvedVisualFormat,
         forcedArchetype: job.data.forcedArchetype,
         excludeBlueprintId: lastBlueprintId,
         layoutVariant: job.data.layoutVariant,
         enableImg2ImgPass: data.enableImg2ImgPass,
         img2ImgDenoisingStrength: data.img2ImgDenoisingStrength,
         variationKey: `${publicationId}:regen:${Date.now()}`,
+        operatorId: data.operatorId,
+        channel: data.channel || 'WEB_STUDIO',
+        requestId: data.requestId || jobId,
         aiEngine,
         storageAdapter,
         onProgress: async (step, pct) => {

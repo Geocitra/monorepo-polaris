@@ -83,6 +83,7 @@ export class ArtCollagePosterPipeline {
   }): Promise<ArtCollagePosterResult> {
     const blueprint = await PosterBlueprintSelector.selectBestBlueprintAsync({
       topic: params.topic,
+      groundedContextSummary: params.groundedContextSummary,
       forcedArchetype: params.forcedArchetype,
       excludeBlueprintId: params.excludeBlueprintId,
       forcedBrandHex: params.tenantBrandHex,

@@ -45,23 +45,15 @@ export class GenerateArticleRequestDto {
 
   @IsOptional()
   @IsString()
+  visualFormat?: 'poster' | 'infographic';
+
+  @IsOptional()
+  @IsString()
   aspectRatio?: string;
 
   @IsOptional()
   @IsBoolean()
   generateDallePoster: boolean = true;
-
-  @IsOptional()
-  @IsBoolean()
-  includeUserPhoto?: boolean;
-
-  @IsOptional()
-  @IsString()
-  compositionMode?: 'PUBLIC_ADVOCACY' | 'FIGURE_CENTERPIECE';
-
-  @IsOptional()
-  @IsString()
-  customPhotoUrl?: string;
 
   @IsOptional()
   @IsString()

@@ -3,7 +3,6 @@ import sharp from 'sharp';
 import {
   PosterVisualQAGate,
   RevisionPolicy,
-  CreativePosterCompositor,
 } from '../src/index.js';
 import { CompositionPlan, ResolvedColorTokens } from '@polaris/shared-types';
 
@@ -298,48 +297,6 @@ describe('Fase 3: Visual Quality Evaluation & Self-Healing Revision Loop', () =>
       expect(secondDecision.action).toBe('RE_RENDER_SATORI');
       expect(secondDecision.healed).toBe(true);
       expect(secondDecision.newSurfaceMode).toBe('SOLID_BAND');
-    });
-  });
-
-  describe('3. End-to-End Self-Healing di CreativePosterCompositor', () => {
-    it('harus otomatis menyembuhkan kontras rendah melalui re-render Satori saat autoHealContrast aktif', async () => {
-      // Buat background putih terang
-      const brightBackground = await sharp({
-        create: {
-          width: 1000,
-          height: 1000,
-          channels: 3,
-          background: { r: 252, g: 252, b: 252 },
-        },
-      })
-        .jpeg()
-        .toBuffer();
-
-      // Jalankan composePoster dengan teks putih pada background putih (kontras rendah)
-      // tetapi dengan autoHealContrast: true
-      const result = await CreativePosterCompositor.composePoster({
-        backgroundBuffer: brightBackground,
-        headline: 'ADVOKASI ANGGARAN RAKYAT',
-        quote: 'Keterbukaan informasi demi keadilan sosial.',
-        memberName: 'AHMAD FAUZI',
-        memberTitle: 'KOMISI IV DPR RI',
-        archetype: 'SWISS_DUOTONE_EDITORIAL',
-        primaryAccentColor: '#DC2626',
-        resolvedColors: {
-          ...dummyColors,
-          textColor: '#FFFFFF', // Teks putih pada latar terang -> memicu self-healing
-          backgroundBase: '#FFFFFF',
-        },
-        canvasWidth: 1080,
-        canvasHeight: 1350,
-        outputFormat: 'webp',
-        enableVisualQA: true,
-        autoHealContrast: true,
-      });
-
-      expect(result).toBeDefined();
-      expect(result.qaReport).toBeDefined();
-      expect(result.qaReport?.recommendation.reason).toContain('Self-healed via Satori');
     });
   });
 });

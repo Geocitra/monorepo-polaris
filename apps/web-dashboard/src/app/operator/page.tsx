@@ -372,6 +372,7 @@ export default function OperatorCockpitPage() {
                 ? 'ARTICLE_ONLY'
                 : 'FULL_CAMPAIGN',
           style: isInfographicOnly ? 'infographic' : isPosterOnly ? 'poster' : undefined,
+          visualFormat: isInfographicOnly ? 'infographic' : isPosterOnly ? 'poster' : undefined,
           generateDallePoster: !isArticleOnly,
           writingStyle: selectedStyle,
           targetAudience: styleCfg.audience,

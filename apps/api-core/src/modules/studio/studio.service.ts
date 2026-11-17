@@ -74,8 +74,13 @@ export class StudioService {
     return await this.generatorService.getJobStatus(jobId, tenantId);
   }
 
-  async regenerateArticlePoster(tenantId: string, articleId: string, prompt?: string) {
-    return await this.generatorService.regenerateArticlePoster(tenantId, articleId, prompt);
+  async regenerateArticlePoster(
+    tenantId: string,
+    articleId: string,
+    prompt?: string,
+    options?: { visualFormat?: 'poster' | 'infographic'; forcedArchetype?: string }
+  ) {
+    return await this.generatorService.regenerateArticlePoster(tenantId, articleId, prompt, options);
   }
 
   // --- Domain: Manajemen Artikel & Siklus Publikasi ---
@@ -374,6 +379,8 @@ export class StudioService {
         title: contentPublications.title,
         slug: contentPublications.slug,
         excerpt: contentPublications.excerpt,
+        wordCount: contentPublications.wordCount,
+        generationCheckpoints: contentPublications.generationCheckpoints,
         status: contentPublications.status,
         publishedAt: contentPublications.publishedAt,
         createdAt: contentPublications.createdAt,
@@ -382,15 +389,26 @@ export class StudioService {
       .where(eq(contentPublications.tenantId, tenantId))
       .orderBy(desc(contentPublications.createdAt));
 
-    const pubIds = items.map((i) => i.id);
-    const mediaMap = new Map<string, string>();
-    const promptMap = new Map<string, string | null>();
+    const standaloneItems = items.filter((i) => {
+      const cp = (i.generationCheckpoints || {}) as { taskType?: string };
+      if (cp.taskType === 'INFOGRAPHIC_ONLY' || cp.taskType === 'POSTER_ONLY') return true;
+      if (cp.taskType === 'FULL_CAMPAIGN' || cp.taskType === 'ARTICLE_ONLY') return false;
+      return (
+        i.wordCount === 0 ||
+        i.excerpt?.toLowerCase().startsWith('infografik publik:') ||
+        i.excerpt?.toLowerCase().startsWith('poster publik:')
+      );
+    });
+
+    const pubIds = standaloneItems.map((i) => i.id);
+    const mediaMap = new Map<string, { url: string; promptUsed: string | null; assetType: string }>();
     if (pubIds.length > 0) {
       const medias = await db
         .select({
           publicationId: mediaAssets.publicationId,
           cdnPublicUrl: mediaAssets.cdnPublicUrl,
           promptUsed: mediaAssets.promptUsed,
+          assetType: mediaAssets.assetType,
         })
         .from(mediaAssets)
         .where(
@@ -401,17 +419,31 @@ export class StudioService {
         );
       for (const m of medias) {
         if (!mediaMap.has(m.publicationId)) {
-          mediaMap.set(m.publicationId, m.cdnPublicUrl);
-          promptMap.set(m.publicationId, m.promptUsed || null);
+          mediaMap.set(m.publicationId, {
+            url: m.cdnPublicUrl,
+            promptUsed: m.promptUsed || null,
+            assetType: m.assetType,
+          });
         }
       }
     }
 
-    return items.map((item) => ({
-      ...item,
-      imageUrl: mediaMap.get(item.id) || null,
-      promptUsed: promptMap.get(item.id) || null,
-    }));
+    return standaloneItems.map((item) => {
+      const m = mediaMap.get(item.id);
+      const cp = (item.generationCheckpoints || {}) as { visualFormat?: 'poster' | 'infographic' };
+      const visualFormat: 'poster' | 'infographic' =
+        cp.visualFormat === 'poster' || cp.visualFormat === 'infographic'
+          ? cp.visualFormat
+          : m?.assetType === AssetType.DALLE_POSTER && item.excerpt?.toLowerCase().startsWith('poster publik:')
+          ? 'poster'
+          : 'infographic';
+      return {
+        ...item,
+        visualFormat,
+        imageUrl: m?.url || null,
+        promptUsed: m?.promptUsed || null,
+      };
+    });
   }
 
   async getInfographicDetail(tenantId: string, id: string) {

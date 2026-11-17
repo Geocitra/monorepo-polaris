@@ -19,12 +19,10 @@ export interface StudioGenerationJobPayload {
   framingStance?: string;
   generateDallePoster: boolean;
   style?: string;
+  visualFormat?: 'poster' | 'infographic';
   aspectRatio?: string;
-  includeUserPhoto?: boolean;
-  compositionMode?: 'PUBLIC_ADVOCACY' | 'FIGURE_CENTERPIECE';
   enableImg2ImgPass?: boolean;
   img2ImgDenoisingStrength?: number;
-  customPhotoUrl?: string;
   targetLength?: string;
   writingStyle?: string;
   externalUrls?: string[];

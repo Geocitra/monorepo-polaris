@@ -506,17 +506,18 @@ export function compileArtCollageImagePrompt(params: {
   }
 
   const referenceClause = params.withStyleReference
-    ? 'The attached image is a STYLE reference only. Borrow its printing technique, paper texture, photo treatment and mood. Do NOT copy its layout, its subjects, or any of its text. Create a new, different composition.'
+    ? 'ATM DESIGN DNA MANDATE (OBSERVE, EMULATE THEME, MODIFY EXECUTION): The attached reference image defines the target Pinterest-grade design aesthetic. EMULATE its artistic medium, print texture, halftone/cutout collage craft, lighting contrast, and graphic mood. MODIFY the subject matter to depict the Indonesian topic below, apply the mutated ink palette, and arrange the spatial clearing as instructed so the result feels like a fresh, original sister-piece from the same art director—never a literal copy, and with zero text.'
     : '';
 
   return [
-    `Create a finished, print-quality graphic poster ARTWORK (vertical 4:5) about: ${params.visualSubject}.`,
-    `Visual style: ${dna.style}.`,
-    `Ink palette: ${p.accentName} as the dominant accent with ${p.secondaryName}, printed on ${p.paperName} paper.`,
-    `People, if any, are anonymous everyday Indonesian citizens or workers. No recognizable public figures, no politicians, no officials posing.`,
-    `Composition: ${spatial.art} ${spatial.clearing} This empty paper area is reserved for typography that will be printed later, so keep it quiet and evenly lit.`,
+    remedyClause,
+    `Create a finished, print-quality graphic poster ARTWORK (vertical 4:5 ratio, 100% full-bleed edge-to-edge) about: ${params.visualSubject}.`,
+    `Artistic Medium & Design DNA: ${dna.style}.`,
+    `Mutated Ink Palette (ATM Color Adaptation): Use ${p.accentName} as the dominant graphic accent paired with ${p.secondaryName}, printed on ${p.paperName} surface.`,
+    `Subject Treatment: Depict authentic Indonesian scenes, objects, or anonymous everyday citizens/workers matching the topic. Integrate dynamic graphic elements (cutout edges, bold color blocks, light beams, or tactile paper layers) faithful to the style DNA.`,
+    `Spatial Composition & Negative Space: ${spatial.art} ${spatial.clearing} Keep this designated clearing calm, evenly lit, and unobstructed so expressive display typography can be layered cleanly on top.`,
     referenceClause,
-    'Absolutely no text of any kind anywhere: no letters, no words, no numbers, no signage, no labels, no logos, no watermarks, no fake writing.',
+    'CRITICAL PURITY MANDATE: Absolutely no text of any kind anywhere on the image: no letters, no words, no numbers, no signage, no labels, no logos, no watermarks, and no fake writing.',
   ]
     .filter(Boolean)
     .join('\n');
@@ -1063,17 +1064,18 @@ Format JSON Wajib:
   } else {
     const posterGuide = archetype === 'RETRO_CAMPAIGN' ? '\nTeks poster kampanye persuasif lugas.\n' : '';
 
-    systemPrompt = `Anda adalah copywriter editorial kebijakan publik profesional berstandar tinggi (mengikuti Master Editorial Rules).
-Tulis teks poster ringkas bertopik: "${topic}".
-${posterGuide}${groundedContext ? `\nFAKTA RISET:\n${groundedContext.slice(0, 1800)}\n` : ''}
-PEDOMAN MASTER EDITORIAL RULES (WAJIB DIPATUHI):
-- Bahasa Indonesia baku, modern, matang, berbobot substantif, bukan gaya birokrasi kaku atau brosur jualan.
-- headline: 2 sampai 4 kata spesifik dan kontemporer, maks ${COPY_LIMITS.headline} karakter.
-- kicker: label rubrik ringkas di atas judul (misal: "TELAAH ISU", "KEBIJAKAN KESEHATAN", "INFRASTRUKTUR WILAYAH"), maks ${COPY_LIMITS.kicker} karakter.
-- deck: 1 kalimat pengantar tuntas yang memperjelas tesis persoalan (bukan mengulang judul), maks ${COPY_LIMITS.deck} karakter.
-- points: TEPAT 2 atau 3 butir analisis konkret. label maks ${COPY_LIMITS.pointLabel} karakter, text 1 kalimat analitis tuntas maks ${COPY_LIMITS.pointText} karakter.
-- closingLine: 1 kalimat sintesis arah tindak lanjut terukur, maks ${COPY_LIMITS.closing} karakter.
-- visualSubject: deskripsi adegan visual dalam BAHASA INGGRIS (maks 40 kata) yang menggambarkan topik yang sama secara konkret di Indonesia.
+    systemPrompt = `Anda adalah Creative Art Director & Copywriter Poster kelas dunia (setara kurasi poster editorial Pinterest, zine modern, dan manifesto publik).
+Tugas Anda adalah merumuskan naskah POSTER VISUAL yang Ikonik, Singkat, Tajam, dan Berdampak Kuat untuk topik: "${topic}".
+${posterGuide}${groundedContext ? `\nFAKTA RISET & INTISARI ARTIKEL RUJUKAN:\n${groundedContext.slice(0, 2400)}\n` : ''}${learnedMemoriesText}
+PEDOMAN UTAMA COPYWRITING POSTER (BERBEDA TEGAS DARI INFOGRAFIS):
+- Poster BUKAN makalah atau tabel panjang! Teks poster harus bernapas lega, puitis/tegas, dan selaras dengan fakta di artikel/riset rujukan.
+- headline: WAJIB 2 sampai 4 kata saja yang sangat ikonik, mudah diingat, dan kontemporer (maks 28 karakter, huruf kapital; contoh: "LANGKAH PASTI IRIGASI", "AIR BERSIH WARGA", "JAGA HARGA PANGAN", "RUANG TUMBUH UMKM").
+- kicker: Tag rubrik mikro 2-3 kata di sudut atas (contoh: "SOROTAN UTAMA", "MANIFESTO KERJA", "CATATAN LAPANGAN", maks 28 karakter).
+- deck: 1 kalimat manifesto atau kutipan kunci yang kuat, bernas, dan menggugah (10-18 kata, maks 135 karakter).
+- stats: 2 metrik mikro/angka kunci paling mencolok dari konteks riset untuk dijadikan badge aksen visual (contoh: [{"value":"94%","label":"Target Layanan"},{"value":"2026","label":"Fokus Aksi"}]).
+- points: TEPAT 3 sorotan mikro (micro-callouts). Setiap item memiliki label singkat (2-3 kata, maks 24 karakter) dan text padat 1 kalimat pendek (8-14 kata, maks 95 karakter).
+- closingLine: 1 kalimat penutup singkat yang tegas (maks 90 karakter).
+- visualSubject: Deskripsi adegan visual/metafora objek yang kuat dalam BAHASA INGGRIS (maks 40 kata) yang menggambarkan inti topik secara konkret di Indonesia.
 
 Keluarkan JSON murni:
 {"kicker":"","headline":"","deck":"","stats":[{"value":"","label":""}],"points":[{"label":"","text":""}],"closingLine":"","visualSubject":""}`;

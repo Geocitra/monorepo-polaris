@@ -78,12 +78,19 @@ export class StudioArticleService {
 
       // Klasifikasi deterministik & non-destruktif
       let contentType: 'INFOGRAPHIC' | 'TERPADU' | 'ARTICLE' = 'ARTICLE';
-      const isInfographicExcerpt = item.excerpt?.toLowerCase().startsWith('infografik publik:') || false;
-      const isInfographicTitle = item.title?.toLowerCase().startsWith('infografik publik:') || false;
+      const isStandaloneExcerpt =
+        item.excerpt?.toLowerCase().startsWith('infografik publik:') ||
+        item.excerpt?.toLowerCase().startsWith('poster publik:') ||
+        false;
+      const isStandaloneTitle =
+        item.title?.toLowerCase().startsWith('infografik publik:') ||
+        item.title?.toLowerCase().startsWith('poster publik:') ||
+        false;
 
       if (
-        media?.assetType === AssetType.INFOGRAPHIC_PNG ||
-        ((item.wordCount === 0 || isInfographicExcerpt || isInfographicTitle) && media?.cdnPublicUrl && !hasSocial)
+        (item.wordCount === 0 || isStandaloneExcerpt || isStandaloneTitle) &&
+        media?.cdnPublicUrl &&
+        !hasSocial
       ) {
         contentType = 'INFOGRAPHIC';
       } else if (hasSocial || (media && item.wordCount > 0)) {
@@ -92,9 +99,16 @@ export class StudioArticleService {
         contentType = 'ARTICLE';
       }
 
+      const visualFormat: 'poster' | 'infographic' | null = media
+        ? media.assetType === AssetType.INFOGRAPHIC_PNG
+          ? 'infographic'
+          : 'poster'
+        : null;
+
       return {
         ...item,
         contentType,
+        visualFormat,
         thumbnailUrl: media?.cdnPublicUrl || null,
         hasSocialPack: hasSocial,
       };
@@ -123,7 +137,7 @@ export class StudioArticleService {
       .where(
         and(
           eq(mediaAssets.publicationId, article.id),
-          eq(mediaAssets.assetType, AssetType.DALLE_POSTER)
+          inArray(mediaAssets.assetType, [AssetType.DALLE_POSTER, AssetType.INFOGRAPHIC_PNG])
         )
       )
       .orderBy(desc(mediaAssets.createdAt))

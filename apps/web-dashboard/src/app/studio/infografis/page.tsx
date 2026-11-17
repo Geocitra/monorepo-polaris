@@ -327,26 +327,24 @@ export default function InfografisStudioPage() {
     }
 
     const submittedStyle = selectedStyle;
-    const submittedAspectRatio = selectedAspectRatio;
+    const isPosterMode = submittedStyle === 'poster';
     setLoading(true);
     try {
-      const prefix = submittedStyle === 'poster' ? 'Poster Publik' : 'Infografis Publik';
+      const prefix = isPosterMode ? 'Poster Publik' : 'Infografis Publik';
       const res = await ApiClient.request<any>('/studio/generate', {
         method: 'POST',
         body: JSON.stringify({
-          taskType: 'INFOGRAPHIC_ONLY',
+          taskType: isPosterMode ? 'POSTER_ONLY' : 'INFOGRAPHIC_ONLY',
+          visualFormat: isPosterMode ? 'poster' : 'infographic',
           topic: `${prefix}: ${promptText}. STRICT CONSTRAINT: DO NOT generate any institutional logos, government emblems, regional seals, party logos, coat of arms, badges, or watermark symbols.`,
-          comparisonRegion: profile?.electoralDistrict?.dapilName || 'Dapil Anda',
+          comparisonRegion: profile?.electoralDistrict?.dapilName || 'Indonesia',
           generateDallePoster: true,
-          aspectRatio: submittedAspectRatio,
+          aspectRatio: '4:5',
           style: submittedStyle,
           forcedArchetype: selectedArchetype && selectedArchetype !== 'AUTO' ? selectedArchetype : undefined,
           layoutVariant: selectedLayoutVariant !== 'AUTO' ? selectedLayoutVariant : undefined,
-          includeUserPhoto,
           enableImg2ImgPass: true,
           img2ImgDenoisingStrength: 0.18,
-          compositionMode: includeUserPhoto ? 'FIGURE_CENTERPIECE' : 'PUBLIC_ADVOCACY',
-          customPhotoUrl: profile?.photoUrl || (Array.isArray(profile?.photoGallery) && profile.photoGallery[0]) || undefined,
           isUrgentOverquota,
         }),
       });

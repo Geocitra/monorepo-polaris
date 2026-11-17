@@ -4,8 +4,14 @@ import {
   masterPoliticalParties,
   portalThemeSettings,
   portalConfigs,
+  tenantMembers,
+  electoralDistricts,
+  mediaDiscourses,
+  findSimilarKnowledgeChunks,
 } from '@polaris/database';
+import { OpenAIAIEngineAdapter } from '@polaris/ai-engine';
 import { redisConnection } from '../../config/redis.connection.js';
+import { StudioAttachmentPipelineService } from './services/studio-attachment-pipeline.service.js';
 
 export class StudioContextHelper {
   /**
@@ -201,5 +207,184 @@ export class StudioContextHelper {
       redisConnection.lpush(`history:notifications:${tenantId}`, serialized).catch(() => null),
       redisConnection.ltrim(`history:notifications:${tenantId}`, 0, 19).catch(() => null),
     ]);
+  }
+
+  /**
+   * Resolusi terpusat profil tokoh (Pejabat Publik, Pejabat Swasta, Tokoh Publik, Tokoh Swasta)
+   * beserta cakupan wilayah kerjanya.
+   */
+  public static async resolveMemberAndRegion(tenantId: string) {
+    const [member] = await db
+      .select({
+        fullName: tenantMembers.fullName,
+        partyAffiliation: tenantMembers.partyAffiliation,
+        dapilId: tenantMembers.electoralDistrictId,
+        customDapil: tenantMembers.customDapilName,
+        personalCoverage: tenantMembers.personalCoverage,
+        photoUrl: tenantMembers.photoUrl,
+        photoGallery: tenantMembers.photoGallery,
+        commissionName: tenantMembers.commissionName,
+        legislativeLevel: tenantMembers.legislativeLevel,
+        issueInterests: tenantMembers.issueInterests,
+      })
+      .from(tenantMembers)
+      .where(eq(tenantMembers.id, tenantId))
+      .limit(1);
+
+    let dapilName = member?.customDapil || 'Indonesia';
+    let targetRegion = member?.personalCoverage?.[0] || 'NASIONAL';
+    let resolvedDapilCode: string | null = member?.customDapil || null;
+
+    if (member?.dapilId) {
+      const [dapil] = await db
+        .select({
+          id: electoralDistricts.id,
+          dapilCode: electoralDistricts.dapilCode,
+          dapilName: electoralDistricts.dapilName,
+          regencyCoverage: electoralDistricts.regencyCoverage,
+        })
+        .from(electoralDistricts)
+        .where(eq(electoralDistricts.id, member.dapilId))
+        .limit(1);
+      if (dapil) {
+        resolvedDapilCode = dapil.dapilCode;
+        if (!member.customDapil) dapilName = dapil.dapilName;
+        if (!member.personalCoverage || member.personalCoverage.length === 0) {
+          targetRegion = dapil.regencyCoverage?.[0] || 'NASIONAL';
+        }
+      }
+    }
+
+    return { member, dapilName, targetRegion, resolvedDapilCode };
+  }
+
+  /**
+   * Unified Grounding Builder untuk Poster & Infografis Standalone:
+   * Menyerap Dokumen Upload User (attachments), Tautan Eksternal, Vector RAG DB, dan Berita Wilayah.
+   */
+  public static async buildStandaloneGroundingContext(params: {
+    tenantId: string;
+    cleanTopic: string;
+    dapilName: string;
+    targetRegion: string;
+    resolvedDapilCode: string | null;
+    member?: any;
+    attachments?: Array<{ name: string; type: string; base64: string }>;
+    externalUrls?: string[];
+    aiEngine: OpenAIAIEngineAdapter;
+  }): Promise<string> {
+    const {
+      tenantId,
+      cleanTopic,
+      dapilName,
+      targetRegion,
+      resolvedDapilCode,
+      member,
+      attachments,
+      externalUrls,
+      aiEngine,
+    } = params;
+
+    const ragSnippets: string[] = [];
+    let queryVector: number[] | null = null;
+
+    // 1. Generate embedding untuk RAG & ekstraksi lampiran
+    try {
+      const embedRes = await aiEngine.generateEmbedding(cleanTopic, tenantId);
+      if (
+        embedRes?.embedding &&
+        Array.isArray(embedRes.embedding) &&
+        embedRes.embedding.length === 1536
+      ) {
+        queryVector = embedRes.embedding;
+      }
+    } catch (embedErr: any) {
+      console.warn(`[StudioUnifiedGrounding] Embedding lookup skipped: ${embedErr.message}`);
+    }
+
+    // 2. Dokumen Upload User (Attachments / DataHub)
+    if (attachments && attachments.length > 0) {
+      try {
+        const parsedDocs = await StudioAttachmentPipelineService.processAttachments({
+          tenantId,
+          attachments,
+          queryVector,
+          resolvedDapilCode,
+          member,
+        });
+        if (Array.isArray(parsedDocs) && parsedDocs.length > 0) {
+          const docsText = parsedDocs
+            .map((d) => `[${d.name}]: ${d.extractedContent.slice(0, 900)}`)
+            .join('\n');
+          if (docsText.trim()) {
+            ragSnippets.push(`DOKUMEN & DATA UPLOAD PENGGUNA:\n${docsText.slice(0, 2200)}`);
+          }
+        }
+      } catch (attErr: any) {
+        console.warn(`[StudioUnifiedGrounding] Attachment extraction skipped: ${attErr.message}`);
+      }
+    }
+
+    // 3. Vector Search Pengetahuan & Regulasi di Database
+    if (queryVector) {
+      try {
+        const chunks = await findSimilarKnowledgeChunks(queryVector, 4, targetRegion, 0.55);
+        if (chunks && chunks.length > 0) {
+          ragSnippets.push(
+            'DATA & REGULASI DATABASE INTERNAL:\n' +
+              chunks
+                .map((c) => `- [${c.structuralReference || 'Dokumen'}]: ${c.chunkContent.slice(0, 320)}`)
+                .join('\n')
+          );
+        }
+      } catch (ragErr: any) {
+        console.warn(`[StudioUnifiedGrounding] Vector RAG lookup skipped: ${ragErr.message}`);
+      }
+    }
+
+    // 4. Berita & Diskursus Media Terbaru dari Database
+    try {
+      const recentNews = await db
+        .select({
+          title: mediaDiscourses.articleTitle,
+          summary: mediaDiscourses.cleanSummary,
+        })
+        .from(mediaDiscourses)
+        .where(
+          targetRegion && targetRegion !== 'NASIONAL'
+            ? eq(mediaDiscourses.regionScope, targetRegion)
+            : sql`TRUE`
+        )
+        .orderBy(sql`${mediaDiscourses.publishedAt} DESC`)
+        .limit(4);
+
+      if (recentNews && recentNews.length > 0) {
+        ragSnippets.push(
+          'BERITA & DISKURSUS MEDIA TERKINI:\n' +
+            recentNews.map((n) => `- ${n.title}: ${n.summary.slice(0, 220)}`).join('\n')
+        );
+      }
+    } catch (newsErr: any) {
+      console.warn(`[StudioUnifiedGrounding] Local news lookup skipped: ${newsErr.message}`);
+    }
+
+    // 5. Referensi Tautan Internet Eksternal
+    if (externalUrls && externalUrls.length > 0) {
+      ragSnippets.push(`RUJUKAN TAUTAN EKSTERNAL:\n${externalUrls.slice(0, 5).map((u) => `- ${u}`).join('\n')}`);
+    }
+
+    const personaLabel = member?.fullName
+      ? `${member.fullName}${member.commissionName ? ` (${member.commissionName})` : ''}`
+      : 'Tokoh / Instansi';
+
+    if (ragSnippets.length > 0) {
+      return [
+        `TOPIK UTAMA: ${cleanTopic}`,
+        `PROFIL & WILAYAH FOKUS: ${personaLabel} — ${dapilName} (${targetRegion})`,
+        ...ragSnippets,
+      ].join('\n\n');
+    }
+
+    return `Isu Utama: ${cleanTopic}. Profil & Wilayah: ${personaLabel} — ${dapilName} (${targetRegion}). Fokus: Informasi solutif, data akurat, dan mudah dipahami publik.`;
   }
 }

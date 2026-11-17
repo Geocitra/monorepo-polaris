@@ -147,6 +147,50 @@ export class StudioGeneratorService implements OnModuleDestroy {
         topicCharacters.length <= 255
           ? topicCharacters.join('')
           : `${topicCharacters.slice(0, 252).join('').trimEnd()}...`;
+
+      const isStandaloneVisualIntent =
+        dto.taskType === 'POSTER_ONLY' ||
+        dto.taskType === 'INFOGRAPHIC_ONLY' ||
+        (!dto.taskType &&
+          !dto.writingStyle &&
+          !dto.targetLength &&
+          (Boolean(dto.visualFormat) ||
+            dto.style === 'poster' ||
+            dto.style === 'infographic' ||
+            dto.style === 'photo' ||
+            dto.style === 'illustration' ||
+            dto.topic.startsWith('Infografis Publik:') ||
+            dto.topic.startsWith('Poster Publik:') ||
+            Boolean(dto.generateDallePoster)));
+
+      const wantsPosterFormat =
+        dto.visualFormat === 'poster' ||
+        dto.style === 'poster' ||
+        dto.style === 'photo' ||
+        dto.style === 'illustration' ||
+        dto.taskType === 'POSTER_ONLY' ||
+        dto.topic.startsWith('Poster Publik:');
+
+      const initialTaskType: 'FULL_CAMPAIGN' | 'INFOGRAPHIC_ONLY' | 'POSTER_ONLY' | 'ARTICLE_ONLY' =
+        dto.taskType === 'ARTICLE_ONLY' || (!isStandaloneVisualIntent && dto.generateDallePoster === false)
+          ? 'ARTICLE_ONLY'
+          : isStandaloneVisualIntent
+          ? wantsPosterFormat
+            ? 'POSTER_ONLY'
+            : 'INFOGRAPHIC_ONLY'
+          : 'FULL_CAMPAIGN';
+
+      const initialVisualFormat: 'poster' | 'infographic' | 'none' =
+        initialTaskType === 'ARTICLE_ONLY'
+          ? 'none'
+          : initialTaskType === 'POSTER_ONLY'
+          ? 'poster'
+          : initialTaskType === 'INFOGRAPHIC_ONLY'
+          ? 'infographic'
+          : dto.visualFormat === 'infographic' || dto.style === 'infographic'
+          ? 'infographic'
+          : 'poster';
+
       const [created] = await tx
         .insert(contentPublications)
         .values({
@@ -159,6 +203,10 @@ export class StudioGeneratorService implements OnModuleDestroy {
           wordCount: 0,
           status: ContentStatus.GENERATING,
           canonicalUrl: canonicalUrlStr,
+          generationCheckpoints: {
+            taskType: initialTaskType,
+            visualFormat: initialVisualFormat,
+          },
           createdByOperatorId: caller?.isOperator && caller.operatorId ? caller.operatorId : null,
           createdContext: caller?.isOperator
             ? ContentCreationContext.OPERATOR
@@ -238,6 +286,22 @@ export class StudioGeneratorService implements OnModuleDestroy {
       return created;
     });
 
+    const checkpointsMeta = (publication.generationCheckpoints || {}) as {
+      taskType?: 'FULL_CAMPAIGN' | 'INFOGRAPHIC_ONLY' | 'POSTER_ONLY' | 'ARTICLE_ONLY';
+      visualFormat?: 'poster' | 'infographic' | 'none';
+    };
+    const effectiveTaskType = checkpointsMeta.taskType || 'FULL_CAMPAIGN';
+    const resolvedVisualFormat: 'poster' | 'infographic' | undefined =
+      checkpointsMeta.visualFormat === 'poster' || checkpointsMeta.visualFormat === 'infographic'
+        ? checkpointsMeta.visualFormat
+        : undefined;
+    const resolvedActivityType =
+      effectiveTaskType === 'INFOGRAPHIC_ONLY'
+        ? 'STUDIO_INFOGRAPHIC_GENERATION'
+        : effectiveTaskType === 'POSTER_ONLY'
+        ? 'STUDIO_POSTER_GENERATION'
+        : 'STUDIO_ARTICLE_GENERATION';
+
     // Penegakan Kuota Omnichannel: Jika dipicu langsung dari Web Studio (tanpa briefId WA),
     // wajib memeriksa dan memotong kuota paket bulanan + jatah mingguan (3 request/minggu) secara atomik.
     const isDirectWebStudio = !(dto.briefId && dto.briefId.trim());
@@ -249,7 +313,7 @@ export class StudioGeneratorService implements OnModuleDestroy {
           cost: 1,
           publicationId: publication.id,
           operatorId: caller?.isOperator && caller.operatorId ? caller.operatorId : undefined,
-          activityType: 'STUDIO_ARTICLE_GENERATION',
+          activityType: resolvedActivityType,
           requestId: jobId,
           referenceCode: `WEB-${publication.slug.slice(0, 36)}`,
           isUrgentOverquota: Boolean(dto.isUrgentOverquota),
@@ -290,25 +354,13 @@ export class StudioGeneratorService implements OnModuleDestroy {
 
     // Pemetaan gaya visual dari UI ke Arketipe Desain POLARIS
     let forcedArchetype: string | undefined = dto.forcedArchetype;
-    if (!forcedArchetype && dto.style === 'infographic') {
-      forcedArchetype = undefined;
-    } else if (dto.style === 'poster') {
-      forcedArchetype = undefined;
-    } else if (dto.style === 'photo') {
+    if (!forcedArchetype && dto.style === 'photo') {
       forcedArchetype = 'POP_OUT_HERO';
-    } else if (dto.style === 'illustration') {
+    } else if (!forcedArchetype && dto.style === 'illustration') {
       forcedArchetype = 'RETRO_CAMPAIGN';
     }
 
     // 5. Masukkan Job ke Antrean BullMQ
-    const effectiveTaskType =
-      dto.taskType ||
-      (dto.topic.startsWith('Infografis Publik:') ||
-      dto.topic.startsWith('Poster Publik:') ||
-      (dto.generateDallePoster && !dto.writingStyle && !dto.targetLength)
-        ? 'INFOGRAPHIC_ONLY'
-        : 'FULL_CAMPAIGN');
-
     try {
       await this.studioQueue.add(
         'generate-content-package',
@@ -324,15 +376,13 @@ export class StudioGeneratorService implements OnModuleDestroy {
           framingStance: dto.framingStance,
           generateDallePoster:
             effectiveTaskType === 'ARTICLE_ONLY' ? false : (dto.generateDallePoster ?? true),
-          style: dto.style,
-          aspectRatio: dto.aspectRatio,
+          style: dto.style || resolvedVisualFormat,
+          visualFormat: resolvedVisualFormat,
+          aspectRatio: '4:5',
           forcedArchetype,
           layoutVariant: dto.layoutVariant,
           enableImg2ImgPass: dto.enableImg2ImgPass,
           img2ImgDenoisingStrength: dto.img2ImgDenoisingStrength,
-          includeUserPhoto: dto.includeUserPhoto,
-          compositionMode: dto.compositionMode,
-          customPhotoUrl: dto.customPhotoUrl,
           targetLength: dto.targetLength,
           writingStyle: dto.writingStyle,
           externalUrls: allUrls,
@@ -340,10 +390,7 @@ export class StudioGeneratorService implements OnModuleDestroy {
           operatorId: caller?.isOperator ? caller.operatorId : undefined,
           requestId: jobId,
           channel: 'WEB_STUDIO',
-          activityType:
-            effectiveTaskType === 'INFOGRAPHIC_ONLY'
-              ? 'STUDIO_INFOGRAPHIC_GENERATION'
-              : 'STUDIO_ARTICLE_GENERATION',
+          activityType: resolvedActivityType,
         },
         {
           jobId,
@@ -442,7 +489,12 @@ export class StudioGeneratorService implements OnModuleDestroy {
     };
   }
 
-  async regenerateArticlePoster(tenantId: string, articleId: string, prompt?: string) {
+  async regenerateArticlePoster(
+    tenantId: string,
+    articleId: string,
+    prompt?: string,
+    options?: { visualFormat?: 'poster' | 'infographic'; forcedArchetype?: string }
+  ) {
     const article = await withTenantContext(tenantId, async (tx) => {
       const [record] = await tx
         .select({
@@ -507,6 +559,9 @@ export class StudioGeneratorService implements OnModuleDestroy {
           publicationId: article.id,
           topic: article.title,
           prompt: prompt?.trim() || undefined,
+          visualFormat: options?.visualFormat,
+          style: options?.visualFormat,
+          forcedArchetype: options?.forcedArchetype,
           generateDallePoster: true,
           channel: 'WEB_STUDIO',
           activityType: 'POSTER_REVISION',

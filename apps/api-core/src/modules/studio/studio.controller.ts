@@ -160,9 +160,12 @@ export class StudioController {
   async regeneratePoster(
     @CurrentTenant() user: AuthenticatedTenantPayload,
     @Param('id') id: string,
-    @Body() dto?: { prompt?: string }
+    @Body() dto?: { prompt?: string; visualFormat?: 'poster' | 'infographic'; forcedArchetype?: string }
   ) {
-    return await this.studioService.regenerateArticlePoster(user.tenantId, id, dto?.prompt);
+    return await this.studioService.regenerateArticlePoster(user.tenantId, id, dto?.prompt, {
+      visualFormat: dto?.visualFormat,
+      forcedArchetype: dto?.forcedArchetype,
+    });
   }
 
   @Put('articles/:id')

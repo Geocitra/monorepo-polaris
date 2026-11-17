@@ -49,49 +49,8 @@ export class StudioFullGenerationHandler {
         'Menyusuri Konteks Regulasi & Analisis Dokumen Lampiran...'
       );
 
-      const [member] = await db
-        .select({
-          fullName: tenantMembers.fullName,
-          partyAffiliation: tenantMembers.partyAffiliation,
-          dapilId: tenantMembers.electoralDistrictId,
-          customDapil: tenantMembers.customDapilName,
-          personalCoverage: tenantMembers.personalCoverage,
-          photoUrl: tenantMembers.photoUrl,
-          commissionName: tenantMembers.commissionName,
-          legislativeLevel: tenantMembers.legislativeLevel,
-          issueInterests: tenantMembers.issueInterests,
-        })
-        .from(tenantMembers)
-        .where(eq(tenantMembers.id, tenantId))
-        .limit(1);
-
-      let targetRegion = member?.personalCoverage?.[0] || 'NASIONAL';
-      let dapilName = member?.customDapil || 'Dapil';
-      let resolvedDapilCode: string | null = null;
-
-      if (member?.dapilId) {
-        const [dapil] = await db
-          .select({
-            id: electoralDistricts.id,
-            dapilCode: electoralDistricts.dapilCode,
-            dapilName: electoralDistricts.dapilName,
-            regencyCoverage: electoralDistricts.regencyCoverage,
-          })
-          .from(electoralDistricts)
-          .where(eq(electoralDistricts.id, member.dapilId))
-          .limit(1);
-
-        if (dapil) {
-          resolvedDapilCode = dapil.dapilCode;
-          if (!member.customDapil) dapilName = dapil.dapilName;
-          if (!member.personalCoverage || member.personalCoverage.length === 0) {
-            targetRegion = dapil.regencyCoverage?.[0] || 'NASIONAL';
-          }
-        }
-      }
-      if (!resolvedDapilCode) {
-        resolvedDapilCode = member?.customDapil || null;
-      }
+      const { member, dapilName, targetRegion, resolvedDapilCode } =
+        await StudioContextHelper.resolveMemberAndRegion(tenantId);
 
       // Vektor Grounding Otentik (RAG) untuk Topik
       let queryVector: number[] | null = null;
@@ -185,11 +144,17 @@ export class StudioFullGenerationHandler {
       let posterFailure: string | undefined;
 
       if (shouldGeneratePoster) {
+        const companionFormat: 'poster' | 'infographic' =
+          data.visualFormat === 'infographic' || data.style === 'infographic'
+            ? 'infographic'
+            : 'poster';
+        const companionLabel = companionFormat === 'infographic' ? 'infografis data' : 'poster visual';
+
         await StudioContextHelper.emitProgress(
           tenantId,
           jobId,
-          85,
-          'Merender poster visual berestetika tinggi; naskah telah tersimpan...'
+          80,
+          `Merender ${companionLabel} yang menyelaraskan isi naskah artikel...`
         );
 
         const posterResult = await StudioPosterSynthesizerService.synthesizePoster({
@@ -203,10 +168,14 @@ export class StudioFullGenerationHandler {
           groundedEvidenceText,
           member,
           dapilName,
+          visualFormat: companionFormat,
           forcedArchetype: data.forcedArchetype,
           layoutVariant: data.layoutVariant,
           enableImg2ImgPass: data.enableImg2ImgPass,
           img2ImgDenoisingStrength: data.img2ImgDenoisingStrength,
+          operatorId: data.operatorId,
+          channel: data.channel || 'WEB_STUDIO',
+          requestId: data.requestId || jobId,
           aiEngine,
           storageAdapter,
           onProgress: async (step, pct) => {

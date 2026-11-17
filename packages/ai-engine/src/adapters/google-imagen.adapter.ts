@@ -279,6 +279,13 @@ export class GoogleImagenAdapter {
 
     let usageTokens = { inputTokens: 0, outputTokens: 0 };
 
+    const artCollageGuardrailPrefix = [
+      'CRITICAL TEXTLESS & FULL-BLEED MANDATE: Do NOT render any text, words, letters, signatures, numbers, typography, headings, captions, logos, or watermarks anywhere on this canvas.',
+      'DO NOT draw fake UI boxes, empty frosted glass rectangles, blank flowchart containers, or fake QR codes.',
+      'The artwork MUST be 100% full-bleed edge-to-edge across the entire frame (0,0 to 100%,100%) with ZERO outer mockup margins, ZERO studio desk background, and ZERO perspective frame.',
+      'Follow the exact artistic medium, texture, collage/cutout treatment, color palette, and negative-space clearing specified below:',
+    ].join(' ');
+
     // Jalur Production: Gemini multimodal image langsung (prompt + referensi gaya opsional)
     const tryGemini = async (withReference: boolean) => {
       if (!this.client) {
@@ -289,7 +296,7 @@ export class GoogleImagenAdapter {
         parts.push({ inlineData: { mimeType: params.styleReference.mimeType, data: params.styleReference.base64 } });
       }
       parts.push({
-        text: `CRITICAL INSTRUCTION: Do NOT render any text, words, letters, signatures, numbers, typography, headings, or captions anywhere on this image canvas. DO NOT draw any frosted glass cards, blur rectangles, UI boxes, empty capsules, blank pillar shapes, timeline bars with dots, flowchart containers, blank chalkboards, or fake QR codes. DO NOT draw cartoons, anime, 3D CGI renders, vector clipart, sketches, or drawings. The visual must be a pure, high-quality scenic composition (realistic documentary photograph or scenic artwork matching the prompt). The clearing area must remain completely flat, plain, and clean.\n\n${params.prompt}`,
+        text: `${artCollageGuardrailPrefix}\n\n${params.prompt}`,
       });
       const res = await this.client.models.generateContent({
         model: geminiModel,
@@ -313,8 +320,7 @@ export class GoogleImagenAdapter {
           console.log(`[GoogleImagenAdapter] Render kanvas art-collage via 9Router (${geminiModel})...`);
           const routerRes = await routerClient.images.generate({
             model: geminiModel,
-            prompt: `CRITICAL INSTRUCTION: Do NOT render any text, words, letters, signatures, numbers, typography, headings, or captions anywhere on this image canvas. DO NOT draw any frosted glass cards, blur rectangles, UI boxes, empty capsules, blank pillar shapes, timeline bars with dots, flowchart containers, blank chalkboards, or fake QR codes. DO NOT draw cartoons, anime, 3D CGI renders, vector clipart, sketches, or drawings.
-CRITICAL FULL-BLEED ZERO-MOCKUP MANDATE: The composition MUST BE 100% FULL BLEED EDGE-TO-EDGE across the entire image frame. ABSOLUTELY ZERO white borders, ZERO white padding, ZERO outer margins, ZERO surrounding white frame, ZERO drop shadow canvas edges, and ZERO poster mockup perspective! DO NOT draw a sheet of paper lying on a white background, desk, or studio table! The background paper texture (#F8F6F0) and the deep crimson red wave (#991B1B) must bleed all the way to the absolute pixel edges of the image (coordinates 0,0 to 100%,100%) without any surrounding white border or desk! The clearing area must remain completely flat, plain, and clean.\n\n${params.prompt}`,
+            prompt: `${artCollageGuardrailPrefix}\n\n${params.prompt}`,
           });
           const b64 = routerRes.data?.[0]?.b64_json;
           if (b64) {

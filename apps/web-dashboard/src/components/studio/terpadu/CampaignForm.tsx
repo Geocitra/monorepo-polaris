@@ -82,6 +82,8 @@ interface CampaignFormProps {
   onOpenVersionDrawer?: () => void;
   onResetToNewChat?: () => void;
   authorName?: string;
+  visualFormat?: 'poster' | 'infographic';
+  onVisualFormatChange?: (fmt: 'poster' | 'infographic') => void;
 }
 
 export function CampaignForm({
@@ -111,6 +113,8 @@ export function CampaignForm({
   onOpenVersionDrawer,
   onResetToNewChat,
   authorName = 'Anggota Dewan',
+  visualFormat = 'poster',
+  onVisualFormatChange,
 }: CampaignFormProps) {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -727,13 +731,70 @@ export function CampaignForm({
         </div>
 
         {/* GAYA PENULISAN & TARGET PANJANG */}
-        <div className="pt-2 border-t border-slate-100 dark:border-slate-800">
+        <div className="pt-2 border-t border-slate-100 dark:border-slate-800 space-y-4">
           <WritingStyleSelector
             selectedLength={selectedLength}
             onLengthChange={onLengthChange}
             selectedStyle={selectedStyle}
             onStyleChange={onStyleChange}
           />
+
+          {/* PILIHAN FORMAT VISUAL PENDAMPING ARTIKEL (POSTER VS INFOGRAFIS) */}
+          {onVisualFormatChange && (
+            <div className="space-y-2 pt-2 border-t border-slate-100 dark:border-slate-800">
+              <div className="flex items-center justify-between">
+                <label className="text-xs font-extrabold text-slate-800 dark:text-slate-200 flex items-center gap-1.5">
+                  <ImageIcon className="h-3.5 w-3.5 text-blue-600 dark:text-blue-400" />
+                  <span>Format Gambar Pendamping Artikel</span>
+                </label>
+                <span className="text-[10px] font-mono font-bold text-slate-400 dark:text-slate-500">
+                  Rasio 4:5 HD • Saling Melengkapi Isi Artikel
+                </span>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                <button
+                  type="button"
+                  onClick={() => onVisualFormatChange('poster')}
+                  className={`flex items-start gap-3 p-3 rounded-2xl border text-left transition-all cursor-pointer ${
+                    visualFormat === 'poster'
+                      ? 'bg-blue-50/80 dark:bg-blue-950/40 border-blue-500 ring-1 ring-blue-500/30 shadow-2xs'
+                      : 'bg-slate-50/70 dark:bg-slate-800/40 border-slate-200 dark:border-slate-700 hover:border-blue-400'
+                  }`}
+                >
+                  <div className="mt-0.5 text-base">🖼️</div>
+                  <div>
+                    <div className="text-xs font-extrabold text-slate-900 dark:text-white">
+                      Poster Visual (Statement)
+                    </div>
+                    <div className="text-[11px] text-slate-500 dark:text-slate-400 leading-snug mt-0.5">
+                      Tipografi ekspresif, judul ikonik singkat & kutipan utama dari artikel.
+                    </div>
+                  </div>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => onVisualFormatChange('infographic')}
+                  className={`flex items-start gap-3 p-3 rounded-2xl border text-left transition-all cursor-pointer ${
+                    visualFormat === 'infographic'
+                      ? 'bg-blue-50/80 dark:bg-blue-950/40 border-blue-500 ring-1 ring-blue-500/30 shadow-2xs'
+                      : 'bg-slate-50/70 dark:bg-slate-800/40 border-slate-200 dark:border-slate-700 hover:border-blue-400'
+                  }`}
+                >
+                  <div className="mt-0.5 text-base">📊</div>
+                  <div>
+                    <div className="text-xs font-extrabold text-slate-900 dark:text-white">
+                      Infografis Data (Ringkasan)
+                    </div>
+                    <div className="text-[11px] text-slate-500 dark:text-slate-400 leading-snug mt-0.5">
+                      Bento/callout poin analisis, indikator angka KPI & visualisasi data artikel.
+                    </div>
+                  </div>
+                </button>
+              </div>
+            </div>
+          )}
         </div>
 
         {/* TOMBOL SUBMIT */}
