@@ -14,8 +14,16 @@ WORKDIR /app
 # =========================================================================
 FROM base AS dependencies
 COPY pnpm-lock.yaml pnpm-workspace.yaml package.json turbo.json tsconfig.base.json ./
+COPY packages/core-domain/package.json ./packages/core-domain/
 COPY packages/shared-types/package.json ./packages/shared-types/
+COPY packages/database/package.json ./packages/database/
+COPY packages/payment/package.json ./packages/payment/
+COPY packages/storage/package.json ./packages/storage/
+COPY packages/ai-engine/package.json ./packages/ai-engine/
+COPY apps/api-core/package.json ./apps/api-core/
 COPY apps/web-dashboard/package.json ./apps/web-dashboard/
+COPY apps/web-portal/package.json ./apps/web-portal/
+COPY apps/worker-crawler/package.json ./apps/worker-crawler/
 
 RUN pnpm install --frozen-lockfile
 
