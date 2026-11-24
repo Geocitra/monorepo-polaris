@@ -3,6 +3,23 @@ const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000/api/v1
 export class ApiClient {
   public static readonly SESSION_DURATION_SEC = 24 * 60 * 60; // 24 jam (1 hari)
   public static readonly EXPIRES_KEY = 'polaris_token_expires_at';
+  private static activeInstitutionalOrgId: string | null = null;
+  private static activeInstitutionalUnitId: string | null = null;
+
+  public static setInstitutionalContext(orgId?: string | null, unitId?: string | null): void {
+    this.activeInstitutionalOrgId = orgId?.trim() || null;
+    this.activeInstitutionalUnitId = unitId?.trim() || null;
+  }
+
+  private static applyInstitutionalHeaders(endpoint: string, headers: Record<string, string>): void {
+    if (!this.activeInstitutionalOrgId || !this.activeInstitutionalUnitId) return;
+    if (
+      endpoint.startsWith(`/institutional/orgs/${this.activeInstitutionalOrgId}/`) &&
+      !headers['x-active-unit-id']
+    ) {
+      headers['x-active-unit-id'] = this.activeInstitutionalUnitId;
+    }
+  }
 
   public static getToken(): string | null {
     if (typeof window === 'undefined') return null;
@@ -55,6 +72,7 @@ export class ApiClient {
   }
 
   public static removeToken(): void {
+    this.setInstitutionalContext(null, null);
     if (typeof window !== 'undefined') {
       try {
         localStorage.removeItem('polaris_token');
@@ -102,6 +120,7 @@ export class ApiClient {
     if (token) {
       headers['Authorization'] = `Bearer ${token}`;
     }
+    this.applyInstitutionalHeaders(endpoint, headers);
 
     const response = await fetch(`${API_URL}${endpoint}`, {
       ...options,
@@ -128,6 +147,7 @@ export class ApiClient {
     if (token) {
       headers['Authorization'] = `Bearer ${token}`;
     }
+    this.applyInstitutionalHeaders(endpoint, headers);
 
     const response = await fetch(`${API_URL}${endpoint}`, {
       method: 'POST',

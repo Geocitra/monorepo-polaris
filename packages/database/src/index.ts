@@ -17,6 +17,9 @@ export * from './schema/ai-critic-logs.js';
 export * from './schema/platform-settings.js';
 export * from './schema/briefs.js';
 export * from './schema/live-chat.js';
+export * from './schema/institutional.js';
+export * from './schema/lkpj.js';
+export * from './schema/parliamentary.js';
 export * from './rls/with-tenant.js';
 
 export * from './rls/tenant-context.js';

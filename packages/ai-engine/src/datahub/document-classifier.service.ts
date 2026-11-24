@@ -60,11 +60,15 @@ export class DocumentClassifierService {
           existingCategory?: DatahubCategory;
           customTitle?: string;
           tenantId?: string;
+          organizationId?: string;
+          organizationUnitId?: string;
         }
       | string,
     extractedTextArg?: string,
     existingCategoryArg?: DatahubCategory,
-    tenantIdArg?: string
+    tenantIdArg?: string,
+    organizationIdArg?: string,
+    organizationUnitIdArg?: string
   ): Promise<ClassificationResult> {
     const params =
       typeof paramsOrFileName === 'string'
@@ -73,6 +77,8 @@ export class DocumentClassifierService {
             extractedText: extractedTextArg || '',
             existingCategory: existingCategoryArg,
             tenantId: tenantIdArg,
+            organizationId: organizationIdArg,
+            organizationUnitId: organizationUnitIdArg,
           }
         : paramsOrFileName;
 
@@ -98,7 +104,9 @@ export class DocumentClassifierService {
           textSample,
           params.customTitle,
           3000,
-          params.tenantId
+          params.tenantId,
+          params.organizationId,
+          params.organizationUnitId
         );
 
         if (geminiResult) {
@@ -139,7 +147,9 @@ export class DocumentClassifierService {
     textSample: string,
     customTitle?: string,
     timeoutMs = 3000,
-    tenantId?: string
+    tenantId?: string,
+    organizationId?: string,
+    organizationUnitId?: string
   ): Promise<ClassificationResult | null> {
     let timer: NodeJS.Timeout | undefined;
 
@@ -152,7 +162,14 @@ export class DocumentClassifierService {
 
     try {
       return await Promise.race([
-        this.classifyWithGemini(fileName, textSample, customTitle, tenantId),
+        this.classifyWithGemini(
+          fileName,
+          textSample,
+          customTitle,
+          tenantId,
+          organizationId,
+          organizationUnitId
+        ),
         timeoutPromise,
       ]);
     } finally {
@@ -167,7 +184,9 @@ export class DocumentClassifierService {
     fileName: string,
     textSample: string,
     customTitle?: string,
-    tenantId?: string
+    tenantId?: string,
+    organizationId?: string,
+    organizationUnitId?: string
   ): Promise<ClassificationResult | null> {
     if (!googleGenAiClient) return null;
 
@@ -202,6 +221,8 @@ Kembalikan format JSON persis seperti ini (tanpa markdown backtick):
       operation: 'datahub-document-classifier',
       model: modelName,
       tenantId,
+      organizationId,
+      organizationUnitId,
       inputPayload: { fileName, customTitle },
     });
 

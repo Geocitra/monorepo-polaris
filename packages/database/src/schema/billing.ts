@@ -4,6 +4,7 @@ import { subscriptionStatusEnum, planTierEnum, paymentStatusEnum, quotaTransacti
 import { subscriptionPriceMatrices } from './pricing-matrix.js';
 import { contentBriefs } from './briefs.js';
 import { contentPublications } from './content.js';
+import { organizations, organizationUnits } from './institutional.js';
 
 export const subscriptions = pgTable('subscriptions', {
   id: uuid('id').defaultRandom().primaryKey(),
@@ -110,6 +111,8 @@ export const aiTraceLogs = pgTable('ai_trace_logs', {
   id: uuid('id').defaultRandom().primaryKey(),
   traceId: varchar('trace_id', { length: 100 }).notNull(),
   tenantId: uuid('tenant_id').references(() => tenantMembers.id, { onDelete: 'set null' }),
+  organizationId: uuid('organization_id').references(() => organizations.id, { onDelete: 'set null' }),
+  organizationUnitId: uuid('organization_unit_id').references(() => organizationUnits.id, { onDelete: 'set null' }),
   operatorId: uuid('operator_id').references(() => systemAdmins.id, { onDelete: 'set null' }),
   publicationId: uuid('publication_id').references(() => contentPublications.id, { onDelete: 'set null' }),
   ledgerId: uuid('ledger_id').references(() => tenantQuotaLedgers.id, { onDelete: 'set null' }),
@@ -134,6 +137,7 @@ export const aiTraceLogs = pgTable('ai_trace_logs', {
   createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
 }, (t) => ({
   idxAiTraceTenantCreated: index('idx_ai_trace_tenant_created').on(t.tenantId, t.createdAt),
+  idxAiTraceOrgUnitCreated: index('idx_ai_trace_org_unit_created').on(t.organizationId, t.organizationUnitId, t.createdAt),
   idxAiTraceProviderCreated: index('idx_ai_trace_provider_created').on(t.provider, t.createdAt),
   idxAiTracePublication: index('idx_ai_trace_publication').on(t.publicationId),
   idxAiTraceOperator: index('idx_ai_trace_operator').on(t.operatorId),

@@ -32,7 +32,11 @@ export class DatahubService {
   async processUpload(
     tenantId: string,
     file: Express.Multer.File,
-    dto: DatahubUploadDto
+    dto: DatahubUploadDto,
+    institutionalScope?: {
+      organizationId: string;
+      organizationUnitId?: string | null;
+    }
   ) {
     if (!file || !file.buffer || file.buffer.length === 0) {
       throw new BadRequestException('Berkas dokumen atau gambar tidak boleh kosong.');
@@ -85,7 +89,25 @@ export class DatahubService {
     const ext = path.extname(originalName) || '.bin';
     let finalDocTitle = dto.customTitle?.trim() || originalName;
     let categoryTag = dto.categoryTag || DatahubCategory.DOKUMEN_INTERNAL;
-    const privacyScope = dto.privacyScope || DatahubPrivacyScope.PRIVATE_TENANT;
+
+    let privacyScope = dto.privacyScope || DatahubPrivacyScope.PRIVATE_TENANT;
+    let targetOrgId: string | null = null;
+    let targetUnitId: string | null = null;
+
+    if (institutionalScope?.organizationId) {
+      targetOrgId = institutionalScope.organizationId;
+      targetUnitId = institutionalScope.organizationUnitId || null;
+      privacyScope = targetUnitId
+        ? DatahubPrivacyScope.UNIT_BIDANG
+        : DatahubPrivacyScope.ORG_SHARED;
+    } else if (
+      privacyScope === DatahubPrivacyScope.UNIT_BIDANG ||
+      privacyScope === DatahubPrivacyScope.ORG_SHARED
+    ) {
+      throw new BadRequestException(
+        'Cakupan UNIT_BIDANG dan ORG_SHARED hanya dapat diunggah melalui ruang kerja Instansi atau Sekretariat.'
+      );
+    }
 
     // 3. Cek apakah berkas dengan Hash ini sudah ada di sistem (DEDUPLIKASI)
     const [existingFile] = await db
@@ -102,16 +124,28 @@ export class DatahubService {
         `[Datahub] Berkas duplikat terverifikasi (Hash: ${contentSha256}). Skip simpan fisik & embedding AI.`
       );
 
-      // Cek apakah tenant sudah pernah punya referensi ke file ini
+      // Cek apakah referensi untuk scope ini sudah pernah ada
       const [existingRef] = await db
         .select({ id: datahubDocumentRefs.id })
         .from(datahubDocumentRefs)
         .where(
-          and(
-            eq(datahubDocumentRefs.fileId, existingFile.id),
-            eq(datahubDocumentRefs.uploadedByTenantId, tenantId)
-          )
+          targetOrgId
+            ? and(
+                eq(datahubDocumentRefs.fileId, existingFile.id),
+                eq(datahubDocumentRefs.organizationId, targetOrgId),
+                targetUnitId
+                  ? eq(datahubDocumentRefs.organizationUnitId, targetUnitId)
+                  : sql`${datahubDocumentRefs.organizationUnitId} IS NULL`,
+                eq(datahubDocumentRefs.privacyScope, privacyScope)
+              )
+            : and(
+                eq(datahubDocumentRefs.fileId, existingFile.id),
+                eq(datahubDocumentRefs.uploadedByTenantId, tenantId),
+                sql`${datahubDocumentRefs.organizationId} IS NULL`
+              )
         );
+
+      let resolvedRefId = existingRef?.id || null;
 
       if (!existingRef) {
         // Jika categoryTag tidak ditentukan secara eksplisit atau 'AUTO', warisi klasifikasi dari referensi sebelumnya
@@ -141,29 +175,36 @@ export class DatahubService {
               .where(eq(datahubFiles.id, existingFile.id));
 
             if (fileData?.extractedRawText) {
-              const cls = await DocumentClassifierService.classifyDocument(
-                originalName,
-                fileData.extractedRawText,
-                undefined,
-                tenantId
-              );
+              const cls = await DocumentClassifierService.classifyDocument({
+                fileName: originalName,
+                extractedText: fileData.extractedRawText,
+                tenantId,
+                organizationId: targetOrgId || undefined,
+                organizationUnitId: targetUnitId || undefined,
+              });
               categoryTag = cls.category;
             }
           }
         }
 
-        // Catat relasi referensi tenant tanpa menduplikasi data fisik/vektor
-        await db.insert(datahubDocumentRefs).values({
-          fileId: existingFile.id,
-          uploadedByTenantId: tenantId,
-          customTitle: finalDocTitle,
-          dapilCode,
-          partyAffiliation: member.partyAffiliation,
-          branchType,
-          legislativeLevel: member.legislativeLevel,
-          privacyScope,
-          categoryTag,
-        });
+        // Catat relasi referensi tanpa menduplikasi data fisik/vektor
+        const [insertedDupRef] = await db
+          .insert(datahubDocumentRefs)
+          .values({
+            fileId: existingFile.id,
+            uploadedByTenantId: tenantId,
+            organizationId: targetOrgId,
+            organizationUnitId: targetUnitId,
+            customTitle: finalDocTitle,
+            dapilCode,
+            partyAffiliation: member.partyAffiliation,
+            branchType,
+            legislativeLevel: member.legislativeLevel,
+            privacyScope,
+            categoryTag,
+          })
+          .returning({ id: datahubDocumentRefs.id });
+        resolvedRefId = insertedDupRef?.id || null;
       }
 
       // UX Idempoten: Berikan respons sukses yang identik ke user
@@ -172,6 +213,10 @@ export class DatahubService {
         isDuplicate: true,
         message: 'Dokumen berhasil diserap dan disinkronkan ke AI Knowledge Base Anda.',
         fileId: existingFile.id,
+        refId: resolvedRefId,
+        privacyScope,
+        organizationId: targetOrgId,
+        organizationUnitId: targetUnitId,
       };
     } else if (existingFile && existingFile.extractionStatus !== 'COMPLETED') {
       // Jika berkas sebelumnya berstatus FAILED / uncompleted, hapus record lama agar diproses ulang secara bersih
@@ -210,7 +255,13 @@ export class DatahubService {
         file.buffer,
         file.mimetype,
         originalName,
-        tenantId
+        tenantId,
+        targetOrgId
+          ? {
+              organizationId: targetOrgId,
+              organizationUnitId: targetUnitId || undefined,
+            }
+          : undefined
       );
       extractedText = extraction.text;
       totalPages = extraction.totalPages;
@@ -223,6 +274,8 @@ export class DatahubService {
           existingCategory: dto.categoryTag,
           customTitle: finalDocTitle,
           tenantId,
+          organizationId: targetOrgId || undefined,
+          organizationUnitId: targetUnitId || undefined,
         });
         categoryTag = classification.category;
         if (finalDocTitle === originalName && classification.suggestedTitle) {
@@ -242,17 +295,22 @@ export class DatahubService {
 
     if (!extractedText || extractedText.trim().length === 0) {
       // 7. Simpan Referensi Tenant untuk berkas tanpa konten teks
-      await db.insert(datahubDocumentRefs).values({
-        fileId: insertedFile.id,
-        uploadedByTenantId: tenantId,
-        customTitle: finalDocTitle,
-        dapilCode,
-        partyAffiliation: member.partyAffiliation,
-        branchType,
-        legislativeLevel: member.legislativeLevel,
-        privacyScope,
-        categoryTag,
-      });
+      const [insertedEmptyRef] = await db
+        .insert(datahubDocumentRefs)
+        .values({
+          fileId: insertedFile.id,
+          uploadedByTenantId: tenantId,
+          organizationId: targetOrgId,
+          organizationUnitId: targetUnitId,
+          customTitle: finalDocTitle,
+          dapilCode,
+          partyAffiliation: member.partyAffiliation,
+          branchType,
+          legislativeLevel: member.legislativeLevel,
+          privacyScope,
+          categoryTag,
+        })
+        .returning({ id: datahubDocumentRefs.id });
 
       await db
         .update(datahubFiles)
@@ -264,11 +322,16 @@ export class DatahubService {
         isDuplicate: false,
         message: 'Dokumen berhasil diunggah, namun tidak ditemukan teks yang dapat diekstrak.',
         fileId: insertedFile.id,
+        refId: insertedEmptyRef?.id || null,
+        privacyScope,
+        organizationId: targetOrgId,
+        organizationUnitId: targetUnitId,
         totalChunks: 0,
       };
     }
 
     let chunks: any[] = [];
+    let finalRefId: string | null = null;
     try {
       // 8. Chunking Dokumen dengan Sliding Window & Metadata Header Injection
       chunks = ContextualChunkerService.chunkDocument(extractedText, {
@@ -285,7 +348,13 @@ export class DatahubService {
       // 9. Batch Vector Embedding
       if (chunks.length > 0) {
         const chunkTexts = chunks.map((c) => c.fullChunkText);
-        const embeddings = await DatahubEmbedderService.generateBatchEmbeddings(chunkTexts, 50, tenantId);
+        const embeddings = await DatahubEmbedderService.generateBatchEmbeddings(
+          chunkTexts,
+          50,
+          tenantId,
+          targetOrgId || undefined,
+          targetUnitId || undefined
+        );
 
         // Simpan seluruh chunk dan vektor ke pgvector
         const chunkValues = chunks.map((chunk, idx) => ({
@@ -316,17 +385,23 @@ export class DatahubService {
         .where(eq(datahubFiles.id, insertedFile.id));
 
       // 11. Daftarkan Referensi Multi-Tenant setelah berkas & vektor sukses 100%
-      await db.insert(datahubDocumentRefs).values({
-        fileId: insertedFile.id,
-        uploadedByTenantId: tenantId,
-        customTitle: finalDocTitle,
-        dapilCode,
-        partyAffiliation: member.partyAffiliation,
-        branchType,
-        legislativeLevel: member.legislativeLevel,
-        privacyScope,
-        categoryTag,
-      });
+      const [insertedRef] = await db
+        .insert(datahubDocumentRefs)
+        .values({
+          fileId: insertedFile.id,
+          uploadedByTenantId: tenantId,
+          organizationId: targetOrgId,
+          organizationUnitId: targetUnitId,
+          customTitle: finalDocTitle,
+          dapilCode,
+          partyAffiliation: member.partyAffiliation,
+          branchType,
+          legislativeLevel: member.legislativeLevel,
+          privacyScope,
+          categoryTag,
+        })
+        .returning({ id: datahubDocumentRefs.id });
+      finalRefId = insertedRef?.id || null;
     } catch (processErr) {
       this.logger.error(`[Datahub] Gagal memproses chunking/embedding vektor:`, processErr);
       await db
@@ -343,13 +418,17 @@ export class DatahubService {
       isDuplicate: false,
       message: 'Dokumen berhasil diserap, diekstrak, dan disinkronkan ke AI Knowledge Base.',
       fileId: insertedFile.id,
+      refId: finalRefId,
+      privacyScope,
+      organizationId: targetOrgId,
+      organizationUnitId: targetUnitId,
       totalChunks: chunks.length,
       totalPages,
     };
   }
 
   /**
-   * Mengambil statistik ringkas Knowledge Base tenant (tanpa membocorkan list nama file)
+   * Mengambil statistik ringkas Knowledge Base tenant personal (tanpa membocorkan list nama file maupun dokumen instansi)
    */
   async getTenantKnowledgeMetrics(tenantId: string) {
     const [stats] = await db.execute(sql`
@@ -359,7 +438,8 @@ export class DatahubService {
         MAX(ref.created_at) AS "lastIngestedAt"
       FROM datahub_document_refs ref
       LEFT JOIN datahub_document_chunks c ON ref.file_id = c.file_id
-      WHERE ref.uploaded_by_tenant_id = ${tenantId}::uuid;
+      WHERE ref.uploaded_by_tenant_id = ${tenantId}::uuid
+        AND ref.organization_id IS NULL;
     `);
 
     return (

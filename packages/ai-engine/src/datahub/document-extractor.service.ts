@@ -23,7 +23,8 @@ export class DocumentExtractorService {
     buffer: Buffer,
     mimeType: string,
     fileName: string,
-    tenantId?: string
+    tenantId?: string,
+    institutionalContext?: { organizationId?: string; organizationUnitId?: string }
   ): Promise<ExtractionResult> {
     const cleanMime = mimeType.toLowerCase();
     const lowerName = fileName.toLowerCase();
@@ -48,7 +49,12 @@ export class DocumentExtractorService {
 
         // Fallback ke Gemini Vision jika PDF adalah scan gambar dan Gemini client aktif
         if (googleGenAiClient) {
-          const visionText = await this.extractWithGeminiVision(buffer, 'application/pdf', tenantId);
+          const visionText = await this.extractWithGeminiVision(
+            buffer,
+            'application/pdf',
+            tenantId,
+            institutionalContext
+          );
           if (visionText && visionText.trim().length > 0) {
             return {
               text: visionText.trim(),
@@ -67,7 +73,12 @@ export class DocumentExtractorService {
         console.warn(`[DocumentExtractor] pdf-parse gagal untuk ${fileName}:`, err);
         // Coba fallback ke vision jika PDF error
         if (googleGenAiClient) {
-          const visionText = await this.extractWithGeminiVision(buffer, 'application/pdf', tenantId);
+          const visionText = await this.extractWithGeminiVision(
+            buffer,
+            'application/pdf',
+            tenantId,
+            institutionalContext
+          );
           return {
             text: visionText.trim(),
             totalPages: 1,
@@ -111,7 +122,8 @@ export class DocumentExtractorService {
       const visionText = await this.extractWithGeminiVision(
         buffer,
         cleanMime.startsWith('image/') ? cleanMime : 'image/jpeg',
-        tenantId
+        tenantId,
+        institutionalContext
       );
 
       return {
@@ -262,7 +274,8 @@ export class DocumentExtractorService {
   private static async extractWithGeminiVision(
     buffer: Buffer,
     mimeType: string,
-    tenantId?: string
+    tenantId?: string,
+    institutionalContext?: { organizationId?: string; organizationUnitId?: string }
   ): Promise<string> {
     if (!googleGenAiClient) return '';
 
@@ -281,6 +294,8 @@ Tugas Anda adalah membaca dan menyalin (transkrip) seluruh isi berkas/gambar ini
       operation: 'datahub-gemini-vision-ocr',
       model: modelName,
       tenantId,
+      organizationId: institutionalContext?.organizationId,
+      organizationUnitId: institutionalContext?.organizationUnitId,
       metadata: { mimeType, byteLength: buffer.length },
     });
 

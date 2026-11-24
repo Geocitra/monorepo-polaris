@@ -1,6 +1,8 @@
-import { pgTable, uuid, varchar, text, integer, timestamp, customType, index } from 'drizzle-orm/pg-core';
+import { pgTable, uuid, varchar, text, integer, timestamp, customType, index, check } from 'drizzle-orm/pg-core';
+import { sql } from 'drizzle-orm';
 import { tenantMembers } from './identity.js';
 import { legislativeLevelEnum } from './enums.js';
+import { organizations, organizationUnits } from './institutional.js';
 
 // Custom type untuk pgvector vector(1536)
 export const pgVector1536 = customType<{ data: number[]; driverData: string }>({
@@ -34,6 +36,8 @@ export const datahubDocumentRefs = pgTable('datahub_document_refs', {
   id: uuid('id').defaultRandom().primaryKey(),
   fileId: uuid('file_id').notNull().references(() => datahubFiles.id, { onDelete: 'cascade' }),
   uploadedByTenantId: uuid('uploaded_by_tenant_id').notNull().references(() => tenantMembers.id, { onDelete: 'cascade' }),
+  organizationId: uuid('organization_id').references(() => organizations.id, { onDelete: 'cascade' }),
+  organizationUnitId: uuid('organization_unit_id').references(() => organizationUnits.id, { onDelete: 'cascade' }),
   customTitle: varchar('custom_title', { length: 255 }),
   dapilCode: varchar('dapil_code', { length: 50 }),
   partyAffiliation: varchar('party_affiliation', { length: 100 }),
@@ -46,6 +50,19 @@ export const datahubDocumentRefs = pgTable('datahub_document_refs', {
   tenantIdx: index('idx_datahub_refs_tenant').on(table.uploadedByTenantId),
   dapilIdx: index('idx_datahub_refs_dapil').on(table.dapilCode),
   partyIdx: index('idx_datahub_refs_party').on(table.partyAffiliation),
+  orgUnitScopeIdx: index('idx_datahub_refs_org_unit_scope').on(
+    table.organizationId,
+    table.organizationUnitId,
+    table.privacyScope
+  ),
+  chkInstitutionalScope: check(
+    'chk_datahub_refs_institutional_scope',
+    sql`(
+      (${table.privacyScope} = 'UNIT_BIDANG' AND ${table.organizationId} IS NOT NULL AND ${table.organizationUnitId} IS NOT NULL)
+      OR (${table.privacyScope} = 'ORG_SHARED' AND ${table.organizationId} IS NOT NULL AND ${table.organizationUnitId} IS NULL)
+      OR (${table.privacyScope} IN ('PRIVATE_TENANT', 'PARTY_CONFIDENTIAL', 'DAPIL_SHARED', 'PUBLIC_SYSTEM'))
+    )`
+  ),
 }));
 
 export const datahubDocumentChunks = pgTable('datahub_document_chunks', {

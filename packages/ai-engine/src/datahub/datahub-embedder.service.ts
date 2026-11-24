@@ -9,7 +9,9 @@ export class DatahubEmbedderService {
   public static async generateBatchEmbeddings(
     texts: string[],
     batchSize: number = 50,
-    tenantId?: string
+    tenantId?: string,
+    organizationId?: string,
+    organizationUnitId?: string
   ): Promise<number[][]> {
     if (!texts || texts.length === 0) {
       return [];
@@ -37,6 +39,8 @@ export class DatahubEmbedderService {
         operation: 'datahub-batch-embedding',
         model: 'text-embedding-3-small',
         tenantId,
+        organizationId,
+        organizationUnitId,
         metadata: { batchIndex: i, chunkCount: batch.length },
       });
 

@@ -15,6 +15,9 @@ import * as pricingMatrix from './schema/pricing-matrix.js';
 import * as inquiry from './schema/inquiry.js';
 import * as platformSettings from './schema/platform-settings.js';
 import * as briefs from './schema/briefs.js';
+import * as institutional from './schema/institutional.js';
+import * as lkpj from './schema/lkpj.js';
+import * as parliamentary from './schema/parliamentary.js';
 import { tenantContextStorage } from './rls/tenant-context.js';
 
 if (!process.env.DATABASE_URL) {
@@ -38,6 +41,9 @@ export const schema = {
   ...inquiry,
   ...platformSettings,
   ...briefs,
+  ...institutional,
+  ...lkpj,
+  ...parliamentary,
 };
 
 export function cleanPostgresUrl(url: string): string {

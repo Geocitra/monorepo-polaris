@@ -256,4 +256,173 @@ export const liveChatCsatRatingEnum = pgEnum('live_chat_csat_rating_enum', [
   'DISSATISFIED',
 ]);
 
+export const organizationStatusEnum = pgEnum('organization_status_enum', [
+  'ACTIVE',
+  'SUSPENDED',
+  'ARCHIVED',
+]);
+
+export const organizationContractStatusEnum = pgEnum('organization_contract_status_enum', [
+  'DRAFT',
+  'ACTIVE',
+  'GRACE_PERIOD',
+  'EXPIRED',
+  'SUSPENDED',
+]);
+
+export const organizationUnitTypeEnum = pgEnum('organization_unit_type_enum', [
+  'BANGGAR',
+  'FRAKSI',
+  'KOMISI',
+  'BAPEMPERDA',
+  'BAMUS',
+  'BK',
+  'PANJA',
+  'PANSUS',
+  'SEKRETARIAT',
+  'BIDANG',
+]);
+
+export const organizationMemberRoleEnum = pgEnum('organization_member_role_enum', [
+  'ORG_ADMIN',
+  'LEADERSHIP',
+  'MEMBER',
+  'EXPERT_STAFF',
+  'SECRETARIAT_STAFF',
+]);
+
+export const organizationUnitMemberRoleEnum = pgEnum('organization_unit_member_role_enum', [
+  'UNIT_LEAD',
+  'REVIEWER',
+  'MEMBER',
+  'EXPERT_STAFF',
+]);
+
+export const institutionalMembershipStatusEnum = pgEnum('institutional_membership_status_enum', [
+  'ACTIVE',
+  'INACTIVE',
+  'REVOKED',
+]);
+
+export const institutionalNoteVisibilityEnum = pgEnum('institutional_note_visibility_enum', [
+  'PRIVATE_DRAFT',
+  'UNIT_SHARED',
+  'PARENT_UNIT_ENDORSED',
+  'ORG_SHARED',
+]);
+
+export const lkpjWorkspaceStatusEnum = pgEnum('lkpj_workspace_status_enum', [
+  'REGISTERED',
+  'IN_DISCUSSION',
+  'PRE_PLENARY_CONSOLIDATION',
+  'PLENARY_ADOPTED',
+  'POST_PLENARY_MONITORING',
+]);
+
+export const lkpjMaterialCategoryEnum = pgEnum('lkpj_material_category_enum', [
+  'LKPJ_PEMDA',
+  'RPJMD_RKPD_APBD',
+  'ASPIRASI_MASYARAKAT',
+  'KELUARAN_PANJA',
+  'REKOMENDASI_FRAKSI',
+  'ANALISIS_TENAGA_AHLI',
+  'LAPORAN_PENDUKUNG',
+  'PERATURAN_BERLAKU',
+]);
+
+export const lkpjExtractionVerificationStatusEnum = pgEnum(
+  'lkpj_extraction_verification_status_enum',
+  ['PENDING_VERIFICATION', 'VERIFIED', 'FLAGGED_DOUBTFUL']
+);
+
+export const lkpjIndicatorDirectionEnum = pgEnum('lkpj_indicator_direction_enum', [
+  'HIGHER_IS_BETTER',
+  'LOWER_IS_BETTER',
+  'TARGET_BAND',
+]);
+
+export const lkpjEvidenceStatusEnum = pgEnum('lkpj_evidence_status_enum', [
+  'INSUFFICIENT_OPEN',
+  'STILL_OPEN_AT_CLOSING',
+  'SUFFICIENT_VERIFIED',
+]);
+
+export const lkpjFindingReviewStatusEnum = pgEnum('lkpj_finding_review_status_enum', [
+  'DRAFT',
+  'NEEDS_REVISION',
+  'APPROVED_FOR_DISCUSSION',
+  'CONSOLIDATED_FOR_PLENARY',
+  'OFFICIAL_RECOMMENDATION',
+]);
+
+export const lkpjFollowupStatusEnum = pgEnum('lkpj_followup_status_enum', [
+  'OPEN',
+  'IN_PROGRESS',
+  'COMPLETED_VERIFIED',
+  'CARRIED_TO_NEXT_EVALUATION',
+]);
+
+export const lkpjFactionStanceEnum = pgEnum('lkpj_faction_stance_enum', [
+  'CONCUR_WITH_PANJA',
+  'PROPOSE_AMENDMENT',
+  'DISSENT_NEED_DECISION',
+]);
+
+export const parliamentaryDocumentCategoryEnum = pgEnum('parliamentary_document_category_enum', [
+  'PRODUK_HUKUM',
+  'KEPUTUSAN_KELEMBAGAAN',
+  'DOKUMEN_PEMBAHASAN',
+  'BAHAN_KOMUNIKASI',
+]);
+
+export const legislationStageEnum = pgEnum('legislation_stage_enum', [
+  'IDENTIFIKASI_MASALAH',
+  'PENENTUAN_INSTRUMEN',
+  'PERENCANAAN',
+  'KAJIAN_DAN_NASKAH_AKADEMIK',
+  'PERUMUSAN_RANCANGAN',
+  'PARTISIPASI_MASYARAKAT',
+  'PEMERIKSAAN_DAN_PEMBAHASAN',
+  'PENYELESAIAN_FORMAL',
+  'PEMANTAUAN_PELAKSANAAN',
+]);
+
+export const clauseInspectionStatusEnum = pgEnum('clause_inspection_status_enum', [
+  'PERLU_DATA',
+  'PERLU_TELAAH_HUKUM',
+  'PERLU_KEPUTUSAN_KEBIJAKAN',
+  'SIAP_PEMERIKSAAN_AKHIR',
+]);
+
+export const legalRuleVerificationStatusEnum = pgEnum('legal_rule_verification_status_enum', [
+  'VERIFIED_ACTIVE',
+  'AMENDED',
+  'REVOKED',
+  'UNVERIFIED_NEEDS_CHECK',
+]);
+
+export const dimEntryStatusEnum = pgEnum('dim_entry_status_enum', [
+  'OPEN',
+  'DISCUSSED',
+  'AGREED',
+  'DEFERRED',
+  'REJECTED',
+]);
+
+export const performanceAchievementLevelEnum = pgEnum('performance_achievement_level_enum', [
+  'DIUSULKAN',
+  'DIBAHAS',
+  'DIREKOMENDASIKAN',
+  'DISEPAKATI',
+  'DILAKSANAKAN',
+  'MENUNJUKKAN_HASIL',
+]);
+
+export const performanceContributionScopeEnum = pgEnum('performance_contribution_scope_enum', [
+  'KONTRIBUSI_INDIVIDU',
+  'SIKAP_FRAKSI_UNIT',
+  'KEPUTUSAN_KOLEKTIF_LEMBAGA',
+  'PELAKSANAAN_PEMERINTAH',
+]);
+
 

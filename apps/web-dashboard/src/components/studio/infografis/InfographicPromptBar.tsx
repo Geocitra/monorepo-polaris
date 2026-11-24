@@ -92,6 +92,7 @@ export function InfographicPromptBar({
   onPromptChange,
   selectedStyle,
   onStyleChange,
+  selectedAspectRatio = '4:5',
   onAspectRatioChange,
   onSubmit,
   loading,

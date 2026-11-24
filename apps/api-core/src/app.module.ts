@@ -26,6 +26,7 @@ import { RealtimeModule } from './modules/realtime/realtime.module.js';
 import { DatahubModule } from './modules/datahub/datahub.module.js';
 import { OperatorModule } from './modules/operator/operator.module.js';
 import { WhatsAppModule } from './modules/whatsapp/whatsapp.module.js';
+import { InstitutionalModule } from './modules/institutional/institutional.module.js';
 import { AppController } from './app.controller.js';
 
 @Module({
@@ -59,6 +60,7 @@ import { AppController } from './app.controller.js';
     TikTokModule,      // Integrasi TikTok Content Posting API
     DatahubModule,     // Modul DataHub & Blind Ingestion Engine (Deduplikasi & RAG)
     WhatsAppModule,    // Zero-Login WhatsApp Cloud API Topic Intake & Operator Broker
+    InstitutionalModule, // Fase 1: Modul Instansi DPRD, Hierarki AKD/Bidang, & Strict Scoped AI Knowledge
   ],
   providers: [
     {

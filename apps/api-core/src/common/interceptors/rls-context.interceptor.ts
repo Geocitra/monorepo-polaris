@@ -7,7 +7,7 @@ import {
 } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
 import { defer, defaultIfEmpty, from, lastValueFrom, type Observable } from 'rxjs';
-import { withTenantContext } from '@polaris/database';
+import { withTenantContext, withSuperadminContext } from '@polaris/database';
 import { SKIP_RLS_CONTEXT_KEY } from '../decorators/skip-rls-context.decorator.js';
 
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
@@ -25,12 +25,23 @@ export class RlsContextInterceptor implements NestInterceptor {
 
         const request = context.switchToHttp().getRequest<{
             user?: { tenantId?: string; isSuperadmin?: boolean; role?: string };
+            institutionalContext?: { organizationId: string; unitId?: string | null };
             headers?: { accept?: string };
         }>();
         const user = request.user;
 
-        if (!user || user.isSuperadmin || user.role === 'SUPERADMIN') {
+        if (!user) {
             return next.handle();
+        }
+
+        if (user.isSuperadmin || user.role === 'SUPERADMIN') {
+            return defer(() =>
+                from(
+                    withSuperadminContext(user.tenantId, async () =>
+                        lastValueFrom(next.handle().pipe(defaultIfEmpty(undefined)))
+                    )
+                )
+            );
         }
 
         if (request.headers?.accept?.includes('text/event-stream')) {
@@ -43,8 +54,10 @@ export class RlsContextInterceptor implements NestInterceptor {
 
         return defer(() =>
             from(
-                withTenantContext(user.tenantId!, async () =>
-                    lastValueFrom(next.handle().pipe(defaultIfEmpty(undefined)))
+                withTenantContext(
+                    user.tenantId!,
+                    async () => lastValueFrom(next.handle().pipe(defaultIfEmpty(undefined))),
+                    request.institutionalContext
                 )
             )
         );

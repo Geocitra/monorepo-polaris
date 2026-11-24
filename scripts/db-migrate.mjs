@@ -1,7 +1,7 @@
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
-import postgres from 'postgres';
+import postgres from '../node_modules/.pnpm/postgres@3.4.9/node_modules/postgres/src/index.js';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const rootDir = path.resolve(__dirname, '..');
@@ -679,7 +679,7 @@ async function runMigration() {
       ALTER TABLE media_discourses ADD COLUMN IF NOT EXISTS content_hash VARCHAR(64);
       ALTER TABLE media_discourses ADD COLUMN IF NOT EXISTS full_text_excerpt TEXT;
       ALTER TABLE media_discourses ADD COLUMN IF NOT EXISTS entities JSONB DEFAULT '{}'::jsonb;
-      ALTER TABLE media_discourses ADD COLUMN IF NOT EXISTS vector_embedding ${vectorColType};
+      ALTER TABLE media_discourses ADD COLUMN IF NOT EXISTS vector_embedding ${vectorEmbeddingType};
       ALTER TABLE media_discourses ADD COLUMN IF NOT EXISTS discovery_channel VARCHAR(30) NOT NULL DEFAULT 'RSS';
 
       CREATE TABLE IF NOT EXISTS tenant_news_matches (
@@ -924,6 +924,7 @@ async function runMigration() {
     }
 
     console.log('\n[5c/6] Applying Incremental Migrations (packages/database/src/migrations)...');
+    await sql`SELECT set_config('app.is_superadmin', 'true', false)`;
     const migrationsDir = path.join(rootDir, 'packages/database/src/migrations');
     if (fs.existsSync(migrationsDir)) {
       const files = fs.readdirSync(migrationsDir).filter(f => f.endsWith('.sql')).sort();
@@ -938,6 +939,7 @@ async function runMigration() {
         }
       }
     }
+    await sql`SELECT set_config('app.is_superadmin', '', false)`;
 
     console.log('\n[6/6] Verifying Database Integrity & Tables Summary...');
     const tables = await sql`

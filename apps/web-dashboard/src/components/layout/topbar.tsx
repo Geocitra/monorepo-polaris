@@ -20,6 +20,7 @@ import {
   Clock,
   Sun,
   Moon,
+  Building2,
 } from 'lucide-react';
 import { ApiClient } from '@/lib/api-client';
 import { useTheme } from '@/contexts/ThemeContext';
@@ -39,10 +40,12 @@ interface TopbarProps {
   dalleLimit?: number;
   subscriptionStatus?: string;
   currentPeriodEnd?: string | null;
+  workspaceMode?: 'PERSONAL' | 'INSTITUTIONAL';
 }
 
 const navItems = [
   { name: 'Ringkasan Pagi', href: '/', icon: LayoutDashboard },
+  { name: 'Ruang Kerja Instansi', href: '/institutional', icon: Building2 },
   { name: 'Studio Konten AI', href: '/studio', icon: Sparkles },
   { name: 'Kelola Konten & Web', href: '/studio/library', icon: BookOpen },
   { name: 'Suara & Aspirasi Warga', href: '/aspirasi', icon: Inbox },
@@ -62,6 +65,7 @@ export function Topbar({
   dalleLimit = 9999,
   subscriptionStatus: propSubStatus,
   currentPeriodEnd: propPeriodEnd,
+  workspaceMode,
 }: TopbarProps) {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [fetchedBilling, setFetchedBilling] = useState<{
@@ -70,6 +74,8 @@ export function Topbar({
   } | null>(null);
 
   const pathname = usePathname();
+  const isInstitutionalMode =
+    workspaceMode === 'INSTITUTIONAL' || Boolean(pathname?.startsWith('/institutional'));
   const [subdomain, setSubdomain] = useState<string | undefined>(propSubdomain);
   const [customDomain, setCustomDomain] = useState<string | null | undefined>(propCustomDomain);
 
@@ -96,6 +102,7 @@ export function Topbar({
   const router = useRouter();
 
   useEffect(() => {
+    if (isInstitutionalMode) return;
     // Jika prop status/periodEnd belum diberikan oleh halaman pemanggil, ambil sekali secara mandiri
     if (propSubStatus === undefined || propPeriodEnd === undefined) {
       ApiClient.request<any>('/billing/status')
@@ -109,7 +116,7 @@ export function Topbar({
         })
         .catch(() => {});
     }
-  }, [propSubStatus, propPeriodEnd]);
+  }, [isInstitutionalMode, propSubStatus, propPeriodEnd]);
 
   const effectiveStatus = propSubStatus ?? fetchedBilling?.subscriptionStatus ?? 'ACTIVE';
   const effectivePeriodEnd = propPeriodEnd !== undefined ? propPeriodEnd : (fetchedBilling?.currentPeriodEnd ?? null);
@@ -139,8 +146,8 @@ export function Topbar({
 
   return (
     <>
-      {/* 1. BANNER JIKA BELUM AKTIF / TRIAL EXPIRED */}
-      {effectiveStatus !== 'ACTIVE' && (
+      {/* 1. BANNER JIKA BELUM AKTIF / TRIAL EXPIRED (Khusus Mode Personal) */}
+      {!isInstitutionalMode && effectiveStatus !== 'ACTIVE' && (
         <div className="bg-gradient-to-r from-amber-600 via-amber-500 to-amber-600 text-white text-xs px-4 sm:px-6 py-2 flex items-center justify-between font-semibold shadow-xs sticky top-0 z-50">
           <div className="flex items-center gap-2 truncate">
             <ShieldAlert className="h-4 w-4 shrink-0 text-amber-100" />
@@ -158,7 +165,7 @@ export function Topbar({
       )}
 
       {/* 2. BANNER RAMAH PERINGATAN H-7 S/D H-2 JATUH TEMPO */}
-      {effectiveStatus === 'ACTIVE' && daysLeft !== null && daysLeft <= 7 && (
+      {!isInstitutionalMode && effectiveStatus === 'ACTIVE' && daysLeft !== null && daysLeft <= 7 && (
         <div className="bg-gradient-to-r from-amber-500 via-amber-600 to-amber-500 text-white text-xs px-4 sm:px-6 py-2 flex items-center justify-between font-semibold shadow-xs sticky top-0 z-50">
           <div className="flex items-center gap-2 truncate">
             <Clock className="h-4 w-4 shrink-0 text-amber-100" />
@@ -180,10 +187,12 @@ export function Topbar({
       )}
 
       {/* 3. MODAL DIALOG H-1 / HARI H */}
-      <ExpiryAlertModal
-        currentPeriodEnd={effectivePeriodEnd}
-        isSubActive={effectiveStatus === 'ACTIVE'}
-      />
+      {!isInstitutionalMode && (
+        <ExpiryAlertModal
+          currentPeriodEnd={effectivePeriodEnd}
+          isSubActive={effectiveStatus === 'ACTIVE'}
+        />
+      )}
 
       <header className="h-16 border-b border-slate-200 dark:border-slate-800/80 bg-white/90 dark:bg-[#07090E]/90 backdrop-blur-md px-4 sm:px-6 flex items-center justify-between sticky top-0 z-40 transition-colors duration-300">
         <div className="flex items-center space-x-3">
@@ -227,13 +236,20 @@ export function Topbar({
           </button>
 
           {/* INDIKATOR STATUS LISENSI AI */}
-          <QuotaBadge
-            subscriptionStatus={effectiveStatus}
-            articleRemaining={articleRemaining}
-            articleLimit={articleLimit}
-            dalleRemaining={dalleRemaining}
-            dalleLimit={dalleLimit}
-          />
+          {isInstitutionalMode ? (
+            <div className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-indigo-50 text-indigo-700 dark:bg-indigo-950/60 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800 text-[11px] font-extrabold">
+              <Building2 className="h-3.5 w-3.5" />
+              Lisensi Kontrak B2G Instansi
+            </div>
+          ) : (
+            <QuotaBadge
+              subscriptionStatus={effectiveStatus}
+              articleRemaining={articleRemaining}
+              articleLimit={articleLimit}
+              dalleRemaining={dalleRemaining}
+              dalleLimit={dalleLimit}
+            />
+          )}
         </div>
       </header>
 

@@ -327,6 +327,7 @@ export default function InfografisStudioPage() {
     }
 
     const submittedStyle = selectedStyle;
+    const submittedAspectRatio: AspectRatio = '4:5';
     const isPosterMode = submittedStyle === 'poster';
     setLoading(true);
     try {
@@ -339,7 +340,7 @@ export default function InfografisStudioPage() {
           topic: `${prefix}: ${promptText}. STRICT CONSTRAINT: DO NOT generate any institutional logos, government emblems, regional seals, party logos, coat of arms, badges, or watermark symbols.`,
           comparisonRegion: profile?.electoralDistrict?.dapilName || 'Indonesia',
           generateDallePoster: true,
-          aspectRatio: '4:5',
+          aspectRatio: submittedAspectRatio,
           style: submittedStyle,
           forcedArchetype: selectedArchetype && selectedArchetype !== 'AUTO' ? selectedArchetype : undefined,
           layoutVariant: selectedLayoutVariant !== 'AUTO' ? selectedLayoutVariant : undefined,

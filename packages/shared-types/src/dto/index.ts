@@ -829,3 +829,7 @@ export interface OperatorKpiSummaryDto {
   avgHoursToPublish: number;
   urgentSlaComplianceRate: number;
 }
+
+export * from './institutional.dto.js';
+export * from './lkpj.dto.js';
+export * from './parliamentary.dto.js';

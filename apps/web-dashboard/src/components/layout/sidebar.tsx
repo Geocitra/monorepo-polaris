@@ -16,6 +16,7 @@ import {
   ChevronRight,
   User,
   Bot,
+  Building2,
 } from 'lucide-react';
 import { ApiClient } from '@/lib/api-client';
 import { getPortalUrl, getRootDomain } from '@/lib/urls';
@@ -23,6 +24,7 @@ import { cn } from '@/lib/utils';
 
 const navItems = [
   { name: 'Ringkasan Pagi', href: '/', icon: LayoutDashboard },
+  { name: 'Ruang Kerja Instansi', href: '/institutional', icon: Building2 },
   { name: 'Studio Konten AI', href: '/studio', icon: Sparkles },
   { name: 'Kelola Konten & Web', href: '/studio/library', icon: BookOpen },
   { name: 'Suara & Aspirasi Warga', href: '/aspirasi', icon: Inbox },

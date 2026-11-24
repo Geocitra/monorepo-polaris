@@ -68,6 +68,32 @@ else
   echo "Seluruh migrasi database selesai diproses (${MIGRATION_WARNINGS} peringatan)."
 fi
 
+echo "=== [3.6/5] Memastikan Role Non-Superuser Aplikasi (FORCE RLS Enforcement) ==="
+POSTGRES_PASSWORD_VAL="${POSTGRES_PASSWORD:-$(read_env_var POSTGRES_PASSWORD)}"
+POSTGRES_APP_USER="${POSTGRES_APP_USER:-$(read_env_var POSTGRES_APP_USER)}"
+POSTGRES_APP_USER="${POSTGRES_APP_USER:-polaris_app}"
+POSTGRES_APP_PASSWORD="${POSTGRES_APP_PASSWORD:-$(read_env_var POSTGRES_APP_PASSWORD)}"
+POSTGRES_APP_PASSWORD="${POSTGRES_APP_PASSWORD:-${POSTGRES_PASSWORD_VAL:-polaris_secret_2026}}"
+ESCAPED_APP_PW=$(printf "%s" "$POSTGRES_APP_PASSWORD" | sed "s/'/''/g")
+
+docker exec -i polaris_prod_postgres psql -v ON_ERROR_STOP=1 \
+  -U "${POSTGRES_USER:-polaris_admin}" -d "${POSTGRES_DB:-polaris_db}" <<SQL
+DO \$\$
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = '${POSTGRES_APP_USER}') THEN
+    CREATE ROLE "${POSTGRES_APP_USER}" LOGIN PASSWORD '${ESCAPED_APP_PW}' NOSUPERUSER NOBYPASSRLS NOCREATEDB NOCREATEROLE;
+  ELSE
+    ALTER ROLE "${POSTGRES_APP_USER}" WITH LOGIN PASSWORD '${ESCAPED_APP_PW}' NOSUPERUSER NOBYPASSRLS NOCREATEDB NOCREATEROLE;
+  END IF;
+END \$\$;
+GRANT USAGE, CREATE ON SCHEMA public TO "${POSTGRES_APP_USER}";
+GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA public TO "${POSTGRES_APP_USER}";
+GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA public TO "${POSTGRES_APP_USER}";
+ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT SELECT, INSERT, UPDATE, DELETE ON TABLES TO "${POSTGRES_APP_USER}";
+ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT USAGE, SELECT ON SEQUENCES TO "${POSTGRES_APP_USER}";
+SQL
+echo "Role non-superuser '${POSTGRES_APP_USER}' (NOBYPASSRLS) terverifikasi siap."
+
 echo "=== [4/5] Melakukan Rolling Restart Sub-Sistem Aplikasi (Pre-built GHCR Images) ==="
 # Restart backend API Core terlebih dahulu (tanpa --build di VPS karena image sudah di-pull dari GHCR)
 docker compose -f ${COMPOSE_FILE} up -d --no-deps api-core

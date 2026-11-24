@@ -3,10 +3,13 @@ import {
   db,
   aiTraceLogs,
   tenantQuotaLedgers,
+  organizationContracts,
+  organizationQuotaLedgers,
   platformTokenPools,
   tenantActivityLogs,
   operatorAuditLogs,
   eq,
+  and,
   sql,
 } from '@polaris/database';
 import { AiCostCalculator, DynamicExchangeRate } from '@polaris/core-domain';
@@ -18,6 +21,8 @@ export interface StartTelemetryParams {
   operation: string;
   model: string;
   tenantId?: string;
+  organizationId?: string;
+  organizationUnitId?: string;
   operatorId?: string;
   publicationId?: string;
   channel?: string;
@@ -162,6 +167,10 @@ export class AiTelemetryService {
     const startTime = Date.now();
     const rawTenantId = params.tenantId?.trim() || undefined;
     const validTenantUuid = rawTenantId && UUID_REGEX.test(rawTenantId) ? rawTenantId : null;
+    const rawOrgId = (params.organizationId || params.metadata?.organizationId || '').toString().trim() || undefined;
+    const validOrganizationUuid = rawOrgId && UUID_REGEX.test(rawOrgId) ? rawOrgId : null;
+    const rawUnitId = (params.organizationUnitId || params.metadata?.organizationUnitId || '').toString().trim() || undefined;
+    const validUnitUuid = rawUnitId && UUID_REGEX.test(rawUnitId) ? rawUnitId : null;
     const rawOperatorId = params.operatorId?.trim() || undefined;
     const validOperatorUuid = rawOperatorId && UUID_REGEX.test(rawOperatorId) ? rawOperatorId : null;
     const channel = (params.channel || params.metadata?.channel || 'WEB_STUDIO').toString().slice(0, 30);
@@ -307,26 +316,99 @@ export class AiTelemetryService {
         console.warn(`[AiTelemetryWarning] Gagal menutup Langfuse span: ${lfEndErr?.message}`);
       }
 
-      // B. Single Source of Truth Sync: Update tenant_quota_ledgers terlebih dahulu untuk mendapatkan ledgerId
+      // B. Single Source of Truth Sync:
+      // - Jika validOrganizationUuid ada (Mode Instansi B2G), bebankan ke Kontrak Instansi & Ledger Unit/Instansi (BUKAN kuota personal!).
+      // - Jika validOrganizationUuid TIDAK ada (Mode Personal), bebankan ke tenant_quota_ledgers.
       let syncedLedgerId: string | null = null;
-      if (isSuccess && validTenantUuid && (totalTokens > 0 || costIdr > 0 || effectiveImageCalls > 0)) {
+      const currentMonth = new Date().toISOString().slice(0, 7);
+      const isOpenAi = resolvedProvider === 'OPENAI';
+      const isGemini = resolvedProvider === 'GEMINI';
+
+      const oaiIn = isOpenAi ? safeInputTokens : 0;
+      const oaiOut = isOpenAi ? safeOutputTokens : 0;
+      const oaiTot = isOpenAi ? totalTokens : 0;
+      const oaiImg = isOpenAi ? effectiveImageCalls : 0;
+      const oaiIdr = isOpenAi ? costIdr : 0;
+
+      const gemIn = isGemini ? safeInputTokens : 0;
+      const gemOut = isGemini ? safeOutputTokens : 0;
+      const gemTot = isGemini ? totalTokens : 0;
+      const gemImg = isGemini ? effectiveImageCalls : 0;
+      const gemIdr = isGemini ? costIdr : 0;
+
+      if (isSuccess && validOrganizationUuid && (totalTokens > 0 || costIdr > 0 || effectiveImageCalls > 0)) {
         try {
-          const currentMonth = new Date().toISOString().slice(0, 7);
+          await db
+            .update(organizationContracts)
+            .set({
+              tokensConsumed: sql`${organizationContracts.tokensConsumed} + ${totalTokens}`,
+              updatedAt: new Date(),
+            })
+            .where(
+              and(
+                eq(organizationContracts.organizationId, validOrganizationUuid),
+                eq(organizationContracts.status, 'ACTIVE')
+              )
+            );
+
+          const [existingOrgLedger] = await db
+            .select({ id: organizationQuotaLedgers.id })
+            .from(organizationQuotaLedgers)
+            .where(
+              and(
+                eq(organizationQuotaLedgers.organizationId, validOrganizationUuid),
+                validUnitUuid
+                  ? eq(organizationQuotaLedgers.unitId, validUnitUuid)
+                  : sql`${organizationQuotaLedgers.unitId} IS NULL`,
+                eq(organizationQuotaLedgers.billingCycleMonth, currentMonth)
+              )
+            )
+            .limit(1);
+
+          if (existingOrgLedger) {
+            await db
+              .update(organizationQuotaLedgers)
+              .set({
+                totalRequests: sql`${organizationQuotaLedgers.totalRequests} + 1`,
+                openaiInputTokens: sql`${organizationQuotaLedgers.openaiInputTokens} + ${oaiIn}`,
+                openaiOutputTokens: sql`${organizationQuotaLedgers.openaiOutputTokens} + ${oaiOut}`,
+                openaiTotalTokens: sql`${organizationQuotaLedgers.openaiTotalTokens} + ${oaiTot}`,
+                openaiCostIdr: sql`${organizationQuotaLedgers.openaiCostIdr} + ${oaiIdr}`,
+                geminiInputTokens: sql`${organizationQuotaLedgers.geminiInputTokens} + ${gemIn}`,
+                geminiOutputTokens: sql`${organizationQuotaLedgers.geminiOutputTokens} + ${gemOut}`,
+                geminiTotalTokens: sql`${organizationQuotaLedgers.geminiTotalTokens} + ${gemTot}`,
+                geminiCostIdr: sql`${organizationQuotaLedgers.geminiCostIdr} + ${gemIdr}`,
+                totalTokensConsumed: sql`${organizationQuotaLedgers.totalTokensConsumed} + ${totalTokens}`,
+                totalCostIdr: sql`${organizationQuotaLedgers.totalCostIdr} + ${costIdr}`,
+                updatedAt: new Date(),
+              })
+              .where(eq(organizationQuotaLedgers.id, existingOrgLedger.id));
+          } else {
+            await db.insert(organizationQuotaLedgers).values({
+              organizationId: validOrganizationUuid,
+              unitId: validUnitUuid,
+              billingCycleMonth: currentMonth,
+              totalRequests: 1,
+              openaiInputTokens: oaiIn,
+              openaiOutputTokens: oaiOut,
+              openaiTotalTokens: oaiTot,
+              openaiCostIdr: oaiIdr,
+              geminiInputTokens: gemIn,
+              geminiOutputTokens: gemOut,
+              geminiTotalTokens: gemTot,
+              geminiCostIdr: gemIdr,
+              totalTokensConsumed: totalTokens,
+              totalCostIdr: costIdr,
+            });
+          }
+        } catch (orgLedgerErr: any) {
+          console.warn(
+            `[AiTelemetryWarning] Gagal sinkronisasi organization_quota_ledgers: ${orgLedgerErr?.message}`
+          );
+        }
+      } else if (isSuccess && validTenantUuid && !validOrganizationUuid && (totalTokens > 0 || costIdr > 0 || effectiveImageCalls > 0)) {
+        try {
           const roundedLedgerCostUsd = Number(costUsd.toFixed(4));
-          const isOpenAi = resolvedProvider === 'OPENAI';
-          const isGemini = resolvedProvider === 'GEMINI';
-
-          const oaiIn = isOpenAi ? safeInputTokens : 0;
-          const oaiOut = isOpenAi ? safeOutputTokens : 0;
-          const oaiTot = isOpenAi ? totalTokens : 0;
-          const oaiImg = isOpenAi ? effectiveImageCalls : 0;
-          const oaiIdr = isOpenAi ? costIdr : 0;
-
-          const gemIn = isGemini ? safeInputTokens : 0;
-          const gemOut = isGemini ? safeOutputTokens : 0;
-          const gemTot = isGemini ? totalTokens : 0;
-          const gemImg = isGemini ? effectiveImageCalls : 0;
-          const gemIdr = isGemini ? costIdr : 0;
 
           if (typeof (db as any).insert === 'function') {
             const insertQuery = db.insert(tenantQuotaLedgers).values({
@@ -386,11 +468,13 @@ export class AiTelemetryService {
         }
       }
 
-      // C. Persistensi ke basis data lokal PostgreSQL ai_trace_logs (lengkap dengan relasi FK, Operator, Request & IDR)
+      // C. Persistensi ke basis data lokal PostgreSQL ai_trace_logs (lengkap dengan relasi FK, Instansi/Bidang, Operator, Request & IDR)
       try {
         await db.insert(aiTraceLogs).values({
           traceId: canonicalTraceId,
           tenantId: validTenantUuid,
+          organizationId: validOrganizationUuid,
+          organizationUnitId: validUnitUuid,
           operatorId: validOperatorUuid,
           publicationId: validPublicationUuid,
           ledgerId: syncedLedgerId,

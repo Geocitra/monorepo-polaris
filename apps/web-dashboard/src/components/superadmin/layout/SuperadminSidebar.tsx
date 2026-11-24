@@ -18,6 +18,7 @@ import {
   UserCheck,
   Sliders,
   Sparkles,
+  Building2,
 } from 'lucide-react';
 import { AdminApiClient } from '@/lib/api-client';
 import { cn } from '@/lib/utils';
@@ -25,6 +26,7 @@ import { useTheme } from '@/contexts/ThemeContext';
 
 const adminNavItems = [
   { name: 'Control Tower', href: '/superadmin', icon: LayoutDashboard },
+  { name: 'Instansi & Kontrak B2G', href: '/superadmin/institutions', icon: Building2 },
   { name: 'DataHub Dokumen AI', href: '/superadmin/datahub', icon: Files },
   { name: 'Kelola Dewan & Lisensi', href: '/superadmin/tenants', icon: Users },
   { name: 'Staf Operator Konten', href: '/superadmin/operators', icon: UserCheck },

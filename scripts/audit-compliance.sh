@@ -40,11 +40,12 @@ else
 fi
 
 echo -n "4. [UU PDP Pasal 35] Memverifikasi Proteksi Row-Level Security (PostgreSQL Kernel)... "
-if [ -f "packages/database/src/migrations/0008_enforce_row_level_security.sql" ]; then
-  RLS_POLICIES=$(grep -c "CREATE POLICY" packages/database/src/migrations/0008_enforce_row_level_security.sql || true)
-  echo "LOLOS (${RLS_POLICIES} kebijakan RLS aktif)"
+if [ -f "packages/database/src/migrations/0008_enforce_row_level_security.sql" ] && [ -f "packages/database/src/migrations/0028_institutional_rls_policies.sql" ]; then
+  RLS_POLICIES_CORE=$(grep -c "CREATE POLICY" packages/database/src/migrations/0008_enforce_row_level_security.sql || true)
+  RLS_POLICIES_INST=$(grep -c "CREATE POLICY" packages/database/src/migrations/0028_institutional_rls_policies.sql || true)
+  echo "LOLOS ($((RLS_POLICIES_CORE + RLS_POLICIES_INST)) kebijakan RLS aktif: ${RLS_POLICIES_CORE} core + ${RLS_POLICIES_INST} institutional)"
 else
-  echo "GAGAL (Skrip migrasi RLS tidak ditemukan!)"
+  echo "GAGAL (Skrip migrasi RLS core atau institutional 0028 tidak ditemukan!)"
   VIOLATIONS=$((VIOLATIONS+1))
 fi
 

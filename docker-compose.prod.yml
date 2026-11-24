@@ -44,7 +44,7 @@ services:
       resources:
         limits:
           cpus: '1.0'
-          memory: 350M
+          memory: 512M
     logging: *default-logging
 
   # =========================================================================
@@ -85,7 +85,7 @@ services:
     env_file:
       - .env
     environment:
-      - DATABASE_URL=postgresql://${POSTGRES_USER:-polaris_admin}:${POSTGRES_PASSWORD:-polaris_secret_2026}@postgres:5432/${POSTGRES_DB:-polaris_db}
+      - DATABASE_URL=postgresql://${POSTGRES_APP_USER:-polaris_app}:${POSTGRES_APP_PASSWORD:-${POSTGRES_PASSWORD:-polaris_secret_2026}}@postgres:5432/${POSTGRES_DB:-polaris_db}
       - REDIS_URL=redis://:${REDIS_PASSWORD:-polaris_redis_secret_2026}@redis:6379
       - NODE_ENV=production
       - PORT=4000
@@ -114,7 +114,7 @@ services:
       resources:
         limits:
           cpus: '1.0'
-          memory: 300M
+          memory: 768M
     logging: *default-logging
 
   # =========================================================================
@@ -130,7 +130,7 @@ services:
     env_file:
       - .env
     environment:
-      - DATABASE_URL=postgresql://${POSTGRES_USER:-polaris_admin}:${POSTGRES_PASSWORD:-polaris_secret_2026}@postgres:5432/${POSTGRES_DB:-polaris_db}
+      - DATABASE_URL=postgresql://${POSTGRES_APP_USER:-polaris_app}:${POSTGRES_APP_PASSWORD:-${POSTGRES_PASSWORD:-polaris_secret_2026}}@postgres:5432/${POSTGRES_DB:-polaris_db}
       - REDIS_URL=redis://:${REDIS_PASSWORD:-polaris_redis_secret_2026}@redis:6379
       - NODE_ENV=production
     volumes:
