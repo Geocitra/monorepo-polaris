@@ -21,6 +21,7 @@ import {
   organizations,
 } from '@polaris/database';
 import { UpdateProfileDto } from '../dto/auth.dto.js';
+import { resolveTenantAccountClaims } from './account-mode.helper.js';
 
 @Injectable()
 export class IdentityProfileService {
@@ -131,44 +132,8 @@ export class IdentityProfileService {
       .where(eq(subscriptions.tenantId, tenantId))
       .limit(1);
 
-    const [primaryOrg] = await db
-      .select({
-        organizationId: organizations.id,
-        organizationName: organizations.name,
-        orgRole: organizationMemberships.orgRole,
-      })
-      .from(organizationMemberships)
-      .innerJoin(organizations, eq(organizationMemberships.organizationId, organizations.id))
-      .where(
-        and(
-          eq(organizationMemberships.tenantId, tenantId),
-          eq(organizationMemberships.status, 'ACTIVE'),
-          eq(organizations.status, 'ACTIVE')
-        )
-      )
-      .limit(1);
-
-    let hasAssignedUnits = false;
-    if (primaryOrg) {
-      const [unitRow] = await db
-        .select({ id: organizationUnitMemberships.id })
-        .from(organizationUnitMemberships)
-        .where(
-          and(
-            eq(organizationUnitMemberships.organizationId, primaryOrg.organizationId),
-            eq(organizationUnitMemberships.tenantId, tenantId),
-            eq(organizationUnitMemberships.status, 'ACTIVE')
-          )
-        )
-        .limit(1);
-      hasAssignedUnits = Boolean(unitRow);
-    }
-
-    const accountMode: 'B2B_ONLY' | 'B2C_ONLY' | 'HYBRID' = primaryOrg
-      ? portal
-        ? 'HYBRID'
-        : 'B2B_ONLY'
-      : 'B2C_ONLY';
+    const { subdomainSlug, accountMode, primaryOrganization } =
+      await resolveTenantAccountClaims(tenantId);
 
     const resolvedPhotoUrl = member.photoUrl || portalTheme?.officialPhotoUrl || null;
 
@@ -182,13 +147,11 @@ export class IdentityProfileService {
       officeRole: member.legislativeLevel,
       electoralDistrict: effectiveElectoralDistrict,
       masterElectoralDistrict: masterDapil,
-      subdomain: portal?.subdomainSlug,
+      subdomain: portal?.subdomainSlug || subdomainSlug,
       customDomain: portal?.customDomain,
       subscription: sub,
       accountMode,
-      primaryOrganization: primaryOrg
-        ? { ...primaryOrg, hasAssignedUnits }
-        : null,
+      primaryOrganization,
     };
   }
 

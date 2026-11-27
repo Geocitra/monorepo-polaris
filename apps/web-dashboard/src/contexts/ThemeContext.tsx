@@ -278,6 +278,30 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
     }
 
     try {
+      let accountMode: string | null = null;
+      try {
+        const cachedUser = localStorage.getItem('polaris_user');
+        if (cachedUser) {
+          accountMode = JSON.parse(cachedUser)?.accountMode || null;
+        }
+        if (!accountMode) {
+          const cachedSidebar = sessionStorage.getItem('polaris_sidebar_profile');
+          if (cachedSidebar) {
+            accountMode = JSON.parse(cachedSidebar)?.accountMode || null;
+          }
+        }
+      } catch {}
+
+      if (!accountMode) {
+        const me = await ApiClient.request<{ accountMode?: string }>('/auth/me').catch(() => null);
+        accountMode = me?.accountMode || null;
+      }
+
+      if (accountMode === 'B2B_ONLY') {
+        injectCSSVariables(DEFAULT_COLORS);
+        return;
+      }
+
       const portalData = await ApiClient.request<any>('/cms/my-portal').catch(() => null);
       if (portalData?.theme) {
         const fresh: ThemeColors = {

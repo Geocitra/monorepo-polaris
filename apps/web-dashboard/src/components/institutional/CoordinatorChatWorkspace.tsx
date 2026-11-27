@@ -9,6 +9,7 @@ import {
   type CoordinatorChatMode,
   type CoordinatorChatResponseDto,
   type CoordinatorGuidedOptionDto,
+  type CreativePosterArchetype,
   type InstitutionalChatSessionDetailDto,
   type InstitutionalScopedDocumentDto,
   type InstitutionalUnitOverviewDto,
@@ -22,6 +23,8 @@ import { UnitLibraryDrawer } from './chat/UnitLibraryDrawer';
 interface CoordinatorChatWorkspaceProps {
   organizationId: string;
   unitId: string;
+  orgName?: string;
+  userFullName?: string;
   canManageOrg: boolean;
   canManageUnit?: boolean;
   onQuotaUpdated?: (remaining: number, limit: number) => void;
@@ -47,11 +50,16 @@ function extractCsvFromMarkdown(markdown: string): string | null {
 export function CoordinatorChatWorkspace({
   organizationId,
   unitId,
+  orgName,
+  userFullName,
   onQuotaUpdated,
 }: CoordinatorChatWorkspaceProps) {
   const { toast } = useToast();
   const bottomRef = useRef<HTMLDivElement | null>(null);
   const hiddenUploadRef = useRef<HTMLInputElement | null>(null);
+
+  const [userPhotoUrl, setUserPhotoUrl] = useState<string | null>(null);
+  const [resolvedFullName, setResolvedFullName] = useState<string | undefined>(userFullName);
 
   const [overview, setOverview] = useState<InstitutionalUnitOverviewDto | null>(null);
   const [documents, setDocuments] = useState<InstitutionalScopedDocumentDto[]>([]);
@@ -64,6 +72,7 @@ export function CoordinatorChatWorkspace({
   const [inputMessage, setInputMessage] = useState('');
   const [chatMode, setChatMode] = useState<CoordinatorChatMode>('AUTO');
   const [imageAspectRatio, setImageAspectRatio] = useState<'1:1' | '4:5' | '16:9' | '9:16'>('4:5');
+  const [imageArchetype, setImageArchetype] = useState<CreativePosterArchetype | null>(null);
 
   const [sending, setSending] = useState(false);
   const [uploading, setUploading] = useState(false);
@@ -132,6 +141,19 @@ export function CoordinatorChatWorkspace({
       setLoadingProactive(false);
     }
   }, [organizationId, toast, unitId]);
+
+  useEffect(() => {
+    if (userFullName) setResolvedFullName(userFullName);
+  }, [userFullName]);
+
+  useEffect(() => {
+    ApiClient.request<{ fullName?: string; photoUrl?: string | null }>('/auth/me')
+      .then((me) => {
+        if (me?.fullName) setResolvedFullName(me.fullName);
+        if (me?.photoUrl !== undefined) setUserPhotoUrl(me.photoUrl || null);
+      })
+      .catch(() => {});
+  }, []);
 
   useEffect(() => {
     if (!organizationId || !unitId) return;
@@ -267,6 +289,7 @@ export function CoordinatorChatWorkspace({
             includeOrgSharedDocuments: true,
             includeNationalAndRegionalRegulations: true,
             imageAspectRatio,
+            imageArchetype: activeMode === 'IMAGE' && imageArchetype ? imageArchetype : undefined,
             skipClarification,
           }),
         }
@@ -351,6 +374,31 @@ export function CoordinatorChatWorkspace({
     }
   }
 
+  function handleCopyMessage(msg: ChatMessageViewItem) {
+    navigator.clipboard
+      ?.writeText(msg.content)
+      .then(() => toast({ title: 'Teks jawaban disalin', type: 'success' }))
+      .catch(() => toast({ title: 'Gagal menyalin teks', type: 'error' }));
+  }
+
+  function handleFollowUpAction(msg: ChatMessageViewItem, targetMode: 'ARTICLE' | 'IMAGE') {
+    const excerpt = msg.content.replace(/[#*`]/g, '').trim().slice(0, 700);
+    setChatMode(targetMode);
+    if (targetMode === 'ARTICLE') {
+      void handleSendMessage(
+        `Ubah hasil analisis berikut menjadi draf artikel opini & rilis media resmi yang siap dibagikan:\n\n${excerpt}`,
+        'ARTICLE',
+        true
+      );
+    } else {
+      void handleSendMessage(
+        `Buatkan poster infografis yang merangkum poin kunci berikut secara ringkas dan mudah dibaca:\n\n${excerpt}`,
+        'IMAGE',
+        true
+      );
+    }
+  }
+
   function handleExportCsv(markdown: string) {
     const csv = extractCsvFromMarkdown(markdown);
     if (!csv) {
@@ -376,12 +424,19 @@ export function CoordinatorChatWorkspace({
       onChangeMode={setChatMode}
       imageAspectRatio={imageAspectRatio}
       onChangeAspectRatio={setImageAspectRatio}
+      imageArchetype={imageArchetype}
+      onChangeImageArchetype={setImageArchetype}
       selectedDocs={selectedDocs}
       onRemoveDoc={(fid) => setSelectedFileIds((prev) => prev.filter((id) => id !== fid))}
       onOpenLibrary={() => setLibraryOpen(true)}
       onUploadFile={handleUploadFile}
       uploadingFile={uploading}
       sending={sending}
+      autocompleteEndpoint={
+        organizationId && unitId
+          ? `/institutional/orgs/${organizationId}/units/${unitId}/prompt-autocomplete`
+          : null
+      }
       onSend={handleSendMessage}
       centered={messages.length === 0}
     />
@@ -405,12 +460,22 @@ export function CoordinatorChatWorkspace({
 
       {messages.length === 0 ? (
         <ChatEmptyState
+          userFullName={resolvedFullName}
+          userPhotoUrl={userPhotoUrl}
+          orgName={orgName}
           unitName={overview?.unit.name}
+          activeMode={chatMode}
           proactiveCards={proactiveCards}
           loadingProactive={loadingProactive}
           onSelectProactiveCard={(card) => {
             setChatMode(card.mode);
             void handleSendMessage(card.prompt, card.mode, true);
+          }}
+          onSelectQuickMode={(mode, prefillPrompt) => {
+            setChatMode(mode);
+            if (prefillPrompt) {
+              setInputMessage(prefillPrompt);
+            }
           }}
           composerSlot={composer}
         />
@@ -419,9 +484,13 @@ export function CoordinatorChatWorkspace({
           <ChatMessageList
             messages={messages}
             sending={sending}
+            activeMode={chatMode}
+            unitName={overview?.unit.name}
             onSelectGuidedOption={handleSelectGuidedOption}
             onSaveAsNote={handleSaveAsNote}
             onExportCsv={handleExportCsv}
+            onCopyMessage={handleCopyMessage}
+            onFollowUpAction={handleFollowUpAction}
             bottomRef={bottomRef}
           />
           <div className="shrink-0 pt-2 pb-3 px-3 sm:px-6 bg-gradient-to-t from-slate-50 via-slate-50/90 to-transparent dark:from-[#070A12] dark:via-[#070A12]/90">

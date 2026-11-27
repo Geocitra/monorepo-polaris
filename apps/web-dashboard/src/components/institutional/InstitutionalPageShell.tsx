@@ -5,8 +5,9 @@ import { useRouter } from 'next/navigation';
 import { ApiClient } from '@/lib/api-client';
 import { Sidebar } from '@/components/layout/sidebar';
 import { Topbar } from '@/components/layout/topbar';
+import { useTheme } from '@/contexts/ThemeContext';
 import { useToast } from '@/components/ui/toast';
-import { Building2, Lock } from 'lucide-react';
+import { Building2, Lock, Menu, Moon, Sun } from 'lucide-react';
 import {
   OrganizationMemberRole,
   type MyWorkspacesResponseDto,
@@ -49,11 +50,13 @@ export function InstitutionalPageShell({
 }: InstitutionalPageShellProps) {
   const router = useRouter();
   const { toast } = useToast();
+  const { resolvedMode, setMode } = useTheme();
   const [loading, setLoading] = useState(true);
   const [workspaces, setWorkspaces] = useState<MyWorkspacesResponseDto | null>(null);
   const [activeOrgId, setActiveOrgId] = useState<string>('');
   const [activeUnitId, setActiveUnitId] = useState<string>('');
   const [myQuota, setMyQuota] = useState<OrganizationMemberQuotaDto | null>(null);
+  const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
 
   async function loadMyWorkspaces() {
     setLoading(true);
@@ -141,72 +144,91 @@ export function InstitutionalPageShell({
 
   return (
     <div className="min-h-screen flex bg-slate-50 dark:bg-[#070A12] text-slate-900 dark:text-slate-100">
-      <Sidebar />
+      <Sidebar
+        mobileOpen={mobileSidebarOpen}
+        onMobileClose={() => setMobileSidebarOpen(false)}
+      />
       <div className="flex-1 flex flex-col min-w-0">
-        <Topbar
-          fullName={workspaces?.personalWorkspace.fullName}
-          workspaceMode={currentOrg ? 'INSTITUTIONAL' : 'PERSONAL'}
-        />
+        {!compactChatMode && (
+          <Topbar
+            fullName={workspaces?.personalWorkspace.fullName}
+            workspaceMode={currentOrg ? 'INSTITUTIONAL' : 'PERSONAL'}
+          />
+        )}
 
         <main
           className={
             compactChatMode
-              ? 'flex-1 flex flex-col min-h-0 px-3 sm:px-6 py-3 max-w-6xl w-full mx-auto space-y-3'
+              ? 'flex-1 flex flex-col min-h-0 px-3 sm:px-6 lg:px-8 pb-3 w-full mx-auto'
               : 'flex-1 p-4 sm:p-6 md:p-8 max-w-7xl w-full mx-auto space-y-5'
           }
         >
-          {/* COMPACT CONTEXT HEADER */}
+          {/* COMPACT 1-ROW HEADER ALA CHATGPT/GEMINI */}
           {compactChatMode ? (
-            <div className="flex flex-wrap items-center justify-between gap-2 pb-2 border-b border-slate-200/80 dark:border-slate-800/80 shrink-0">
-              <div className="flex items-center gap-2">
-                <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-extrabold uppercase tracking-wider bg-indigo-50 text-indigo-700 dark:bg-indigo-950/60 dark:text-indigo-300 border border-indigo-200/60 dark:border-indigo-800/60">
-                  <Building2 className="h-3 w-3" />
-                  {currentOrg?.organizationName || 'POLARIS B2B'}
+            <div className="h-14 flex items-center justify-between gap-2 border-b border-slate-200/70 dark:border-slate-800/70 shrink-0">
+              <div className="flex items-center gap-2 min-w-0">
+                <button
+                  type="button"
+                  onClick={() => setMobileSidebarOpen(true)}
+                  className="md:hidden h-8 w-8 rounded-lg flex items-center justify-center border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-200 shrink-0 cursor-pointer"
+                  aria-label="Buka Sidebar"
+                >
+                  <Menu className="h-4 w-4" />
+                </button>
+                <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-extrabold uppercase tracking-wider bg-indigo-50 text-indigo-700 dark:bg-indigo-950/60 dark:text-indigo-300 border border-indigo-200/60 dark:border-indigo-800/60 truncate">
+                  <Building2 className="h-3 w-3 shrink-0" />
+                  <span className="truncate">{currentOrg?.organizationName || 'POLARIS B2B'}</span>
                 </span>
-                <span className="text-xs font-bold text-slate-600 dark:text-slate-300 hidden sm:inline">
-                  Asisten Koordinator Tenaga Ahli
-                </span>
+
+                {workspaces && workspaces.institutionalWorkspaces.length > 1 && (
+                  <select
+                    value={activeOrgId}
+                    onChange={(e) => {
+                      const nextOrgId = e.target.value;
+                      setActiveOrgId(nextOrgId);
+                      const nextOrg = workspaces.institutionalWorkspaces.find(
+                        (o) => o.organizationId === nextOrgId
+                      );
+                      setActiveUnitId(nextOrg?.units?.[0]?.unitId || '');
+                    }}
+                    className="px-2.5 py-1 rounded-lg text-xs font-bold border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900"
+                  >
+                    {workspaces.institutionalWorkspaces.map((org) => (
+                      <option key={org.organizationId} value={org.organizationId}>
+                        {org.organizationName} ({getOrgRoleLabel(org.orgRole)})
+                      </option>
+                    ))}
+                  </select>
+                )}
+
+                {!hideUnitSelector && currentOrg && currentOrg.units.length > 0 && (
+                  <select
+                    value={activeUnitId}
+                    onChange={(e) => setActiveUnitId(e.target.value)}
+                    className="px-2.5 py-1 rounded-lg text-xs font-bold border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-100 max-w-[260px] truncate"
+                  >
+                    {currentOrg.units.map((u) => (
+                      <option key={u.unitId} value={u.unitId}>
+                        {u.parentUnitName ? `${u.parentUnitName} → ` : ''}
+                        {u.unitName} ({getUnitRoleLabel(u.unitRole)})
+                      </option>
+                    ))}
+                  </select>
+                )}
               </div>
 
-              {workspaces && workspaces.institutionalWorkspaces.length > 0 && (
-                <div className="flex flex-wrap items-center gap-2">
-                  {workspaces.institutionalWorkspaces.length > 1 && (
-                    <select
-                      value={activeOrgId}
-                      onChange={(e) => {
-                        const nextOrgId = e.target.value;
-                        setActiveOrgId(nextOrgId);
-                        const nextOrg = workspaces.institutionalWorkspaces.find(
-                          (o) => o.organizationId === nextOrgId
-                        );
-                        setActiveUnitId(nextOrg?.units?.[0]?.unitId || '');
-                      }}
-                      className="px-2.5 py-1.5 rounded-lg text-xs font-bold border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900"
-                    >
-                      {workspaces.institutionalWorkspaces.map((org) => (
-                        <option key={org.organizationId} value={org.organizationId}>
-                          {org.organizationName} ({getOrgRoleLabel(org.orgRole)})
-                        </option>
-                      ))}
-                    </select>
-                  )}
-
-                  {!hideUnitSelector && currentOrg && currentOrg.units.length > 0 && (
-                    <select
-                      value={activeUnitId}
-                      onChange={(e) => setActiveUnitId(e.target.value)}
-                      className="px-2.5 py-1.5 rounded-lg text-xs font-bold border border-indigo-200 dark:border-indigo-800 bg-indigo-50/70 dark:bg-indigo-950/50 text-indigo-900 dark:text-indigo-200"
-                    >
-                      {currentOrg.units.map((u) => (
-                        <option key={u.unitId} value={u.unitId}>
-                          {u.parentUnitName ? `${u.parentUnitName} → ` : ''}
-                          {u.unitName} ({getUnitRoleLabel(u.unitRole)})
-                        </option>
-                      ))}
-                    </select>
-                  )}
-                </div>
-              )}
+              <button
+                type="button"
+                onClick={() => setMode(resolvedMode === 'dark' ? 'light' : 'dark')}
+                className="h-8 w-8 rounded-full flex items-center justify-center border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer shrink-0"
+                title={resolvedMode === 'dark' ? 'Mode Terang' : 'Mode Gelap'}
+              >
+                {resolvedMode === 'dark' ? (
+                  <Sun className="h-4 w-4" />
+                ) : (
+                  <Moon className="h-4 w-4" />
+                )}
+              </button>
             </div>
           ) : (
           <div className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-[#0D1322] p-5 shadow-xs flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">

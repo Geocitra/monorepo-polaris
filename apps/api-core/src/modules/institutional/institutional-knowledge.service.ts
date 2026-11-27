@@ -42,6 +42,7 @@ import {
 import {
   InstitutionalAiService,
   InstitutionalCoordinatorChatService,
+  PromptAutocompleteService,
   AiTelemetryService,
   getTextCompletionClient,
 } from '@polaris/ai-engine';
@@ -131,7 +132,7 @@ export class InstitutionalKnowledgeService {
       .orderBy(desc(organizationContracts.endDate))
       .limit(1);
 
-    const [unitRow] = await db.execute(sql`
+    const unitRow = await db.execute(sql`
       SELECT
         u.id,
         u.parent_unit_id AS "parentUnitId",
@@ -150,7 +151,7 @@ export class InstitutionalKnowledgeService {
       WHERE u.id = ${unitId}::uuid AND u.organization_id = ${orgId}::uuid;
     `);
 
-    const u = ((unitRow as any)?.rows?.[0] || unitRow) as any;
+    const u = ((unitRow as any)?.rows?.[0] ?? (Array.isArray(unitRow) ? unitRow[0] : undefined)) as any;
     if (!u) {
       throw new NotFoundException('Bidang atau Unit tidak ditemukan.');
     }
@@ -562,7 +563,7 @@ export class InstitutionalKnowledgeService {
       throw new NotFoundException('Instansi tidak ditemukan.');
     }
 
-    const [unitRow] = await db.execute(sql`
+    const unitRow = await db.execute(sql`
       SELECT
         u.id,
         u.code,
@@ -577,7 +578,7 @@ export class InstitutionalKnowledgeService {
       WHERE u.id = ${unitId}::uuid AND u.organization_id = ${orgId}::uuid;
     `);
 
-    const unit = ((unitRow as any)?.rows?.[0] || unitRow) as any;
+    const unit = ((unitRow as any)?.rows?.[0] ?? (Array.isArray(unitRow) ? unitRow[0] : undefined)) as any;
     if (!unit) {
       throw new NotFoundException('Unit atau Bidang tidak ditemukan.');
     }
@@ -875,90 +876,91 @@ export class InstitutionalKnowledgeService {
       throw new BadRequestException('Pesan chat tidak boleh kosong.');
     }
 
-    const [org] = await db
-      .select()
-      .from(organizations)
-      .where(eq(organizations.id, orgId))
-      .limit(1);
+    const [[org], unitRow] = await Promise.all([
+      db
+        .select()
+        .from(organizations)
+        .where(eq(organizations.id, orgId))
+        .limit(1),
+      db.execute(sql`
+        SELECT
+          u.id,
+          u.code,
+          u.name,
+          u.unit_type AS "unitType",
+          u.focus_sectors AS "focusSectors",
+          u.partner_opds AS "partnerOpds",
+          pu.name AS "parentUnitName",
+          pu.unit_type AS "parentUnitType"
+        FROM organization_units u
+        LEFT JOIN organization_units pu ON u.parent_unit_id = pu.id
+        WHERE u.id = ${unitId}::uuid AND u.organization_id = ${orgId}::uuid;
+      `),
+    ]);
 
     if (!org) {
       throw new NotFoundException('Instansi tidak ditemukan.');
     }
 
-    const unitRow = await db.execute(sql`
-      SELECT
-        u.id,
-        u.code,
-        u.name,
-        u.unit_type AS "unitType",
-        u.focus_sectors AS "focusSectors",
-        u.partner_opds AS "partnerOpds",
-        pu.name AS "parentUnitName",
-        pu.unit_type AS "parentUnitType"
-      FROM organization_units u
-      LEFT JOIN organization_units pu ON u.parent_unit_id = pu.id
-      WHERE u.id = ${unitId}::uuid AND u.organization_id = ${orgId}::uuid;
-    `);
-
-    const unit = ((unitRow as any)?.rows?.[0] || unitRow) as any;
+    const unit = ((unitRow as any)?.rows?.[0] ?? (Array.isArray(unitRow) ? unitRow[0] : undefined)) as any;
     if (!unit) {
       throw new NotFoundException('Unit atau Bidang tidak ditemukan.');
     }
 
-    const unitNotes = await this.listUnitSharedNotes(orgId, unitId, tenantId);
+    const [unitNotes, lkpjContextSummary, legislationContextSummary] = await Promise.all([
+      this.listUnitSharedNotes(orgId, unitId, tenantId),
+      (async (): Promise<string | null> => {
+        try {
+          const findingsRes = await db.execute(sql`
+            SELECT f.opd_name AS "opdName", f.indicator_or_issue AS "indicatorOrIssue",
+                   f.target_value AS "targetValue", f.realization_value AS "realizationValue",
+                   f.budget_ceiling_idr AS "budgetCeilingIdr", f.budget_realization_idr AS "budgetRealizationIdr",
+                   f.proposed_recommendation AS "recommendationDraft"
+            FROM lkpj_findings f
+            JOIN lkpj_evaluation_workspaces w ON f.workspace_id = w.id
+            WHERE w.organization_id = ${orgId}::uuid
+              AND (w.assigned_discussion_unit_id IS NULL OR w.assigned_discussion_unit_id = ${unitId}::uuid)
+            ORDER BY f.updated_at DESC
+            LIMIT 8;
+          `);
+          const rows = ((findingsRes as any)?.rows || (Array.isArray(findingsRes) ? findingsRes : [])) as any[];
+          if (rows.length === 0) return null;
+          return rows
+            .map(
+              (r, i) =>
+                `[TEMUAN_LKPJ_${i + 1}] OPD: ${r.opdName} | Isu: ${r.indicatorOrIssue} | Target: ${r.targetValue ?? '-'} | Realisasi: ${r.realizationValue ?? '-'} | Pagu: ${r.budgetCeilingIdr ?? '-'} | Realisasi APBD: ${r.budgetRealizationIdr ?? '-'} | Rekomendasi: ${r.recommendationDraft || '-'}`
+            )
+            .join('\n');
+        } catch {
+          return null;
+        }
+      })(),
+      (async (): Promise<string | null> => {
+        try {
+          const draftsRes = await db.execute(sql`
+            SELECT title, document_category AS "documentCategory", current_stage AS "currentStage", problem_statement AS "problemStatement"
+            FROM legislation_drafts
+            WHERE organization_id = ${orgId}::uuid
+            ORDER BY updated_at DESC
+            LIMIT 5;
+          `);
+          const draftRows = ((draftsRes as any)?.rows || (Array.isArray(draftsRes) ? draftsRes : [])) as any[];
+          if (draftRows.length === 0) return null;
+          return draftRows
+            .map(
+              (d, i) =>
+                `[RANCANGAN_${i + 1}] [${d.documentCategory}] ${d.title} (Tahap: ${d.currentStage}) — Masalah: ${d.problemStatement || '-'}`
+            )
+            .join('\n');
+        } catch {
+          return null;
+        }
+      })(),
+    ]);
+
     const sharedOnlyNotes = unitNotes.filter(
       (n) => n.visibility !== InstitutionalNoteVisibility.PRIVATE_DRAFT
     );
-
-    // Ambil ringkasan matriks LKPJ & Rancangan Legislasi terbaru di organisasi (jika ada) agar Koordinator sadar konteks
-    let lkpjContextSummary: string | null = null;
-    try {
-      const findingsRes = await db.execute(sql`
-        SELECT f.opd_name AS "opdName", f.indicator_or_issue AS "indicatorOrIssue",
-               f.target_value AS "targetValue", f.realization_value AS "realizationValue",
-               f.budget_ceiling_idr AS "budgetCeilingIdr", f.budget_realization_idr AS "budgetRealizationIdr",
-               f.proposed_recommendation AS "recommendationDraft"
-        FROM lkpj_findings f
-        JOIN lkpj_evaluation_workspaces w ON f.workspace_id = w.id
-        WHERE w.organization_id = ${orgId}::uuid
-          AND (w.assigned_discussion_unit_id IS NULL OR w.assigned_discussion_unit_id = ${unitId}::uuid)
-        ORDER BY f.updated_at DESC
-        LIMIT 8;
-      `);
-      const rows = ((findingsRes as any)?.rows || []) as any[];
-      if (rows.length > 0) {
-        lkpjContextSummary = rows
-          .map(
-            (r, i) =>
-              `[TEMUAN_LKPJ_${i + 1}] OPD: ${r.opdName} | Isu: ${r.indicatorOrIssue} | Target: ${r.targetValue ?? '-'} | Realisasi: ${r.realizationValue ?? '-'} | Pagu: ${r.budgetCeilingIdr ?? '-'} | Realisasi APBD: ${r.budgetRealizationIdr ?? '-'} | Rekomendasi: ${r.recommendationDraft || '-'}`
-          )
-          .join('\n');
-      }
-    } catch {
-      // Abaikan bila tabel belum memiliki data
-    }
-
-    let legislationContextSummary: string | null = null;
-    try {
-      const draftsRes = await db.execute(sql`
-        SELECT title, document_category AS "documentCategory", current_stage AS "currentStage", problem_statement AS "problemStatement"
-        FROM legislation_drafts
-        WHERE organization_id = ${orgId}::uuid
-        ORDER BY updated_at DESC
-        LIMIT 5;
-      `);
-      const draftRows = ((draftsRes as any)?.rows || []) as any[];
-      if (draftRows.length > 0) {
-        legislationContextSummary = draftRows
-          .map(
-            (d, i) =>
-              `[RANCANGAN_${i + 1}] [${d.documentCategory}] ${d.title} (Tahap: ${d.currentStage}) — Masalah: ${d.problemStatement || '-'}`
-          )
-          .join('\n');
-      }
-    } catch {
-      // Abaikan bila tabel belum memiliki data
-    }
 
     const guidedQuestion = this.buildClarificationGuide(
       dto.mode,
@@ -980,6 +982,30 @@ export class InstitutionalKnowledgeService {
         detectedMode: dto.mode || 'AUTO',
         usedCitations: [],
         guidedQuestion,
+        quotaRemainingWeekly: currentQuota.remainingWeekly,
+        quotaWeeklyLimit: currentQuota.weeklyLimit,
+      };
+    }
+
+    const missingDataGuide = this.buildMissingDataGuideIfNeeded(
+      dto.mode,
+      cleanMessage,
+      dto.selectedFileIds,
+      Boolean(lkpjContextSummary),
+      Boolean(legislationContextSummary)
+    );
+    if (missingDataGuide) {
+      const currentQuota = await this.quotaService.getMemberQuota(
+        orgId,
+        tenantId,
+        InstitutionalQuotaFeatureScope.COORDINATOR_CHAT
+      );
+      return {
+        assistantMessage: missingDataGuide.promptTitle,
+        routedAgents: ['Koordinator Tenaga Ahli'],
+        detectedMode: dto.mode || 'AUTO',
+        usedCitations: [],
+        guidedQuestion: missingDataGuide,
         quotaRemainingWeekly: currentQuota.remainingWeekly,
         quotaWeeklyLimit: currentQuota.weeklyLimit,
       };
@@ -1022,6 +1048,7 @@ export class InstitutionalKnowledgeService {
         includeNationalAndRegionalRegulations:
           dto.includeNationalAndRegionalRegulations ?? true,
         imageAspectRatio: dto.imageAspectRatio || '4:5',
+        imageArchetype: dto.imageArchetype as any,
         unitSharedNotes: sharedOnlyNotes,
         lkpjContextSummary,
         legislationContextSummary,
@@ -1134,6 +1161,13 @@ export class InstitutionalKnowledgeService {
     });
 
     const linkedActions = this.buildLinkedActions(chatResult.detectedMode, Boolean(finalImageUrl));
+    const postMissingGuide =
+      !finalImageUrl &&
+      /(tidak memiliki akses|data.*belum tersedia|belum ada data|kumpulkan data|lengkapi data)/i.test(
+        chatResult.assistantMessage
+      )
+        ? this.buildMissingDataGuide(chatResult.detectedMode)
+        : undefined;
 
     return {
       ...chatResult,
@@ -1143,6 +1177,7 @@ export class InstitutionalKnowledgeService {
       quotaWeeklyLimit: updatedQuota.weeklyLimit,
       savedNoteId,
       linkedActions,
+      guidedQuestion: postMissingGuide || undefined,
     };
   }
 
@@ -1268,6 +1303,182 @@ export class InstitutionalKnowledgeService {
     return null;
   }
 
+  private buildMissingDataGuideIfNeeded(
+    mode: CoordinatorChatMode | undefined,
+    cleanMessage: string,
+    selectedFileIds?: string[],
+    hasLkpjData?: boolean,
+    hasLegislationData?: boolean
+  ): CoordinatorGuidedQuestionDto | null {
+    if (selectedFileIds && selectedFileIds.length > 0) return null;
+    const hasInlineUserNumbersOrTemplate =
+      /kerangka|placeholder|\[NAMA_OPD\]|Data OPD|Input Cepat|\d{4,}/i.test(cleanMessage);
+    if (hasInlineUserNumbersOrTemplate) return null;
+
+    if (mode === 'LKPJ_FINANCE' && !hasLkpjData) {
+      return this.buildMissingDataGuide('LKPJ_FINANCE');
+    }
+    if (mode === 'LEGISLATION' && !hasLegislationData && cleanMessage.length < 180) {
+      return this.buildMissingDataGuide('LEGISLATION');
+    }
+    return null;
+  }
+
+  private buildMissingDataGuide(mode: CoordinatorChatMode): CoordinatorGuidedQuestionDto | null {
+    if (mode === 'LKPJ_FINANCE') {
+      return {
+        promptTitle:
+          'Data LKPJ / realisasi anggaran Bidang ini belum tersedia. Pilih cara melengkapi data agar analisis & draf bisa langsung disusun:',
+        options: [
+          {
+            id: 'missing_lkpj_upload',
+            label: '(Recommended) Unggah File LKPJ / APBD (PDF/Excel)',
+            description: 'Lampirkan dokumen resmi agar angka pagu, realisasi, dan capaian OPD langsung terbaca.',
+            recommended: true,
+            requiresUpload: true,
+            mode: 'LKPJ_FINANCE',
+            nextMessage: '',
+          },
+          {
+            id: 'missing_lkpj_library',
+            label: 'Pilih dari Pustaka Dokumen Bidang',
+            description: 'Gunakan dokumen LKPJ atau laporan OPD yang sudah ada di arsip Bidang.',
+            requiresLibraryPick: true,
+            mode: 'LKPJ_FINANCE',
+            nextMessage: '',
+          },
+          {
+            id: 'missing_lkpj_inline',
+            label: 'Input Cepat Data OPD Langsung di Sini',
+            description: 'Isi nama OPD, pagu, realisasi, dan catatan kritis tanpa perlu upload file.',
+            requiresInlineInput: true,
+            inlineInputTitle: 'Isi Data Ringkas OPD / Program LKPJ:',
+            inlineInputFields: [
+              {
+                key: 'opdName',
+                label: 'Nama OPD / Dinas',
+                placeholder: 'Contoh: Dinas Pekerjaan Umum & Penataan Ruang',
+              },
+              {
+                key: 'budgetInfo',
+                label: 'Pagu & Realisasi Anggaran',
+                placeholder: 'Contoh: Pagu Rp 120 M, Realisasi Rp 84 M (70%)',
+              },
+              {
+                key: 'notes',
+                label: 'Temuan / Catatan Kritis',
+                placeholder: 'Contoh: 3 proyek jalan molor ke triwulan IV, serapan fisik baru 62%',
+                multiline: true,
+              },
+            ],
+            mode: 'LKPJ_FINANCE',
+            nextMessage:
+              'Analisis data LKPJ OPD berikut dan susun draf sikap fraksi serta rekomendasi paripurna yang tajam:',
+          },
+          {
+            id: 'missing_lkpj_template',
+            label: 'Buatkan Kerangka Draf Siap-Isi (Tanpa Angka)',
+            description: 'Susun struktur sikap fraksi & rekomendasi dengan placeholder [NAMA_OPD], [PAGU], [REALISASI].',
+            mode: 'LKPJ_FINANCE',
+            nextMessage:
+              'Buatkan kerangka draf sikap fraksi dan rekomendasi paripurna LKPJ yang lengkap dan siap pakai dengan placeholder [NAMA_OPD], [PAGU_ANGGARAN], [REALISASI_PERSEN], dan [TEMUAN_UTAMA] tanpa menolak karena data belum tersedia.',
+          },
+        ],
+      };
+    }
+
+    if (mode === 'LEGISLATION') {
+      return {
+        promptTitle:
+          'Draf Raperda / naskah regulasi Bidang ini belum terlampir. Pilih cara melengkapi bahannya:',
+        options: [
+          {
+            id: 'missing_leg_upload',
+            label: '(Recommended) Unggah Draf Raperda / Naskah Akademik',
+            description: 'Lampirkan file PDF/DOCX untuk telaah pasal per pasal & uji kepatuhan UU 1/2026.',
+            recommended: true,
+            requiresUpload: true,
+            mode: 'LEGISLATION',
+            nextMessage: '',
+          },
+          {
+            id: 'missing_leg_library',
+            label: 'Pilih dari Pustaka Dokumen Bidang',
+            description: 'Pilih dokumen regulasi yang sudah tersimpan di Bidang.',
+            requiresLibraryPick: true,
+            mode: 'LEGISLATION',
+            nextMessage: '',
+          },
+          {
+            id: 'missing_leg_inline',
+            label: 'Input Cepat Pokok Raperda di Sini',
+            description: 'Tuliskan judul Raperda & pasal/isu utama untuk langsung ditelaah.',
+            requiresInlineInput: true,
+            inlineInputTitle: 'Isi Pokok Raperda yang Ingin Ditelaah:',
+            inlineInputFields: [
+              {
+                key: 'title',
+                label: 'Judul Raperda / Kebijakan',
+                placeholder: 'Contoh: Raperda Retribusi Jasa Umum Daerah',
+              },
+              {
+                key: 'issue',
+                label: 'Pokok Masalah / Pasal Kritis',
+                placeholder: 'Contoh: Penyesuaian tarif retribusi pasar & potensi tumpang tindih dengan UU HKPD',
+                multiline: true,
+              },
+            ],
+            mode: 'LEGISLATION',
+            nextMessage:
+              'Telaah pokok Raperda berikut, cek potensi tumpang tindih regulasi, dan susun daftar catatan kritis / DIM:',
+          },
+        ],
+      };
+    }
+
+    return null;
+  }
+
+  async completeUnitPrompt(
+    orgId: string,
+    unitId: string,
+    tenantId: string,
+    prefix: string,
+    mode?: string
+  ) {
+    const [org] = await db
+      .select({ regionName: organizations.regionName })
+      .from(organizations)
+      .where(eq(organizations.id, orgId))
+      .limit(1);
+
+    let unitName: string | undefined;
+    let focusSectors: string[] = [];
+    try {
+      const unitRes = await db.execute(sql`
+        SELECT name, focus_sectors AS "focusSectors"
+        FROM organization_units
+        WHERE id = ${unitId}::uuid AND organization_id = ${orgId}::uuid
+        LIMIT 1;
+      `);
+      const u = ((unitRes as any)?.rows?.[0] ?? (Array.isArray(unitRes) ? unitRes[0] : undefined)) as any;
+      unitName = u?.name;
+      if (Array.isArray(u?.focusSectors)) focusSectors = u.focusSectors;
+    } catch {}
+
+    return await PromptAutocompleteService.complete({
+      prefix,
+      mode,
+      scope: 'B2B',
+      regionName: org?.regionName,
+      unitName,
+      focusSectors,
+      tenantId,
+      organizationId: orgId,
+      organizationUnitId: unitId,
+    });
+  }
+
   async getUnitProactivePrompts(
     orgId: string,
     unitId: string
@@ -1287,7 +1498,7 @@ export class InstitutionalKnowledgeService {
         WHERE id = ${unitId}::uuid AND organization_id = ${orgId}::uuid
         LIMIT 1;
       `);
-      const u = ((unitRes as any)?.rows || [])[0];
+      const u = ((unitRes as any)?.rows?.[0] ?? (Array.isArray(unitRes) ? unitRes[0] : undefined)) as any;
       if (u?.name) unitName = u.name;
       if (Array.isArray(u?.focusSectors)) focusSectors = u.focusSectors;
     } catch { }
@@ -1298,13 +1509,14 @@ export class InstitutionalKnowledgeService {
     let latestNewsTitle: string | null = null;
     try {
       const newsRes = await db.execute(sql`
-        SELECT title
-        FROM radar_trends
-        WHERE region_name ILIKE ${'%' + regionLabel + '%'}
-        ORDER BY created_at DESC
+        SELECT article_title AS title
+        FROM media_discourses
+        WHERE region_scope ILIKE ${'%' + regionLabel + '%'}
+        ORDER BY published_at DESC
         LIMIT 1;
       `);
-      latestNewsTitle = ((newsRes as any)?.rows || [])[0]?.title || null;
+      const newsRow = ((newsRes as any)?.rows?.[0] ?? (Array.isArray(newsRes) ? newsRes[0] : undefined)) as any;
+      latestNewsTitle = newsRow?.title || null;
     } catch { }
 
     let latestLkpjLabel: string | null = null;
@@ -1317,7 +1529,7 @@ export class InstitutionalKnowledgeService {
         ORDER BY updated_at DESC
         LIMIT 1;
       `);
-      const row = ((lkpjRes as any)?.rows || [])[0];
+      const row = ((lkpjRes as any)?.rows?.[0] ?? (Array.isArray(lkpjRes) ? lkpjRes[0] : undefined)) as any;
       if (row?.title) latestLkpjLabel = `${row.title} (${row.fiscalYear || ''})`.trim();
     } catch { }
 
@@ -1330,7 +1542,8 @@ export class InstitutionalKnowledgeService {
         ORDER BY updated_at DESC
         LIMIT 1;
       `);
-      latestLegTitle = ((legRes as any)?.rows || [])[0]?.title || null;
+      const legRow = ((legRes as any)?.rows?.[0] ?? (Array.isArray(legRes) ? legRes[0] : undefined)) as any;
+      latestLegTitle = legRow?.title || null;
     } catch { }
 
     let latestDocTitle: string | null = null;
@@ -1342,7 +1555,8 @@ export class InstitutionalKnowledgeService {
         ORDER BY created_at DESC
         LIMIT 1;
       `);
-      latestDocTitle = ((docRes as any)?.rows || [])[0]?.title || null;
+      const docRow = ((docRes as any)?.rows?.[0] ?? (Array.isArray(docRes) ? docRes[0] : undefined)) as any;
+      latestDocTitle = docRow?.title || null;
     } catch { }
 
     return [

@@ -14,6 +14,12 @@ export interface GenerateArticleParams {
   toneOverride?: string;
   partyAffiliation?: string | null;
   partyIdeologyDirective?: string | null;
+  telemetryContext?: {
+    channel?: 'WEB_STUDIO' | 'INSTITUTIONAL_WORKSPACE';
+    organizationId?: string;
+    organizationUnitId?: string;
+    activityType?: string;
+  };
   onProgress?: (step: string, percent: number) => Promise<void> | void;
 }
 

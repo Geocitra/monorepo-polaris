@@ -62,6 +62,15 @@ export class InstitutionalWorkspaceController {
     return await this.quotaService.getMemberQuota(orgId, user.tenantId);
   }
 
+  @Get('orgs/:orgId/my-usage')
+  @UseGuards(InstitutionalWorkspaceGuard)
+  async getMyOrgUsage(
+    @Param('orgId') orgId: string,
+    @CurrentTenant() user: AuthenticatedTenantPayload
+  ) {
+    return await this.quotaService.getMyUsageSummary(orgId, user.tenantId);
+  }
+
   @Get('orgs/:orgId/units/:unitId/overview')
   @UseGuards(InstitutionalWorkspaceGuard)
   async getUnitOverview(
@@ -179,6 +188,24 @@ export class InstitutionalWorkspaceController {
       unitId,
       user.tenantId,
       dto
+    );
+  }
+
+  @Post('orgs/:orgId/units/:unitId/prompt-autocomplete')
+  @UseGuards(InstitutionalWorkspaceGuard)
+  @HttpCode(HttpStatus.OK)
+  async autocompleteUnitPrompt(
+    @Param('orgId') orgId: string,
+    @Param('unitId') unitId: string,
+    @CurrentTenant() user: AuthenticatedTenantPayload,
+    @Body() dto: { prefix: string; mode?: string }
+  ) {
+    return await this.knowledge.completeUnitPrompt(
+      orgId,
+      unitId,
+      user.tenantId,
+      dto?.prefix || '',
+      dto?.mode
     );
   }
 

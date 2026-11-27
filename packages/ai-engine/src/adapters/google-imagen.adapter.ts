@@ -14,6 +14,8 @@ export interface GenerateGoogleImagenParams {
   aspectRatio?: '4:5' | '1:1' | '16:9' | '9:16' | '3:4' | '4:3';
   tenantId?: string;
   operatorId?: string;
+  organizationId?: string;
+  organizationUnitId?: string;
   publicationId?: string;
   channel?: string;
   activityType?: string;
@@ -53,6 +55,8 @@ export class GoogleImagenAdapter {
       model: preferredModel,
       tenantId: params.tenantId,
       operatorId: params.operatorId,
+      organizationId: params.organizationId,
+      organizationUnitId: params.organizationUnitId,
       publicationId: params.publicationId,
       channel: params.channel || 'WEB_STUDIO',
       activityType: params.activityType || 'STUDIO_INFOGRAPHIC_GENERATION',

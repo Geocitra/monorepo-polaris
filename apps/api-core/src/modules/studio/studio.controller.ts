@@ -12,6 +12,7 @@ import {
 } from '@nestjs/common';
 import { StudioService } from './studio.service.js';
 import { StudioMagicLayersService } from './services/studio-magic-layers.service.js';
+import { PromptAutocompleteService } from '@polaris/ai-engine';
 import {
   GenerateArticleRequestDto,
   UpdateDraftArticleDto,
@@ -26,7 +27,9 @@ import { CurrentTenant, AuthenticatedTenantPayload } from '../../common/decorato
 import { SubscriptionGuard } from '../../common/guards/subscription.guard.js';
 import { TokenCircuitBreakerGuard } from '../../common/guards/token-circuit-breaker.guard.js';
 import { SkipRlsContext } from '../../common/decorators/skip-rls-context.decorator.js';
+import { B2cAccessGuard } from '../../common/guards/b2c-access.guard.js';
 
+@UseGuards(B2cAccessGuard)
 @Controller('studio')
 export class StudioController {
   constructor(
@@ -121,6 +124,29 @@ export class StudioController {
     }
   ) {
     return await this.studioService.refinePrompt(user.tenantId, dto);
+  }
+
+  @Post('prompt-autocomplete')
+  @SkipRlsContext()
+  @HttpCode(HttpStatus.OK)
+  async autocompletePrompt(
+    @CurrentTenant() user: AuthenticatedTenantPayload,
+    @Body()
+    dto: {
+      prefix: string;
+      mode?: string;
+      regionName?: string;
+      unitName?: string;
+    }
+  ) {
+    return await PromptAutocompleteService.complete({
+      prefix: dto.prefix || '',
+      mode: dto.mode,
+      scope: 'B2C',
+      regionName: dto.regionName,
+      unitName: dto.unitName,
+      tenantId: user.tenantId,
+    });
   }
 
   @Get('jobs/:jobId')

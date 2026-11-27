@@ -1,10 +1,12 @@
-import { Controller, Post, Get, Body, Param, HttpCode, HttpStatus } from '@nestjs/common';
+import { Controller, Post, Get, Body, Param, HttpCode, HttpStatus, UseGuards } from '@nestjs/common';
 import { BillingService } from './billing.service.js';
 import { QuotaWalletService } from './quota-wallet.service.js';
 import { CreateCheckoutDto, CheckoutResponseDto, BillingStatusDto } from './dto/billing.dto.js';
 import { Public } from '../../common/decorators/public.decorator.js';
 import { CurrentTenant, AuthenticatedTenantPayload } from '../../common/decorators/current-tenant.decorator.js';
+import { B2cAccessGuard } from '../../common/guards/b2c-access.guard.js';
 
+@UseGuards(B2cAccessGuard)
 @Controller('billing')
 export class BillingController {
   constructor(

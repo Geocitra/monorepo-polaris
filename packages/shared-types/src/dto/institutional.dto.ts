@@ -319,6 +319,25 @@ export interface OrganizationMemberQuotaDto {
   };
 }
 
+export interface InstitutionalMyUsageDto {
+  organizationId: string;
+  tenantId: string;
+  billingCycleMonth: string;
+  quota: OrganizationMemberQuotaDto;
+  monthlySummary: {
+    generateRequests: number;
+    revisionRequests: number;
+    totalRequests: number;
+    totalTokensConsumed: number;
+  };
+  byUnit: Array<{
+    unitId: string | null;
+    unitName: string;
+    totalRequests: number;
+    totalTokensConsumed: number;
+  }>;
+}
+
 export interface InstitutionalMemberUsageDto {
   tenantId: string;
   fullName: string;
@@ -338,6 +357,25 @@ export interface InstitutionalMemberUsageDto {
     LKPJ_EVALUATION: FeatureQuotaSummaryDto;
     LEGISLATION: FeatureQuotaSummaryDto;
   };
+}
+
+export interface InstitutionalMyUsageDto {
+  organizationId: string;
+  tenantId: string;
+  billingCycleMonth: string;
+  quota: OrganizationMemberQuotaDto;
+  monthlySummary: {
+    generateRequests: number;
+    revisionRequests: number;
+    totalRequests: number;
+    totalTokensConsumed: number;
+  };
+  byUnit: Array<{
+    unitId: string | null;
+    unitName: string;
+    totalRequests: number;
+    totalTokensConsumed: number;
+  }>;
 }
 
 export interface InstitutionalUsageAnalyticsDto {
@@ -392,6 +430,13 @@ export interface CoordinatorChatHistoryTurnDto {
   content: string;
 }
 
+export interface CoordinatorGuidedInlineFieldDto {
+  key: string;
+  label: string;
+  placeholder: string;
+  multiline?: boolean;
+}
+
 export interface CoordinatorGuidedOptionDto {
   id: string;
   label: string;
@@ -401,6 +446,9 @@ export interface CoordinatorGuidedOptionDto {
   mode?: CoordinatorChatMode;
   requiresUpload?: boolean;
   requiresLibraryPick?: boolean;
+  requiresInlineInput?: boolean;
+  inlineInputTitle?: string;
+  inlineInputFields?: CoordinatorGuidedInlineFieldDto[];
 }
 
 export interface CoordinatorGuidedQuestionDto {

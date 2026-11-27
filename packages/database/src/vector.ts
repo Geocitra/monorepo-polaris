@@ -276,6 +276,10 @@ export async function findInstitutionalScopedDatahubChunks(
     minSimilarityScore = 0.55,
   } = params;
 
+  if (!organizationId || !activeUnitId) {
+    return [];
+  }
+
   if (!Array.isArray(queryEmbedding) || queryEmbedding.length !== 1536) {
     throw new Error(`[VectorQueryError] Dimensi embedding tidak valid. Diterima: ${queryEmbedding?.length}, Diperlukan: 1536.`);
   }

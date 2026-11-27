@@ -282,6 +282,10 @@ export class OpenAIAIEngineAdapter implements ILLMProviderPort {
     prompt: string;
     aspectRatio?: '4:5' | '1:1' | '16:9' | '9:16' | '3:4' | '4:3';
     tenantId?: string;
+    channel?: string;
+    organizationId?: string;
+    organizationUnitId?: string;
+    activityType?: string;
     stylePromptSuffix?: string;
     imageNegativeAllow?: string[];
   }): Promise<{ temporaryImageUrl: string; canonicalTraceId: string }> {
@@ -301,6 +305,12 @@ export class OpenAIAIEngineAdapter implements ILLMProviderPort {
     excludeBlueprintId?: string;
     tenantBrandHex?: string;
     tenantId?: string;
+    telemetryContext?: {
+      channel?: 'WEB_STUDIO' | 'INSTITUTIONAL_WORKSPACE';
+      organizationId?: string;
+      organizationUnitId?: string;
+      activityType?: string;
+    };
   }): Promise<{
     temporaryImageUrl: string;
     blueprint: PreAnalyzedPosterBlueprint;
@@ -342,6 +352,10 @@ export class OpenAIAIEngineAdapter implements ILLMProviderPort {
           prompt: compiledPrompt.englishPrompt,
           aspectRatio: (compiledPrompt.aspectRatio as any) || '4:5',
           tenantId: params.tenantId,
+          channel: params.telemetryContext?.channel,
+          organizationId: params.telemetryContext?.organizationId,
+          organizationUnitId: params.telemetryContext?.organizationUnitId,
+          activityType: params.telemetryContext?.activityType,
           stylePromptSuffix: blueprint.scenePromptHint
             ? PosterPromptCompiler.sanitizeImageGenerationPrompt(blueprint.scenePromptHint)
             : undefined,
@@ -361,6 +375,10 @@ export class OpenAIAIEngineAdapter implements ILLMProviderPort {
         prompt: compiledPrompt.englishPrompt,
         aspectRatio: (compiledPrompt.aspectRatio as any) || '4:5',
         tenantId: params.tenantId,
+        channel: params.telemetryContext?.channel,
+        organizationId: params.telemetryContext?.organizationId,
+        organizationUnitId: params.telemetryContext?.organizationUnitId,
+        activityType: params.telemetryContext?.activityType,
         stylePromptSuffix: blueprint.scenePromptHint
           ? PosterPromptCompiler.sanitizeImageGenerationPrompt(blueprint.scenePromptHint)
           : undefined,
@@ -558,12 +576,20 @@ export class OpenAIAIEngineAdapter implements ILLMProviderPort {
 
   public async generateSocialSnippets(
     articleContent: string,
-    tenantId?: string
+    tenantId?: string,
+    telemetryContext?: {
+      channel?: 'WEB_STUDIO' | 'INSTITUTIONAL_WORKSPACE';
+      organizationId?: string;
+      organizationUnitId?: string;
+      activityType?: string;
+    }
   ): Promise<GeneratedSocialPackResult> {
     const telemetry = AiTelemetryService.startTrace({
       operation: 'generate-social-snippets',
-      channel: 'WEB_STUDIO',
-      activityType: 'STUDIO_ARTICLE_GENERATION',
+      channel: telemetryContext?.channel || 'WEB_STUDIO',
+      organizationId: telemetryContext?.organizationId,
+      organizationUnitId: telemetryContext?.organizationUnitId,
+      activityType: telemetryContext?.activityType || 'STUDIO_ARTICLE_GENERATION',
       model: 'gpt-4o-mini',
       tenantId,
       metadata: { contentLength: articleContent.length },

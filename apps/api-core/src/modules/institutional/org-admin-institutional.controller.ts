@@ -49,7 +49,6 @@ export class OrgAdminInstitutionalController {
   ) {}
 
   @Get('usage-analytics')
-  @RequireOrgRoles(OrganizationMemberRole.ORG_ADMIN, OrganizationMemberRole.LEADERSHIP)
   async getUsageAnalytics(@Param('orgId') orgId: string) {
     return await this.quotaService.getOrganizationUsageAnalytics(orgId);
   }

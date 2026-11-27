@@ -450,6 +450,11 @@ export class CoordinatorChatRequestDto {
 
   @IsOptional()
   @IsString()
+  @MaxLength(80)
+  imageArchetype?: string;
+
+  @IsOptional()
+  @IsString()
   @MaxLength(255)
   saveAsSharedNoteTitle?: string;
 

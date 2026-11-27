@@ -5,6 +5,7 @@ export * from './ai-engine.adapter.js';
 export * from './knowledge/platform-facts.js';
 export * from './guardrails/prompt-sanitizer.js';
 export * from './prompts/concierge.prompt.js';
+export * from './prompts/prompt-autocomplete.service.js';
 export * from './telemetry/ai-telemetry.service.js';
 export * from './editorial/article-length.planner.js';
 export * from './editorial/editorial-style.resolver.js';

@@ -17,9 +17,10 @@ import { TokenCircuitBreakerGuard } from '../../common/guards/token-circuit-brea
 import { CurrentTenant, AuthenticatedTenantPayload } from '../../common/decorators/current-tenant.decorator.js';
 import { DatahubService } from './datahub.service.js';
 import { DatahubUploadDto } from './dto/datahub-upload.dto.js';
+import { B2cAccessGuard } from '../../common/guards/b2c-access.guard.js';
 
 @Controller('datahub')
-@UseGuards(AuthGuard)
+@UseGuards(AuthGuard, B2cAccessGuard)
 export class DatahubController {
   constructor(private readonly datahubService: DatahubService) {}
 

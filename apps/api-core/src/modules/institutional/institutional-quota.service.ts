@@ -11,6 +11,7 @@ import {
 import {
   InstitutionalQuotaFeatureScope,
   type OrganizationMemberQuotaDto,
+  type InstitutionalMyUsageDto,
   type InstitutionalUsageAnalyticsDto,
   type OrganizationMemberRole,
   type OrganizationUnitType,
@@ -295,6 +296,59 @@ export class InstitutionalQuotaService {
       });
   }
 
+  async getMyUsageSummary(
+    organizationId: string,
+    tenantId: string,
+    billingCycleMonth?: string
+  ): Promise<InstitutionalMyUsageDto> {
+    const targetMonth = billingCycleMonth || new Date().toISOString().slice(0, 7);
+    const quota = await this.getMemberQuota(organizationId, tenantId);
+
+    const unitRows = await db.execute(sql`
+      SELECT
+        l.unit_id AS "unitId",
+        COALESCE(u.name, 'Umum / Tanpa Bidang') AS "unitName",
+        COALESCE(SUM(l.generate_requests), 0)::integer AS "generateRequests",
+        COALESCE(SUM(l.revision_requests), 0)::integer AS "revisionRequests",
+        COALESCE(SUM(l.total_requests), 0)::integer AS "totalRequests",
+        COALESCE(SUM(l.total_tokens_consumed), 0)::bigint AS "totalTokensConsumed"
+      FROM organization_quota_ledgers l
+      LEFT JOIN organization_units u ON l.unit_id = u.id
+      WHERE l.organization_id = ${organizationId}::uuid
+        AND l.tenant_id = ${tenantId}::uuid
+        AND l.billing_cycle_month = ${targetMonth}
+      GROUP BY l.unit_id, u.name
+      ORDER BY "totalTokensConsumed" DESC;
+    `);
+
+    const rows = ((unitRows as any)?.rows || unitRows || []) as any[];
+    const byUnit = rows.map((r) => ({
+      unitId: r.unitId || null,
+      unitName: String(r.unitName || 'Umum / Tanpa Bidang'),
+      totalRequests: Number(r.totalRequests || 0),
+      totalTokensConsumed: Number(r.totalTokensConsumed || 0),
+    }));
+
+    const monthlySummary = rows.reduce(
+      (acc, r) => ({
+        generateRequests: acc.generateRequests + Number(r.generateRequests || 0),
+        revisionRequests: acc.revisionRequests + Number(r.revisionRequests || 0),
+        totalRequests: acc.totalRequests + Number(r.totalRequests || 0),
+        totalTokensConsumed: acc.totalTokensConsumed + Number(r.totalTokensConsumed || 0),
+      }),
+      { generateRequests: 0, revisionRequests: 0, totalRequests: 0, totalTokensConsumed: 0 }
+    );
+
+    return {
+      organizationId,
+      tenantId,
+      billingCycleMonth: targetMonth,
+      quota,
+      monthlySummary,
+      byUnit,
+    };
+  }
+
   /**
    * Agregasi pemakaian AI Bottom-Up (Anggota -> Bidang -> Instansi) untuk Admin Instansi (ORG_ADMIN).
    */
@@ -356,7 +410,7 @@ export class InstitutionalQuotaService {
         AND w.weekly_period_key = ${weeklyPeriodKey}
       WHERE m.organization_id = ${organizationId}::uuid
         AND m.status = 'ACTIVE'
-      GROUP BY m.tenant_id, tm.full_name, tm.email, m.org_role
+      GROUP BY m.organization_id, m.tenant_id, tm.full_name, tm.email, m.org_role
       ORDER BY "totalTokensConsumed" DESC, tm.full_name ASC;
     `);
 

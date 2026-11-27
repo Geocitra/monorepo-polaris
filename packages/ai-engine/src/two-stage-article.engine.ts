@@ -525,6 +525,10 @@ ${sanitizedMarkdown.slice(0, 5000)}`;
       operation: 'generate-two-stage-modular-article',
       model: 'gpt-4o',
       tenantId: params.tenantId,
+      channel: params.telemetryContext?.channel || 'WEB_STUDIO',
+      organizationId: params.telemetryContext?.organizationId,
+      organizationUnitId: params.telemetryContext?.organizationUnitId,
+      activityType: params.telemetryContext?.activityType,
       metadata: {
         topic: params.topic,
         targetLength: params.targetLength,

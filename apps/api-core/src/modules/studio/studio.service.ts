@@ -180,7 +180,7 @@ export class StudioService {
       );
     }
 
-    let [portal] = await db
+    const [portal] = await db
       .select({
         subdomainSlug: portalConfigs.subdomainSlug,
         customDomain: portalConfigs.customDomain,
@@ -190,44 +190,11 @@ export class StudioService {
       .where(eq(portalConfigs.tenantId, tenantId))
       .limit(1);
 
-    let subdomainSlug = portal?.subdomainSlug;
+    const subdomainSlug = portal?.subdomainSlug;
     if (!subdomainSlug) {
-      const [member] = await db
-        .select({ fullName: tenantMembers.fullName })
-        .from(tenantMembers)
-        .where(eq(tenantMembers.id, tenantId))
-        .limit(1);
-
-      const rawSlug = (member?.fullName || 'wakil-rakyat')
-        .toLowerCase()
-        .replace(/[^a-z0-9]/g, '-')
-        .replace(/-+/g, '-')
-        .slice(0, 30);
-      subdomainSlug = `${rawSlug}-${tenantId.slice(0, 4)}`;
-
-      const [createdPortal] = await db
-        .insert(portalConfigs)
-        .values({
-          tenantId,
-          subdomainSlug,
-          isActive: true,
-          metaTitle: `Portal Resmi ${member?.fullName || 'Wakil Rakyat'}`,
-          metaDescription: 'Portal transparansi kebijakan dan aspirasi konstituen.',
-        })
-        .onConflictDoNothing()
-        .returning();
-
-      if (createdPortal) {
-        await db
-          .insert(portalThemeSettings)
-          .values({
-            portalId: createdPortal.id,
-            primaryHexColor: '#1890ff',
-            secondaryHexColor: '#001529',
-            fontFamily: 'Inter, sans-serif',
-          })
-          .onConflictDoNothing();
-      }
+      throw new ForbiddenException(
+        'Portal B2C belum aktif untuk akun ini. Fitur Studio Konten Pribadi hanya tersedia untuk akun B2C/Hybrid.'
+      );
     }
 
     // Check if existing publication is being published

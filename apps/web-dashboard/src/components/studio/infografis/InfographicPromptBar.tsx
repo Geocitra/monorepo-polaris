@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { usePromptAutocomplete } from '@/hooks/usePromptAutocomplete';
 import {
   Send,
   Sparkles,
@@ -115,6 +116,13 @@ export function InfographicPromptBar({
 
   const isPoster = selectedStyle === 'poster';
 
+  const { ghostSuffix, acceptGhost, clearGhost } = usePromptAutocomplete({
+    endpoint: '/studio/prompt-autocomplete',
+    value: prompt,
+    mode: selectedStyle,
+    disabled: isUnpaid || loading || refiningPrompt,
+  });
+
   return (
     <div className="rounded-3xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-5 sm:p-6 shadow-sm space-y-4">
       {/* HEADER: KONTROL GAYA VISUAL & RASIO UKURAN */}
@@ -140,8 +148,8 @@ export function InfographicPromptBar({
                   type="button"
                   onClick={() => handleSelectStyle(opt)}
                   className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${isSelected
-                      ? 'bg-white dark:bg-slate-900 text-blue-600 dark:text-blue-400 shadow-2xs'
-                      : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+                    ? 'bg-white dark:bg-slate-900 text-blue-600 dark:text-blue-400 shadow-2xs'
+                    : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
                     }`}
                   title={opt.desc}
                 >
@@ -181,8 +189,8 @@ export function InfographicPromptBar({
                   onClick={() => onArchetypeChange(fam.id)}
                   title={fam.desc}
                   className={`px-3 py-1.5 rounded-xl text-xs font-bold border transition-all cursor-pointer ${active
-                      ? 'bg-blue-600 text-white border-blue-600 shadow-2xs'
-                      : 'bg-slate-50 dark:bg-slate-800/60 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-700 hover:border-blue-400'
+                    ? 'bg-blue-600 text-white border-blue-600 shadow-2xs'
+                    : 'bg-slate-50 dark:bg-slate-800/60 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-700 hover:border-blue-400'
                     }`}
                 >
                   {fam.label}
@@ -207,19 +215,53 @@ export function InfographicPromptBar({
       {/* INPUT FORM */}
       <form onSubmit={(e) => onSubmit(e)} className="space-y-3">
         <div className="relative">
-          <textarea
-            rows={3}
-            value={prompt}
-            onChange={(e) => onPromptChange(e.target.value)}
-            placeholder={
-              hasExistingIteration
-                ? `Ketik instruksi revisi (contoh: "Perjelas kutipan headline dan sesuaikan warna aksen...")`
-                : isPoster
-                  ? `Tuliskan topik poster kebijakan atau aspirasi publik yang ingin dirancang (contoh: "Poster advokasi peningkatan beasiswa santri dan siswa berprestasi di pedesaan...")`
-                  : `Tuliskan ide infografis data atau indikator capaian yang ingin divisualisasikan (contoh: "Infografis pemerataan akses internet di sekolah 3T dengan data alokasi dana desa...")`
-            }
-            className="w-full p-4 rounded-2xl border border-slate-200 dark:border-slate-700 bg-slate-50/70 dark:bg-slate-800/60 text-xs sm:text-sm text-slate-900 dark:text-slate-100 placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none focus:border-blue-600 dark:focus:border-blue-500 focus:bg-white dark:focus:bg-slate-800 transition-all resize-none"
-          />
+          <div className="relative rounded-2xl border border-slate-200 dark:border-slate-700 bg-slate-50/70 dark:bg-slate-800/60 focus-within:border-blue-600 dark:focus-within:border-blue-500 focus-within:bg-white dark:focus-within:bg-slate-800 transition-all">
+            {ghostSuffix && (
+              <div
+                aria-hidden="true"
+                className="pointer-events-none absolute inset-0 p-4 text-xs sm:text-sm whitespace-pre-wrap break-words overflow-hidden leading-normal"
+              >
+                <span className="text-transparent">{prompt}</span>
+                <span className="text-slate-400/75 dark:text-slate-500/80">{ghostSuffix}</span>
+              </div>
+            )}
+            <textarea
+              rows={3}
+              value={prompt}
+              onChange={(e) => onPromptChange(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Tab' && ghostSuffix) {
+                  e.preventDefault();
+                  const next = acceptGhost();
+                  if (next) onPromptChange(next);
+                } else if (e.key === 'Escape' && ghostSuffix) {
+                  clearGhost();
+                }
+              }}
+              placeholder={
+                hasExistingIteration
+                  ? `Ketik instruksi revisi (contoh: "Perjelas kutipan headline dan sesuaikan warna aksen...")`
+                  : isPoster
+                    ? `Tuliskan topik poster kebijakan atau aspirasi publik yang ingin dirancang (contoh: "Poster advokasi peningkatan beasiswa santri dan siswa berprestasi di pedesaan...")`
+                    : `Tuliskan ide infografis data atau indikator capaian yang ingin divisualisasikan (contoh: "Infografis pemerataan akses internet di sekolah 3T dengan data alokasi dana desa...")`
+              }
+              className="relative z-10 w-full p-4 bg-transparent border-0 text-xs sm:text-sm leading-normal text-slate-900 dark:text-slate-100 placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none resize-none"
+            />
+            {ghostSuffix && (
+              <button
+                type="button"
+                onClick={() => {
+                  const next = acceptGhost();
+                  if (next) onPromptChange(next);
+                }}
+                className="mt-1 ml-3 mb-2 inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-blue-50 dark:bg-blue-950/60 border border-blue-200 dark:border-blue-800 text-[10.5px] font-bold text-blue-700 dark:text-blue-300 hover:bg-blue-100 shadow-2xs cursor-pointer"
+                title="Klik atau tekan tombol Tab untuk menerapkan saran lanjutan AI"
+              >
+                <Sparkles className="h-3 w-3 shrink-0" />
+                <span>Saran AI &bull; Tekan Tab ↹ untuk melengkapi</span>
+              </button>
+            )}
+          </div>
 
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 pt-2">
             <span className="text-[11px] text-slate-400 dark:text-slate-500 hidden sm:inline">

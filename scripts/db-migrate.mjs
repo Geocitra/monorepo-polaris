@@ -924,18 +924,37 @@ async function runMigration() {
     }
 
     console.log('\n[5c/6] Applying Incremental Migrations (packages/database/src/migrations)...');
+    await sql.unsafe(`
+      CREATE TABLE IF NOT EXISTS _polaris_migrations (
+        filename TEXT PRIMARY KEY,
+        applied_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+      );
+    `);
+    const appliedRows = await sql`SELECT filename FROM _polaris_migrations`;
+    const appliedSet = new Set(appliedRows.map((r) => r.filename));
+    const IDEMPOTENT_PG_CODES = new Set(['42P07', '42701', '42710', '42P06']);
+
     await sql`SELECT set_config('app.is_superadmin', 'true', false)`;
     const migrationsDir = path.join(rootDir, 'packages/database/src/migrations');
     if (fs.existsSync(migrationsDir)) {
       const files = fs.readdirSync(migrationsDir).filter(f => f.endsWith('.sql')).sort();
       for (const file of files) {
+        if (appliedSet.has(file)) {
+          continue;
+        }
         const filePath = path.join(migrationsDir, file);
         const fileSql = fs.readFileSync(filePath, 'utf-8');
         try {
           await sql.unsafe(fileSql);
+          await sql`INSERT INTO _polaris_migrations (filename) VALUES (${file}) ON CONFLICT (filename) DO NOTHING`;
           console.log(`  -> Applied migration: ${file}`);
         } catch (mErr) {
-          console.log(`  -> Notice on ${file}: ${mErr.message}`);
+          if (mErr && IDEMPOTENT_PG_CODES.has(mErr.code)) {
+            await sql`INSERT INTO _polaris_migrations (filename) VALUES (${file}) ON CONFLICT (filename) DO NOTHING`;
+            console.log(`  -> Bootstrap notice on ${file} (${mErr.code}): ${mErr.message}`);
+          } else {
+            throw new Error(`Migration failed in ${file}: ${mErr.message}`);
+          }
         }
       }
     }

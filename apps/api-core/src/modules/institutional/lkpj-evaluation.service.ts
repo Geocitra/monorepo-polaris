@@ -1541,7 +1541,7 @@ export class LkpjEvaluationService {
     orgId: string,
     workspaceId: string
   ): Promise<LkpjWorkspaceDashboardDto> {
-    const [wsRow] = await db.execute(sql`
+    const wsRow = await db.execute(sql`
       SELECT
         w.*,
         o.name AS "organizationName",
@@ -1554,7 +1554,7 @@ export class LkpjEvaluationService {
         AND w.organization_id = ${orgId}::uuid;
     `);
 
-    const rawWs = ((wsRow as any)?.rows?.[0] || wsRow) as any;
+    const rawWs = ((wsRow as any)?.rows?.[0] ?? (Array.isArray(wsRow) ? wsRow[0] : undefined)) as any;
     if (!rawWs) {
       throw new NotFoundException('Ruang kerja evaluasi LKPJ tidak ditemukan.');
     }

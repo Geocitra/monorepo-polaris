@@ -17,7 +17,9 @@ import { UpdateThemeSettingsDto, UpdateDomainConfigDto, CreatePortalDocumentRequ
 import { Public } from '../../common/decorators/public.decorator.js';
 import { CurrentTenant, AuthenticatedTenantPayload } from '../../common/decorators/current-tenant.decorator.js';
 import { SubscriptionGuard } from '../../common/guards/subscription.guard.js';
+import { B2cAccessGuard } from '../../common/guards/b2c-access.guard.js';
 
+@UseGuards(B2cAccessGuard)
 @Controller('cms')
 export class CmsController {
   constructor(private readonly cmsService: CmsService) {}

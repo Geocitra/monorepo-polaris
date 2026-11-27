@@ -1,6 +1,7 @@
 import { getTextCompletionClient } from '../client.js';
 import { AiTelemetryService } from '../telemetry/ai-telemetry.service.js';
-import { GoogleImagenAdapter } from '../adapters/google-imagen.adapter.js';
+import { OpenAIAIEngineAdapter } from '../ai-engine.adapter.js';
+import { TwoStageArticleEngine } from '../two-stage-article.engine.js';
 import { DatahubEmbedderService } from '../datahub/datahub-embedder.service.js';
 import {
   findInstitutionalScopedDatahubChunks,
@@ -10,6 +11,7 @@ import type {
   CoordinatorChatMode,
   CoordinatorChatHistoryTurnDto,
   CoordinatorChatResponseDto,
+  CreativePosterArchetype,
   InstitutionalSharedNoteDto,
   StandingOrdersConfigDto,
 } from '@polaris/shared-types';
@@ -36,6 +38,7 @@ export interface ExecuteCoordinatorChatParams {
   includeOrgSharedDocuments?: boolean;
   includeNationalAndRegionalRegulations?: boolean;
   imageAspectRatio?: '1:1' | '4:5' | '16:9' | '9:16';
+  imageArchetype?: CreativePosterArchetype;
   unitSharedNotes?: InstitutionalSharedNoteDto[];
   lkpjContextSummary?: string | null;
   legislationContextSummary?: string | null;
@@ -199,6 +202,7 @@ export class InstitutionalCoordinatorChatService {
       includeOrgSharedDocuments = true,
       includeNationalAndRegionalRegulations = true,
       imageAspectRatio = '4:5',
+      imageArchetype,
       unitSharedNotes = [],
       lkpjContextSummary,
       legislationContextSummary,
@@ -221,6 +225,7 @@ export class InstitutionalCoordinatorChatService {
         activeUnitName,
         message,
         imageAspectRatio,
+        imageArchetype,
         routedAgents,
       });
     }
@@ -386,6 +391,80 @@ ${legislationContextSummary ? `\n=== RINGKASAN RANCANGAN LEGISLASI AKTIF ===\n${
       };
     }
 
+    if (detectedMode === 'ARTICLE') {
+      try {
+        const aiAdapter = new OpenAIAIEngineAdapter();
+        const articleResult = await TwoStageArticleEngine.execute({
+          topic: message,
+          regionalContextData: `${systemPrompt}\n\n${contextPayload}`,
+          targetAudience: `Publik ${regionName}, Media Massa, dan Mitra Kerja ${activeUnitName}`,
+          targetLength: 'SHORT',
+          writingStyle: 'POPULAR_OPINION',
+          tenantId,
+          telemetryContext: {
+            channel: 'INSTITUTIONAL_WORKSPACE',
+            organizationId,
+            organizationUnitId: activeUnitId,
+            activityType: 'COORDINATOR_CHAT_ARTICLE',
+          },
+        });
+
+        let socialSection = '';
+        try {
+          const social = await aiAdapter.generateSocialSnippets(
+            articleResult.contentMarkdown,
+            tenantId,
+            {
+              channel: 'INSTITUTIONAL_WORKSPACE',
+              organizationId,
+              organizationUnitId: activeUnitId,
+              activityType: 'COORDINATOR_CHAT_ARTICLE',
+            }
+          );
+          if (social.whatsappBroadcast || social.instagramCaption) {
+            socialSection = [
+              '\n\n---',
+              '### Paket Siap Sebar',
+              social.whatsappBroadcast
+                ? `**Pesan Siaran WhatsApp:**\n${social.whatsappBroadcast}`
+                : '',
+              social.instagramCaption
+                ? `**Draf Caption Media Sosial:**\n${social.instagramCaption}`
+                : '',
+            ]
+              .filter(Boolean)
+              .join('\n\n');
+          }
+        } catch {
+          // Non-blocking: naskah artikel utama tetap dikirim
+        }
+
+        await telemetry.endTrace({
+          inputTokens: Math.round(articleResult.totalTokensUsed * 0.4),
+          outputTokens: Math.round(articleResult.totalTokensUsed * 0.6),
+          status: 'SUCCESS',
+          outputPreview: articleResult.title,
+        });
+
+        return {
+          assistantMessage: `${articleResult.contentMarkdown}${socialSection}`,
+          routedAgents,
+          detectedMode: 'ARTICLE',
+          generatedImageUrl: null,
+          imagePromptUsed: null,
+          usedCitations,
+        };
+      } catch (err: any) {
+        await telemetry.endTrace({
+          inputTokens: 0,
+          outputTokens: 0,
+          status: 'FAILED',
+          errorMessage: err?.message || 'TwoStageArticleEngine B2B error',
+        });
+        throw err;
+      }
+    }
+
     try {
       const safeHistory = history.slice(-8).map((h) => ({
         role: h.role,
@@ -446,78 +525,33 @@ ${legislationContextSummary ? `\n=== RINGKASAN RANCANGAN LEGISLASI AKTIF ===\n${
     activeUnitName: string;
     message: string;
     imageAspectRatio: '1:1' | '4:5' | '16:9' | '9:16';
+    imageArchetype?: CreativePosterArchetype;
     routedAgents: string[];
   }): Promise<Omit<CoordinatorChatResponseDto, 'quotaRemainingWeekly' | 'quotaWeeklyLimit' | 'savedNoteId'>> {
-    // 1. Terjemahkan instruksi bahasa Indonesia user menjadi prompt visual bersih (via OpenAI client)
-    const { client, resolveModel } = getTextCompletionClient();
-    const modelName = resolveModel('gpt-4o-mini', 'gemini-3.8-flash');
-    const promptPlannerTelemetry = AiTelemetryService.startTrace({
-      operation: 'institutional-image-prompt-planner',
-      model: modelName,
-      tenantId: params.tenantId,
-      organizationId: params.organizationId,
-      organizationUnitId: params.activeUnitId,
-      channel: 'INSTITUTIONAL_WORKSPACE',
-      activityType: 'COORDINATOR_IMAGE_PLAN',
-    });
+    const aiAdapter = new OpenAIAIEngineAdapter();
+    const isInfographicIntent = /\b(infografis|data|statistik|angka|tabel|apbd|lkpj|persen|poin)\b/i.test(
+      params.message
+    );
 
-    let visualPrompt = `Editorial institutional public service illustration in Indonesia representing: ${params.message}, clean modern civic design, warm natural lighting, no text, no letters, no watermark`;
-    try {
-      const apiKey = process.env.OPENAI_API_KEY || '';
-      const isLive = Boolean((apiKey && !apiKey.includes('sk-mock') && apiKey.length >= 15) || process.env.AI_USE_ROUTER === 'true');
-      if (isLive) {
-        const res = await client.chat.completions.create({
-          model: modelName,
-          temperature: 0.4,
-          messages: [
-            {
-              role: 'system',
-              content:
-                'Convert the Indonesian user request into a concise, vivid English visual prompt for Google Imagen 3 (max 60 words). Focus on civic/parliamentary/public-service scene, lighting, composition. Strictly NO text, NO words, NO logos in the image.',
-            },
-            { role: 'user', content: params.message },
-          ],
-        });
-        const planned = res.choices[0]?.message?.content?.trim();
-        if (planned) visualPrompt = planned;
-        await promptPlannerTelemetry.endTrace({
-          inputTokens: res.usage?.prompt_tokens ?? 0,
-          outputTokens: res.usage?.completion_tokens ?? 0,
-          status: 'SUCCESS',
-          actualModel: res.model || modelName,
-        });
-      } else {
-        await promptPlannerTelemetry.endTrace({
-          inputTokens: 0,
-          outputTokens: 0,
-          status: 'SUCCESS',
-        });
-      }
-    } catch (err: any) {
-      await promptPlannerTelemetry.endTrace({
-        inputTokens: 0,
-        outputTokens: 0,
-        status: 'FAILED',
-        errorMessage: err?.message,
-      });
-    }
-
-    // 2. Generate gambar via GoogleImagenAdapter (Google Gemini / Imagen API)
-    const imagen = new GoogleImagenAdapter();
-    const result = await imagen.generateImage({
-      prompt: visualPrompt,
-      aspectRatio: params.imageAspectRatio,
+    const posterResult = await aiAdapter.generateCreativePosterBackground({
+      topic: params.message,
+      groundedContextSummary: `Instansi: ${params.organizationName} (${params.regionName}) | Bidang: ${params.activeUnitName}. Fokus: ${params.message}`,
+      forcedArchetype: params.imageArchetype || (isInfographicIntent ? 'INFOGRAPHIC_CHRONICLE_GRID' : undefined),
       tenantId: params.tenantId,
-      channel: 'INSTITUTIONAL_WORKSPACE',
-      activityType: 'COORDINATOR_CHAT_IMAGE',
+      telemetryContext: {
+        channel: 'INSTITUTIONAL_WORKSPACE',
+        organizationId: params.organizationId,
+        organizationUnitId: params.activeUnitId,
+        activityType: 'COORDINATOR_CHAT_IMAGE',
+      },
     });
 
     return {
-      assistantMessage: `Berikut visual yang dihasilkan untuk **${params.activeUnitName}** (${params.organizationName}).\n\n*Prompt visual:* \`${visualPrompt}\``,
+      assistantMessage: `Berikut visual yang dihasilkan untuk **${params.activeUnitName}** (${params.organizationName}) menggunakan standar Creative Poster POLARIS (*${posterResult.blueprint.archetype}*).\n\n*Prompt visual:* \`${posterResult.compiledPrompt.englishPrompt}\``,
       routedAgents: params.routedAgents,
       detectedMode: 'IMAGE',
-      generatedImageUrl: result.temporaryImageUrl,
-      imagePromptUsed: visualPrompt,
+      generatedImageUrl: posterResult.temporaryImageUrl,
+      imagePromptUsed: posterResult.compiledPrompt.englishPrompt,
       usedCitations: [],
     };
   }

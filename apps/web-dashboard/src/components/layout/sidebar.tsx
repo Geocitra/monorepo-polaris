@@ -37,6 +37,7 @@ import type {
 import { ApiClient } from '@/lib/api-client';
 import { getPortalUrl, getRootDomain } from '@/lib/urls';
 import { cn } from '@/lib/utils';
+import { MyQuotaUsageModal } from '@/components/institutional/MyQuotaUsageModal';
 
 const B2C_NAV_ITEMS = [
   { name: 'Ringkasan Pagi', href: '/', icon: LayoutDashboard },
@@ -53,9 +54,16 @@ const B2B_RESTRICTED_ROUTES = ['/studio', '/branding', '/billing', '/aspirasi', 
 export interface SidebarProps {
   subdomain?: string;
   customDomain?: string | null;
+  mobileOpen?: boolean;
+  onMobileClose?: () => void;
 }
 
-export function Sidebar({ subdomain: propSubdomain, customDomain: propCustomDomain }: SidebarProps) {
+export function Sidebar({
+  subdomain: propSubdomain,
+  customDomain: propCustomDomain,
+  mobileOpen = false,
+  onMobileClose,
+}: SidebarProps) {
   const pathname = usePathname();
   const router = useRouter();
   const [collapsed, setCollapsed] = useState(false);
@@ -81,6 +89,7 @@ export function Sidebar({ subdomain: propSubdomain, customDomain: propCustomDoma
     () => pathname.startsWith('/institutional/admin') || pathname.startsWith('/institutional/usage')
   );
   const [profileMenuOpen, setProfileMenuOpen] = useState(false);
+  const [quotaModalOpen, setQuotaModalOpen] = useState(false);
   const profileMenuRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -88,6 +97,7 @@ export function Sidebar({ subdomain: propSubdomain, customDomain: propCustomDoma
       setManageOpen(true);
     }
     setProfileMenuOpen(false);
+    onMobileClose?.();
   }, [pathname]);
 
   useEffect(() => {
@@ -232,7 +242,6 @@ export function Sidebar({ subdomain: propSubdomain, customDomain: propCustomDoma
   }, [b2bCtx.orgId, b2bCtx.unitId]);
 
   const isOrgAdmin = primaryOrg?.orgRole === 'ORG_ADMIN';
-  const isLeadership = primaryOrg?.orgRole === 'LEADERSHIP';
   const isPureOrgAdmin =
     primaryOrg?.orgRole === 'ORG_ADMIN' && primaryOrg?.hasAssignedUnits === false;
 
@@ -264,15 +273,16 @@ export function Sidebar({ subdomain: propSubdomain, customDomain: propCustomDoma
     ]
     : [
       ...(isOrgAdmin
-        ? [{ name: 'Organisasi & Anggota', href: '/institutional/admin', icon: Settings, exact: false }]
-        : []),
-      ...(isOrgAdmin || isLeadership
-        ? [{ name: 'Pantauan AI & Kuota', href: '/institutional/usage', icon: BarChart3, exact: false }]
+        ? [
+            { name: 'Organisasi & Anggota', href: '/institutional/admin', icon: Settings, exact: false },
+            { name: 'Pantauan AI & Kuota', href: '/institutional/usage', icon: BarChart3, exact: false },
+          ]
         : []),
     ];
 
   const handleB2bNewChat = () => {
     setActiveB2bSessionId(null);
+    onMobileClose?.();
     if (pathname !== '/institutional') {
       router.push('/institutional');
     } else if (typeof window !== 'undefined') {
@@ -281,6 +291,7 @@ export function Sidebar({ subdomain: propSubdomain, customDomain: propCustomDoma
   };
 
   const handleB2bOpenLibrary = () => {
+    onMobileClose?.();
     if (pathname !== '/institutional') {
       router.push('/institutional');
       setTimeout(() => {
@@ -293,6 +304,7 @@ export function Sidebar({ subdomain: propSubdomain, customDomain: propCustomDoma
 
   const handleB2bSelectSession = (sessionId: string) => {
     setActiveB2bSessionId(sessionId);
+    onMobileClose?.();
     if (pathname !== '/institutional') {
       sessionStorage.setItem('polaris_pending_session_id', sessionId);
       router.push('/institutional');
@@ -339,16 +351,26 @@ export function Sidebar({ subdomain: propSubdomain, customDomain: propCustomDoma
       : null;
 
   return (
-    <aside
-      className={cn(
-        'sticky top-0 h-screen flex flex-col justify-between hidden md:flex print:hidden shrink-0 transition-all duration-300 z-30 theme-transition',
-        collapsed ? 'w-20' : 'w-64'
+    <>
+      {mobileOpen && (
+        <div
+          className="md:hidden fixed inset-0 z-40 bg-slate-950/60 backdrop-blur-xs"
+          onClick={onMobileClose}
+        />
       )}
-      style={{
-        backgroundColor: 'var(--sidebar-bg)',
-        borderRight: '1px solid var(--sidebar-border)',
-      }}
-    >
+      <aside
+        className={cn(
+          'h-screen flex-col justify-between print:hidden shrink-0 transition-all duration-300 theme-transition',
+          mobileOpen
+            ? 'fixed inset-y-0 left-0 z-50 flex w-64 md:sticky md:top-0 md:z-30'
+            : 'sticky top-0 hidden md:flex z-30',
+          !mobileOpen && collapsed ? 'md:w-20' : 'md:w-64'
+        )}
+        style={{
+          backgroundColor: 'var(--sidebar-bg)',
+          borderRight: '1px solid var(--sidebar-border)',
+        }}
+      >
       <div className="flex-1 flex flex-col overflow-y-auto min-h-0">
         {/* BRAND LOGO HEADER + COLLAPSE TOGGLE */}
         <div
@@ -643,12 +665,18 @@ export function Sidebar({ subdomain: propSubdomain, customDomain: propCustomDoma
                 }}
               >
                 {b2bQuota && (
-                  <div
-                    className="px-3 py-2 rounded-xl text-[11px] space-y-1"
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setProfileMenuOpen(false);
+                      setQuotaModalOpen(true);
+                    }}
+                    className="w-full text-left px-3 py-2 rounded-xl text-[11px] space-y-1 transition-colors hover:opacity-90 cursor-pointer"
                     style={{
                       backgroundColor: 'var(--sidebar-hover-bg)',
                       color: 'var(--sidebar-fg-muted)',
                     }}
+                    title="Klik untuk melihat rincian kuota & pemakaian AI pribadi Anda"
                   >
                     <div
                       className="flex items-center justify-between font-bold"
@@ -673,7 +701,10 @@ export function Sidebar({ subdomain: propSubdomain, customDomain: propCustomDoma
                         </span>
                       </div>
                     )}
-                  </div>
+                    <div className="text-[10px] font-bold text-indigo-400 pt-0.5">
+                      Lihat Detail Pemakaian &rsaquo;
+                    </div>
+                  </button>
                 )}
 
                 <Link
@@ -782,6 +813,13 @@ export function Sidebar({ subdomain: propSubdomain, customDomain: propCustomDoma
           </>
         )}
       </div>
-    </aside>
+
+      <MyQuotaUsageModal
+        isOpen={quotaModalOpen}
+        onClose={() => setQuotaModalOpen(false)}
+        organizationId={b2bCtx.orgId || primaryOrg?.organizationId || ''}
+      />
+      </aside>
+    </>
   );
 }

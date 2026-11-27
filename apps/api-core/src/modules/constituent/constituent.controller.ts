@@ -17,7 +17,9 @@ import { CurrentTenant, AuthenticatedTenantPayload } from '../../common/decorato
 import { SubscriptionGuard } from '../../common/guards/subscription.guard.js';
 import { TokenCircuitBreakerGuard } from '../../common/guards/token-circuit-breaker.guard.js';
 import { IpThrottleGuard } from '../public-chat/guards/ip-throttle.guard.js';
+import { B2cAccessGuard } from '../../common/guards/b2c-access.guard.js';
 
+@UseGuards(B2cAccessGuard)
 @Controller('constituent')
 export class ConstituentController {
   constructor(private readonly constituentService: ConstituentService) {}

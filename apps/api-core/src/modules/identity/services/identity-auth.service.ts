@@ -24,6 +24,7 @@ import {
 } from '@polaris/database';
 import { SubdomainSlug } from '@polaris/core-domain';
 import { SubscriptionStatus, PlanTier } from '@polaris/shared-types';
+import { resolveTenantAccountClaims } from './account-mode.helper.js';
 import {
   RegisterRequestDto,
   LoginRequestDto,
@@ -436,52 +437,8 @@ export class IdentityAuthService {
       throw new UnauthorizedException('Akun pengguna tidak ditemukan.');
     }
 
-    const [portal] = await db
-      .select({ subdomainSlug: portalConfigs.subdomainSlug })
-      .from(portalConfigs)
-      .where(eq(portalConfigs.tenantId, member.id))
-      .limit(1);
-
-    const subdomainSlug = portal?.subdomainSlug || '';
-
-    const [primaryOrg] = await db
-      .select({
-        organizationId: organizations.id,
-        organizationName: organizations.name,
-        orgRole: organizationMemberships.orgRole,
-      })
-      .from(organizationMemberships)
-      .innerJoin(organizations, eq(organizationMemberships.organizationId, organizations.id))
-      .where(
-        and(
-          eq(organizationMemberships.tenantId, member.id),
-          eq(organizationMemberships.status, 'ACTIVE'),
-          eq(organizations.status, 'ACTIVE')
-        )
-      )
-      .limit(1);
-
-    let hasAssignedUnits = false;
-    if (primaryOrg) {
-      const [unitRow] = await db
-        .select({ id: organizationUnitMemberships.id })
-        .from(organizationUnitMemberships)
-        .where(
-          and(
-            eq(organizationUnitMemberships.organizationId, primaryOrg.organizationId),
-            eq(organizationUnitMemberships.tenantId, member.id),
-            eq(organizationUnitMemberships.status, 'ACTIVE')
-          )
-        )
-        .limit(1);
-      hasAssignedUnits = Boolean(unitRow);
-    }
-
-    const accountMode: 'B2B_ONLY' | 'B2C_ONLY' | 'HYBRID' = primaryOrg
-      ? portal
-        ? 'HYBRID'
-        : 'B2B_ONLY'
-      : 'B2C_ONLY';
+    const { subdomainSlug, accountMode, primaryOrganization } =
+      await resolveTenantAccountClaims(member.id);
 
     const payload = {
       sub: member.id,
@@ -507,9 +464,7 @@ export class IdentityAuthService {
         mustChangePassword: member.mustChangePassword,
         legislativeLevel: member.legislativeLevel as any,
         accountMode,
-        primaryOrganization: primaryOrg
-          ? { ...primaryOrg, hasAssignedUnits }
-          : null,
+        primaryOrganization,
       },
     };
   }

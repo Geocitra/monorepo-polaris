@@ -9,7 +9,7 @@ export default function InstitutionalUsagePage() {
       title="Pantauan Pemakaian AI & Kuota Instansi"
       subtitle="Ringkasan agregasi pemakaian AI dari tingkat Anggota ke Bidang/Unit, termasuk kuota mingguan dan estimasi biaya."
       hideUnitSelector
-      requireUsageMonitorRole
+      requireAdminRole
     >
       {({ activeOrgId }) => <InstitutionalUsageAnalyticsPanel organizationId={activeOrgId} />}
     </InstitutionalPageShell>
