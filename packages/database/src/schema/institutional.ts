@@ -82,6 +82,8 @@ export const organizationContracts = pgTable(
       .default(50000000)
       .notNull(),
     tokensConsumed: bigint('tokens_consumed', { mode: 'number' }).default(0).notNull(),
+    weeklyGenerateLimitPerMember: integer('weekly_generate_limit_per_member').default(3).notNull(),
+    revisionLimitPerItem: integer('revision_limit_per_item').default(3).notNull(),
     contractValueIdr: numeric('contract_value_idr', { precision: 15, scale: 2 })
       .default('0.00')
       .notNull(),
@@ -233,8 +235,11 @@ export const organizationQuotaLedgers = pgTable(
       .notNull()
       .references(() => organizations.id, { onDelete: 'cascade' }),
     unitId: uuid('unit_id').references(() => organizationUnits.id, { onDelete: 'set null' }),
+    tenantId: uuid('tenant_id').references(() => tenantMembers.id, { onDelete: 'set null' }),
     billingCycleMonth: varchar('billing_cycle_month', { length: 7 }).notNull(),
     totalRequests: integer('total_requests').default(0).notNull(),
+    generateRequests: integer('generate_requests').default(0).notNull(),
+    revisionRequests: integer('revision_requests').default(0).notNull(),
     openaiInputTokens: bigint('openai_input_tokens', { mode: 'number' }).default(0).notNull(),
     openaiOutputTokens: bigint('openai_output_tokens', { mode: 'number' }).default(0).notNull(),
     openaiTotalTokens: bigint('openai_total_tokens', { mode: 'number' }).default(0).notNull(),
@@ -257,6 +262,48 @@ export const organizationQuotaLedgers = pgTable(
       t.organizationId,
       t.unitId,
       t.billingCycleMonth
+    ),
+    idxOrgLedgerMemberMonth: index('idx_org_quota_ledgers_member_month').on(
+      t.organizationId,
+      t.billingCycleMonth,
+      t.unitId,
+      t.tenantId
+    ),
+  })
+);
+
+/**
+ * 6b. ORGANIZATION MEMBER QUOTA WALLETS: Kuota Generate Mingguan (3x/Minggu) per Anggota Instansi
+ */
+export const organizationMemberQuotaWallets = pgTable(
+  'organization_member_quota_wallets',
+  {
+    id: uuid('id').defaultRandom().primaryKey(),
+    organizationId: uuid('organization_id')
+      .notNull()
+      .references(() => organizations.id, { onDelete: 'cascade' }),
+    tenantId: uuid('tenant_id')
+      .notNull()
+      .references(() => tenantMembers.id, { onDelete: 'cascade' }),
+    weeklyPeriodKey: varchar('weekly_period_key', { length: 16 }).notNull(),
+    featureScope: varchar('feature_scope', { length: 32 }).default('GLOBAL').notNull(),
+    weeklyLimit: integer('weekly_limit').default(3).notNull(),
+    weeklyUsed: integer('weekly_used').default(0).notNull(),
+    totalGenerated: integer('total_generated').default(0).notNull(),
+    totalRevisions: integer('total_revisions').default(0).notNull(),
+    createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+    updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
+  },
+  (t) => ({
+    unqOrgMemberQuotaWeek: unique('unq_org_member_quota_week').on(
+      t.organizationId,
+      t.tenantId,
+      t.weeklyPeriodKey,
+      t.featureScope
+    ),
+    idxOrgMemberQuotaWeek: index('idx_org_member_quota_org_week').on(
+      t.organizationId,
+      t.weeklyPeriodKey
     ),
   })
 );
@@ -285,6 +332,9 @@ export const institutionalSharedNotes = pgTable(
       onDelete: 'set null',
     }),
     approvedAt: timestamp('approved_at', { withTimezone: true }),
+    revisionUsed: integer('revision_used').default(0).notNull(),
+    revisionLimit: integer('revision_limit').default(3).notNull(),
+    lastRevisionPrompt: text('last_revision_prompt'),
     createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
     updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
   },
@@ -324,6 +374,66 @@ export const institutionalAuditLogs = pgTable(
   (t) => ({
     idxInstAuditOrgCreated: index('idx_inst_audit_logs_org_created').on(
       t.organizationId,
+      t.createdAt
+    ),
+  })
+);
+
+/**
+ * 9. INSTITUTIONAL CHAT SESSIONS: Sesi Percakapan Koordinator POLARIS per Anggota & Bidang
+ */
+export const institutionalChatSessions = pgTable(
+  'institutional_chat_sessions',
+  {
+    id: uuid('id').defaultRandom().primaryKey(),
+    organizationId: uuid('organization_id')
+      .notNull()
+      .references(() => organizations.id, { onDelete: 'cascade' }),
+    unitId: uuid('unit_id')
+      .notNull()
+      .references(() => organizationUnits.id, { onDelete: 'cascade' }),
+    tenantId: uuid('tenant_id')
+      .notNull()
+      .references(() => tenantMembers.id, { onDelete: 'cascade' }),
+    title: varchar('title', { length: 220 }).notNull(),
+    lastMessageAt: timestamp('last_message_at', { withTimezone: true }).defaultNow().notNull(),
+    createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+    updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
+  },
+  (t) => ({
+    idxInstChatSessionsLookup: index('idx_inst_chat_sessions_lookup').on(
+      t.organizationId,
+      t.unitId,
+      t.tenantId,
+      t.lastMessageAt
+    ),
+  })
+);
+
+/**
+ * 10. INSTITUTIONAL CHAT MESSAGES: Pesan Percakapan, Agen Aktif, Sitasi & Gambar Tersimpan
+ */
+export const institutionalChatMessages = pgTable(
+  'institutional_chat_messages',
+  {
+    id: uuid('id').defaultRandom().primaryKey(),
+    sessionId: uuid('session_id')
+      .notNull()
+      .references(() => institutionalChatSessions.id, { onDelete: 'cascade' }),
+    role: varchar('role', { length: 16 }).notNull(),
+    content: text('content').notNull(),
+    detectedMode: varchar('detected_mode', { length: 32 }),
+    routedAgents: jsonb('routed_agents').$type<string[]>().default([]).notNull(),
+    usedCitations: jsonb('used_citations')
+      .$type<Array<{ code: string; title: string; scope: string }>>()
+      .default([])
+      .notNull(),
+    generatedImageUrl: text('generated_image_url'),
+    createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+  },
+  (t) => ({
+    idxInstChatMessagesSession: index('idx_inst_chat_messages_session').on(
+      t.sessionId,
       t.createdAt
     ),
   })

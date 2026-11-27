@@ -89,6 +89,15 @@ export class WhatsAppPublicReviewService {
 
   public async approveBriefByToken(rawToken: string) {
     const brief = await this.findBriefByValidReviewToken(rawToken);
+    if (
+      ['PUBLISHED', 'APPROVED', 'REJECTED', 'CANCELLED', 'CLOSED_UNPUBLISHED'].includes(
+        brief.status
+      )
+    ) {
+      throw new BadRequestException(
+        `Tiket #${brief.briefCode} sudah berstatus "${brief.status}" dan tidak dapat disetujui ulang.`
+      );
+    }
     const [tenant] = await db
       .select()
       .from(tenantMembers)

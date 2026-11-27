@@ -37,5 +37,6 @@ export * from './party/party-ideology.resolver.js';
 export * from './institutional/institutional-ai.service.js';
 export * from './institutional/lkpj-evaluation-ai.service.js';
 export * from './institutional/parliamentary-specialist-ai.service.js';
+export * from './institutional/coordinator-chat.service.js';
 
 

@@ -4,6 +4,7 @@ export interface AuthenticatedTenantPayload {
   tenantId: string;
   email: string;
   subdomainSlug?: string;
+  accountMode?: 'B2B_ONLY' | 'B2C_ONLY' | 'HYBRID';
   role?: string;
   mustChangePassword?: boolean;
   isSuperadmin?: boolean;

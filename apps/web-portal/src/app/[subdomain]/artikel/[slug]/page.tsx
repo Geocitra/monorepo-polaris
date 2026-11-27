@@ -31,7 +31,7 @@ export async function generateMetadata({
   let article = null;
 
   try {
-    const res = await fetch(`${API_BASE_URL}/cms/public/${subdomain}/article/${slug}`, {
+    const res = await fetch(`${API_BASE_URL}/cms/public/${encodeURIComponent(subdomain)}/article/${encodeURIComponent(slug)}`, {
       next: { revalidate: 60 },
       signal: AbortSignal.timeout(4000),
     });
@@ -78,7 +78,7 @@ export default async function TenantArticlePage({
   let article = null;
 
   try {
-    const res = await fetch(`${API_BASE_URL}/cms/public/${subdomain}/article/${slug}`, {
+    const res = await fetch(`${API_BASE_URL}/cms/public/${encodeURIComponent(subdomain)}/article/${encodeURIComponent(slug)}`, {
       next: { revalidate: 60 },
       signal: AbortSignal.timeout(6000),
     });

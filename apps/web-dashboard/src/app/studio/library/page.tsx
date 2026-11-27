@@ -467,6 +467,7 @@ export default function ArticleLibraryPage() {
           isOpen={Boolean(magicLayersItem)}
           onClose={() => setMagicLayersItem(null)}
           imageUrl={magicLayersItem.thumbnailUrl}
+          publicationId={magicLayersItem.id}
           initialTitle={magicLayersItem.title}
           initialSubtitle={magicLayersItem.excerpt || ''}
           initialAuthor={profile?.fullName ? `${profile.fullName} • ${profile.partyAffiliation || ''}` : 'POLARIS GOV'}

@@ -58,8 +58,11 @@ export class WhatsAppCloudClient {
    */
   public verifyWebhookSignature(rawBody: string | undefined, signatureHeader: string | undefined): boolean {
     if (!this.appSecret) {
-      // Jika WHATSAPP_APP_SECRET belum disetel, izinkan lewat namun catat peringatan
-      return true;
+      if (process.env.NODE_ENV === 'test') {
+        return true;
+      }
+      this.logger.error('[WhatsAppWebhook] WHATSAPP_APP_SECRET belum dikonfigurasi. Menolak webhook demi keamanan.');
+      return false;
     }
     if (!rawBody || !signatureHeader || !signatureHeader.startsWith('sha256=')) {
       return false;

@@ -15,6 +15,7 @@ import {
   sql,
   tenantMembers,
   systemAdmins,
+  operatorTenantAssignments,
   liveChatSessions,
   liveChatMessages,
   LiveChatSessionRecord,
@@ -289,21 +290,11 @@ export class WhatsAppLiveChatService {
     }
   }
 
-  /**
-   * Operator mengirimkan pesan balasan ke WhatsApp Klien melalui Dashboard.
-   */
-  public async sendOperatorMessage(
+  private async assertOperatorSessionAccess(
     sessionId: string,
-    operator: { id: string; name: string },
-    textBody: string
-  ): Promise<LiveChatMessageRecord> {
-    const leakCheck = detectOperatorContactLeak(textBody);
-    if (leakCheck.hasLeak) {
-      throw new ForbiddenException(
-        `Pesan diblokir oleh Broker Guard: ${leakCheck.reason || 'Dilarang mencantumkan kontak pribadi.'}`
-      );
-    }
-
+    operatorId?: string,
+    isSuperadmin = false
+  ): Promise<LiveChatSessionRecord> {
     const [session] = await db
       .select()
       .from(liveChatSessions)
@@ -313,6 +304,55 @@ export class WhatsAppLiveChatService {
     if (!session) {
       throw new NotFoundException('Sesi obrolan tidak ditemukan.');
     }
+
+    if (isSuperadmin) {
+      return session;
+    }
+
+    if (!operatorId) {
+      throw new ForbiddenException('Identitas operator diperlukan.');
+    }
+
+    if (session.assignedOperatorId === operatorId) {
+      return session;
+    }
+
+    const [assignment] = await db
+      .select({ id: operatorTenantAssignments.id })
+      .from(operatorTenantAssignments)
+      .where(
+        and(
+          eq(operatorTenantAssignments.operatorId, operatorId),
+          eq(operatorTenantAssignments.tenantId, session.tenantId),
+          eq(operatorTenantAssignments.status, 'ACTIVE')
+        )
+      )
+      .limit(1);
+
+    if (!assignment) {
+      throw new ForbiddenException('Anda tidak ditugaskan untuk menangani sesi obrolan tokoh ini.');
+    }
+
+    return session;
+  }
+
+  /**
+   * Operator mengirimkan pesan balasan ke WhatsApp Klien melalui Dashboard.
+   */
+  public async sendOperatorMessage(
+    sessionId: string,
+    operator: { id: string; name: string },
+    textBody: string,
+    isSuperadmin = false
+  ): Promise<LiveChatMessageRecord> {
+    const leakCheck = detectOperatorContactLeak(textBody);
+    if (leakCheck.hasLeak) {
+      throw new ForbiddenException(
+        `Pesan diblokir oleh Broker Guard: ${leakCheck.reason || 'Dilarang mencantumkan kontak pribadi.'}`
+      );
+    }
+
+    const session = await this.assertOperatorSessionAccess(sessionId, operator.id, isSuperadmin);
 
     if (session.status !== LiveChatSessionStatus.ACTIVE) {
       throw new BadRequestException('Sesi obrolan ini sudah tidak aktif.');
@@ -396,14 +436,12 @@ export class WhatsAppLiveChatService {
   /**
    * Operator menanyakan kesiapan selesai ke Klien di WhatsApp.
    */
-  public async askSessionCompletion(sessionId: string): Promise<void> {
-    const [session] = await db
-      .select()
-      .from(liveChatSessions)
-      .where(eq(liveChatSessions.id, sessionId))
-      .limit(1);
-
-    if (!session) throw new NotFoundException('Sesi obrolan tidak ditemukan.');
+  public async askSessionCompletion(
+    sessionId: string,
+    operatorId?: string,
+    isSuperadmin = false
+  ): Promise<void> {
+    const session = await this.assertOperatorSessionAccess(sessionId, operatorId, isSuperadmin);
 
     const [tenant] = await db
       .select()
@@ -431,14 +469,12 @@ export class WhatsAppLiveChatService {
   /**
    * Mengakhiri sesi diskusi dan mengirimkan formulir survei kepuasan (CSAT).
    */
-  public async completeSessionAndTriggerCsat(sessionId: string): Promise<void> {
-    const [session] = await db
-      .select()
-      .from(liveChatSessions)
-      .where(eq(liveChatSessions.id, sessionId))
-      .limit(1);
-
-    if (!session) return;
+  public async completeSessionAndTriggerCsat(
+    sessionId: string,
+    operatorId?: string,
+    isSuperadmin = false
+  ): Promise<void> {
+    const session = await this.assertOperatorSessionAccess(sessionId, operatorId, isSuperadmin);
 
     await db
       .update(liveChatSessions)
@@ -536,7 +572,24 @@ export class WhatsAppLiveChatService {
   /**
    * Mengambil daftar sesi antrean dan aktif untuk layar kerja Operator.
    */
-  public async getOperatorSessions(operatorId?: string): Promise<LiveChatSessionDto[]> {
+  public async getOperatorSessions(
+    operatorId?: string,
+    isSuperadmin = false
+  ): Promise<LiveChatSessionDto[]> {
+    let assignedTenantIds: string[] = [];
+    if (!isSuperadmin && operatorId) {
+      const assignments = await db
+        .select({ tenantId: operatorTenantAssignments.tenantId })
+        .from(operatorTenantAssignments)
+        .where(
+          and(
+            eq(operatorTenantAssignments.operatorId, operatorId),
+            eq(operatorTenantAssignments.status, 'ACTIVE')
+          )
+        );
+      assignedTenantIds = assignments.map((a) => a.tenantId);
+    }
+
     const sessions = await db
       .select({
         session: liveChatSessions,
@@ -558,7 +611,16 @@ export class WhatsAppLiveChatService {
       .orderBy(desc(liveChatSessions.lastMessageAt), desc(liveChatSessions.startedAt))
       .limit(100);
 
-    return sessions.map(({ session, tenantName, tenantPhone, operatorName }) => ({
+    const visibleSessions =
+      !isSuperadmin && operatorId
+        ? sessions.filter(
+            ({ session }) =>
+              session.assignedOperatorId === operatorId ||
+              assignedTenantIds.includes(session.tenantId)
+          )
+        : sessions;
+
+    return visibleSessions.map(({ session, tenantName, tenantPhone, operatorName }) => ({
       id: session.id,
       sessionCode: session.sessionCode,
       tenantId: session.tenantId,
@@ -587,7 +649,13 @@ export class WhatsAppLiveChatService {
   /**
    * Mengambil riwayat pesan untuk sebuah sesi.
    */
-  public async getSessionMessages(sessionId: string): Promise<LiveChatMessageDto[]> {
+  public async getSessionMessages(
+    sessionId: string,
+    operatorId?: string,
+    isSuperadmin = false
+  ): Promise<LiveChatMessageDto[]> {
+    await this.assertOperatorSessionAccess(sessionId, operatorId, isSuperadmin);
+
     const msgs = await db
       .select({
         msg: liveChatMessages,

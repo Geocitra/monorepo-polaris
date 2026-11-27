@@ -247,32 +247,48 @@ export class WhatsAppService {
   // 4. LIVE DISCUSSION & OPERATOR KPI
   // =========================================================================
 
-  public async getOperatorLiveChatSessions(operatorId?: string): Promise<LiveChatSessionDto[]> {
-    return await this.liveChatService.getOperatorSessions(operatorId);
+  public async getOperatorLiveChatSessions(
+    operatorId?: string,
+    isSuperadmin = false
+  ): Promise<LiveChatSessionDto[]> {
+    return await this.liveChatService.getOperatorSessions(operatorId, isSuperadmin);
   }
 
   public async acceptLiveChatSession(sessionId: string, operator: { id: string; name: string }) {
     return await this.liveChatService.acceptSession(sessionId, operator);
   }
 
-  public async getLiveChatSessionMessages(sessionId: string): Promise<LiveChatMessageDto[]> {
-    return await this.liveChatService.getSessionMessages(sessionId);
+  public async getLiveChatSessionMessages(
+    sessionId: string,
+    operatorId?: string,
+    isSuperadmin = false
+  ): Promise<LiveChatMessageDto[]> {
+    return await this.liveChatService.getSessionMessages(sessionId, operatorId, isSuperadmin);
   }
 
   public async sendOperatorLiveChatMessage(
     sessionId: string,
     operator: { id: string; name: string },
-    textBody: string
+    textBody: string,
+    isSuperadmin = false
   ) {
-    return await this.liveChatService.sendOperatorMessage(sessionId, operator, textBody);
+    return await this.liveChatService.sendOperatorMessage(sessionId, operator, textBody, isSuperadmin);
   }
 
-  public async askLiveChatCompletion(sessionId: string) {
-    return await this.liveChatService.askSessionCompletion(sessionId);
+  public async askLiveChatCompletion(
+    sessionId: string,
+    operatorId?: string,
+    isSuperadmin = false
+  ) {
+    return await this.liveChatService.askSessionCompletion(sessionId, operatorId, isSuperadmin);
   }
 
-  public async closeLiveChatSession(sessionId: string) {
-    return await this.liveChatService.completeSessionAndTriggerCsat(sessionId);
+  public async closeLiveChatSession(
+    sessionId: string,
+    operatorId?: string,
+    isSuperadmin = false
+  ) {
+    return await this.liveChatService.completeSessionAndTriggerCsat(sessionId, operatorId, isSuperadmin);
   }
 
   public async getOperatorsKpiSummary(): Promise<OperatorKpiSummaryDto[]> {

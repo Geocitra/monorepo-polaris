@@ -158,23 +158,19 @@ export class SuperadminAuthService {
       .orderBy(desc(emailOtps.createdAt))
       .limit(1);
 
-    const isTestOtp = dto.otpCode.trim() === '123456';
-
-    if (!otpRecord && !isTestOtp) {
+    if (!otpRecord) {
       throw new UnauthorizedException('Kode OTP salah atau sudah pernah digunakan.');
     }
 
-    if (otpRecord && new Date() > new Date(otpRecord.expiresAt) && !isTestOtp) {
+    if (new Date() > new Date(otpRecord.expiresAt)) {
       throw new UnauthorizedException('Kode OTP telah kedaluwarsa. Silakan minta kode baru.');
     }
 
-    // Tandai OTP telah digunakan jika ada record
-    if (otpRecord) {
-      await db
-        .update(emailOtps)
-        .set({ isUsed: true })
-        .where(eq(emailOtps.id, otpRecord.id));
-    }
+    // Tandai OTP telah digunakan
+    await db
+      .update(emailOtps)
+      .set({ isUsed: true })
+      .where(eq(emailOtps.id, otpRecord.id));
 
     // Update last login
     await db

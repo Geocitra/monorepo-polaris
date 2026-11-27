@@ -46,6 +46,8 @@ export interface OrganizationContractDto {
   maxStorageBytes: number;
   annualTokenPoolLimit: number;
   tokensConsumed: number;
+  weeklyGenerateLimitPerMember: number;
+  revisionLimitPerItem: number;
   contractValueIdr: number;
   notes?: string | null;
   createdAt: string;
@@ -166,6 +168,9 @@ export interface InstitutionalSharedNoteDto {
   approvedByTenantId?: string | null;
   approvedByName?: string | null;
   approvedAt?: string | null;
+  revisionUsed?: number;
+  revisionLimit?: number;
+  lastRevisionPrompt?: string | null;
   createdAt: string;
   updatedAt: string;
 }
@@ -265,6 +270,14 @@ export interface SuperadminInstitutionSummaryDto {
   };
 }
 
+export interface ProvisionedAdminCredentialsDto {
+  tenantId: string;
+  fullName: string;
+  email: string;
+  username: string;
+  temporaryPassword: string;
+}
+
 export interface SuperadminInstitutionDetailDto extends SuperadminInstitutionSummaryDto {
   contracts: OrganizationContractDto[];
   unitTree: OrganizationUnitNodeDto[];
@@ -279,4 +292,176 @@ export interface SuperadminInstitutionDetailDto extends SuperadminInstitutionSum
     totalTokensConsumed: number;
     totalCostIdr: number;
   }>;
+  provisionedAdminCredentials?: ProvisionedAdminCredentialsDto | null;
+}
+
+export interface FeatureQuotaSummaryDto {
+  weeklyLimit: number;
+  weeklyUsed: number;
+  remainingWeekly: number;
+}
+
+export interface OrganizationMemberQuotaDto {
+  organizationId: string;
+  tenantId: string;
+  weeklyPeriodKey: string;
+  featureScope?: string;
+  weeklyLimit: number;
+  weeklyUsed: number;
+  remainingWeekly: number;
+  totalGenerated: number;
+  totalRevisions: number;
+  revisionLimitPerItem: number;
+  byFeature?: {
+    COORDINATOR_CHAT: FeatureQuotaSummaryDto;
+    LKPJ_EVALUATION: FeatureQuotaSummaryDto;
+    LEGISLATION: FeatureQuotaSummaryDto;
+  };
+}
+
+export interface InstitutionalMemberUsageDto {
+  tenantId: string;
+  fullName: string;
+  email: string;
+  orgRole: OrganizationMemberRole;
+  hasAssignedUnits?: boolean;
+  billingCycleMonth: string;
+  generateRequests: number;
+  revisionRequests: number;
+  totalRequests: number;
+  totalTokensConsumed: number;
+  totalCostIdr: number;
+  weeklyUsed: number;
+  weeklyLimit: number;
+  byFeature?: {
+    COORDINATOR_CHAT: FeatureQuotaSummaryDto;
+    LKPJ_EVALUATION: FeatureQuotaSummaryDto;
+    LEGISLATION: FeatureQuotaSummaryDto;
+  };
+}
+
+export interface InstitutionalUsageAnalyticsDto {
+  organizationId: string;
+  billingCycleMonth: string;
+  weeklyPeriodKey: string;
+  totals: {
+    generateRequests: number;
+    revisionRequests: number;
+    totalRequests: number;
+    totalTokensConsumed: number;
+    totalCostIdr: number;
+  };
+  byUnit: Array<{
+    unitId: string | null;
+    unitCode: string;
+    unitName: string;
+    unitType: OrganizationUnitType | 'ORG_GENERAL';
+    generateRequests: number;
+    revisionRequests: number;
+    totalRequests: number;
+    totalTokensConsumed: number;
+    totalCostIdr: number;
+  }>;
+  byMember: InstitutionalMemberUsageDto[];
+  tokenPoolAlert?: {
+    contractNumber?: string;
+    fiscalYear?: number;
+    annualTokenPoolLimit: number;
+    tokensConsumed: number;
+    usagePercentage: number;
+    alertLevel: 'NORMAL' | 'WARNING_80' | 'CRITICAL_95' | 'EXCEEDED';
+    message: string | null;
+  };
+}
+
+export interface ProvisionedOrgMemberResultDto {
+  member: OrganizationMemberDto;
+  credentials: ProvisionedAdminCredentialsDto;
+}
+
+export type CoordinatorChatMode =
+  | 'AUTO'
+  | 'LKPJ_FINANCE'
+  | 'LEGISLATION'
+  | 'BRIEFING'
+  | 'ARTICLE'
+  | 'IMAGE';
+
+export interface CoordinatorChatHistoryTurnDto {
+  role: 'user' | 'assistant';
+  content: string;
+}
+
+export interface CoordinatorGuidedOptionDto {
+  id: string;
+  label: string;
+  description?: string;
+  recommended?: boolean;
+  nextMessage: string;
+  mode?: CoordinatorChatMode;
+  requiresUpload?: boolean;
+  requiresLibraryPick?: boolean;
+}
+
+export interface CoordinatorGuidedQuestionDto {
+  promptTitle: string;
+  options: CoordinatorGuidedOptionDto[];
+}
+
+export interface CoordinatorLinkedActionDto {
+  label: string;
+  kind: 'OPEN_LKPJ' | 'OPEN_LEGISLATION' | 'EXPORT_CSV' | 'SAVE_NOTE' | 'DOWNLOAD_IMAGE';
+  href?: string;
+}
+
+export interface ProactivePromptCardDto {
+  id: string;
+  category: 'NEWS' | 'LKPJ' | 'LEGISLATION' | 'IMAGE';
+  badge: string;
+  title: string;
+  prompt: string;
+  mode: CoordinatorChatMode;
+}
+
+export interface CoordinatorChatResponseDto {
+  sessionId?: string;
+  assistantMessage: string;
+  routedAgents: string[];
+  detectedMode: CoordinatorChatMode;
+  generatedImageUrl?: string | null;
+  imagePromptUsed?: string | null;
+  usedCitations: Array<{ code: string; title: string; scope: string }>;
+  quotaRemainingWeekly?: number;
+  quotaWeeklyLimit?: number;
+  savedNoteId?: string | null;
+  guidedQuestion?: CoordinatorGuidedQuestionDto | null;
+  linkedActions?: CoordinatorLinkedActionDto[];
+}
+
+export interface InstitutionalChatSessionDto {
+  id: string;
+  organizationId: string;
+  unitId: string;
+  tenantId: string;
+  title: string;
+  lastMessageAt: string;
+  createdAt: string;
+}
+
+export interface InstitutionalChatMessageDto {
+  id: string;
+  sessionId: string;
+  role: 'user' | 'assistant';
+  content: string;
+  detectedMode?: CoordinatorChatMode | null;
+  routedAgents: string[];
+  usedCitations: Array<{ code: string; title: string; scope: string }>;
+  generatedImageUrl?: string | null;
+  linkedActions?: CoordinatorLinkedActionDto[];
+  createdAt: string;
+}
+
+export interface InstitutionalChatSessionDetailDto {
+  session: InstitutionalChatSessionDto;
+  messages: InstitutionalChatMessageDto[];
 }

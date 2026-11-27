@@ -60,13 +60,16 @@ export class IpThrottleGuard implements CanActivate {
     }
 
     private extractClientIp(request: Request): string {
-        const candidates = [
-            this.firstHeaderValue(request.headers['cf-connecting-ip']),
-            this.firstHeaderValue(request.headers['x-forwarded-for']),
-            this.firstHeaderValue(request.headers['x-real-ip']),
-            request.ip,
-            request.socket.remoteAddress,
-        ];
+        const trustProxy = process.env.TRUST_PROXY === 'true';
+        const candidates = trustProxy
+            ? [
+                this.firstHeaderValue(request.headers['cf-connecting-ip']),
+                this.firstHeaderValue(request.headers['x-forwarded-for']),
+                this.firstHeaderValue(request.headers['x-real-ip']),
+                request.ip,
+                request.socket.remoteAddress,
+            ]
+            : [request.socket.remoteAddress, request.ip];
 
         for (const candidate of candidates) {
             if (candidate && isIP(candidate)) return candidate;

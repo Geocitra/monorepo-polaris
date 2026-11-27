@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { ApiClient } from '@/lib/api-client';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/components/ui/toast';
+import { MarkdownReportView } from './MarkdownReportView';
 import {
   Scale,
   BookOpenCheck,
@@ -36,6 +37,63 @@ import {
   type LkpjFindingDto,
 } from '@polaris/shared-types';
 
+const LEGAL_RULE_STATUS_LABELS: Record<LegalRuleVerificationStatus, string> = {
+  [LegalRuleVerificationStatus.VERIFIED_ACTIVE]: 'Aktif Terverifikasi',
+  [LegalRuleVerificationStatus.AMENDED]: 'Telah Diubah',
+  [LegalRuleVerificationStatus.REVOKED]: 'Dicabut / Tidak Berlaku',
+  [LegalRuleVerificationStatus.UNVERIFIED_NEEDS_CHECK]: 'Perlu Verifikasi Ulang',
+};
+
+const DOCUMENT_CATEGORY_LABELS: Record<ParliamentaryDocumentCategory, string> = {
+  [ParliamentaryDocumentCategory.PRODUK_HUKUM]: 'Produk Hukum (Perda / Raperda)',
+  [ParliamentaryDocumentCategory.KEPUTUSAN_KELEMBAGAAN]: 'Keputusan Kelembagaan',
+  [ParliamentaryDocumentCategory.DOKUMEN_PEMBAHASAN]: 'Dokumen Pembahasan',
+  [ParliamentaryDocumentCategory.BAHAN_KOMUNIKASI]: 'Bahan Komunikasi Publik',
+};
+
+const LEGISLATION_STAGE_LABELS: Record<LegislationStage, string> = {
+  [LegislationStage.IDENTIFIKASI_MASALAH]: '1. Identifikasi Masalah',
+  [LegislationStage.PENENTUAN_INSTRUMEN]: '2. Penentuan Instrumen',
+  [LegislationStage.PERENCANAAN]: '3. Perencanaan',
+  [LegislationStage.KAJIAN_DAN_NASKAH_AKADEMIK]: '4. Kajian & Naskah Akademik',
+  [LegislationStage.PERUMUSAN_RANCANGAN]: '5. Perumusan Rancangan',
+  [LegislationStage.PARTISIPASI_MASYARAKAT]: '6. Partisipasi Masyarakat',
+  [LegislationStage.PEMERIKSAAN_DAN_PEMBAHASAN]: '7. Pemeriksaan & Pembahasan',
+  [LegislationStage.PENYELESAIAN_FORMAL]: '8. Penyelesaian Formal',
+  [LegislationStage.PEMANTAUAN_PELAKSANAAN]: '9. Pemantauan Pelaksanaan',
+};
+
+const CLAUSE_INSPECTION_STATUS_LABELS: Record<ClauseInspectionStatus, string> = {
+  [ClauseInspectionStatus.PERLU_DATA]: 'Perlu Data Pendukung',
+  [ClauseInspectionStatus.PERLU_TELAAH_HUKUM]: 'Perlu Telaah Hukum',
+  [ClauseInspectionStatus.PERLU_KEPUTUSAN_KEBIJAKAN]: 'Perlu Keputusan Kebijakan',
+  [ClauseInspectionStatus.SIAP_PEMERIKSAAN_AKHIR]: 'Siap Pemeriksaan Akhir',
+};
+
+const DIM_STATUS_LABELS: Record<DimEntryStatus, string> = {
+  [DimEntryStatus.OPEN]: 'Terbuka (Belum Dibahas)',
+  [DimEntryStatus.DISCUSSED]: 'Sedang Dibahas',
+  [DimEntryStatus.AGREED]: 'Disepakati',
+  [DimEntryStatus.DEFERRED]: 'Ditunda',
+  [DimEntryStatus.REJECTED]: 'Ditolak',
+};
+
+const ACHIEVEMENT_LEVEL_LABELS: Record<PerformanceAchievementLevel, string> = {
+  [PerformanceAchievementLevel.DIUSULKAN]: 'Diusulkan',
+  [PerformanceAchievementLevel.DIBAHAS]: 'Dibahas',
+  [PerformanceAchievementLevel.DIREKOMENDASIKAN]: 'Direkomendasikan',
+  [PerformanceAchievementLevel.DISEPAKATI]: 'Disepakati',
+  [PerformanceAchievementLevel.DILAKSANAKAN]: 'Dilaksanakan',
+  [PerformanceAchievementLevel.MENUNJUKKAN_HASIL]: 'Menunjukkan Hasil',
+};
+
+const CONTRIBUTION_SCOPE_LABELS: Record<PerformanceContributionScope, string> = {
+  [PerformanceContributionScope.KONTRIBUSI_INDIVIDU]: 'Kontribusi Individu',
+  [PerformanceContributionScope.SIKAP_FRAKSI_UNIT]: 'Sikap Fraksi / Unit',
+  [PerformanceContributionScope.KEPUTUSAN_KOLEKTIF_LEMBAGA]: 'Keputusan Kolektif Lembaga',
+  [PerformanceContributionScope.PELAKSANAAN_PEMERINTAH]: 'Pelaksanaan Pemerintah',
+};
+
 interface ParliamentaryLegislationPanelProps {
   organizationId: string;
   organizationName: string;
@@ -51,6 +109,7 @@ export function ParliamentaryLegislationPanel({
 }: ParliamentaryLegislationPanelProps) {
   const { toast } = useToast();
 
+  const [activeTab, setActiveTab] = useState<'BRIEFING' | 'LEGISLATION' | 'EVIDENCE'>('BRIEFING');
   const [legalRules, setLegalRules] = useState<LegalKnowledgeVersionDto[]>([]);
   const [drafts, setDrafts] = useState<LegislationDraftDto[]>([]);
   const [selectedDraftId, setSelectedDraftId] = useState<string>('');
@@ -508,335 +567,496 @@ export function ParliamentaryLegislationPanel({
 
   return (
     <div className="space-y-6">
-      {/* 1. BASIS PENGETAHUAN HUKUM TERVERSI & BRIEFING HARIAN ANGGOTA */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* BASIS PENGETAHUAN HUKUM TERVERSI */}
-        <div className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-[#0D1322] p-5 space-y-3">
-          <div className="flex flex-wrap items-center justify-between gap-2">
-            <h3 className="text-sm font-black flex items-center gap-2">
-              <BookOpenCheck className="h-4 w-4 text-indigo-600" />
+      {/* NAVIGASI 3 TAB LEGISLASI & BUKTI */}
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
+        {(
+          [
+            {
+              key: 'BRIEFING' as const,
+              title: '1. Basis Hukum & Briefing Rapat',
+              desc: `${legalRules.length} aturan terversi`,
+            },
+            {
+              key: 'LEGISLATION' as const,
+              title: '2. Rancangan Perda, Pasal & DIM',
+              desc: `${drafts.length} rancangan legislasi`,
+            },
+            {
+              key: 'EVIDENCE' as const,
+              title: '3. Bukti Kinerja & Publikasi',
+              desc: `${evidences.length} bukti terdata`,
+            },
+          ] as const
+        ).map((tab) => {
+          const active = activeTab === tab.key;
+          return (
+            <button
+              key={tab.key}
+              type="button"
+              onClick={() => setActiveTab(tab.key)}
+              className={`text-left p-3.5 rounded-2xl border transition-all cursor-pointer ${
+                active
+                  ? 'border-indigo-600 bg-indigo-600 text-white shadow-sm'
+                  : 'border-slate-200 dark:border-slate-800 bg-white dark:bg-[#0D1322] hover:border-indigo-300'
+              }`}
+            >
+              <div className="text-xs font-black">{tab.title}</div>
+              <div
+                className={`text-[11px] mt-0.5 ${
+                  active ? 'text-indigo-100' : 'text-slate-500'
+                }`}
+              >
+                {tab.desc}
+              </div>
+            </button>
+          );
+        })}
+      </div>
+
+      {activeTab === 'BRIEFING' && (
+      <>
+      {/* 1. BASIS PENGETAHUAN HUKUM TERVERSI */}
+      <div className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-[#0D1322] p-6 space-y-4">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <h3 className="text-base font-black flex items-center gap-2">
+              <BookOpenCheck className="h-5 w-5 text-indigo-600" />
               Basis Pengetahuan Hukum Terversi ({organizationName})
             </h3>
-            <div className="flex items-center gap-2">
-              <span className="px-2 py-0.5 rounded text-[10px] font-black bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300">
-                Termasuk UU 1/2026 (Pasal 15)
-              </span>
-              <button
-                type="button"
-                onClick={() => setShowLegalRuleForm((prev) => !prev)}
-                className="px-2.5 py-1 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white text-[11px] font-bold"
-              >
-                {showLegalRuleForm ? 'Tutup Form' : '+ Daftarkan Perda / Tatib'}
-              </button>
-            </div>
+            <p className="text-xs text-slate-500 mt-1">
+              Setiap penugasan memeriksa status berlaku peraturan pada tanggal pengerjaan. Aturan berstatus{' '}
+              <strong>Perlu Verifikasi Ulang</strong> dilarang dijadikan dasar hukum final.
+            </p>
           </div>
-          <p className="text-[11px] text-slate-500">
-            Setiap penugasan memeriksa status berlaku peraturan pada tanggal pengerjaan. Aturan berstatus <code>UNVERIFIED_NEEDS_CHECK</code> dilarang dijadikan dasar hukum final.
-          </p>
-          {showLegalRuleForm && (
-            <div className="p-3.5 rounded-xl border border-indigo-200 dark:border-indigo-900/50 bg-indigo-50/40 dark:bg-indigo-950/20 grid grid-cols-1 sm:grid-cols-3 gap-2.5 text-xs">
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="px-2.5 py-1 rounded-lg text-[11px] font-black bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300">
+              Termasuk UU 1/2026 (Pasal 15)
+            </span>
+            <button
+              type="button"
+              onClick={() => setShowLegalRuleForm((prev) => !prev)}
+              className="px-3 py-1.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold cursor-pointer"
+            >
+              {showLegalRuleForm ? 'Tutup Form' : '+ Daftarkan Perda / Tatib'}
+            </button>
+          </div>
+        </div>
+
+        {showLegalRuleForm && (
+          <div className="p-4 rounded-xl border border-indigo-200 dark:border-indigo-900/50 bg-indigo-50/40 dark:bg-indigo-950/20 grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs">
+            <div>
+              <label className="block text-[11px] font-bold text-slate-600 dark:text-slate-300 mb-1">
+                Kode Aturan
+              </label>
               <input
                 type="text"
-                placeholder="Kode Aturan (misal: PERDA-04-2026)"
+                placeholder="Misal: PERDA-04-2026"
                 value={ruleCode}
                 onChange={(e) => setRuleCode(e.target.value)}
-                className="px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900"
+                className="w-full px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900"
               />
+            </div>
+            <div className="sm:col-span-2">
+              <label className="block text-[11px] font-bold text-slate-600 dark:text-slate-300 mb-1">
+                Judul Peraturan / Tata Tertib
+              </label>
               <input
                 type="text"
-                placeholder="Judul Peraturan / Tata Tertib"
+                placeholder="Judul lengkap peraturan atau tata tertib..."
                 value={ruleTitle}
                 onChange={(e) => setRuleTitle(e.target.value)}
-                className="sm:col-span-2 px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900"
+                className="w-full px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900"
               />
+            </div>
+            <div>
+              <label className="block text-[11px] font-bold text-slate-600 dark:text-slate-300 mb-1">
+                Jenis Peraturan
+              </label>
               <select
                 value={ruleHierarchyLayer}
                 onChange={(e) => setRuleHierarchyLayer(e.target.value)}
-                className="px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900"
+                className="w-full px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900"
               >
-                <option value="PERDA">PERDA (Peraturan Daerah)</option>
-                <option value="PERKADA">PERKADA (Peraturan Kepala Daerah)</option>
-                <option value="TATA_TERTIB">TATA TERTIB DPRD</option>
-                <option value="KEPUTUSAN_DPRD">KEPUTUSAN DPRD</option>
+                <option value="PERDA">Peraturan Daerah (Perda)</option>
+                <option value="PERKADA">Peraturan Kepala Daerah (Perkada)</option>
+                <option value="TATA_TERTIB">Tata Tertib DPRD</option>
+                <option value="KEPUTUSAN_DPRD">Keputusan DPRD</option>
               </select>
+            </div>
+            <div>
+              <label className="block text-[11px] font-bold text-slate-600 dark:text-slate-300 mb-1">
+                Yurisdiksi / Daerah
+              </label>
               <input
                 type="text"
-                placeholder="Yurisdiksi / Daerah"
+                placeholder="Misal: Kab. Bandung Barat"
                 value={ruleJurisdictionRegion}
                 onChange={(e) => setRuleJurisdictionRegion(e.target.value)}
-                className="px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900"
+                className="w-full px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900"
               />
+            </div>
+            <div>
+              <label className="block text-[11px] font-bold text-slate-600 dark:text-slate-300 mb-1">
+                Tanggal Berlaku
+              </label>
               <input
                 type="date"
                 value={ruleEffectiveDate}
                 onChange={(e) => setRuleEffectiveDate(e.target.value)}
-                className="px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900"
+                className="w-full px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900"
               />
+            </div>
+            <div>
+              <label className="block text-[11px] font-bold text-slate-600 dark:text-slate-300 mb-1">
+                Status Verifikasi
+              </label>
               <select
                 value={ruleVerificationStatus}
                 onChange={(e) =>
                   setRuleVerificationStatus(e.target.value as LegalRuleVerificationStatus)
                 }
-                className="px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900"
+                className="w-full px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900"
               >
-                <option value={LegalRuleVerificationStatus.VERIFIED_ACTIVE}>VERIFIED_ACTIVE</option>
-                <option value={LegalRuleVerificationStatus.AMENDED}>AMENDED</option>
-                <option value={LegalRuleVerificationStatus.REVOKED}>REVOKED</option>
-                <option value={LegalRuleVerificationStatus.UNVERIFIED_NEEDS_CHECK}>
-                  UNVERIFIED_NEEDS_CHECK
-                </option>
+                {Object.values(LegalRuleVerificationStatus).map((status) => (
+                  <option key={status} value={status}>
+                    {LEGAL_RULE_STATUS_LABELS[status]}
+                  </option>
+                ))}
               </select>
+            </div>
+            <div className="sm:col-span-2">
+              <label className="block text-[11px] font-bold text-slate-600 dark:text-slate-300 mb-1">
+                Ringkasan Perubahan / Catatan Berlaku (opsional)
+              </label>
               <input
                 type="text"
-                placeholder="Ringkasan Perubahan / Catatan Berlaku (opsional)"
+                placeholder="Catatan perubahan atau pasal rujukan utama..."
                 value={ruleAmendmentSummary}
                 onChange={(e) => setRuleAmendmentSummary(e.target.value)}
-                className="sm:col-span-2 px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900"
+                className="w-full px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900"
               />
-              <div className="sm:col-span-3 flex justify-end">
-                <button
-                  type="button"
-                  disabled={savingRule || !ruleCode.trim() || !ruleTitle.trim()}
-                  onClick={handleRegisterLegalRule}
-                  className="px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 text-white font-bold"
-                >
-                  {savingRule ? 'Menyimpan...' : 'Simpan Aturan Lembaga'}
-                </button>
-              </div>
             </div>
-          )}
-          <div className="space-y-2 max-h-64 overflow-y-auto">
-            {legalRules.map((rule) => (
-              <div
-                key={rule.id}
-                className="p-2.5 rounded-xl border border-slate-200 dark:border-slate-800 text-xs space-y-1"
+            <div className="sm:col-span-3 flex justify-end">
+              <button
+                type="button"
+                disabled={savingRule || !ruleCode.trim() || !ruleTitle.trim()}
+                onClick={handleRegisterLegalRule}
+                className="px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 text-white font-bold cursor-pointer"
               >
-                <div className="flex items-center justify-between gap-2">
-                  <span className="font-extrabold">{rule.ruleCode}</span>
-                  <span
-                    className={`px-2 py-0.5 rounded text-[10px] font-black ${
-                      rule.verificationStatus === LegalRuleVerificationStatus.VERIFIED_ACTIVE
-                        ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300'
-                        : 'bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300'
-                    }`}
-                  >
-                    {rule.verificationStatus}
-                  </span>
-                </div>
-                <div className="font-semibold text-slate-700 dark:text-slate-200">
-                  {rule.title}
-                </div>
-                {rule.amendmentSummary && (
-                  <div className="text-[11px] text-slate-500">{rule.amendmentSummary}</div>
-                )}
-              </div>
-            ))}
+                {savingRule ? 'Menyimpan...' : 'Simpan Aturan Lembaga'}
+              </button>
+            </div>
           </div>
-        </div>
+        )}
 
-        {/* BRIEFING HARIAN & MENJELANG RAPAT ANGGOTA */}
-        <div className="rounded-2xl border border-indigo-200 dark:border-indigo-900/60 bg-white dark:bg-[#0D1322] p-5 space-y-3">
-          <h3 className="text-sm font-black flex items-center gap-2">
-            <CalendarClock className="h-4 w-4 text-indigo-600" />
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-3 max-h-72 overflow-y-auto">
+          {legalRules.map((rule) => (
+            <div
+              key={rule.id}
+              className="p-3.5 rounded-xl border border-slate-200 dark:border-slate-800 text-xs space-y-1.5"
+            >
+              <div className="flex items-center justify-between gap-2">
+                <span className="font-extrabold text-slate-900 dark:text-white">{rule.ruleCode}</span>
+                <span
+                  className={`px-2 py-0.5 rounded text-[10px] font-black ${
+                    rule.verificationStatus === LegalRuleVerificationStatus.VERIFIED_ACTIVE
+                      ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300'
+                      : 'bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300'
+                  }`}
+                >
+                  {LEGAL_RULE_STATUS_LABELS[rule.verificationStatus] || rule.verificationStatus}
+                </span>
+              </div>
+              <div className="font-semibold text-slate-700 dark:text-slate-200">
+                {rule.title}
+              </div>
+              {rule.amendmentSummary && (
+                <div className="text-[11px] text-slate-500">{rule.amendmentSummary}</div>
+              )}
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* 2. BRIEFING HARIAN & MENJELANG RAPAT ANGGOTA */}
+      <div className="rounded-2xl border border-indigo-200 dark:border-indigo-900/60 bg-white dark:bg-[#0D1322] p-6 space-y-4">
+        <div>
+          <h3 className="text-base font-black flex items-center gap-2">
+            <CalendarClock className="h-5 w-5 text-indigo-600" />
             Briefing Kerja Harian & Menjelang Rapat ({activeUnitName || 'Pilih Bidang'})
           </h3>
-          <p className="text-[11px] text-slate-500">
+          <p className="text-xs text-slate-500 mt-1">
             Menyusun 5 poin siap pakai: Agenda & Keputusan, Pokok Masalah & Data Terbaru, Dasar Hukum Relevan, Pilihan Sikap & Konsekuensi, serta Pertanyaan Kunci.
           </p>
-          <div className="flex flex-col sm:flex-row gap-2 text-xs">
+        </div>
+        <div className="space-y-2">
+          <label className="block text-[11px] font-bold text-slate-600 dark:text-slate-300">
+            Judul Agenda Rapat / Raker OPD
+          </label>
+          <div className="flex flex-col sm:flex-row gap-2.5 text-xs">
             <input
               type="text"
               value={briefingAgenda}
               onChange={(e) => setBriefingAgenda(e.target.value)}
-              placeholder="Judul Agenda Rapat / Raker OPD..."
-              className="flex-1 px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900"
+              placeholder="Misal: Rapat Kerja Pembahasan Evaluasi Layanan Dasar..."
+              className="flex-1 px-3 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900"
             />
             <Button
               onClick={handleGenerateBriefing}
               disabled={briefingLoading || !activeUnitId}
             >
               <Sparkles className="h-4 w-4 mr-1.5" />
-              {briefingLoading ? 'Menyusun...' : 'Susun Briefing 5 Poin'}
+              {briefingLoading ? 'Menyusun...' : 'Susun Briefing 5 Poin (-1 Kuota)'}
             </Button>
           </div>
-          {briefingResult && (
-            <div className="p-3 rounded-xl bg-slate-50 dark:bg-slate-900/60 border border-slate-200/70 dark:border-slate-800 text-xs whitespace-pre-wrap max-h-56 overflow-y-auto">
-              {briefingResult.briefingMarkdown}
-            </div>
-          )}
         </div>
+        {briefingResult && (
+          <div className="p-4 rounded-xl bg-slate-50 dark:bg-slate-900/60 border border-slate-200/70 dark:border-slate-800 max-h-96 overflow-y-auto">
+            <MarkdownReportView content={briefingResult.briefingMarkdown} />
+          </div>
+        )}
       </div>
+      </>
+      )}
 
-      {/* 2. RUANG KERJA LEGISLASI (9 TAHAP, EDITOR PASAL, MAKER-CHECKER CRITIC & DIM) */}
-      <div className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-[#0D1322] p-6 space-y-5">
-        <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
+      {/* 3. RUANG KERJA LEGISLASI (9 TAHAP, EDITOR PASAL, MAKER-CHECKER CRITIC & DIM) */}
+      {activeTab === 'LEGISLATION' && (
+      <div className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-[#0D1322] p-6 space-y-6">
+        <div className="space-y-3">
           <div>
             <h3 className="text-base font-black flex items-center gap-2">
-              <Scale className="h-5 w-5 text-indigo-600" />
+              <Scale className="h-5 w-5 text-indigo-600 shrink-0" />
               Ruang Kerja Legislasi (RUU / Raperda), Lembar Pemeriksaan Pasal & Maker-Checker Critic
             </h3>
-            <p className="text-xs text-slate-500">
+            <p className="text-xs text-slate-500 mt-1">
               Membedakan produk hukum, keputusan kelembagaan, dokumen pembahasan, dan bahan komunikasi — dilengkapi Pemeriksa Kepatuhan terpisah dari Perancang.
             </p>
           </div>
 
           {drafts.length > 0 && (
-            <select
-              value={selectedDraftId}
-              onChange={(e) => setSelectedDraftId(e.target.value)}
-              className="px-3.5 py-2 rounded-xl text-xs font-bold border border-indigo-300 dark:border-indigo-700 bg-indigo-50/50 dark:bg-indigo-950/40"
-            >
-              {drafts.map((d) => (
-                <option key={d.id} value={d.id}>
-                  [{d.documentCategory}] {d.title} — Tahap: {d.currentStage}
-                </option>
-              ))}
-            </select>
-          )}
-        </div>
-
-        {/* BUAT RANCANGAN BARU */}
-        <div className="p-4 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/40 grid grid-cols-1 sm:grid-cols-4 gap-2.5 text-xs">
-          <input
-            type="text"
-            placeholder="Judul Raperda / Produk Parlemen..."
-            value={draftTitle}
-            onChange={(e) => setDraftTitle(e.target.value)}
-            className="sm:col-span-2 px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900"
-          />
-          <select
-            value={draftCategory}
-            onChange={(e) => setDraftCategory(e.target.value as ParliamentaryDocumentCategory)}
-            className="px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900"
-          >
-            {Object.values(ParliamentaryDocumentCategory).map((c) => (
-              <option key={c} value={c}>
-                {c}
-              </option>
-            ))}
-          </select>
-          <Button onClick={handleCreateDraft}>
-            <Plus className="h-4 w-4 mr-1" />
-            Buat Rancangan
-          </Button>
-          <input
-            type="text"
-            placeholder="Rumusan Masalah & Kelompok Terdampak (Tahap 1: Identifikasi Masalah)"
-            value={problemStatement}
-            onChange={(e) => setProblemStatement(e.target.value)}
-            className="sm:col-span-4 px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900"
-          />
-        </div>
-
-        {selectedDraftDetail && (
-          <div className="space-y-5 pt-2">
-            {/* STAGE BAR */}
-            <div className="flex flex-wrap items-center justify-between gap-3 p-3 rounded-xl border border-slate-200 dark:border-slate-800 text-xs">
-              <div>
-                <span className="font-extrabold">Tahap Penyusunan Aktif:</span>{' '}
-                <span className="px-2 py-0.5 rounded bg-indigo-100 text-indigo-800 dark:bg-indigo-950 dark:text-indigo-300 font-black">
-                  {selectedDraftDetail.currentStage}
-                </span>
-                {selectedDraftDetail.hasCriminalSanctionProvision && (
-                  <span className="ml-2 px-2 py-0.5 rounded bg-rose-100 text-rose-800 dark:bg-rose-950 dark:text-rose-300 font-black">
-                    Memuat Ketentuan Pidana (Wajib Uji UU 1/2026 Pasal 15)
-                  </span>
-                )}
-              </div>
+            <div>
+              <label className="block text-[11px] font-bold text-slate-600 dark:text-slate-300 mb-1">
+                Pilih Rancangan Legislasi Aktif
+              </label>
               <select
-                value={selectedDraftDetail.currentStage}
-                onChange={(e) => handleStageChange(e.target.value as LegislationStage)}
-                className="px-3 py-1.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 font-bold"
+                value={selectedDraftId}
+                onChange={(e) => setSelectedDraftId(e.target.value)}
+                className="w-full px-3.5 py-2.5 rounded-xl text-xs font-bold border border-indigo-300 dark:border-indigo-700 bg-indigo-50/50 dark:bg-indigo-950/40"
               >
-                {Object.values(LegislationStage).map((st) => (
-                  <option key={st} value={st}>
-                    Pindah ke Tahap: {st}
+                {drafts.map((d) => (
+                  <option key={d.id} value={d.id}>
+                    [{DOCUMENT_CATEGORY_LABELS[d.documentCategory] || d.documentCategory}] {d.title} — Tahap:{' '}
+                    {LEGISLATION_STAGE_LABELS[d.currentStage] || d.currentStage}
                   </option>
                 ))}
               </select>
             </div>
+          )}
+        </div>
 
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {/* BUAT RANCANGAN BARU */}
+        <div className="p-4 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/40 space-y-3 text-xs">
+          <div className="font-extrabold text-slate-800 dark:text-slate-200">
+            Buat Rancangan Produk Legislasi / Keputusan Baru
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-4 gap-3 items-end">
+            <div className="sm:col-span-2">
+              <label className="block text-[11px] font-bold text-slate-600 dark:text-slate-300 mb-1">
+                Judul Raperda / Produk Parlemen
+              </label>
+              <input
+                type="text"
+                placeholder="Misal: Raperda Pengelolaan Air Minum Daerah..."
+                value={draftTitle}
+                onChange={(e) => setDraftTitle(e.target.value)}
+                className="w-full px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900"
+              />
+            </div>
+            <div>
+              <label className="block text-[11px] font-bold text-slate-600 dark:text-slate-300 mb-1">
+                Kategori Dokumen
+              </label>
+              <select
+                value={draftCategory}
+                onChange={(e) => setDraftCategory(e.target.value as ParliamentaryDocumentCategory)}
+                className="w-full px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900"
+              >
+                {Object.values(ParliamentaryDocumentCategory).map((c) => (
+                  <option key={c} value={c}>
+                    {DOCUMENT_CATEGORY_LABELS[c]}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <Button onClick={handleCreateDraft} className="w-full">
+                <Plus className="h-4 w-4 mr-1" />
+                Buat Rancangan
+              </Button>
+            </div>
+          </div>
+          <div>
+            <label className="block text-[11px] font-bold text-slate-600 dark:text-slate-300 mb-1">
+              Rumusan Masalah & Kelompok Terdampak (Tahap 1: Identifikasi Masalah)
+            </label>
+            <input
+              type="text"
+              placeholder="Jelaskan masalah utama yang hendak diselesaikan dan pihak terdampak..."
+              value={problemStatement}
+              onChange={(e) => setProblemStatement(e.target.value)}
+              className="w-full px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900"
+            />
+          </div>
+        </div>
+
+        {selectedDraftDetail && (
+          <div className="space-y-6 pt-2">
+            {/* STAGE BAR */}
+            <div className="flex flex-wrap items-center justify-between gap-3 p-3.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50/40 dark:bg-slate-900/30 text-xs">
+              <div className="flex flex-wrap items-center gap-2">
+                <span className="font-extrabold">Tahap Penyusunan Aktif:</span>
+                <span className="px-2.5 py-1 rounded-lg bg-indigo-100 text-indigo-800 dark:bg-indigo-950 dark:text-indigo-300 font-black">
+                  {LEGISLATION_STAGE_LABELS[selectedDraftDetail.currentStage] ||
+                    selectedDraftDetail.currentStage}
+                </span>
+                {selectedDraftDetail.hasCriminalSanctionProvision && (
+                  <span className="px-2.5 py-1 rounded-lg bg-rose-100 text-rose-800 dark:bg-rose-950 dark:text-rose-300 font-black">
+                    Memuat Ketentuan Pidana (Wajib Uji UU 1/2026 Pasal 15)
+                  </span>
+                )}
+              </div>
+              <div className="flex items-center gap-2">
+                <span className="text-[11px] font-bold text-slate-500">Ubah Tahap:</span>
+                <select
+                  value={selectedDraftDetail.currentStage}
+                  onChange={(e) => handleStageChange(e.target.value as LegislationStage)}
+                  className="px-3 py-1.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 font-bold"
+                >
+                  {Object.values(LegislationStage).map((st) => (
+                    <option key={st} value={st}>
+                      {LEGISLATION_STAGE_LABELS[st]}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            </div>
+
+            <div className="space-y-6">
               {/* EDITOR PASAL & LEMBAR PEMERIKSAAN */}
-              <div className="space-y-3 text-xs">
-                <div className="font-extrabold">
+              <div className="p-5 rounded-xl border border-slate-200 dark:border-slate-800 space-y-4 text-xs">
+                <div className="text-sm font-extrabold">
                   Editor Pasal & Lembar Pemeriksaan Kualitas Rancangan
                 </div>
-                <div className="grid grid-cols-3 gap-2">
-                  <input
-                    type="text"
-                    placeholder="Nomor Pasal"
-                    value={clauseNumber}
-                    onChange={(e) => setClauseNumber(e.target.value)}
-                    className="px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900"
-                  />
-                  <input
-                    type="text"
-                    placeholder="Judul/Substansi Pasal"
-                    value={clauseTitle}
-                    onChange={(e) => setClauseTitle(e.target.value)}
-                    className="col-span-2 px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900"
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                  <div>
+                    <label className="block text-[11px] font-bold text-slate-600 dark:text-slate-300 mb-1">
+                      Nomor Pasal
+                    </label>
+                    <input
+                      type="text"
+                      placeholder="Misal: Pasal 12"
+                      value={clauseNumber}
+                      onChange={(e) => setClauseNumber(e.target.value)}
+                      className="w-full px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900"
+                    />
+                  </div>
+                  <div className="sm:col-span-2">
+                    <label className="block text-[11px] font-bold text-slate-600 dark:text-slate-300 mb-1">
+                      Judul / Substansi Pasal
+                    </label>
+                    <input
+                      type="text"
+                      placeholder="Misal: Kewajiban Penyelenggara Layanan"
+                      value={clauseTitle}
+                      onChange={(e) => setClauseTitle(e.target.value)}
+                      className="w-full px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900"
+                    />
+                  </div>
+                </div>
+                <div>
+                  <label className="block text-[11px] font-bold text-slate-600 dark:text-slate-300 mb-1">
+                    Rumusan Norma Pasal
+                  </label>
+                  <textarea
+                    rows={3}
+                    placeholder="Rumusan Norma Pasal (misal: Setiap penyelenggara wajib ... atau barangsiapa melanggar dipidana ...)"
+                    value={clauseText}
+                    onChange={(e) => setClauseText(e.target.value)}
+                    className="w-full p-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900"
                   />
                 </div>
-                <textarea
-                  rows={3}
-                  placeholder="Rumusan Norma Pasal (misal: Setiap penyelenggara wajib ... atau barangsiapa melanggar dipidana ...)"
-                  value={clauseText}
-                  onChange={(e) => setClauseText(e.target.value)}
-                  className="w-full p-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900"
-                />
-                <div className="grid grid-cols-2 gap-2">
-                  <input
-                    type="text"
-                    placeholder="Dasar Kewenangan & Sumber Hukum"
-                    value={legalAuthoritySource}
-                    onChange={(e) => setLegalAuthoritySource(e.target.value)}
-                    className="px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900"
-                  />
-                  <input
-                    type="text"
-                    placeholder="Subjek yang Diatur & Pelaksana"
-                    value={regulatedSubjects}
-                    onChange={(e) => setRegulatedSubjects(e.target.value)}
-                    className="px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900"
-                  />
-                  <input
-                    type="text"
-                    placeholder="Dampak (Masyarakat/Pelayanan/Anggaran)"
-                    value={impactAssessment}
-                    onChange={(e) => setImpactAssessment(e.target.value)}
-                    className="px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900"
-                  />
-                  <input
-                    type="text"
-                    placeholder="Mekanisme Pelaksanaan & Pengawasan"
-                    value={supervisionMechanism}
-                    onChange={(e) => setSupervisionMechanism(e.target.value)}
-                    className="px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900"
-                  />
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-[11px] font-bold text-slate-600 dark:text-slate-300 mb-1">
+                      Dasar Kewenangan & Sumber Hukum
+                    </label>
+                    <input
+                      type="text"
+                      placeholder="Misal: UU 12/2011 jo UU 1/2026 & Permendagri terkait"
+                      value={legalAuthoritySource}
+                      onChange={(e) => setLegalAuthoritySource(e.target.value)}
+                      className="w-full px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-[11px] font-bold text-slate-600 dark:text-slate-300 mb-1">
+                      Subjek yang Diatur & Pelaksana
+                    </label>
+                    <input
+                      type="text"
+                      placeholder="Misal: Pemda, OPD Teknis, Badan Usaha Daerah"
+                      value={regulatedSubjects}
+                      onChange={(e) => setRegulatedSubjects(e.target.value)}
+                      className="w-full px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-[11px] font-bold text-slate-600 dark:text-slate-300 mb-1">
+                      Dampak (Masyarakat / Pelayanan / Anggaran)
+                    </label>
+                    <input
+                      type="text"
+                      placeholder="Uraikan dampak sosial, layanan publik, atau fiskal"
+                      value={impactAssessment}
+                      onChange={(e) => setImpactAssessment(e.target.value)}
+                      className="w-full px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-[11px] font-bold text-slate-600 dark:text-slate-300 mb-1">
+                      Mekanisme Pelaksanaan & Pengawasan
+                    </label>
+                    <input
+                      type="text"
+                      placeholder="Misal: Evaluasi berkala & pelaporan ke DPRD"
+                      value={supervisionMechanism}
+                      onChange={(e) => setSupervisionMechanism(e.target.value)}
+                      className="w-full px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900"
+                    />
+                  </div>
                 </div>
-                <Button onClick={handleAddClause} className="w-full">
+                <Button onClick={handleAddClause} className="w-full sm:w-auto">
                   Simpan Pasal & Lembar Pemeriksaan
                 </Button>
 
                 {/* DAFTAR PASAL + TOMBOL MAKER-CHECKER */}
-                <div className="space-y-2 pt-2">
+                <div className="space-y-2.5 pt-2">
                   {(selectedDraftDetail.clauses || []).map((cl) => (
                     <div
                       key={cl.id}
-                      className="p-3 rounded-xl border border-slate-200 dark:border-slate-800 space-y-1.5"
+                      className="p-3.5 rounded-xl border border-slate-200 dark:border-slate-800 space-y-2"
                     >
-                      <div className="flex items-center justify-between gap-2">
+                      <div className="flex flex-wrap items-center justify-between gap-2">
                         <span className="font-extrabold">
                           {cl.clauseNumber} {cl.clauseTitle ? `— ${cl.clauseTitle}` : ''}
                         </span>
-                        <span className="px-2 py-0.5 rounded text-[10px] font-black bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300">
-                          {cl.inspectionStatus}
+                        <span className="px-2.5 py-0.5 rounded-lg text-[10px] font-black bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300">
+                          {CLAUSE_INSPECTION_STATUS_LABELS[cl.inspectionStatus] || cl.inspectionStatus}
                         </span>
                       </div>
                       <p className="text-slate-600 dark:text-slate-300">{cl.clauseText}</p>
                       {cl.complianceCriticWarnings.length > 0 && (
-                        <div className="p-2 rounded-lg bg-rose-50 dark:bg-rose-950/30 text-rose-700 dark:text-rose-300 text-[11px] space-y-0.5">
+                        <div className="p-2.5 rounded-lg bg-rose-50 dark:bg-rose-950/30 text-rose-700 dark:text-rose-300 text-[11px] space-y-0.5">
                           {cl.complianceCriticWarnings.map((w, i) => (
                             <div key={i}>&bull; {w}</div>
                           ))}
@@ -845,9 +1065,9 @@ export function ParliamentaryLegislationPanel({
                       <div className="flex justify-end">
                         <button
                           onClick={() => handleRunComplianceCritic(cl.id)}
-                          className="px-2.5 py-1 rounded-lg text-[11px] font-bold bg-indigo-600 text-white hover:bg-indigo-700 cursor-pointer"
+                          className="px-3 py-1.5 rounded-lg text-[11px] font-bold bg-indigo-600 text-white hover:bg-indigo-700 cursor-pointer"
                         >
-                          Jalankan Pemeriksa Kepatuhan (Maker-Checker)
+                          Jalankan Pemeriksa Kepatuhan (-1 Kuota)
                         </button>
                       </div>
                     </div>
@@ -855,35 +1075,45 @@ export function ParliamentaryLegislationPanel({
                 </div>
 
                 {criticResult && (
-                  <div className="p-3 rounded-xl bg-slate-50 dark:bg-slate-900/60 border border-indigo-200 dark:border-indigo-900/50 text-xs whitespace-pre-wrap">
-                    {criticResult.criticNarrativeMarkdown}
+                  <div className="p-4 rounded-xl bg-slate-50 dark:bg-slate-900/60 border border-indigo-200 dark:border-indigo-900/50">
+                    <MarkdownReportView content={criticResult.criticNarrativeMarkdown} />
                   </div>
                 )}
               </div>
 
               {/* DIM & PARTISIPASI MASYARAKAT (PASAL 96 UU 13/2022) */}
-              <div className="space-y-3 text-xs">
-                <div className="font-extrabold flex items-center gap-1.5">
+              <div className="p-5 rounded-xl border border-slate-200 dark:border-slate-800 space-y-4 text-xs">
+                <div className="text-sm font-extrabold flex items-center gap-1.5">
                   <MessageSquarePlus className="h-4 w-4 text-indigo-500" />
                   Daftar Inventarisasi Masalah (DIM) & Partisipasi Masyarakat (Pasal 96 UU 13/2022)
                 </div>
-                <div className="grid grid-cols-2 gap-2">
-                  <input
-                    type="text"
-                    placeholder="Pengusul / Kelompok Masyarakat"
-                    value={dimSource}
-                    onChange={(e) => setDimSource(e.target.value)}
-                    className="px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900"
-                  />
-                  <input
-                    type="text"
-                    placeholder="Pasal Sasaran (misal: Pasal 12)"
-                    value={dimTargetClause}
-                    onChange={(e) => setDimTargetClause(e.target.value)}
-                    className="px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900"
-                  />
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-[11px] font-bold text-slate-600 dark:text-slate-300 mb-1">
+                      Pengusul / Kelompok Masyarakat
+                    </label>
+                    <input
+                      type="text"
+                      placeholder="Misal: Fraksi / OPD / Komunitas Warga"
+                      value={dimSource}
+                      onChange={(e) => setDimSource(e.target.value)}
+                      className="w-full px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-[11px] font-bold text-slate-600 dark:text-slate-300 mb-1">
+                      Pasal Sasaran
+                    </label>
+                    <input
+                      type="text"
+                      placeholder="Misal: Pasal 12"
+                      value={dimTargetClause}
+                      onChange={(e) => setDimTargetClause(e.target.value)}
+                      className="w-full px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900"
+                    />
+                  </div>
                 </div>
-                <label className="inline-flex items-center gap-1.5 font-semibold cursor-pointer">
+                <label className="inline-flex items-center gap-2 font-semibold cursor-pointer">
                   <input
                     type="checkbox"
                     checked={dimIsPublic}
@@ -891,37 +1121,47 @@ export function ParliamentaryLegislationPanel({
                   />
                   Berasal dari Konsultasi Publik / Partisipasi Masyarakat (Pasal 96 UU 13/2022)
                 </label>
-                <input
-                  type="text"
-                  placeholder="Pokok Masukan / Masalah yang Diangkat..."
-                  value={dimIssue}
-                  onChange={(e) => setDimIssue(e.target.value)}
-                  className="w-full px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900"
-                />
-                <textarea
-                  rows={2}
-                  placeholder="Usulan Perubahan Redaksi / Tindak Lanjut..."
-                  value={dimAmendment}
-                  onChange={(e) => setDimAmendment(e.target.value)}
-                  className="w-full p-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900"
-                />
-                <Button onClick={handleAddDimEntry} className="w-full">
+                <div>
+                  <label className="block text-[11px] font-bold text-slate-600 dark:text-slate-300 mb-1">
+                    Pokok Masukan / Masalah yang Diangkat
+                  </label>
+                  <input
+                    type="text"
+                    placeholder="Tuliskan pokok masukan atau isu yang diusulkan..."
+                    value={dimIssue}
+                    onChange={(e) => setDimIssue(e.target.value)}
+                    className="w-full px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900"
+                  />
+                </div>
+                <div>
+                  <label className="block text-[11px] font-bold text-slate-600 dark:text-slate-300 mb-1">
+                    Usulan Perubahan Redaksi / Tindak Lanjut
+                  </label>
+                  <textarea
+                    rows={2}
+                    placeholder="Usulan rumusan baru atau catatan tindak lanjut..."
+                    value={dimAmendment}
+                    onChange={(e) => setDimAmendment(e.target.value)}
+                    className="w-full p-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900"
+                  />
+                </div>
+                <Button onClick={handleAddDimEntry} className="w-full sm:w-auto">
                   Catat ke Matriks DIM & Partisipasi
                 </Button>
 
-                <div className="space-y-2 pt-2">
+                <div className="space-y-2.5 pt-2">
                   {(selectedDraftDetail.dimEntries || []).map((dim) => (
                     <div
                       key={dim.id}
-                      className="p-3 rounded-xl border border-slate-200 dark:border-slate-800 space-y-2"
+                      className="p-3.5 rounded-xl border border-slate-200 dark:border-slate-800 space-y-2"
                     >
                       <div className="flex flex-wrap items-center justify-between gap-2">
                         <span className="font-bold">
                           [{dim.targetClauseRef}] {dim.sourcePartyName}
                         </span>
-                        <span className="px-2 py-0.5 rounded text-[10px] font-black bg-slate-100 dark:bg-slate-800">
-                          {dim.isPublicConsultation ? 'KONSULTASI PUBLIK' : 'DIM FRAKSI/OPD'} &bull;{' '}
-                          {dim.status}
+                        <span className="px-2.5 py-0.5 rounded-lg text-[10px] font-black bg-slate-100 dark:bg-slate-800">
+                          {dim.isPublicConsultation ? 'Konsultasi Publik' : 'DIM Fraksi / OPD'} &bull;{' '}
+                          {DIM_STATUS_LABELS[dim.status] || dim.status}
                         </span>
                       </div>
                       <div className="text-slate-600 dark:text-slate-300">{dim.issueSummary}</div>
@@ -944,11 +1184,11 @@ export function ParliamentaryLegislationPanel({
                           }
                           className="px-2.5 py-1.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-[11px]"
                         >
-                          <option value={DimEntryStatus.OPEN}>OPEN</option>
-                          <option value={DimEntryStatus.DISCUSSED}>DISCUSSED</option>
-                          <option value={DimEntryStatus.AGREED}>AGREED</option>
-                          <option value={DimEntryStatus.DEFERRED}>DEFERRED</option>
-                          <option value={DimEntryStatus.REJECTED}>REJECTED</option>
+                          {Object.values(DimEntryStatus).map((st) => (
+                            <option key={st} value={st}>
+                              {DIM_STATUS_LABELS[st]}
+                            </option>
+                          ))}
                         </select>
                         <input
                           type="text"
@@ -968,7 +1208,7 @@ export function ParliamentaryLegislationPanel({
                           onClick={() =>
                             handleUpdateDimEntry(dim.id, dim.status, dim.responseAndFollowup)
                           }
-                          className="px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-900 dark:bg-indigo-600 dark:hover:bg-indigo-700 disabled:opacity-50 text-white text-[11px] font-bold"
+                          className="px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-900 dark:bg-indigo-600 dark:hover:bg-indigo-700 disabled:opacity-50 text-white text-[11px] font-bold cursor-pointer"
                         >
                           {savingDimId === dim.id ? 'Menyimpan...' : 'Simpan DIM'}
                         </button>
@@ -981,26 +1221,28 @@ export function ParliamentaryLegislationPanel({
           </div>
         )}
       </div>
+      )}
 
-      {/* 3. REGISTER BUKTI KINERJA & CLAIM GUARDRAIL -> STUDIO PUBLIKASI */}
+      {/* 4. REGISTER BUKTI KINERJA & CLAIM GUARDRAIL -> STUDIO PUBLIKASI */}
+      {activeTab === 'EVIDENCE' && (
       <div className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-[#0D1322] p-6 space-y-4">
         <div>
           <h3 className="text-base font-black flex items-center gap-2">
             <Newspaper className="h-5 w-5 text-emerald-600" />
             Register Bukti Kinerja & Claim Guardrail &rarr; Studio Publikasi
           </h3>
-          <p className="text-xs text-slate-500">
+          <p className="text-xs text-slate-500 mt-1">
             Setiap klaim publikasi wajib terhubung ke bukti pekerjaan, mencantumkan tingkat pencapaian (diusulkan s/d menunjukkan hasil), dan membedakan kontribusi individu dari keputusan kolektif maupun pelaksanaan pemerintah.
           </p>
         </div>
 
-        <div className="p-4 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/40 grid grid-cols-1 sm:grid-cols-3 gap-2.5 text-xs">
-          <div className="sm:col-span-3 flex flex-wrap items-center gap-2 pb-1">
+        <div className="p-4 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/40 space-y-3 text-xs">
+          <div className="flex flex-wrap items-center gap-2 pb-1">
             <button
               type="button"
               disabled={loadingLkpjFindings}
               onClick={handleLoadLkpjFindings}
-              className="px-3 py-1.5 rounded-lg border border-indigo-200 dark:border-indigo-800 bg-white dark:bg-slate-900 text-indigo-700 dark:text-indigo-300 text-[11px] font-bold hover:bg-indigo-50"
+              className="px-3 py-1.5 rounded-lg border border-indigo-200 dark:border-indigo-800 bg-white dark:bg-slate-900 text-indigo-700 dark:text-indigo-300 text-[11px] font-bold hover:bg-indigo-50 cursor-pointer"
             >
               {loadingLkpjFindings
                 ? 'Memuat Temuan LKPJ...'
@@ -1021,53 +1263,82 @@ export function ParliamentaryLegislationPanel({
               </select>
             )}
           </div>
-          <input
-            type="text"
-            placeholder="Judul Bukti Kinerja (misal: Rekomendasi Perbaikan Layanan Air Minum 14 Desa)"
-            value={evTitle}
-            onChange={(e) => setEvTitle(e.target.value)}
-            className="sm:col-span-2 px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900"
-          />
-          <input
-            type="text"
-            placeholder="Rujukan Sumber (Surat/Risalah/Nomor Rekomendasi)"
-            value={evSourceRef}
-            onChange={(e) => setEvSourceRef(e.target.value)}
-            className="px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900"
-          />
-          <select
-            value={evLevel}
-            onChange={(e) => setEvLevel(e.target.value as PerformanceAchievementLevel)}
-            className="px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900"
-          >
-            {Object.values(PerformanceAchievementLevel).map((lv) => (
-              <option key={lv} value={lv}>
-                Tingkat Pencapaian: {lv}
-              </option>
-            ))}
-          </select>
-          <select
-            value={evScope}
-            onChange={(e) => setEvScope(e.target.value as PerformanceContributionScope)}
-            className="px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900"
-          >
-            {Object.values(PerformanceContributionScope).map((sc) => (
-              <option key={sc} value={sc}>
-                Lingkup Kontribusi: {sc}
-              </option>
-            ))}
-          </select>
-          <Button onClick={handleRegisterEvidence}>
-            <Plus className="h-4 w-4 mr-1" />
-            Daftarkan ke Register Bukti
-          </Button>
-          <textarea
-            rows={2}
-            placeholder="Ringkasan fakta pekerjaan & hasil yang dapat dibuktikan..."
-            value={evSummary}
-            onChange={(e) => setEvSummary(e.target.value)}
-            className="sm:col-span-3 p-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900"
-          />
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+            <div className="sm:col-span-2">
+              <label className="block text-[11px] font-bold text-slate-600 dark:text-slate-300 mb-1">
+                Judul Bukti Kinerja
+              </label>
+              <input
+                type="text"
+                placeholder="Misal: Rekomendasi Perbaikan Layanan Air Minum 14 Desa"
+                value={evTitle}
+                onChange={(e) => setEvTitle(e.target.value)}
+                className="w-full px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900"
+              />
+            </div>
+            <div>
+              <label className="block text-[11px] font-bold text-slate-600 dark:text-slate-300 mb-1">
+                Rujukan Sumber (Surat / Risalah)
+              </label>
+              <input
+                type="text"
+                placeholder="Nomor surat / risalah / rekomendasi..."
+                value={evSourceRef}
+                onChange={(e) => setEvSourceRef(e.target.value)}
+                className="w-full px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900"
+              />
+            </div>
+            <div>
+              <label className="block text-[11px] font-bold text-slate-600 dark:text-slate-300 mb-1">
+                Tingkat Pencapaian
+              </label>
+              <select
+                value={evLevel}
+                onChange={(e) => setEvLevel(e.target.value as PerformanceAchievementLevel)}
+                className="w-full px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900"
+              >
+                {Object.values(PerformanceAchievementLevel).map((lv) => (
+                  <option key={lv} value={lv}>
+                    {ACHIEVEMENT_LEVEL_LABELS[lv]}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <label className="block text-[11px] font-bold text-slate-600 dark:text-slate-300 mb-1">
+                Lingkup Kontribusi
+              </label>
+              <select
+                value={evScope}
+                onChange={(e) => setEvScope(e.target.value as PerformanceContributionScope)}
+                className="w-full px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900"
+              >
+                {Object.values(PerformanceContributionScope).map((sc) => (
+                  <option key={sc} value={sc}>
+                    {CONTRIBUTION_SCOPE_LABELS[sc]}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div className="flex items-end">
+              <Button onClick={handleRegisterEvidence} className="w-full">
+                <Plus className="h-4 w-4 mr-1" />
+                Daftarkan ke Register Bukti
+              </Button>
+            </div>
+          </div>
+          <div>
+            <label className="block text-[11px] font-bold text-slate-600 dark:text-slate-300 mb-1">
+              Ringkasan Fakta Pekerjaan & Hasil yang Dapat Dibuktikan
+            </label>
+            <textarea
+              rows={2}
+              placeholder="Uraikan fakta pekerjaan, tindak lanjut, dan indikator yang terukur..."
+              value={evSummary}
+              onChange={(e) => setEvSummary(e.target.value)}
+              className="w-full p-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900"
+            />
+          </div>
         </div>
 
         <div className="space-y-2.5 text-xs">
@@ -1080,8 +1351,13 @@ export function ParliamentaryLegislationPanel({
                 <div className="font-extrabold text-sm">{ev.title}</div>
                 <div className="text-[11px] text-slate-500">
                   Sumber: <strong>{ev.evidenceSourceRef}</strong> &bull; Capaian:{' '}
-                  <span className="font-bold text-indigo-600">{ev.achievementLevel}</span> &bull;
-                  Lingkup: <span className="font-bold">{ev.contributionScope}</span>
+                  <span className="font-bold text-indigo-600">
+                    {ACHIEVEMENT_LEVEL_LABELS[ev.achievementLevel] || ev.achievementLevel}
+                  </span>{' '}
+                  &bull; Lingkup:{' '}
+                  <span className="font-bold">
+                    {CONTRIBUTION_SCOPE_LABELS[ev.contributionScope] || ev.contributionScope}
+                  </span>
                 </div>
                 <div className="text-slate-600 dark:text-slate-300">{ev.summaryText}</div>
               </div>
@@ -1102,7 +1378,7 @@ export function ParliamentaryLegislationPanel({
                       onClick={() => handleDraftPublication(ev.id)}
                       className="px-3 py-1.5 rounded-xl text-xs font-bold bg-indigo-600 text-white hover:bg-indigo-700 cursor-pointer"
                     >
-                      Kirim ke Studio Publikasi (Claim Guardrail)
+                      Kirim ke Studio Publikasi (-1 Kuota)
                     </button>
                   </>
                 )}
@@ -1114,15 +1390,21 @@ export function ParliamentaryLegislationPanel({
         {pubDraftResult && (
           <div className="p-4 rounded-xl bg-emerald-50/40 dark:bg-emerald-950/20 border border-emerald-200 dark:border-emerald-900/50 text-xs space-y-2">
             <div className="font-black text-emerald-700 dark:text-emerald-300">
-              Draf Publikasi Akuntabilitas Siap Review di Studio Konten (Tingkat: {pubDraftResult.enforcedAchievementLevel})
+              Draf Publikasi Akuntabilitas Siap Review di Studio Konten (Tingkat:{' '}
+              {ACHIEVEMENT_LEVEL_LABELS[pubDraftResult.enforcedAchievementLevel] ||
+                pubDraftResult.enforcedAchievementLevel}
+              )
             </div>
-            <div className="whitespace-pre-wrap">{pubDraftResult.pressReleaseMarkdown}</div>
+            <div className="p-3 rounded-xl bg-white dark:bg-slate-900/70 border border-emerald-200/60 dark:border-emerald-900/40">
+              <MarkdownReportView content={pubDraftResult.pressReleaseMarkdown} />
+            </div>
             <div className="p-2.5 rounded-lg bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 font-semibold">
               Caption Sosmed: {pubDraftResult.socialCaptionDraft}
             </div>
           </div>
         )}
       </div>
+      )}
     </div>
   );
 }

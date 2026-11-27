@@ -30,6 +30,8 @@ import {
   AdminUpdatePricingMatrixDto,
   RejectDomainRequestDto,
   UpdatePlatformFeatureFlagDto,
+  CreateCommissionDto,
+  UpdateCommissionDto,
 } from './dto/superadmin.dto.js';
 import { Public } from '../../common/decorators/public.decorator.js';
 import { SuperadminGuard } from '../../common/guards/superadmin.guard.js';
@@ -192,14 +194,14 @@ export class SuperadminController {
   @UseGuards(SuperadminGuard)
   @Post('commissions')
   @HttpCode(HttpStatus.CREATED)
-  async createCommission(@Body() dto: any) {
+  async createCommission(@Body() dto: CreateCommissionDto) {
     return await this.superadminService.createCommission(dto);
   }
 
   @UseGuards(SuperadminGuard)
   @Put('commissions/:id')
   @HttpCode(HttpStatus.OK)
-  async updateCommission(@Param('id') id: string, @Body() dto: any) {
+  async updateCommission(@Param('id') id: string, @Body() dto: UpdateCommissionDto) {
     return await this.superadminService.updateCommission(id, dto);
   }
 

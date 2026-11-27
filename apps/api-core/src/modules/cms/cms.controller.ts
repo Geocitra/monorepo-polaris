@@ -79,6 +79,7 @@ export class CmsController {
     return await this.cmsService.updateThemeSettings(user.tenantId, dto);
   }
 
+  @UseGuards(SubscriptionGuard)
   @Put('domain')
   @HttpCode(HttpStatus.OK)
   async updateDomain(
@@ -86,13 +87,6 @@ export class CmsController {
     @Body() dto: UpdateDomainConfigDto
   ) {
     return await this.cmsService.updateDomainConfig(user.tenantId, dto);
-  }
-
-  @UseGuards(SubscriptionGuard)
-  @Post('domain/verify')
-  @HttpCode(HttpStatus.OK)
-  async verifyCustomDomain(@CurrentTenant() user: AuthenticatedTenantPayload) {
-    return await this.cmsService.verifyCustomDomainDns(user.tenantId);
   }
 
   @UseGuards(SubscriptionGuard)

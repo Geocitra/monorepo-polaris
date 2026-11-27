@@ -16,6 +16,9 @@ import {
   electoralDistricts,
   masterCommissions,
   masterPoliticalParties,
+  organizationMemberships,
+  organizationUnitMemberships,
+  organizations,
 } from '@polaris/database';
 import { UpdateProfileDto } from '../dto/auth.dto.js';
 
@@ -128,6 +131,45 @@ export class IdentityProfileService {
       .where(eq(subscriptions.tenantId, tenantId))
       .limit(1);
 
+    const [primaryOrg] = await db
+      .select({
+        organizationId: organizations.id,
+        organizationName: organizations.name,
+        orgRole: organizationMemberships.orgRole,
+      })
+      .from(organizationMemberships)
+      .innerJoin(organizations, eq(organizationMemberships.organizationId, organizations.id))
+      .where(
+        and(
+          eq(organizationMemberships.tenantId, tenantId),
+          eq(organizationMemberships.status, 'ACTIVE'),
+          eq(organizations.status, 'ACTIVE')
+        )
+      )
+      .limit(1);
+
+    let hasAssignedUnits = false;
+    if (primaryOrg) {
+      const [unitRow] = await db
+        .select({ id: organizationUnitMemberships.id })
+        .from(organizationUnitMemberships)
+        .where(
+          and(
+            eq(organizationUnitMemberships.organizationId, primaryOrg.organizationId),
+            eq(organizationUnitMemberships.tenantId, tenantId),
+            eq(organizationUnitMemberships.status, 'ACTIVE')
+          )
+        )
+        .limit(1);
+      hasAssignedUnits = Boolean(unitRow);
+    }
+
+    const accountMode: 'B2B_ONLY' | 'B2C_ONLY' | 'HYBRID' = primaryOrg
+      ? portal
+        ? 'HYBRID'
+        : 'B2B_ONLY'
+      : 'B2C_ONLY';
+
     const resolvedPhotoUrl = member.photoUrl || portalTheme?.officialPhotoUrl || null;
 
     return {
@@ -143,6 +185,10 @@ export class IdentityProfileService {
       subdomain: portal?.subdomainSlug,
       customDomain: portal?.customDomain,
       subscription: sub,
+      accountMode,
+      primaryOrganization: primaryOrg
+        ? { ...primaryOrg, hasAssignedUnits }
+        : null,
     };
   }
 

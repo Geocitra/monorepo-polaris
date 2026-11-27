@@ -308,6 +308,54 @@ export class RejectDomainRequestDto {
   adminNotes!: string;
 }
 
+export class CreateCommissionDto {
+  @IsEnum(LegislativeLevel, { message: 'Tingkat legislatif tidak valid.' })
+  @IsNotEmpty()
+  legislativeLevel!: LegislativeLevel;
+
+  @IsString()
+  @IsNotEmpty({ message: 'Kode komisi tidak boleh kosong.' })
+  code!: string;
+
+  @IsString()
+  @IsNotEmpty({ message: 'Nama komisi tidak boleh kosong.' })
+  name!: string;
+
+  @IsOptional()
+  @IsArray()
+  @IsString({ each: true })
+  focusAreas?: string[];
+
+  @IsOptional()
+  @IsArray()
+  @IsString({ each: true })
+  partnerMinistries?: string[];
+}
+
+export class UpdateCommissionDto {
+  @IsOptional()
+  @IsEnum(LegislativeLevel, { message: 'Tingkat legislatif tidak valid.' })
+  legislativeLevel?: LegislativeLevel;
+
+  @IsOptional()
+  @IsString()
+  code?: string;
+
+  @IsOptional()
+  @IsString()
+  name?: string;
+
+  @IsOptional()
+  @IsArray()
+  @IsString({ each: true })
+  focusAreas?: string[];
+
+  @IsOptional()
+  @IsArray()
+  @IsString({ each: true })
+  partnerMinistries?: string[];
+}
+
 
 
 export class UpdatePlatformFeatureFlagDto {

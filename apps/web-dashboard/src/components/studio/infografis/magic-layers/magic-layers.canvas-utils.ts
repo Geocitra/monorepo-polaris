@@ -350,6 +350,23 @@ export function extractInpaintBoundsFromManifest(
         h: h / mh,
         cardBg: layer.box?.fill || '#FFFFFF',
       });
+    } else if (layer.kind === 'image') {
+      const pad = 4;
+      const left = Math.max(0, layer.x - pad);
+      const top = Math.max(0, layer.y - pad);
+      const w = Math.min(mw - left, layer.w + pad * 2);
+      const h = Math.min(mh - top, layer.h + pad * 2);
+
+      defs.push({
+        id: `inpaint_image_${layer.id}`,
+        name: layer.role,
+        text: '',
+        x: left / mw,
+        y: top / mh,
+        w: w / mw,
+        h: h / mh,
+        cardBg: '#FAF8F5',
+      });
     }
   }
 
@@ -402,7 +419,7 @@ export async function createCleanPosterBackground(
           }),
         });
 
-        if (backendRes?.cleanBackgroundUrl) {
+        if (backendRes?.success && backendRes?.cleanBackgroundUrl) {
           console.log('[MagicLayers] Inpainted via Backend:', backendRes.strategyUsed, backendRes.cleanBackgroundUrl);
           resolve(backendRes.cleanBackgroundUrl);
           return;

@@ -17,7 +17,7 @@ import { CurrentTenant, AuthenticatedTenantPayload } from '../../common/decorato
 
 @Controller('auth')
 export class IdentityController {
-  constructor(private readonly identityService: IdentityService) {}
+  constructor(private readonly identityService: IdentityService) { }
 
   @Public()
   @Post('register')
@@ -31,7 +31,7 @@ export class IdentityController {
   @Public()
   @Post('login')
   @HttpCode(HttpStatus.OK)
-  async login(@Body() dto: LoginRequestDto): Promise<LoginInitiateResponseDto> {
+  async login(@Body() dto: LoginRequestDto) {
     return await this.identityService.login(dto);
   }
 

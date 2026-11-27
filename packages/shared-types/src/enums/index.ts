@@ -715,4 +715,11 @@ export enum PerformanceContributionScope {
   PELAKSANAAN_PEMERINTAH = 'PELAKSANAAN_PEMERINTAH',
 }
 
+export enum InstitutionalQuotaFeatureScope {
+  COORDINATOR_CHAT = 'COORDINATOR_CHAT',
+  LKPJ_EVALUATION = 'LKPJ_EVALUATION',
+  LEGISLATION = 'LEGISLATION',
+  GLOBAL = 'GLOBAL',
+}
+
 

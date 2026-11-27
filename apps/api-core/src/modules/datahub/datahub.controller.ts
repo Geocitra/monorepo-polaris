@@ -12,6 +12,8 @@ import {
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { AuthGuard } from '../../common/guards/auth.guard.js';
+import { SubscriptionGuard } from '../../common/guards/subscription.guard.js';
+import { TokenCircuitBreakerGuard } from '../../common/guards/token-circuit-breaker.guard.js';
 import { CurrentTenant, AuthenticatedTenantPayload } from '../../common/decorators/current-tenant.decorator.js';
 import { DatahubService } from './datahub.service.js';
 import { DatahubUploadDto } from './dto/datahub-upload.dto.js';
@@ -27,6 +29,7 @@ export class DatahubController {
    * melakukan deduplikasi, ekstraksi multimodal, chunking semantik, dan pgvector embedding.
    */
   @Post('upload')
+  @UseGuards(SubscriptionGuard, TokenCircuitBreakerGuard)
   @HttpCode(HttpStatus.OK)
   @UseInterceptors(
     FileInterceptor('file', {

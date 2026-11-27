@@ -25,7 +25,6 @@ import {
 import {
   AssignOperatorDto,
   UnassignOperatorDto,
-  UpdateAssignmentStatusDto,
   CreateOperatorAccountDto,
   UpdateOperatorAccountDto,
 } from './dto/operator.dto.js';
@@ -423,7 +422,7 @@ export class OperatorService {
         email: cleanEmail,
         passwordHash,
         fullName: dto.fullName.trim(),
-        role: 'CONTENT_OPERATOR',
+        role: dto.role === 'SUPPORT_OPERATOR' ? 'SUPPORT_OPERATOR' : 'CONTENT_OPERATOR',
         avatarUrl: dto.avatarUrl,
         isActive: true,
       })
@@ -521,6 +520,9 @@ export class OperatorService {
     if (!existing) {
       throw new NotFoundException('Operator tidak ditemukan.');
     }
+    if (existing.role === 'SUPERADMIN') {
+      throw new ForbiddenException('Akun SUPERADMIN tidak dapat diubah melalui manajemen operator.');
+    }
 
     const updateData: Record<string, unknown> = {
       updatedAt: new Date(),
@@ -588,6 +590,9 @@ export class OperatorService {
 
     if (!existing) {
       throw new NotFoundException('Operator tidak ditemukan.');
+    }
+    if (existing.role === 'SUPERADMIN') {
+      throw new ForbiddenException('Akun SUPERADMIN tidak dapat dihapus melalui manajemen operator.');
     }
 
     // Hapus seluruh penugasan terkait
@@ -664,6 +669,19 @@ export class OperatorService {
         issueInterests: tenantMembers.issueInterests,
         education: tenantMembers.education,
       });
+
+    try {
+      await db.insert(operatorAuditLogs).values({
+        operatorId,
+        tenantId,
+        action: 'UPDATE_TENANT_PROFILE',
+        targetEntity: 'tenant_members',
+        targetEntityId: tenantId,
+        details: { updatedFields: Object.keys(updateData).filter((k) => k !== 'updatedAt') },
+      });
+    } catch (err: any) {
+      this.logger.warn(`Gagal mencatat audit log updateTenantProfile: ${err?.message}`);
+    }
 
     return {
       message: 'Profil publik dewan binaan berhasil diperbarui.',

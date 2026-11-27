@@ -17,6 +17,10 @@ import {
   UpdateDraftArticleDto,
   UploadArticleImageDto,
   PublishInfographicDto,
+  ExtractPosterManifestDto,
+  InpaintPosterDto,
+  SavePosterLayersDto,
+  UploadMagicLayerAssetDto,
 } from './dto/studio.dto.js';
 import { CurrentTenant, AuthenticatedTenantPayload } from '../../common/decorators/current-tenant.decorator.js';
 import { SubscriptionGuard } from '../../common/guards/subscription.guard.js';
@@ -30,57 +34,45 @@ export class StudioController {
     private readonly magicLayersService: StudioMagicLayersService,
   ) { }
 
-  // Analisis Layout, Deteksi Teks OCR, dan Heuristic Grouping untuk Magic Layers
-  @Post('magic-layers/analyze')
-  @SkipRlsContext()
-  @HttpCode(HttpStatus.OK)
-  async analyzeMagicLayers(
-    @Body()
-    dto: {
-      archetype?: string;
-      title?: string;
-      subtitle?: string;
-      author?: string;
-      naturalW?: number;
-      naturalH?: number;
-    },
-  ) {
-    return await this.magicLayersService.analyzeDocumentLayout(dto);
-  }
-
   // Ekstraksi 100% Manifest Asli Poster (OCR AI Vision & Layout Tanpa Dummy)
   @Post('magic-layers/extract-manifest')
   @SkipRlsContext()
+  @UseGuards(SubscriptionGuard, TokenCircuitBreakerGuard)
   @HttpCode(HttpStatus.OK)
   async extractManifest(
-    @Body()
-    dto: {
-      imageUrl: string;
-      publicationId?: string;
-      naturalW?: number;
-      naturalH?: number;
-      forceReExtract?: boolean;
-    },
+    @CurrentTenant() user: AuthenticatedTenantPayload,
+    @Body() dto: ExtractPosterManifestDto,
   ) {
-    return await this.magicLayersService.getOrExtractPosterManifest(dto);
+    return await this.magicLayersService.getOrExtractPosterManifest({
+      ...dto,
+      tenantId: user.tenantId,
+    });
   }
 
   // Inpainting Latar Belakang AI (Menambal area kosong dengan pola tekstur sekitar solid)
   @Post('magic-layers/inpaint')
   @SkipRlsContext()
+  @UseGuards(SubscriptionGuard, TokenCircuitBreakerGuard)
   @HttpCode(HttpStatus.OK)
   async inpaintMagicLayers(
-    @Body()
-    dto: {
-      imageUrl: string;
-      naturalW?: number;
-      naturalH?: number;
-      componentBounds: Array<{ x: number; y: number; w: number; h: number; cardBg?: string; name?: string; text?: string }>;
-      archetype?: string;
-      publicationId?: string;
-    },
+    @CurrentTenant() user: AuthenticatedTenantPayload,
+    @Body() dto: InpaintPosterDto,
   ) {
-    return await this.magicLayersService.inpaintPosterBackground(dto);
+    return await this.magicLayersService.inpaintPosterBackground({
+      ...dto,
+      tenantId: user.tenantId,
+    });
+  }
+
+  // Upload aset gambar/cutout editor ke Cloudinary/CDN agar layersJson tetap ringan
+  @Post('magic-layers/upload-asset')
+  @SkipRlsContext()
+  @HttpCode(HttpStatus.OK)
+  async uploadMagicLayerAsset(
+    @CurrentTenant() user: AuthenticatedTenantPayload,
+    @Body() dto: UploadMagicLayerAssetDto,
+  ) {
+    return await this.magicLayersService.uploadEditorAsset(user.tenantId, dto);
   }
 
   // Pengecualian: morning-briefing dapat dibaca anggota terdaftar tanpa error 403
@@ -93,6 +85,7 @@ export class StudioController {
   // Rekomendasi Isu Hangat Dapil Dinamis berbasis AI (Gemini Flash Lite)
   @Get('trending-topics')
   @SkipRlsContext()
+  @UseGuards(SubscriptionGuard, TokenCircuitBreakerGuard)
   @HttpCode(HttpStatus.OK)
   async getTrendingTopics(@CurrentTenant() user: AuthenticatedTenantPayload) {
     return await this.studioService.getTrendingDapilTopics(user.tenantId);
@@ -113,6 +106,7 @@ export class StudioController {
   // Parafrase & Penyempurnaan Prompt Cerdas menggunakan Gemini Flash Lite (Ultra-Cepat & Hemat)
   @Post('refine-prompt')
   @SkipRlsContext()
+  @UseGuards(SubscriptionGuard, TokenCircuitBreakerGuard)
   @HttpCode(HttpStatus.OK)
   async refinePrompt(
     @CurrentTenant() user: AuthenticatedTenantPayload,
@@ -155,7 +149,7 @@ export class StudioController {
 
   @Post('articles/:id/poster/regenerate')
   @SkipRlsContext()
-  @UseGuards(SubscriptionGuard)
+  @UseGuards(SubscriptionGuard, TokenCircuitBreakerGuard)
   @HttpCode(HttpStatus.ACCEPTED)
   async regeneratePoster(
     @CurrentTenant() user: AuthenticatedTenantPayload,
@@ -166,6 +160,18 @@ export class StudioController {
       visualFormat: dto?.visualFormat,
       forcedArchetype: dto?.forcedArchetype,
     });
+  }
+
+  @Post('articles/:id/poster/save-layers')
+  @SkipRlsContext()
+  @UseGuards(SubscriptionGuard)
+  @HttpCode(HttpStatus.OK)
+  async savePosterLayers(
+    @CurrentTenant() user: AuthenticatedTenantPayload,
+    @Param('id') id: string,
+    @Body() dto: SavePosterLayersDto
+  ) {
+    return await this.magicLayersService.saveEditedPosterLayers(user.tenantId, id, dto);
   }
 
   @Put('articles/:id')
@@ -258,7 +264,7 @@ export class StudioController {
     @CurrentTenant() user: AuthenticatedTenantPayload,
     @Body() dto: PublishInfographicDto
   ) {
-    return await this.studioService.publishInfographic(user.tenantId, dto);
+    return await this.studioService.publishInfographic(user.tenantId, dto, user);
   }
 
   @Post('infographics/:id/publish')
@@ -269,7 +275,11 @@ export class StudioController {
     @Param('id') id: string,
     @Body() dto: Partial<PublishInfographicDto>
   ) {
-    return await this.studioService.publishInfographic(user.tenantId, { ...dto, publicationId: id } as PublishInfographicDto);
+    return await this.studioService.publishInfographic(
+      user.tenantId,
+      { ...dto, publicationId: id } as PublishInfographicDto,
+      user
+    );
   }
 
   @Post('infographics/:id/unpublish')

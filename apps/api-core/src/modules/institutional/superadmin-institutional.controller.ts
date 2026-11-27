@@ -22,11 +22,17 @@ import {
   UpsertOrganizationContractRequestDto,
   AssignOrganizationMemberRequestDto,
 } from './dto/institutional-request.dto.js';
+import { INDONESIA_REGIONS } from '@polaris/shared-types';
 
 @Controller('superadmin/institutions')
 @UseGuards(AuthGuard, SuperadminGuard)
 export class SuperadminInstitutionalController {
   constructor(private readonly governance: InstitutionalGovernanceService) {}
+
+  @Get('regions')
+  getIndonesiaRegions() {
+    return INDONESIA_REGIONS;
+  }
 
   @Post()
   @HttpCode(HttpStatus.CREATED)
@@ -34,7 +40,8 @@ export class SuperadminInstitutionalController {
     @CurrentTenant() admin: AuthenticatedTenantPayload,
     @Body() dto: CreateInstitutionRequestDto
   ) {
-    return await this.governance.createInstitution(admin?.tenantId, dto);
+    const adminId = admin?.operatorId || admin?.tenantId;
+    return await this.governance.createInstitution(adminId, dto);
   }
 
   @Get()
@@ -53,7 +60,8 @@ export class SuperadminInstitutionalController {
     @CurrentTenant() admin: AuthenticatedTenantPayload,
     @Body() dto: UpdateInstitutionRequestDto
   ) {
-    return await this.governance.updateInstitution(orgId, admin?.tenantId, dto);
+    const adminId = admin?.operatorId || admin?.tenantId;
+    return await this.governance.updateInstitution(orgId, adminId, dto);
   }
 
   @Post(':orgId/contracts')
@@ -63,9 +71,10 @@ export class SuperadminInstitutionalController {
     @CurrentTenant() admin: AuthenticatedTenantPayload,
     @Body() dto: UpsertOrganizationContractRequestDto
   ) {
+    const adminId = admin?.operatorId || admin?.tenantId;
     return await this.governance.upsertOrganizationContract(
       orgId,
-      admin?.tenantId,
+      adminId,
       dto
     );
   }
@@ -77,9 +86,10 @@ export class SuperadminInstitutionalController {
     @CurrentTenant() admin: AuthenticatedTenantPayload,
     @Body() dto: AssignOrganizationMemberRequestDto
   ) {
+    const adminId = admin?.operatorId || admin?.tenantId;
     return await this.governance.assignOrganizationMember(
       orgId,
-      { adminId: admin?.tenantId },
+      { adminId },
       dto
     );
   }

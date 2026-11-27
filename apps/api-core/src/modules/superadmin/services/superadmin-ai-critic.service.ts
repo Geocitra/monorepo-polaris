@@ -1,4 +1,4 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger, NotFoundException } from '@nestjs/common';
 import {
   db,
   studioAiCriticLogs,
@@ -116,7 +116,7 @@ export class SuperadminAiCriticService {
       .limit(1);
 
     if (!existing) {
-      throw new Error(`Aturan memori dengan ID ${id} tidak ditemukan.`);
+      throw new NotFoundException(`Aturan memori dengan ID ${id} tidak ditemukan.`);
     }
 
     const nextState = !existing.isActive;

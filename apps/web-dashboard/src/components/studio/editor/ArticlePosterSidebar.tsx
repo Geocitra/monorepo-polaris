@@ -7,6 +7,7 @@ import { MagicLayersModal } from '@/components/studio/infografis/MagicLayersModa
 
 interface ArticlePosterSidebarProps {
   posterUrl: string | null;
+  publicationId?: string;
   title: string;
   isRegenerating: boolean;
   onRegenerate: () => void;
@@ -15,6 +16,7 @@ interface ArticlePosterSidebarProps {
 
 export function ArticlePosterSidebar({
   posterUrl,
+  publicationId,
   title,
   isRegenerating,
   onRegenerate,
@@ -93,6 +95,7 @@ export function ArticlePosterSidebar({
           isOpen={showMagicLayers}
           onClose={() => setShowMagicLayers(false)}
           imageUrl={posterUrl}
+          publicationId={publicationId}
           initialTitle={title}
           aspectRatio="4:5"
           onApplyChanges={(newImageUrl) => {

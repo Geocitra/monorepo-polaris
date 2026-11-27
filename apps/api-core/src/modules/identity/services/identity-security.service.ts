@@ -7,13 +7,16 @@ import {
 } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import * as bcrypt from 'bcrypt';
-import { eq } from 'drizzle-orm';
+import { eq, and } from 'drizzle-orm';
 import {
   db,
   tenantMembers,
   portalConfigs,
   tenantActivityLogs,
   systemAdmins,
+  organizations,
+  organizationMemberships,
+  organizationUnitMemberships,
 } from '@polaris/database';
 import {
   ForceChangeInitialPasswordDto,
@@ -25,7 +28,63 @@ import {
 export class IdentitySecurityService {
   private readonly logger = new Logger(IdentitySecurityService.name);
 
-  constructor(private readonly jwtService: JwtService) {}
+  constructor(private readonly jwtService: JwtService) { }
+
+  private async resolveSessionClaims(tenantId: string) {
+    const [portal] = await db
+      .select({ subdomainSlug: portalConfigs.subdomainSlug })
+      .from(portalConfigs)
+      .where(eq(portalConfigs.tenantId, tenantId))
+      .limit(1);
+
+    const subdomainSlug = portal?.subdomainSlug || '';
+
+    const [primaryOrg] = await db
+      .select({
+        organizationId: organizations.id,
+        organizationName: organizations.name,
+        organizationCode: organizations.code,
+        orgRole: organizationMemberships.orgRole,
+      })
+      .from(organizationMemberships)
+      .innerJoin(organizations, eq(organizationMemberships.organizationId, organizations.id))
+      .where(
+        and(
+          eq(organizationMemberships.tenantId, tenantId),
+          eq(organizationMemberships.status, 'ACTIVE'),
+          eq(organizations.status, 'ACTIVE')
+        )
+      )
+      .limit(1);
+
+    let hasAssignedUnits = false;
+    if (primaryOrg) {
+      const [unitRow] = await db
+        .select({ id: organizationUnitMemberships.id })
+        .from(organizationUnitMemberships)
+        .where(
+          and(
+            eq(organizationUnitMemberships.organizationId, primaryOrg.organizationId),
+            eq(organizationUnitMemberships.tenantId, tenantId),
+            eq(organizationUnitMemberships.status, 'ACTIVE')
+          )
+        )
+        .limit(1);
+      hasAssignedUnits = Boolean(unitRow);
+    }
+
+    const accountMode: 'B2B_ONLY' | 'B2C_ONLY' | 'HYBRID' = primaryOrg
+      ? portal
+        ? 'HYBRID'
+        : 'B2B_ONLY'
+      : 'B2C_ONLY';
+
+    return {
+      subdomainSlug,
+      accountMode,
+      primaryOrganization: primaryOrg ? { ...primaryOrg, hasAssignedUnits } : null,
+    };
+  }
 
   async forceChangeInitialPassword(tenantId: string, dto: ForceChangeInitialPasswordDto) {
     const [member] = await db
@@ -67,19 +126,15 @@ export class IdentitySecurityService {
       })
       .where(eq(tenantMembers.id, tenantId));
 
-    const [portal] = await db
-      .select({ subdomainSlug: portalConfigs.subdomainSlug })
-      .from(portalConfigs)
-      .where(eq(portalConfigs.tenantId, tenantId))
-      .limit(1);
-
-    const subdomainSlug = portal?.subdomainSlug || '';
+    const { subdomainSlug, accountMode, primaryOrganization } =
+      await this.resolveSessionClaims(tenantId);
 
     const payload = {
       sub: member.id,
       email: member.email,
       subdomainSlug,
       mustChangePassword: false,
+      accountMode,
       role: 'MEMBER',
     };
 
@@ -97,6 +152,8 @@ export class IdentitySecurityService {
         subdomain: subdomainSlug,
         mustChangePassword: false,
         legislativeLevel: member.legislativeLevel as any,
+        accountMode,
+        primaryOrganization,
       },
       message:
         'Kata sandi akun Anda berhasil diperbarui. Akses dashboard telah dibuka penuh.',
@@ -163,19 +220,15 @@ export class IdentitySecurityService {
       this.logger.warn(`Gagal mencatat log perubahan password: ${err.message}`);
     }
 
-    const [portal] = await db
-      .select({ subdomainSlug: portalConfigs.subdomainSlug })
-      .from(portalConfigs)
-      .where(eq(portalConfigs.tenantId, tenantId))
-      .limit(1);
-
-    const subdomainSlug = portal?.subdomainSlug || '';
+    const { subdomainSlug, accountMode, primaryOrganization } =
+      await this.resolveSessionClaims(tenantId);
 
     const payload = {
       sub: member.id,
       email: member.email,
       subdomainSlug,
       mustChangePassword: false,
+      accountMode,
       role: 'MEMBER',
     };
 
@@ -193,6 +246,8 @@ export class IdentitySecurityService {
         subdomain: subdomainSlug,
         mustChangePassword: false,
         legislativeLevel: member.legislativeLevel as any,
+        accountMode,
+        primaryOrganization,
       },
       message: 'Kata sandi akun Anda berhasil diperbarui.',
       passwordChangedAt: now.toISOString(),
@@ -265,17 +320,16 @@ export class IdentitySecurityService {
       })
       .where(eq(tenantMembers.id, tenantId));
 
-    // 6. Buat token JWT baru dengan email baru
-    const [portal] = await db
-      .select({ subdomainSlug: portalConfigs.subdomainSlug })
-      .from(portalConfigs)
-      .where(eq(portalConfigs.tenantId, tenantId))
-      .limit(1);
+    // 6. Buat token JWT baru dengan email baru & klaim accountMode lengkap
+    const { subdomainSlug, accountMode } = await this.resolveSessionClaims(tenantId);
 
     const payload = {
       sub: member.id,
       email: cleanNewEmail,
-      subdomainSlug: portal?.subdomainSlug,
+      subdomainSlug,
+      mustChangePassword: false,
+      accountMode,
+      role: 'MEMBER',
     };
     const newAccessToken = await this.jwtService.signAsync(payload);
 

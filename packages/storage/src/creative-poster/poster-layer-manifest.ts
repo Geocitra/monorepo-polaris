@@ -10,72 +10,33 @@
  * Koordinat dalam piksel ruang render (viewport `width` x `height`).
  */
 
-export interface PosterLayerBorderSide {
-  w: number;
-  color: string;
-}
+import type {
+  PosterLayerBorderSide,
+  PosterLayerBorders,
+  PosterLayerShadow,
+  PosterLayerBox,
+  PosterFrameLayer,
+  PosterTextLayer,
+  PosterImageLayer,
+  PosterShapeVariant,
+  PosterShapeLayer,
+  PosterLayer,
+  PosterLayerManifest,
+} from '@polaris/shared-types';
 
-export interface PosterLayerBorders {
-  top: PosterLayerBorderSide | null;
-  right: PosterLayerBorderSide | null;
-  bottom: PosterLayerBorderSide | null;
-  left: PosterLayerBorderSide | null;
-}
-
-export interface PosterLayerShadow {
-  color: string;
-  offsetX: number;
-  offsetY: number;
-  blur: number;
-}
-
-export interface PosterLayerBox {
-  fill: string | null;
-  radius: number;
-  borders: PosterLayerBorders;
-  shadow: PosterLayerShadow | null;
-}
-
-export interface PosterFrameLayer extends PosterLayerBox {
-  kind: 'frame';
-  id: string;
-  role: string;
-  x: number;
-  y: number;
-  w: number;
-  h: number;
-}
-
-export interface PosterTextLayer {
-  kind: 'text';
-  id: string;
-  role: string;
-  text: string;
-  /** Kotak konten teks (tanpa padding). */
-  x: number;
-  y: number;
-  w: number;
-  h: number;
-  fontFamily: string;
-  fontSize: number;
-  fontWeight: string;
-  fontStyle: string;
-  color: string;
-  textAlign: 'left' | 'center' | 'right' | 'justify';
-  lineHeightPx: number;
-  letterSpacingPx: number;
-  /** Latar milik teks itu sendiri (mis. badge/pill) — digambar mengikuti padding CSS. */
-  box: (PosterLayerBox & { padding: { t: number; r: number; b: number; l: number } }) | null;
-}
-
-export type PosterLayer = PosterFrameLayer | PosterTextLayer;
-
-export interface PosterLayerManifest {
-  version: 1;
-  width: number;
-  height: number;
-  layers: PosterLayer[];
-}
+export type {
+  PosterLayerBorderSide,
+  PosterLayerBorders,
+  PosterLayerShadow,
+  PosterLayerBox,
+  PosterFrameLayer,
+  PosterTextLayer,
+  PosterImageLayer,
+  PosterShapeVariant,
+  PosterShapeLayer,
+  PosterLayer,
+  PosterLayerManifest,
+};
 
 /**
  * Script yang dievaluasi di dalam halaman Chromium (string agar tidak membutuhkan lib DOM
@@ -196,6 +157,49 @@ export const POSTER_LAYER_EXTRACTOR_SCRIPT = String.raw`(() => {
       }
     }
 
+    const tagName = (el.tagName || '').toLowerCase();
+    const isFullCanvasBg = rect.width >= VW * 0.92 && rect.height >= VH * 0.92;
+
+    if (tagName === 'img' && rect.width > 8 && rect.height > 8 && !isFullCanvasBg) {
+      const src = el.currentSrc || el.getAttribute('src') || '';
+      if (src && !src.startsWith('data:')) {
+        layers.push({
+          kind: 'image',
+          id: 'i' + seq++,
+          role: roleOf(el),
+          src,
+          x: r1(rect.left),
+          y: r1(rect.top),
+          w: r1(rect.width),
+          h: r1(rect.height),
+          radius: r1((parseFloat(cs.borderTopLeftRadius) || 0) * scale),
+          opacity: parseFloat(cs.opacity) || 1,
+          objectFit: cs.objectFit === 'contain' ? 'contain' : cs.objectFit === 'fill' ? 'fill' : 'cover',
+        });
+      }
+      return;
+    }
+
+    if (tagName === 'svg' && rect.width > 4 && rect.height > 4 && !isFullCanvasBg) {
+      const svgMarkup = el.outerHTML || '';
+      if (svgMarkup && svgMarkup.length <= 16384) {
+        layers.push({
+          kind: 'shape',
+          id: 's' + seq++,
+          role: roleOf(el),
+          shapeType: 'svg',
+          x: r1(rect.left),
+          y: r1(rect.top),
+          w: r1(rect.width),
+          h: r1(rect.height),
+          fill: isVisibleColor(cs.fill) ? cs.fill : isVisibleColor(cs.color) ? cs.color : null,
+          opacity: parseFloat(cs.opacity) || 1,
+          svgMarkup,
+        });
+      }
+      return;
+    }
+
     if (el !== root && box.has && rect.width > 0 && rect.height > 0) {
       layers.push({
         kind: 'frame', id: 'f' + seq++, role: roleOf(el),
@@ -211,6 +215,7 @@ export const POSTER_LAYER_EXTRACTOR_SCRIPT = String.raw`(() => {
   };
 
   walk(root);
-  return { version: 1, width: VW, height: VH, layers };
+  const hasExtended = layers.some((l) => l.kind === 'image' || l.kind === 'shape');
+  return { version: hasExtended ? 2 : 1, width: VW, height: VH, layers };
 })()`;
 

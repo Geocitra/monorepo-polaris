@@ -8,72 +8,50 @@
  *
  * Karena posisi, tipografi, dan warna berasal dari render asli, hasilnya 1:1 dengan poster.
  */
-import { Rect, Textbox, type Canvas as FabricCanvas, type FabricObject } from 'fabric';
+import {
+  Circle,
+  FabricImage,
+  Line,
+  Rect,
+  Textbox,
+  Triangle,
+  loadSVGFromString,
+  util,
+  type Canvas as FabricCanvas,
+  type FabricObject,
+} from 'fabric';
+import type {
+  PosterLayerBorderSide as MlBorderSide,
+  PosterLayerBorders as MlBorders,
+  PosterLayerShadow as MlShadow,
+  PosterLayerBox as MlBox,
+  PosterFrameLayer as MlFrameLayer,
+  PosterTextLayer as MlTextLayer,
+  PosterImageLayer as MlImageLayer,
+  PosterShapeLayer as MlShapeLayer,
+  PosterLayer as MlLayer,
+  PosterLayerManifest,
+} from '@polaris/shared-types';
 import { ApiClient } from '@/lib/api-client';
 
-// ─── Tipe Manifest (mirror dari @polaris/storage: poster-layer-manifest.ts) ───
-export interface MlBorderSide {
-  w: number;
-  color: string;
-}
-export interface MlBorders {
-  top: MlBorderSide | null;
-  right: MlBorderSide | null;
-  bottom: MlBorderSide | null;
-  left: MlBorderSide | null;
-}
-export interface MlShadow {
-  color: string;
-  offsetX: number;
-  offsetY: number;
-  blur: number;
-}
-export interface MlBox {
-  fill: string | null;
-  radius: number;
-  borders: MlBorders;
-  shadow: MlShadow | null;
-}
+export type {
+  MlBorderSide,
+  MlBorders,
+  MlShadow,
+  MlBox,
+  MlFrameLayer,
+  MlTextLayer,
+  MlImageLayer,
+  MlShapeLayer,
+  MlLayer,
+  PosterLayerManifest,
+};
+
 export interface MlPadding {
   t: number;
   r: number;
   b: number;
   l: number;
-}
-export interface MlFrameLayer extends MlBox {
-  kind: 'frame';
-  id: string;
-  role: string;
-  x: number;
-  y: number;
-  w: number;
-  h: number;
-}
-export interface MlTextLayer {
-  kind: 'text';
-  id: string;
-  role: string;
-  text: string;
-  x: number;
-  y: number;
-  w: number;
-  h: number;
-  fontFamily: string;
-  fontSize: number;
-  fontWeight: string;
-  fontStyle: string;
-  color: string;
-  textAlign: 'left' | 'center' | 'right' | 'justify';
-  lineHeightPx: number;
-  letterSpacingPx: number;
-  box: (MlBox & { padding: MlPadding }) | null;
-}
-export type MlLayer = MlFrameLayer | MlTextLayer;
-export interface PosterLayerManifest {
-  version: 1;
-  width: number;
-  height: number;
-  layers: MlLayer[];
 }
 
 /** Gaya dekorasi yang disimpan di customData agar bisa dipulihkan setelah loadFromJSON. */
@@ -136,7 +114,12 @@ function paintBox(
   box: MlBox,
   fillOverride?: unknown
 ) {
-  const fill = isPaintable(fillOverride) ? fillOverride : box.fill;
+  const isExplicitTransparent = fillOverride === 'transparent';
+  const fill = isExplicitTransparent
+    ? undefined
+    : isPaintable(fillOverride)
+      ? fillOverride
+      : box.fill;
 
   if (fill) {
     ctx.save();
@@ -208,11 +191,11 @@ function scaleBox<T extends MlBox>(box: T, s: number): T {
     },
     shadow: box.shadow
       ? {
-          color: box.shadow.color,
-          offsetX: box.shadow.offsetX * s,
-          offsetY: box.shadow.offsetY * s,
-          blur: box.shadow.blur * s,
-        }
+        color: box.shadow.color,
+        offsetX: box.shadow.offsetX * s,
+        offsetY: box.shadow.offsetY * s,
+        blur: box.shadow.blur * s,
+      }
       : null,
   };
 }
@@ -369,7 +352,7 @@ export async function fetchPosterLayerData(
         rawCanvasUrl: parsed?.rawCanvasUrl || detail?.rawCanvasUrl || undefined,
         detectedArchetype: parsed?.archetype,
       };
-    } catch {}
+    } catch { }
   }
 
   return { manifest: null };
@@ -412,6 +395,59 @@ export function buildObjectsFromManifest(
       objects.push(rect);
       return;
     }
+
+    if (layer.kind === 'shape') {
+      if (layer.w < 1 || layer.h < 1 || layer.shapeType === 'svg') return;
+      const common = {
+        originX: 'left' as const,
+        originY: 'top' as const,
+        left: layer.x * sx,
+        top: layer.y * sy,
+        fill: layer.fill ? cssColorToHex(layer.fill) : 'transparent',
+        stroke: layer.stroke ? cssColorToHex(layer.stroke) : undefined,
+        strokeWidth: layer.strokeWidth || 0,
+        opacity: layer.opacity ?? 1,
+        ...CANVA_CONTROLS,
+      };
+      let shapeObj: FabricObject;
+      if (layer.shapeType === 'circle') {
+        shapeObj = new Circle({
+          ...common,
+          radius: Math.max(4, (Math.min(layer.w, layer.h) * sx) / 2),
+        });
+      } else if (layer.shapeType === 'triangle') {
+        shapeObj = new Triangle({
+          ...common,
+          width: layer.w * sx,
+          height: layer.h * sy,
+        });
+      } else if (layer.shapeType === 'line') {
+        shapeObj = new Line([0, 0, layer.w * sx, 0], {
+          ...common,
+          stroke: layer.stroke ? cssColorToHex(layer.stroke) : layer.fill ? cssColorToHex(layer.fill) : '#0F172A',
+          strokeWidth: Math.max(2, layer.strokeWidth || 4),
+        });
+      } else {
+        shapeObj = new Rect({
+          ...common,
+          width: layer.w * sx,
+          height: layer.h * sy,
+          rx: (layer.radius || 0) * sx,
+          ry: (layer.radius || 0) * sy,
+        });
+      }
+      (shapeObj as any).customId = `ml_${layer.id}_${idx}`;
+      (shapeObj as any).customData = {
+        name: labelForRole(layer.role, 'Bentuk Vektor'),
+        isMlComponent: true,
+        mlRole: layer.role,
+      };
+      shapeObj.setCoords();
+      objects.push(shapeObj);
+      return;
+    }
+
+    if (layer.kind !== 'text') return;
 
     // ─── Teks ───
     const fontSize = layer.fontSize * sx;
@@ -474,6 +510,191 @@ export function buildObjectsFromManifest(
   });
 
   return objects;
+}
+
+/**
+ * Memuat layer gambar (`kind: 'image'`) dan SVG (`kind: 'shape'` + `shapeType: 'svg'`)
+ * secara asinkron dari PosterLayerManifest v2.
+ */
+export async function buildAsyncMediaLayersFromManifest(
+  manifest: PosterLayerManifest,
+  naturalW: number,
+  naturalH: number
+): Promise<FabricObject[]> {
+  const sx = naturalW / manifest.width;
+  const sy = naturalH / manifest.height;
+  const objects: FabricObject[] = [];
+
+  for (let idx = 0; idx < manifest.layers.length; idx++) {
+    const layer = manifest.layers[idx];
+    if (layer.kind === 'image' && layer.src) {
+      try {
+        const img = await FabricImage.fromURL(layer.src, { crossOrigin: 'anonymous' });
+        const targetW = Math.max(12, layer.w * sx);
+        const targetH = Math.max(12, layer.h * sy);
+        img.set({
+          originX: 'left',
+          originY: 'top',
+          left: layer.x * sx,
+          top: layer.y * sy,
+          scaleX: targetW / (img.width || targetW),
+          scaleY: targetH / (img.height || targetH),
+          opacity: layer.opacity ?? 1,
+          ...CANVA_CONTROLS,
+        });
+        if (layer.radius && layer.radius > 0) {
+          const r = layer.radius * sx;
+          img.set(
+            'clipPath',
+            new Rect({
+              originX: 'center',
+              originY: 'center',
+              width: img.width || targetW,
+              height: img.height || targetH,
+              rx: r / (img.scaleX || 1),
+              ry: r / (img.scaleY || 1),
+            })
+          );
+        }
+        (img as any).customId = `ml_${layer.id}_${idx}`;
+        (img as any).customData = {
+          name: labelForRole(layer.role, 'Gambar / Subjek'),
+          isMlComponent: true,
+          mlRole: layer.role,
+        };
+        img.setCoords();
+        objects.push(img);
+      } catch (err) {
+        console.warn('[MagicLayers] Gagal memuat image layer manifest:', layer.id, err);
+      }
+    } else if (layer.kind === 'shape' && layer.shapeType === 'svg' && layer.svgMarkup) {
+      try {
+        const parsed = await loadSVGFromString(layer.svgMarkup);
+        const validObjs = (parsed.objects || []).filter(Boolean) as FabricObject[];
+        if (validObjs.length === 0) continue;
+        const grouped = util.groupSVGElements(validObjs, parsed.options);
+        const targetW = Math.max(8, layer.w * sx);
+        const targetH = Math.max(8, layer.h * sy);
+        grouped.set({
+          originX: 'left',
+          originY: 'top',
+          left: layer.x * sx,
+          top: layer.y * sy,
+          scaleX: targetW / (grouped.width || targetW),
+          scaleY: targetH / (grouped.height || targetH),
+          opacity: layer.opacity ?? 1,
+          ...CANVA_CONTROLS,
+        });
+        (grouped as any).customId = `ml_${layer.id}_${idx}`;
+        (grouped as any).customData = {
+          name: labelForRole(layer.role, 'Ikon / Grafis SVG'),
+          isMlComponent: true,
+          mlRole: layer.role,
+          isSvgIcon: true,
+        };
+        grouped.setCoords();
+        objects.push(grouped);
+      } catch (err) {
+        console.warn('[MagicLayers] Gagal memuat SVG layer manifest:', layer.id, err);
+      }
+    }
+  }
+
+  return objects;
+}
+
+/**
+ * Smart Magnetic Snap & Alignment Guides ala Canva:
+ * Menempelkan objek yang digeser ke garis tengah kanvas (X/Y) atau tepi/tengah objek lain (threshold 6px),
+ * serta menggambar garis bantu ungu (#7D2AE8) saat drag berlangsung.
+ */
+export function attachSnapGuides(canvas: FabricCanvas, isExporting: () => boolean): void {
+  const THRESHOLD = 6;
+  let activeGuides: Array<{ x1: number; y1: number; x2: number; y2: number }> = [];
+
+  canvas.on('object:moving', (opt: any) => {
+    const target = opt.target as FabricObject | undefined;
+    if (!target || isExporting()) return;
+
+    const canvasW = canvas.getWidth();
+    const canvasH = canvas.getHeight();
+    const bound = target.getBoundingRect();
+    const tCenterX = bound.left + bound.width / 2;
+    const tCenterY = bound.top + bound.height / 2;
+
+    const xTargets: number[] = [canvasW / 2];
+    const yTargets: number[] = [canvasH / 2];
+
+    for (const obj of canvas.getObjects()) {
+      if (obj === target || (obj as any).customData?.isBackground || obj.visible === false) continue;
+      const b = obj.getBoundingRect();
+      xTargets.push(b.left, b.left + b.width / 2, b.left + b.width);
+      yTargets.push(b.top, b.top + b.height / 2, b.top + b.height);
+    }
+
+    const nextGuides: Array<{ x1: number; y1: number; x2: number; y2: number }> = [];
+
+    // Cek snap horizontal (left, center, right)
+    const xPoints = [
+      { pos: bound.left, offset: 0 },
+      { pos: tCenterX, offset: bound.width / 2 },
+      { pos: bound.left + bound.width, offset: bound.width },
+    ];
+    for (const xt of xTargets) {
+      const hit = xPoints.find((xp) => Math.abs(xp.pos - xt) <= THRESHOLD);
+      if (hit) {
+        const dx = xt - hit.pos;
+        target.set('left', (target.left || 0) + dx);
+        nextGuides.push({ x1: xt, y1: 0, x2: xt, y2: canvasH });
+        break;
+      }
+    }
+
+    // Cek snap vertikal (top, center, bottom)
+    const yPoints = [
+      { pos: bound.top, offset: 0 },
+      { pos: tCenterY, offset: bound.height / 2 },
+      { pos: bound.top + bound.height, offset: bound.height },
+    ];
+    for (const yt of yTargets) {
+      const hit = yPoints.find((yp) => Math.abs(yp.pos - yt) <= THRESHOLD);
+      if (hit) {
+        const dy = yt - hit.pos;
+        target.set('top', (target.top || 0) + dy);
+        nextGuides.push({ x1: 0, y1: yt, x2: canvasW, y2: yt });
+        break;
+      }
+    }
+
+    target.setCoords();
+    activeGuides = nextGuides;
+  });
+
+  const clearGuides = () => {
+    if (activeGuides.length > 0) {
+      activeGuides = [];
+      canvas.requestRenderAll();
+    }
+  };
+  canvas.on('object:modified', clearGuides);
+  canvas.on('mouse:up', clearGuides);
+
+  canvas.on('after:render', () => {
+    if (isExporting() || activeGuides.length === 0) return;
+    const ctx = canvas.getContext();
+    if (!ctx) return;
+    ctx.save();
+    ctx.strokeStyle = '#7D2AE8';
+    ctx.lineWidth = 1.25;
+    ctx.setLineDash([5, 4]);
+    for (const g of activeGuides) {
+      ctx.beginPath();
+      ctx.moveTo(g.x1, g.y1);
+      ctx.lineTo(g.x2, g.y2);
+      ctx.stroke();
+    }
+    ctx.restore();
+  });
 }
 
 /**

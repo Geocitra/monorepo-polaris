@@ -392,8 +392,20 @@ export class QuotaWalletService {
         throw new NotFoundException(`Dompet kuota untuk tenant ${tenantId} tidak ditemukan.`);
       }
 
+      const [sub] = await tx
+        .select({ status: subscriptions.status })
+        .from(subscriptions)
+        .where(eq(subscriptions.tenantId, tenantId))
+        .limit(1);
+
+      if (!sub || sub.status !== 'ACTIVE') {
+        throw new ForbiddenException(
+          'Status langganan Anda sedang tidak aktif atau dalam penangguhan. Silakan aktifkan lisensi terlebih dahulu.',
+        );
+      }
+
       const now = new Date();
-      if (wallet.currentPeriodEnd && new Date(wallet.currentPeriodEnd) <= now) {
+      if (!wallet.currentPeriodEnd || new Date(wallet.currentPeriodEnd) <= now) {
         throw new ForbiddenException(
           'Masa aktif paket lisensi Anda telah berakhir. Silakan lakukan perpanjangan paket untuk membuat materi baru.',
         );

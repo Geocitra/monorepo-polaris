@@ -164,7 +164,7 @@ function BrandingContent() {
           subdomainSlug: subdomainSlug.trim() || undefined,
           customDomain: customDomain.trim() || undefined,
         }),
-      }).catch(() => { });
+      });
 
       toast({
         type: 'success',

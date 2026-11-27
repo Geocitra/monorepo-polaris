@@ -293,14 +293,14 @@ export default function BillingPage() {
 
           {/* SPEEDOMETER KUOTA REQUEST (MODEL KUOTA INTERNET) */}
           <QuotaSpeedometerCard
-            totalQuotaAllocated={billing?.quota?.totalQuotaAllocated ?? 12}
-            remainingQuota={billing?.quota?.remainingQuota ?? 12}
+            totalQuotaAllocated={billing?.quota?.totalQuotaAllocated ?? 0}
+            remainingQuota={billing?.quota?.remainingQuota ?? 0}
             weeklyAllowanceLimit={billing?.quota?.weeklyAllowanceLimit ?? 3}
             weeklyUsed={billing?.quota?.weeklyUsed ?? 0}
             openaiTotalTokens={billing?.quota?.openaiTotalTokens ?? 0}
-            openaiImagesUsed={billing?.quota?.openaiImagesUsed ?? 0}
+            openaiImagesUsed={billing?.quota?.openaiImageCalls ?? 0}
             geminiTotalTokens={billing?.quota?.geminiTotalTokens ?? 0}
-            geminiImagesUsed={billing?.quota?.geminiImagesUsed ?? 0}
+            geminiImagesUsed={billing?.quota?.geminiImageCalls ?? 0}
             currentPeriodEnd={currentPeriodEnd}
             isSubActive={isSubActive}
             onTopUpClick={() => {

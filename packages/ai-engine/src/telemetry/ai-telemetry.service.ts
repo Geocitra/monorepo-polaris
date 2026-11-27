@@ -351,6 +351,47 @@ export class AiTelemetryService {
               )
             );
 
+          const isRevisionAction = activityType.toUpperCase().includes('REVISION');
+          const genReqDelta = isRevisionAction ? 0 : 1;
+          const revReqDelta = isRevisionAction ? 1 : 0;
+
+          const ledgerValues = {
+            organizationId: validOrganizationUuid,
+            unitId: validUnitUuid,
+            tenantId: validTenantUuid,
+            billingCycleMonth: currentMonth,
+            totalRequests: 1,
+            generateRequests: genReqDelta,
+            revisionRequests: revReqDelta,
+            openaiInputTokens: oaiIn,
+            openaiOutputTokens: oaiOut,
+            openaiTotalTokens: oaiTot,
+            openaiCostIdr: oaiIdr,
+            geminiInputTokens: gemIn,
+            geminiOutputTokens: gemOut,
+            geminiTotalTokens: gemTot,
+            geminiCostIdr: gemIdr,
+            totalTokensConsumed: totalTokens,
+            totalCostIdr: costIdr,
+          };
+
+          const ledgerUpdateSet = {
+            totalRequests: sql`${organizationQuotaLedgers.totalRequests} + 1`,
+            generateRequests: sql`${organizationQuotaLedgers.generateRequests} + ${genReqDelta}`,
+            revisionRequests: sql`${organizationQuotaLedgers.revisionRequests} + ${revReqDelta}`,
+            openaiInputTokens: sql`${organizationQuotaLedgers.openaiInputTokens} + ${oaiIn}`,
+            openaiOutputTokens: sql`${organizationQuotaLedgers.openaiOutputTokens} + ${oaiOut}`,
+            openaiTotalTokens: sql`${organizationQuotaLedgers.openaiTotalTokens} + ${oaiTot}`,
+            openaiCostIdr: sql`${organizationQuotaLedgers.openaiCostIdr} + ${oaiIdr}`,
+            geminiInputTokens: sql`${organizationQuotaLedgers.geminiInputTokens} + ${gemIn}`,
+            geminiOutputTokens: sql`${organizationQuotaLedgers.geminiOutputTokens} + ${gemOut}`,
+            geminiTotalTokens: sql`${organizationQuotaLedgers.geminiTotalTokens} + ${gemTot}`,
+            geminiCostIdr: sql`${organizationQuotaLedgers.geminiCostIdr} + ${gemIdr}`,
+            totalTokensConsumed: sql`${organizationQuotaLedgers.totalTokensConsumed} + ${totalTokens}`,
+            totalCostIdr: sql`${organizationQuotaLedgers.totalCostIdr} + ${costIdr}`,
+            updatedAt: new Date(),
+          };
+
           const [existingOrgLedger] = await db
             .select({ id: organizationQuotaLedgers.id })
             .from(organizationQuotaLedgers)
@@ -360,6 +401,9 @@ export class AiTelemetryService {
                 validUnitUuid
                   ? eq(organizationQuotaLedgers.unitId, validUnitUuid)
                   : sql`${organizationQuotaLedgers.unitId} IS NULL`,
+                validTenantUuid
+                  ? eq(organizationQuotaLedgers.tenantId, validTenantUuid)
+                  : sql`${organizationQuotaLedgers.tenantId} IS NULL`,
                 eq(organizationQuotaLedgers.billingCycleMonth, currentMonth)
               )
             )
@@ -368,38 +412,10 @@ export class AiTelemetryService {
           if (existingOrgLedger) {
             await db
               .update(organizationQuotaLedgers)
-              .set({
-                totalRequests: sql`${organizationQuotaLedgers.totalRequests} + 1`,
-                openaiInputTokens: sql`${organizationQuotaLedgers.openaiInputTokens} + ${oaiIn}`,
-                openaiOutputTokens: sql`${organizationQuotaLedgers.openaiOutputTokens} + ${oaiOut}`,
-                openaiTotalTokens: sql`${organizationQuotaLedgers.openaiTotalTokens} + ${oaiTot}`,
-                openaiCostIdr: sql`${organizationQuotaLedgers.openaiCostIdr} + ${oaiIdr}`,
-                geminiInputTokens: sql`${organizationQuotaLedgers.geminiInputTokens} + ${gemIn}`,
-                geminiOutputTokens: sql`${organizationQuotaLedgers.geminiOutputTokens} + ${gemOut}`,
-                geminiTotalTokens: sql`${organizationQuotaLedgers.geminiTotalTokens} + ${gemTot}`,
-                geminiCostIdr: sql`${organizationQuotaLedgers.geminiCostIdr} + ${gemIdr}`,
-                totalTokensConsumed: sql`${organizationQuotaLedgers.totalTokensConsumed} + ${totalTokens}`,
-                totalCostIdr: sql`${organizationQuotaLedgers.totalCostIdr} + ${costIdr}`,
-                updatedAt: new Date(),
-              })
+              .set(ledgerUpdateSet)
               .where(eq(organizationQuotaLedgers.id, existingOrgLedger.id));
           } else {
-            await db.insert(organizationQuotaLedgers).values({
-              organizationId: validOrganizationUuid,
-              unitId: validUnitUuid,
-              billingCycleMonth: currentMonth,
-              totalRequests: 1,
-              openaiInputTokens: oaiIn,
-              openaiOutputTokens: oaiOut,
-              openaiTotalTokens: oaiTot,
-              openaiCostIdr: oaiIdr,
-              geminiInputTokens: gemIn,
-              geminiOutputTokens: gemOut,
-              geminiTotalTokens: gemTot,
-              geminiCostIdr: gemIdr,
-              totalTokensConsumed: totalTokens,
-              totalCostIdr: costIdr,
-            });
+            await db.insert(organizationQuotaLedgers).values(ledgerValues);
           }
         } catch (orgLedgerErr: any) {
           console.warn(

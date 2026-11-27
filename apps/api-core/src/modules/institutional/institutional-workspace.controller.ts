@@ -3,6 +3,7 @@ import {
   Get,
   Post,
   Patch,
+  Delete,
   Param,
   Body,
   UseGuards,
@@ -26,11 +27,15 @@ import {
 } from './guards/institutional-workspace.guard.js';
 import { InstitutionalGovernanceService } from './institutional-governance.service.js';
 import { InstitutionalKnowledgeService } from './institutional-knowledge.service.js';
+import { InstitutionalQuotaService } from './institutional-quota.service.js';
 import {
   CreateSharedNoteRequestDto,
   PromoteSharedNoteVisibilityRequestDto,
   InstitutionalDocumentUploadMetaDto,
   InstitutionalAiAssistBodyDto,
+  ReviseInstitutionalItemDto,
+  CoordinatorChatRequestDto,
+  AssignUnitMemberRequestDto,
 } from './dto/institutional-request.dto.js';
 import { OrganizationMemberRole, OrganizationUnitMemberRole } from '@polaris/shared-types';
 
@@ -39,12 +44,22 @@ import { OrganizationMemberRole, OrganizationUnitMemberRole } from '@polaris/sha
 export class InstitutionalWorkspaceController {
   constructor(
     private readonly governance: InstitutionalGovernanceService,
-    private readonly knowledge: InstitutionalKnowledgeService
-  ) {}
+    private readonly knowledge: InstitutionalKnowledgeService,
+    private readonly quotaService: InstitutionalQuotaService
+  ) { }
 
   @Get('my-workspaces')
   async getMyWorkspaces(@CurrentTenant() user: AuthenticatedTenantPayload) {
     return await this.governance.getMyWorkspaces(user.tenantId);
+  }
+
+  @Get('orgs/:orgId/my-quota')
+  @UseGuards(InstitutionalWorkspaceGuard)
+  async getMyOrgQuota(
+    @Param('orgId') orgId: string,
+    @CurrentTenant() user: AuthenticatedTenantPayload
+  ) {
+    return await this.quotaService.getMemberQuota(orgId, user.tenantId);
   }
 
   @Get('orgs/:orgId/units/:unitId/overview')
@@ -60,6 +75,15 @@ export class InstitutionalWorkspaceController {
       instCtx?.orgRole || OrganizationMemberRole.MEMBER,
       instCtx?.unitRole || OrganizationUnitMemberRole.MEMBER
     );
+  }
+
+  @Get('orgs/:orgId/units/:unitId/proactive-prompts')
+  @UseGuards(InstitutionalWorkspaceGuard)
+  async getUnitProactivePrompts(
+    @Param('orgId') orgId: string,
+    @Param('unitId') unitId: string
+  ) {
+    return await this.knowledge.getUnitProactivePrompts(orgId, unitId);
   }
 
   @Get('orgs/:orgId/units/:unitId/documents')
@@ -155,6 +179,145 @@ export class InstitutionalWorkspaceController {
       unitId,
       user.tenantId,
       dto
+    );
+  }
+
+  @Post('orgs/:orgId/units/:unitId/coordinator-chat')
+  @UseGuards(InstitutionalWorkspaceGuard, TokenCircuitBreakerGuard)
+  @HttpCode(HttpStatus.OK)
+  async executeCoordinatorChat(
+    @Param('orgId') orgId: string,
+    @Param('unitId') unitId: string,
+    @CurrentTenant() user: AuthenticatedTenantPayload,
+    @Body() dto: CoordinatorChatRequestDto
+  ) {
+    return await this.knowledge.executeCoordinatorChat(
+      orgId,
+      unitId,
+      user.tenantId,
+      dto
+    );
+  }
+
+  @Get('orgs/:orgId/units/:unitId/chat-sessions')
+  @UseGuards(InstitutionalWorkspaceGuard)
+  async listUnitChatSessions(
+    @Param('orgId') orgId: string,
+    @Param('unitId') unitId: string,
+    @CurrentTenant() user: AuthenticatedTenantPayload
+  ) {
+    return await this.knowledge.listUnitChatSessions(orgId, unitId, user.tenantId);
+  }
+
+  @Get('orgs/:orgId/units/:unitId/chat-sessions/:sessionId')
+  @UseGuards(InstitutionalWorkspaceGuard)
+  async getUnitChatSessionDetail(
+    @Param('orgId') orgId: string,
+    @Param('unitId') unitId: string,
+    @Param('sessionId') sessionId: string,
+    @CurrentTenant() user: AuthenticatedTenantPayload
+  ) {
+    return await this.knowledge.getUnitChatSessionDetail(
+      orgId,
+      unitId,
+      sessionId,
+      user.tenantId
+    );
+  }
+
+  @Delete('orgs/:orgId/units/:unitId/chat-sessions/:sessionId')
+  @UseGuards(InstitutionalWorkspaceGuard)
+  async deleteUnitChatSession(
+    @Param('orgId') orgId: string,
+    @Param('unitId') unitId: string,
+    @Param('sessionId') sessionId: string,
+    @CurrentTenant() user: AuthenticatedTenantPayload
+  ) {
+    return await this.knowledge.deleteUnitChatSession(
+      orgId,
+      unitId,
+      sessionId,
+      user.tenantId
+    );
+  }
+
+  @Get('orgs/:orgId/units/:unitId/members')
+  @UseGuards(InstitutionalWorkspaceGuard)
+  async listUnitMembers(
+    @Param('orgId') orgId: string,
+    @Param('unitId') unitId: string,
+    @CurrentTenant() user: AuthenticatedTenantPayload,
+    @CurrentInstitutionalContext() instCtx?: VerifiedInstitutionalContext
+  ) {
+    await this.governance.assertUserIsUnitLeadOrOrgAdmin(
+      orgId,
+      unitId,
+      user.tenantId,
+      instCtx?.orgRole || OrganizationMemberRole.MEMBER
+    );
+    return await this.governance.listUnitMembersForLead(orgId, unitId);
+  }
+
+  @Post('orgs/:orgId/units/:unitId/members')
+  @UseGuards(InstitutionalWorkspaceGuard)
+  @HttpCode(HttpStatus.OK)
+  async assignMemberToUnitByLead(
+    @Param('orgId') orgId: string,
+    @Param('unitId') unitId: string,
+    @CurrentTenant() user: AuthenticatedTenantPayload,
+    @CurrentInstitutionalContext() instCtx: VerifiedInstitutionalContext | undefined,
+    @Body() dto: AssignUnitMemberRequestDto
+  ) {
+    await this.governance.assertUserIsUnitLeadOrOrgAdmin(
+      orgId,
+      unitId,
+      user.tenantId,
+      instCtx?.orgRole || OrganizationMemberRole.MEMBER
+    );
+    return await this.governance.assignUnitMember(
+      orgId,
+      unitId,
+      { tenantId: user.tenantId },
+      dto
+    );
+  }
+
+  @Delete('orgs/:orgId/units/:unitId/members/:memberTenantId')
+  @UseGuards(InstitutionalWorkspaceGuard)
+  async revokeUnitMemberByLead(
+    @Param('orgId') orgId: string,
+    @Param('unitId') unitId: string,
+    @Param('memberTenantId') memberTenantId: string,
+    @CurrentTenant() user: AuthenticatedTenantPayload,
+    @CurrentInstitutionalContext() instCtx?: VerifiedInstitutionalContext
+  ) {
+    await this.governance.assertUserIsUnitLeadOrOrgAdmin(
+      orgId,
+      unitId,
+      user.tenantId,
+      instCtx?.orgRole || OrganizationMemberRole.MEMBER
+    );
+    return await this.governance.revokeUnitMember(orgId, unitId, memberTenantId, {
+      tenantId: user.tenantId,
+    });
+  }
+
+  @Post('orgs/:orgId/units/:unitId/notes/:noteId/revise')
+  @UseGuards(InstitutionalWorkspaceGuard, TokenCircuitBreakerGuard)
+  @HttpCode(HttpStatus.OK)
+  async reviseUnitNote(
+    @Param('orgId') orgId: string,
+    @Param('unitId') unitId: string,
+    @Param('noteId') noteId: string,
+    @CurrentTenant() user: AuthenticatedTenantPayload,
+    @Body() dto: ReviseInstitutionalItemDto
+  ) {
+    return await this.knowledge.reviseUnitSharedNote(
+      orgId,
+      unitId,
+      noteId,
+      user.tenantId,
+      dto.revisionInstruction
     );
   }
 }

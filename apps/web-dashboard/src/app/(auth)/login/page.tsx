@@ -12,10 +12,33 @@ import { getLandingPageUrl } from '@/lib/urls';
 
 const LANDING_PAGE_URL = getLandingPageUrl();
 
+function resolvePostLoginPath(user: any, explicitRedirect: string | null): string {
+  const mode = user?.accountMode;
+  if (explicitRedirect && explicitRedirect !== '/') {
+    const isInstPath = explicitRedirect.startsWith('/institutional');
+    if (mode === 'B2C_ONLY' && isInstPath) return '/';
+    if (mode === 'B2B_ONLY' && !isInstPath && !explicitRedirect.startsWith('/profile')) {
+      const role = user?.primaryOrganization?.orgRole;
+      return role === 'ORG_ADMIN' || role === 'LEADERSHIP'
+        ? '/institutional/admin'
+        : '/institutional';
+    }
+    return explicitRedirect;
+  }
+  if (mode === 'B2B_ONLY') {
+    const role = user?.primaryOrganization?.orgRole;
+    if (role === 'ORG_ADMIN' || role === 'LEADERSHIP') {
+      return '/institutional/admin';
+    }
+    return '/institutional';
+  }
+  return '/';
+}
+
 function LoginFormContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const redirectUrl = searchParams.get('redirect') || '/';
+  const explicitRedirect = searchParams.get('redirect');
 
   const [step, setStep] = useState<'CREDENTIALS' | 'OTP'>('CREDENTIALS');
   const [email, setEmail] = useState('');
@@ -39,14 +62,14 @@ function LoginFormContent() {
   useEffect(() => {
     if (ApiClient.isAuthenticated()) {
       ApiClient.request<any>('/auth/me')
-        .then(() => {
-          router.replace(redirectUrl);
+        .then((profile) => {
+          router.replace(resolvePostLoginPath(profile, explicitRedirect));
         })
         .catch(() => {
           ApiClient.removeToken();
         });
     }
-  }, [redirectUrl, router]);
+  }, [explicitRedirect, router]);
 
   useEffect(() => {
     if (countdown <= 0) return;
@@ -74,6 +97,12 @@ function LoginFormContent() {
           password,
         }),
       });
+
+      if (res.accessToken && res.requireOtp === false) {
+        ApiClient.setToken(res.accessToken);
+        router.push(resolvePostLoginPath(res.user, explicitRedirect));
+        return;
+      }
 
       if (res.email) {
         setEmail(res.email);
@@ -133,7 +162,7 @@ function LoginFormContent() {
       });
 
       ApiClient.setToken(res.accessToken);
-      router.push(redirectUrl);
+      router.push(resolvePostLoginPath(res.user, explicitRedirect));
     } catch (err: any) {
       setErrorMsg(err.message || 'Verifikasi OTP gagal.');
     } finally {

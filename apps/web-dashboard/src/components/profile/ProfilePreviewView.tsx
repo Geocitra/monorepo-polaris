@@ -58,6 +58,7 @@ interface ProfilePreviewViewProps {
   subdomain?: string;
   customDomain?: string | null;
   isUnpaid?: boolean;
+  hideSocialChannels?: boolean;
   onEditClick: () => void;
   onOpenSecurity?: (tab: 'PASSWORD' | 'EMAIL') => void;
 }
@@ -83,6 +84,7 @@ export function ProfilePreviewView({
   subdomain,
   customDomain,
   isUnpaid = false,
+  hideSocialChannels = false,
   onEditClick,
   onOpenSecurity,
 }: ProfilePreviewViewProps) {
@@ -539,7 +541,8 @@ export function ProfilePreviewView({
             )}
           </Card>
 
-          {/* SEKSI 4: SALURAN KOMUNIKASI PUBLIK RESMI */}
+          {/* SEKSI 4: SALURAN KOMUNIKASI PUBLIK RESMI (Hanya untuk B2C / Hybrid) */}
+          {!hideSocialChannels && (
           <div className="space-y-3.5 pt-2">
             <div className="flex flex-col gap-3 px-1">
               <div>
@@ -635,6 +638,7 @@ export function ProfilePreviewView({
               </div>
             )}
           </div>
+          )}
           </div>
         </div>
 

@@ -18,6 +18,9 @@ import {
   electoralDistricts,
   emailOtps,
   masterPoliticalParties,
+  organizationMemberships,
+  organizationUnitMemberships,
+  organizations,
 } from '@polaris/database';
 import { SubdomainSlug } from '@polaris/core-domain';
 import { SubscriptionStatus, PlanTier } from '@polaris/shared-types';
@@ -225,7 +228,9 @@ export class IdentityAuthService {
     };
   }
 
-  async login(dto: LoginRequestDto): Promise<LoginInitiateResponseDto> {
+  async login(
+    dto: LoginRequestDto
+  ): Promise<LoginInitiateResponseDto | (AuthResponseDto & { requireOtp: false; step: 'AUTHENTICATED' })> {
     const rawIdentifier = (dto.identifier || dto.email || '').toLowerCase().trim();
     if (!rawIdentifier) {
       throw new UnauthorizedException('Email atau username wajib diisi.');
@@ -257,6 +262,30 @@ export class IdentityAuthService {
     const isMatch = await bcrypt.compare(dto.password, member.passwordHash);
     if (!isMatch) {
       throw new UnauthorizedException('Email atau kata sandi tidak sesuai.');
+    }
+
+    // Bypass sementara Email OTP untuk Admin Instansi (ORG_ADMIN) & seluruh Anggota Instansi B2B aktif
+    // (dapat diaktifkan kembali kapan saja dengan env REQUIRE_B2B_EMAIL_OTP=true)
+    if (process.env.REQUIRE_B2B_EMAIL_OTP !== 'true') {
+      const [b2bMembership] = await db
+        .select({ id: organizationMemberships.id })
+        .from(organizationMemberships)
+        .where(
+          and(
+            eq(organizationMemberships.tenantId, member.id),
+            eq(organizationMemberships.status, 'ACTIVE')
+          )
+        )
+        .limit(1);
+
+      if (b2bMembership) {
+        const authSession = await this.issueSessionForMember(member.id);
+        return {
+          ...authSession,
+          step: 'AUTHENTICATED',
+          requireOtp: false,
+        };
+      }
     }
 
     const otpCode = Math.floor(100000 + Math.random() * 900000).toString();
@@ -376,6 +405,20 @@ export class IdentityAuthService {
     await db.update(emailOtps).set({ isUsed: true }).where(eq(emailOtps.id, otpRecord.id));
 
     const [member] = await db
+      .select({ id: tenantMembers.id })
+      .from(tenantMembers)
+      .where(eq(tenantMembers.email, cleanEmail))
+      .limit(1);
+
+    if (!member) {
+      throw new UnauthorizedException('Akun dewan tidak ditemukan.');
+    }
+
+    return await this.issueSessionForMember(member.id);
+  }
+
+  private async issueSessionForMember(memberId: string): Promise<AuthResponseDto> {
+    const [member] = await db
       .select({
         id: tenantMembers.id,
         email: tenantMembers.email,
@@ -386,11 +429,11 @@ export class IdentityAuthService {
         mustChangePassword: tenantMembers.mustChangePassword,
       })
       .from(tenantMembers)
-      .where(eq(tenantMembers.email, cleanEmail))
+      .where(eq(tenantMembers.id, memberId))
       .limit(1);
 
     if (!member) {
-      throw new UnauthorizedException('Akun dewan tidak ditemukan.');
+      throw new UnauthorizedException('Akun pengguna tidak ditemukan.');
     }
 
     const [portal] = await db
@@ -401,11 +444,51 @@ export class IdentityAuthService {
 
     const subdomainSlug = portal?.subdomainSlug || '';
 
+    const [primaryOrg] = await db
+      .select({
+        organizationId: organizations.id,
+        organizationName: organizations.name,
+        orgRole: organizationMemberships.orgRole,
+      })
+      .from(organizationMemberships)
+      .innerJoin(organizations, eq(organizationMemberships.organizationId, organizations.id))
+      .where(
+        and(
+          eq(organizationMemberships.tenantId, member.id),
+          eq(organizationMemberships.status, 'ACTIVE'),
+          eq(organizations.status, 'ACTIVE')
+        )
+      )
+      .limit(1);
+
+    let hasAssignedUnits = false;
+    if (primaryOrg) {
+      const [unitRow] = await db
+        .select({ id: organizationUnitMemberships.id })
+        .from(organizationUnitMemberships)
+        .where(
+          and(
+            eq(organizationUnitMemberships.organizationId, primaryOrg.organizationId),
+            eq(organizationUnitMemberships.tenantId, member.id),
+            eq(organizationUnitMemberships.status, 'ACTIVE')
+          )
+        )
+        .limit(1);
+      hasAssignedUnits = Boolean(unitRow);
+    }
+
+    const accountMode: 'B2B_ONLY' | 'B2C_ONLY' | 'HYBRID' = primaryOrg
+      ? portal
+        ? 'HYBRID'
+        : 'B2B_ONLY'
+      : 'B2C_ONLY';
+
     const payload = {
       sub: member.id,
       email: member.email,
       subdomainSlug,
       mustChangePassword: member.mustChangePassword,
+      accountMode,
       role: 'MEMBER',
     };
 
@@ -423,6 +506,10 @@ export class IdentityAuthService {
         subdomain: subdomainSlug,
         mustChangePassword: member.mustChangePassword,
         legislativeLevel: member.legislativeLevel as any,
+        accountMode,
+        primaryOrganization: primaryOrg
+          ? { ...primaryOrg, hasAssignedUnits }
+          : null,
       },
     };
   }

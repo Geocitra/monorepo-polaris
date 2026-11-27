@@ -295,7 +295,10 @@ export function PricingPlanGrid({
                     }
                   }}
                   disabled={checkoutLoading !== null}
-                  loading={checkoutLoading === offering.tier}
+                  loading={
+                    checkoutLoading === `${offering.tier}_${selectedCycle}` ||
+                    checkoutLoading === offering.tier
+                  }
                   variant={isPro ? 'primary' : 'outline'}
                   className={cn(
                     'w-full font-black text-xs py-2.5 rounded-xl cursor-pointer transition-all',

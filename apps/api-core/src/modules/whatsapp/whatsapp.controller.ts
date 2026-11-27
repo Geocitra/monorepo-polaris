@@ -46,7 +46,7 @@ interface AuthenticatedRequest extends Request {
 @Controller('whatsapp')
 @SkipRlsContext()
 export class WhatsAppController {
-  constructor(private readonly whatsappService: WhatsAppService) {}
+  constructor(private readonly whatsappService: WhatsAppService) { }
 
   // =========================================================================
   // 1. META WHATSAPP CLOUD API WEBHOOK ENDPOINTS (PUBLIC & NON-BLOCKING)
@@ -367,7 +367,10 @@ export class WhatsAppController {
   async getLiveChatSessions(@Req() req: AuthenticatedRequest) {
     this.assertOperatorOrSuperadmin(req);
     const operatorId = req.user.operatorId || req.user.tenantId;
-    return await this.whatsappService.getOperatorLiveChatSessions(operatorId);
+    return await this.whatsappService.getOperatorLiveChatSessions(
+      operatorId,
+      Boolean(req.user.isSuperadmin)
+    );
   }
 
   /**
@@ -400,7 +403,12 @@ export class WhatsAppController {
     @Req() req: AuthenticatedRequest
   ) {
     this.assertOperatorOrSuperadmin(req);
-    return await this.whatsappService.getLiveChatSessionMessages(sessionId);
+    const operatorId = req.user.operatorId || req.user.tenantId;
+    return await this.whatsappService.getLiveChatSessionMessages(
+      sessionId,
+      operatorId,
+      Boolean(req.user.isSuperadmin)
+    );
   }
 
   /**
@@ -417,10 +425,15 @@ export class WhatsAppController {
     this.assertOperatorOrSuperadmin(req);
     const operatorId = req.user.operatorId || req.user.tenantId;
     const operatorName = (req.user as any).fullName || (req.user as any).name || req.user.email.split('@')[0];
-    return await this.whatsappService.sendOperatorLiveChatMessage(sessionId, {
-      id: operatorId,
-      name: operatorName,
-    }, dto.textBody);
+    return await this.whatsappService.sendOperatorLiveChatMessage(
+      sessionId,
+      {
+        id: operatorId,
+        name: operatorName,
+      },
+      dto.textBody,
+      Boolean(req.user.isSuperadmin)
+    );
   }
 
   /**
@@ -434,7 +447,12 @@ export class WhatsAppController {
     @Req() req: AuthenticatedRequest
   ) {
     this.assertOperatorOrSuperadmin(req);
-    return await this.whatsappService.askLiveChatCompletion(sessionId);
+    const operatorId = req.user.operatorId || req.user.tenantId;
+    return await this.whatsappService.askLiveChatCompletion(
+      sessionId,
+      operatorId,
+      Boolean(req.user.isSuperadmin)
+    );
   }
 
   /**
@@ -448,7 +466,12 @@ export class WhatsAppController {
     @Req() req: AuthenticatedRequest
   ) {
     this.assertOperatorOrSuperadmin(req);
-    return await this.whatsappService.closeLiveChatSession(sessionId);
+    const operatorId = req.user.operatorId || req.user.tenantId;
+    return await this.whatsappService.closeLiveChatSession(
+      sessionId,
+      operatorId,
+      Boolean(req.user.isSuperadmin)
+    );
   }
 
   /**

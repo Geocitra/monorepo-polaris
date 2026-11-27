@@ -318,7 +318,7 @@ Keluarkan output HANYA dalam format JSON murni:
     try {
       const { client, resolveModel } = getTextCompletionClient();
       const response = await client.chat.completions.create({
-        model: resolveModel('gpt-4o-mini', 'gemini-2.5-flash'),
+        model: resolveModel('gpt-4o-mini', 'gemini-3.8-flash'),
         temperature: 0.25,
         response_format: { type: 'json_object' },
         messages: [{ role: 'system', content: systemPrompt }],

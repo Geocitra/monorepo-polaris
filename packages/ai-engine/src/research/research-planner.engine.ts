@@ -40,7 +40,7 @@ export class ResearchPlannerEngine {
    */
   public static async createPlan(input: ResearchPlanInput): Promise<ResearchPlanOutput> {
     const { client, resolveModel } = getTextCompletionClient();
-    const model = resolveModel('gpt-4o', 'gemini-2.5-flash');
+    const model = resolveModel('gpt-4o', 'gemini-3.8-flash');
     const telemetry = AiTelemetryService.startTrace({
       operation: 'autonomous-research-planner',
       model,

@@ -4,6 +4,7 @@ import { useState, useEffect, useRef } from 'react';
 import { ApiClient } from '@/lib/api-client';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/components/ui/toast';
+import { MarkdownReportView } from './MarkdownReportView';
 import {
   FileSpreadsheet,
   CheckCircle2,
@@ -76,6 +77,64 @@ const SPECIALIST_ROLE_LABELS: Record<LkpjAiSpecialistRole, string> = {
   [LkpjAiSpecialistRole.FOLLOWUP_MONITOR]: '6. Pemantau Tindak Lanjut Pascaparipurna',
 };
 
+const WORKSPACE_STATUS_LABELS: Record<LkpjWorkspaceStatus, string> = {
+  [LkpjWorkspaceStatus.REGISTERED]: 'Terdaftar (Masuk)',
+  [LkpjWorkspaceStatus.IN_DISCUSSION]: 'Pembahasan Panja / Komisi',
+  [LkpjWorkspaceStatus.PRE_PLENARY_CONSOLIDATION]: 'Konsolidasi Pra-Paripurna',
+  [LkpjWorkspaceStatus.PLENARY_ADOPTED]: 'Disahkan Paripurna',
+  [LkpjWorkspaceStatus.POST_PLENARY_MONITORING]: 'Pemantauan Tindak Lanjut',
+};
+
+const ALLOWED_WORKSPACE_TRANSITIONS_UI: Record<LkpjWorkspaceStatus, LkpjWorkspaceStatus[]> = {
+  [LkpjWorkspaceStatus.REGISTERED]: [
+    LkpjWorkspaceStatus.REGISTERED,
+    LkpjWorkspaceStatus.IN_DISCUSSION,
+  ],
+  [LkpjWorkspaceStatus.IN_DISCUSSION]: [
+    LkpjWorkspaceStatus.IN_DISCUSSION,
+    LkpjWorkspaceStatus.PRE_PLENARY_CONSOLIDATION,
+  ],
+  [LkpjWorkspaceStatus.PRE_PLENARY_CONSOLIDATION]: [
+    LkpjWorkspaceStatus.IN_DISCUSSION,
+    LkpjWorkspaceStatus.PRE_PLENARY_CONSOLIDATION,
+    LkpjWorkspaceStatus.PLENARY_ADOPTED,
+  ],
+  [LkpjWorkspaceStatus.PLENARY_ADOPTED]: [
+    LkpjWorkspaceStatus.PLENARY_ADOPTED,
+    LkpjWorkspaceStatus.POST_PLENARY_MONITORING,
+  ],
+  [LkpjWorkspaceStatus.POST_PLENARY_MONITORING]: [
+    LkpjWorkspaceStatus.POST_PLENARY_MONITORING,
+  ],
+};
+
+const INDICATOR_DIRECTION_LABELS: Record<string, string> = {
+  HIGHER_IS_BETTER: 'Makin tinggi makin baik',
+  LOWER_IS_BETTER: 'Makin rendah makin baik',
+  TARGET_BAND: 'Harus tepat target',
+};
+
+const EVIDENCE_STATUS_LABELS: Record<LkpjEvidenceStatus, string> = {
+  [LkpjEvidenceStatus.INSUFFICIENT_OPEN]: 'Bukti Belum Cukup',
+  [LkpjEvidenceStatus.STILL_OPEN_AT_CLOSING]: 'Masih Terbuka',
+  [LkpjEvidenceStatus.SUFFICIENT_VERIFIED]: 'Bukti Terverifikasi Cukup',
+};
+
+const REVIEW_STATUS_LABELS: Record<LkpjFindingReviewStatus, string> = {
+  [LkpjFindingReviewStatus.DRAFT]: 'Draf Awal',
+  [LkpjFindingReviewStatus.NEEDS_REVISION]: 'Perlu Perbaikan',
+  [LkpjFindingReviewStatus.APPROVED_FOR_DISCUSSION]: 'Disetujui untuk Dibahas',
+  [LkpjFindingReviewStatus.CONSOLIDATED_FOR_PLENARY]: 'Konsolidasi Paripurna',
+  [LkpjFindingReviewStatus.OFFICIAL_RECOMMENDATION]: 'Rekomendasi Resmi Paripurna',
+};
+
+const FOLLOWUP_STATUS_LABELS: Record<LkpjFollowupStatus, string> = {
+  [LkpjFollowupStatus.OPEN]: 'Belum Ditindaklanjuti',
+  [LkpjFollowupStatus.IN_PROGRESS]: 'Sedang Berjalan',
+  [LkpjFollowupStatus.COMPLETED_VERIFIED]: 'Selesai & Terverifikasi',
+  [LkpjFollowupStatus.CARRIED_TO_NEXT_EVALUATION]: 'Dibawa ke Evaluasi Berikutnya',
+};
+
 export function LkpjEvaluationWorkspacePanel({
   organizationId,
   organizationName,
@@ -92,9 +151,12 @@ export function LkpjEvaluationWorkspacePanel({
   const [loading, setLoading] = useState(false);
   const [uploadingMaterial, setUploadingMaterial] = useState(false);
   const [autoExtractCsv, setAutoExtractCsv] = useState(true);
+  const [activeStep, setActiveStep] = useState<1 | 2 | 3 | 4>(1);
+  const [showManualFindingForm, setShowManualFindingForm] = useState(false);
 
   // Edit Finding State
   const [editingFindingId, setEditingFindingId] = useState<string | null>(null);
+  const [expandedFollowupId, setExpandedFollowupId] = useState<string | null>(null);
 
   // Followup pascaparipurna editing state
   const [followupDrafts, setFollowupDrafts] = useState<
@@ -714,11 +776,17 @@ export function LkpjEvaluationWorkspacePanel({
                   }
                   className="mt-1 px-2.5 py-1.5 rounded-lg text-xs font-bold border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900"
                 >
-                  {Object.values(LkpjWorkspaceStatus).map((st) => (
-                    <option key={st} value={st}>
-                      {st}
-                    </option>
-                  ))}
+                  {Object.values(LkpjWorkspaceStatus).map((st) => {
+                    const allowed =
+                      ALLOWED_WORKSPACE_TRANSITIONS_UI[dashboard.workspace.status] || [];
+                    const isAllowed = allowed.includes(st);
+                    return (
+                      <option key={st} value={st} disabled={!isAllowed}>
+                        {WORKSPACE_STATUS_LABELS[st] || st}
+                        {!isAllowed ? ' (Belum tersedia)' : ''}
+                      </option>
+                    );
+                  })}
                 </select>
               </div>
             )}
@@ -728,7 +796,59 @@ export function LkpjEvaluationWorkspacePanel({
 
       {dashboard && (
         <>
-          {/* 2. PUSAT APLIKASI: MATRIKS TEMUAN TERSTRUKTUR (TARGET vs REALISASI vs ANGGARAN vs BUKTI vs KLARIFIKASI OPD) */}
+          {/* NAVIGASI ALUR 4 LANGKAH EVALUASI LKPJ */}
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-2.5 print:hidden">
+            {(
+              [
+                {
+                  step: 1 as const,
+                  title: '1. Unggah & Ekstrak AI',
+                  desc: `${dashboard.materials?.length ?? 0} dokumen bahan`,
+                },
+                {
+                  step: 2 as const,
+                  title: '2. Matriks Temuan',
+                  desc: `${dashboard.findings?.length ?? 0} temuan OPD`,
+                },
+                {
+                  step: 3 as const,
+                  title: '3. Sikap Fraksi',
+                  desc: `${dashboard.factionConsolidationMatrix?.length ?? 0} konsolidasi`,
+                },
+                {
+                  step: 4 as const,
+                  title: '4. Laporan AI & PDF',
+                  desc: 'Analisis & Paket Rapat',
+                },
+              ] as const
+            ).map((item) => {
+              const active = activeStep === item.step;
+              return (
+                <button
+                  key={item.step}
+                  type="button"
+                  onClick={() => setActiveStep(item.step)}
+                  className={`text-left p-3.5 rounded-2xl border transition-all cursor-pointer ${
+                    active
+                      ? 'border-indigo-600 bg-indigo-600 text-white shadow-sm'
+                      : 'border-slate-200 dark:border-slate-800 bg-white dark:bg-[#0D1322] hover:border-indigo-300'
+                  }`}
+                >
+                  <div className="text-xs font-black">{item.title}</div>
+                  <div
+                    className={`text-[11px] mt-0.5 ${
+                      active ? 'text-indigo-100' : 'text-slate-500'
+                    }`}
+                  >
+                    {item.desc}
+                  </div>
+                </button>
+              );
+            })}
+          </div>
+
+          {/* LANGKAH 2: MATRIKS TEMUAN TERSTRUKTUR */}
+          {activeStep === 2 && (
           <div className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-[#0D1322] p-6 space-y-5">
             <div className="flex flex-wrap items-center justify-between gap-2">
               <div>
@@ -739,12 +859,39 @@ export function LkpjEvaluationWorkspacePanel({
                   Dari satu baris, anggota DPRD dapat melihat apa yang dijanjikan (RPJMD/RKPD), apa yang tercapai (LKPJ), serapan APBD, di mana buktinya, apa jawaban OPD, dan rumusan rekomendasi yang sedang disusun.
                 </p>
               </div>
-              <span className="px-2.5 py-1 rounded-lg text-[10px] font-black bg-indigo-50 text-indigo-700 dark:bg-indigo-950 dark:text-indigo-300">
-                Zero-Hallucination Deterministic Math
-              </span>
+              <div className="flex flex-wrap items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => setShowManualFindingForm((prev) => !prev)}
+                  className="px-3 py-1.5 rounded-xl text-xs font-bold border border-indigo-200 dark:border-indigo-800 bg-indigo-50/50 dark:bg-indigo-950/30 text-indigo-700 dark:text-indigo-300 hover:bg-indigo-100 cursor-pointer"
+                >
+                  {showManualFindingForm || editingFindingId
+                    ? 'Tutup Form Manual'
+                    : '+ Tambah Baris Manual (Opsional)'}
+                </button>
+                <span className="px-2.5 py-1 rounded-lg text-[10px] font-black bg-indigo-50 text-indigo-700 dark:bg-indigo-950 dark:text-indigo-300">
+                  Zero-Hallucination Deterministic Math
+                </span>
+              </div>
             </div>
 
-            {/* FORM TAMBAH / EDIT BARIS TEMUAN */}
+            {!showManualFindingForm && !editingFindingId && (
+              <div className="p-3.5 rounded-xl border border-dashed border-slate-200 dark:border-slate-700 bg-slate-50/60 dark:bg-slate-900/30 text-xs text-slate-600 dark:text-slate-300 flex flex-wrap items-center justify-between gap-2">
+                <span>
+                  Matriks temuan terisi otomatis saat Anda mengunggah file PDF/CSV LKPJ di <strong>Langkah 1</strong>. Klik tombol tambah manual hanya jika ingin menginput baris di luar dokumen.
+                </span>
+                <button
+                  type="button"
+                  onClick={() => setActiveStep(1)}
+                  className="font-bold text-indigo-600 dark:text-indigo-400 hover:underline cursor-pointer"
+                >
+                  &larr; Kembali ke Langkah 1 (Upload PDF)
+                </button>
+              </div>
+            )}
+
+            {/* FORM TAMBAH / EDIT BARIS TEMUAN (OPSIONAL / SAAT EDIT) */}
+            {(showManualFindingForm || editingFindingId) && (
             <div className="p-4 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50/60 dark:bg-slate-900/40 space-y-3 text-xs">
               <div className="flex items-center justify-between">
                 <div className="font-extrabold text-slate-700 dark:text-slate-200">
@@ -895,96 +1042,135 @@ export function LkpjEvaluationWorkspacePanel({
                 </Button>
               </div>
             </div>
+            )}
 
-            {/* TABEL MATRIKS TEMUAN */}
-            <div className="overflow-x-auto">
-              <table className="w-full text-left border-collapse text-xs">
-                <thead>
-                  <tr className="border-b border-slate-200 dark:border-slate-800 text-[11px] font-black uppercase text-slate-400">
-                    <th className="py-3 px-2.5">Urusan & OPD</th>
-                    <th className="py-3 px-2.5">Indikator / Isu & Lokasi</th>
-                    <th className="py-3 px-2.5">Target vs Realisasi (Deterministik)</th>
-                    <th className="py-3 px-2.5">Serapan Anggaran APBD</th>
-                    <th className="py-3 px-2.5">Bukti, Aspirasi & Jawaban OPD</th>
-                    <th className="py-3 px-2.5">Rumusan Rekomendasi & Status</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-100 dark:divide-slate-800/80">
-                  {dashboard.findings.length === 0 ? (
-                    <tr>
-                      <td colSpan={6} className="py-8 text-center text-slate-400">
-                        Belum ada baris temuan. Tambahkan temuan pertama di form atas.
-                      </td>
-                    </tr>
-                  ) : (
-                    dashboard.findings.map((f) => (
-                      <tr key={f.id} className="align-top hover:bg-slate-50/50 dark:hover:bg-slate-900/30">
-                        <td className="py-3 px-2.5">
-                          <div className="font-extrabold text-slate-800 dark:text-slate-100">
-                            {f.governmentAffair}
-                          </div>
-                          <div className="text-[11px] font-semibold text-indigo-600 dark:text-indigo-400">
-                            {f.opdName}
-                          </div>
-                          {f.originUnitName && (
-                            <span className="inline-block mt-1 px-1.5 py-0.5 rounded text-[9px] font-bold bg-slate-100 dark:bg-slate-800">
-                              Oleh: {f.originUnitName}
+            {/* DAFTAR KARTU MATRIKS TEMUAN (LEGA, BERSIH, TANPA TABEL SEMPIT) */}
+            <div className="space-y-4">
+              {dashboard.findings.length === 0 ? (
+                <div className="py-10 text-center text-xs text-slate-400 border border-dashed border-slate-200 dark:border-slate-800 rounded-2xl">
+                  Belum ada temuan tercatat. Tambahkan temuan pertama di form atas.
+                </div>
+              ) : (
+                dashboard.findings.map((f) => {
+                  const isFollowupOpen = expandedFollowupId === f.id;
+                  const canFollowup =
+                    f.reviewStatus === LkpjFindingReviewStatus.OFFICIAL_RECOMMENDATION ||
+                    Boolean(f.proposedRecommendation);
+
+                  return (
+                    <div
+                      key={f.id}
+                      className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-slate-50/40 dark:bg-slate-900/30 p-5 space-y-4 text-xs"
+                    >
+                      {/* HEADER KARTU: URUSAN, OPD & BADGE STATUS */}
+                      <div className="flex flex-wrap items-start justify-between gap-3 pb-3 border-b border-slate-200/70 dark:border-slate-800">
+                        <div className="space-y-1">
+                          <div className="flex flex-wrap items-center gap-2">
+                            <span className="font-black text-sm text-slate-900 dark:text-slate-100">
+                              {f.governmentAffair}
                             </span>
-                          )}
-                        </td>
+                            <span className="text-slate-300 dark:text-slate-700">&bull;</span>
+                            <span className="font-bold text-indigo-600 dark:text-indigo-400">
+                              {f.opdName}
+                            </span>
+                            {f.originUnitName && (
+                              <span className="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-slate-200/70 dark:bg-slate-800 text-slate-600 dark:text-slate-300">
+                                {f.originUnitName}
+                              </span>
+                            )}
+                          </div>
+                          <div className="font-bold text-slate-700 dark:text-slate-200">
+                            {f.indicatorOrIssue}
+                            {f.locationCoverage && (
+                              <span className="font-normal text-slate-500 ml-2">
+                                (Lokasi: {f.locationCoverage})
+                              </span>
+                            )}
+                          </div>
+                        </div>
 
-                        <td className="py-3 px-2.5">
-                          <div className="font-bold">{f.indicatorOrIssue}</div>
-                          {f.locationCoverage && (
-                            <div className="text-[11px] text-slate-500 mt-0.5">
-                              Lokasi: {f.locationCoverage}
-                            </div>
-                          )}
-                          <div className="text-[10px] text-slate-400 mt-0.5">
-                            Arah: {f.indicatorDirection}
-                          </div>
-                        </td>
-
-                        <td className="py-3 px-2.5">
-                          <div>
-                            Target: <strong>{f.targetValue ?? '-'} {f.indicatorUnit}</strong>
-                          </div>
-                          <div>
-                            Realisasi: <strong>{f.realizationValue ?? '-'} {f.indicatorUnit}</strong>
-                          </div>
-                          <div
-                            className={`font-black mt-0.5 ${
-                              (f.achievementGap ?? 0) < 0
-                                ? 'text-rose-600 dark:text-rose-400'
-                                : 'text-emerald-600 dark:text-emerald-400'
+                        <div className="flex flex-wrap items-center gap-2">
+                          <span
+                            className={`px-2.5 py-1 rounded-full text-[11px] font-bold ${
+                              f.evidenceStatus === LkpjEvidenceStatus.SUFFICIENT_VERIFIED
+                                ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300'
+                                : 'bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300'
                             }`}
                           >
-                            Selisih: {f.achievementGap ?? '-'} {f.indicatorUnit} ({f.achievementPercentage ?? '-'}%)
-                          </div>
-                        </td>
+                            {EVIDENCE_STATUS_LABELS[f.evidenceStatus] || f.evidenceStatus}
+                          </span>
+                          <span className="px-2.5 py-1 rounded-full text-[11px] font-bold bg-indigo-100 text-indigo-800 dark:bg-indigo-950 dark:text-indigo-300">
+                            {REVIEW_STATUS_LABELS[f.reviewStatus] || f.reviewStatus}
+                          </span>
+                        </div>
+                      </div>
 
-                        <td className="py-3 px-2.5">
+                      {/* METRIK 3 KOLOM LEGA */}
+                      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                        <div className="p-3 rounded-xl bg-white dark:bg-[#0D1322] border border-slate-200/70 dark:border-slate-800 space-y-1">
+                          <div className="text-[10px] font-extrabold uppercase text-slate-400">
+                            Capaian Target vs Realisasi
+                          </div>
+                          <div className="flex items-center justify-between">
+                            <span className="text-slate-500">Target:</span>
+                            <strong>{f.targetValue ?? '-'} {f.indicatorUnit}</strong>
+                          </div>
+                          <div className="flex items-center justify-between">
+                            <span className="text-slate-500">Realisasi:</span>
+                            <strong>{f.realizationValue ?? '-'} {f.indicatorUnit}</strong>
+                          </div>
+                          <div className="flex items-center justify-between pt-1 border-t border-slate-100 dark:border-slate-800">
+                            <span className="text-slate-500">Selisih:</span>
+                            <strong
+                              className={
+                                (f.achievementGap ?? 0) < 0
+                                  ? 'text-rose-600 dark:text-rose-400'
+                                  : 'text-emerald-600 dark:text-emerald-400'
+                              }
+                            >
+                              {f.achievementGap ?? '-'} {f.indicatorUnit} ({f.achievementPercentage ?? '-'}%)
+                            </strong>
+                          </div>
+                          <div className="text-[10px] text-slate-400">
+                            {INDICATOR_DIRECTION_LABELS[f.indicatorDirection] || f.indicatorDirection}
+                          </div>
+                        </div>
+
+                        <div className="p-3 rounded-xl bg-white dark:bg-[#0D1322] border border-slate-200/70 dark:border-slate-800 space-y-1">
+                          <div className="text-[10px] font-extrabold uppercase text-slate-400">
+                            Serapan Anggaran APBD
+                          </div>
                           {f.budgetCeilingIdr ? (
                             <>
-                              <div>Pagu: Rp {f.budgetCeilingIdr.toLocaleString('id-ID')}</div>
-                              <div>
-                                Real: Rp {(f.budgetRealizationIdr || 0).toLocaleString('id-ID')}
+                              <div className="flex items-center justify-between">
+                                <span className="text-slate-500">Pagu:</span>
+                                <strong>Rp {f.budgetCeilingIdr.toLocaleString('id-ID')}</strong>
                               </div>
-                              <div className="font-extrabold text-indigo-600 dark:text-indigo-400 mt-0.5">
-                                Serapan: {f.budgetAbsorptionPercentage ?? '-'}%
+                              <div className="flex items-center justify-between">
+                                <span className="text-slate-500">Realisasi:</span>
+                                <strong>Rp {(f.budgetRealizationIdr || 0).toLocaleString('id-ID')}</strong>
+                              </div>
+                              <div className="flex items-center justify-between pt-1 border-t border-slate-100 dark:border-slate-800">
+                                <span className="text-slate-500">Serapan:</span>
+                                <strong className="text-indigo-600 dark:text-indigo-400">
+                                  {f.budgetAbsorptionPercentage ?? '-'}%
+                                </strong>
                               </div>
                             </>
                           ) : (
-                            <span className="text-slate-400">-</span>
+                            <div className="text-slate-400 italic py-2">Data anggaran belum diisi</div>
                           )}
-                        </td>
+                        </div>
 
-                        <td className="py-3 px-2.5 space-y-1 max-w-xs">
-                          <div className="text-[11px] font-bold text-slate-700 dark:text-slate-200">
-                            Sumber: {f.sourceEvidenceRef}
+                        <div className="p-3 rounded-xl bg-white dark:bg-[#0D1322] border border-slate-200/70 dark:border-slate-800 space-y-1.5">
+                          <div className="text-[10px] font-extrabold uppercase text-slate-400">
+                            Sumber Bukti &amp; Klarifikasi
+                          </div>
+                          <div className="font-semibold text-slate-700 dark:text-slate-200">
+                            {f.sourceEvidenceRef}
                           </div>
                           {f.citizenAspirationSummary && (
-                            <div className="text-[11px] text-amber-700 dark:text-amber-300 bg-amber-50/70 dark:bg-amber-950/40 p-1.5 rounded">
+                            <div className="text-[11px] text-amber-700 dark:text-amber-300 bg-amber-50/70 dark:bg-amber-950/40 p-2 rounded-lg">
                               Aspirasi: {f.citizenAspirationSummary}
                             </div>
                           )}
@@ -993,240 +1179,277 @@ export function LkpjEvaluationWorkspacePanel({
                               Jawaban OPD: {f.opdResponse}
                             </div>
                           )}
-                          <div>
-                            <span
-                              className={`inline-block px-2 py-0.5 rounded text-[10px] font-black ${
-                                f.evidenceStatus === LkpjEvidenceStatus.SUFFICIENT_VERIFIED
-                                  ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300'
-                                  : 'bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300'
-                              }`}
-                            >
-                              {f.evidenceStatus}
-                            </span>
-                          </div>
-                        </td>
+                        </div>
+                      </div>
 
-                        <td className="py-3 px-2.5 space-y-2 max-w-sm">
-                          <div className="text-[11px] text-slate-700 dark:text-slate-200">
-                            {f.proposedRecommendation || (
-                              <span className="italic text-slate-400">
-                                Belum ada rumusan rekomendasi
-                              </span>
-                            )}
-                          </div>
-                          <div className="flex flex-wrap items-center gap-1.5">
-                            <span className="px-2 py-0.5 rounded text-[10px] font-black bg-indigo-100 text-indigo-800 dark:bg-indigo-950 dark:text-indigo-300">
-                              {f.reviewStatus}
+                      {/* RUMUSAN REKOMENDASI */}
+                      <div className="p-3.5 rounded-xl bg-white dark:bg-[#0D1322] border border-slate-200/70 dark:border-slate-800">
+                        <div className="text-[10px] font-extrabold uppercase text-slate-400 mb-1">
+                          Rumusan Rekomendasi DPRD
+                        </div>
+                        <div className="text-slate-700 dark:text-slate-200 leading-relaxed">
+                          {f.proposedRecommendation || (
+                            <span className="italic text-slate-400">
+                              Belum ada rumusan rekomendasi. Klik &ldquo;Edit / Jawaban OPD&rdquo; atau gunakan Agen Spesialis AI di bawah.
                             </span>
+                          )}
+                        </div>
+                      </div>
+
+                      {/* BAR AKSI BERSIH */}
+                      <div className="flex flex-wrap items-center justify-between gap-2 pt-1">
+                        <div className="flex flex-wrap items-center gap-2">
+                          {(f.reviewStatus !== LkpjFindingReviewStatus.OFFICIAL_RECOMMENDATION ||
+                            canManageOrg) && (
                             <button
                               onClick={() => startEditingFinding(f)}
-                              className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-bold bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200 hover:bg-slate-200 cursor-pointer"
+                              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 hover:bg-slate-100 cursor-pointer"
                             >
-                              <Edit3 className="h-2.5 w-2.5" /> Edit / Jawaban OPD
+                              <Edit3 className="h-3.5 w-3.5" /> Edit / Jawaban OPD
                             </button>
-                            {f.evidenceStatus !== LkpjEvidenceStatus.SUFFICIENT_VERIFIED && (
-                              <button
-                                onClick={() =>
-                                  handleReviewFinding(
-                                    f.id,
-                                    f.reviewStatus,
-                                    LkpjEvidenceStatus.SUFFICIENT_VERIFIED
-                                  )
-                                }
-                                className="px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-50 text-emerald-700 hover:bg-emerald-100 cursor-pointer"
-                              >
-                                Tandai Bukti Cukup
-                              </button>
-                            )}
-                            {f.reviewStatus === LkpjFindingReviewStatus.DRAFT &&
-                              f.proposedRecommendation && (
-                                <button
-                                  onClick={() =>
-                                    handleReviewFinding(
-                                      f.id,
-                                      LkpjFindingReviewStatus.APPROVED_FOR_DISCUSSION
-                                    )
-                                  }
-                                  className="px-2 py-0.5 rounded text-[10px] font-bold bg-indigo-50 text-indigo-700 hover:bg-indigo-100 cursor-pointer"
-                                >
-                                  Setujui untuk Dibahas
-                                </button>
-                              )}
-                            {f.reviewStatus === LkpjFindingReviewStatus.APPROVED_FOR_DISCUSSION && (
-                              <button
-                                onClick={() =>
-                                  handleReviewFinding(
-                                    f.id,
-                                    LkpjFindingReviewStatus.OFFICIAL_RECOMMENDATION
-                                  )
-                                }
-                                className="px-2 py-0.5 rounded text-[10px] font-bold bg-blue-600 text-white hover:bg-blue-700 cursor-pointer"
-                              >
-                                Sahkan Rekomendasi Paripurna
-                              </button>
-                            )}
-                          </div>
-
-                          {/* Tindak Lanjut Pascaparipurna (PATCH .../findings/:findingId/followup) */}
-                          {(f.reviewStatus === LkpjFindingReviewStatus.OFFICIAL_RECOMMENDATION ||
-                            f.proposedRecommendation) && (
-                            <div className="p-2 rounded-lg border border-slate-200 dark:border-slate-800 bg-slate-50/70 dark:bg-slate-900/50 space-y-1.5 text-[10px]">
-                              <div className="font-extrabold text-slate-500">
-                                Tindak Lanjut Pascaparipurna ({f.followupStatus})
-                              </div>
-                              <div className="grid grid-cols-1 gap-1">
-                                <select
-                                  value={followupDrafts[f.id]?.status || f.followupStatus}
-                                  onChange={(e) =>
-                                    setFollowupDrafts((prev) => ({
-                                      ...prev,
-                                      [f.id]: {
-                                        status: e.target.value as LkpjFollowupStatus,
-                                        response:
-                                          prev[f.id]?.response ?? f.followupResponsePemda ?? '',
-                                        proof: prev[f.id]?.proof ?? f.followupProofRef ?? '',
-                                      },
-                                    }))
-                                  }
-                                  className="px-2 py-1 rounded border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900"
-                                >
-                                  {Object.values(LkpjFollowupStatus).map((st) => (
-                                    <option key={st} value={st}>
-                                      {st}
-                                    </option>
-                                  ))}
-                                </select>
-                                <input
-                                  type="text"
-                                  placeholder="Tanggapan Pemda / OPD..."
-                                  value={
-                                    followupDrafts[f.id]?.response ?? f.followupResponsePemda ?? ''
-                                  }
-                                  onChange={(e) =>
-                                    setFollowupDrafts((prev) => ({
-                                      ...prev,
-                                      [f.id]: {
-                                        status: prev[f.id]?.status ?? f.followupStatus,
-                                        response: e.target.value,
-                                        proof: prev[f.id]?.proof ?? f.followupProofRef ?? '',
-                                      },
-                                    }))
-                                  }
-                                  className="px-2 py-1 rounded border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900"
-                                />
-                                <input
-                                  type="text"
-                                  placeholder="Rujukan Bukti Penyelesaian (No. Berita Acara/Dok)"
-                                  value={followupDrafts[f.id]?.proof ?? f.followupProofRef ?? ''}
-                                  onChange={(e) =>
-                                    setFollowupDrafts((prev) => ({
-                                      ...prev,
-                                      [f.id]: {
-                                        status: prev[f.id]?.status ?? f.followupStatus,
-                                        response:
-                                          prev[f.id]?.response ?? f.followupResponsePemda ?? '',
-                                        proof: e.target.value,
-                                      },
-                                    }))
-                                  }
-                                  className="px-2 py-1 rounded border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900"
-                                />
-                                <button
-                                  onClick={() => handleUpdateFollowup(f.id, f)}
-                                  className="px-2 py-1 rounded font-bold bg-indigo-600 text-white hover:bg-indigo-700 cursor-pointer"
-                                >
-                                  Simpan Tindak Lanjut
-                                </button>
-                              </div>
-                            </div>
                           )}
-                        </td>
-                      </tr>
-                    ))
-                  )}
-                </tbody>
-              </table>
+
+                          {f.evidenceStatus !== LkpjEvidenceStatus.SUFFICIENT_VERIFIED && (
+                            <button
+                              onClick={() =>
+                                handleReviewFinding(
+                                  f.id,
+                                  f.reviewStatus,
+                                  LkpjEvidenceStatus.SUFFICIENT_VERIFIED
+                                )
+                              }
+                              className="px-3 py-1.5 rounded-xl text-xs font-bold bg-emerald-50 text-emerald-700 border border-emerald-200 hover:bg-emerald-100 cursor-pointer"
+                            >
+                              Tandai Bukti Cukup
+                            </button>
+                          )}
+
+                          {f.reviewStatus === LkpjFindingReviewStatus.DRAFT &&
+                            f.proposedRecommendation && (
+                              <button
+                                onClick={() =>
+                                  handleReviewFinding(
+                                    f.id,
+                                    LkpjFindingReviewStatus.APPROVED_FOR_DISCUSSION
+                                  )
+                                }
+                                className="px-3 py-1.5 rounded-xl text-xs font-bold bg-indigo-50 text-indigo-700 border border-indigo-200 hover:bg-indigo-100 cursor-pointer"
+                              >
+                                Setujui untuk Dibahas
+                              </button>
+                            )}
+
+                          {canManageOrg &&
+                            f.reviewStatus === LkpjFindingReviewStatus.APPROVED_FOR_DISCUSSION && (
+                              <button
+                              onClick={() =>
+                                handleReviewFinding(
+                                  f.id,
+                                  LkpjFindingReviewStatus.OFFICIAL_RECOMMENDATION
+                                )
+                              }
+                              className="px-3 py-1.5 rounded-xl text-xs font-bold bg-blue-600 text-white hover:bg-blue-700 cursor-pointer"
+                            >
+                              Sahkan Rekomendasi Paripurna
+                            </button>
+                          )}
+                        </div>
+
+                        {canFollowup && (
+                          <button
+                            onClick={() =>
+                              setExpandedFollowupId(isFollowupOpen ? null : f.id)
+                            }
+                            className="px-3 py-1.5 rounded-xl text-xs font-bold bg-slate-200/70 dark:bg-slate-800 text-slate-700 dark:text-slate-200 hover:bg-slate-200 cursor-pointer"
+                          >
+                            Tindak Lanjut: {FOLLOWUP_STATUS_LABELS[f.followupStatus] || f.followupStatus}
+                          </button>
+                        )}
+                      </div>
+
+                      {/* FORM TINDAK LANJUT (EXPANDABLE SAAT DIKLIK) */}
+                      {canFollowup && isFollowupOpen && (
+                        <div className="p-4 rounded-xl border border-indigo-200 dark:border-indigo-900/50 bg-white dark:bg-[#0D1322] space-y-3">
+                          <div className="font-extrabold text-xs text-slate-700 dark:text-slate-200">
+                            Pemantauan Tindak Lanjut Pascaparipurna
+                          </div>
+                          <div className="grid grid-cols-1 md:grid-cols-3 gap-2.5">
+                            <select
+                              value={followupDrafts[f.id]?.status || f.followupStatus}
+                              onChange={(e) =>
+                                setFollowupDrafts((prev) => ({
+                                  ...prev,
+                                  [f.id]: {
+                                    status: e.target.value as LkpjFollowupStatus,
+                                    response:
+                                      prev[f.id]?.response ?? f.followupResponsePemda ?? '',
+                                    proof: prev[f.id]?.proof ?? f.followupProofRef ?? '',
+                                  },
+                                }))
+                              }
+                              className="px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900"
+                            >
+                              {Object.values(LkpjFollowupStatus).map((st) => (
+                                <option key={st} value={st}>
+                                  {FOLLOWUP_STATUS_LABELS[st] || st}
+                                </option>
+                              ))}
+                            </select>
+                            <input
+                              type="text"
+                              placeholder="Tanggapan Pemda / OPD..."
+                              value={
+                                followupDrafts[f.id]?.response ?? f.followupResponsePemda ?? ''
+                              }
+                              onChange={(e) =>
+                                setFollowupDrafts((prev) => ({
+                                  ...prev,
+                                  [f.id]: {
+                                    status: prev[f.id]?.status ?? f.followupStatus,
+                                    response: e.target.value,
+                                    proof: prev[f.id]?.proof ?? f.followupProofRef ?? '',
+                                  },
+                                }))
+                              }
+                              className="px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900"
+                            />
+                            <input
+                              type="text"
+                              placeholder="Rujukan Bukti Penyelesaian (No. Berita Acara/Dok)"
+                              value={followupDrafts[f.id]?.proof ?? f.followupProofRef ?? ''}
+                              onChange={(e) =>
+                                setFollowupDrafts((prev) => ({
+                                  ...prev,
+                                  [f.id]: {
+                                    status: prev[f.id]?.status ?? f.followupStatus,
+                                    response:
+                                      prev[f.id]?.response ?? f.followupResponsePemda ?? '',
+                                    proof: e.target.value,
+                                  },
+                                }))
+                              }
+                              className="px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900"
+                            />
+                          </div>
+                          <div className="flex justify-end">
+                            <Button onClick={() => handleUpdateFollowup(f.id, f)} className="text-xs">
+                              Simpan Tindak Lanjut
+                            </Button>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  );
+                })
+              )}
             </div>
           </div>
+          )}
 
-          {/* 3. DELAPAN BAHAN EVALUASI & ANTREAN PEMERIKSAAN BUKTI + MATRIKS USULAN FRAKSI */}
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            {/* KIRI: 8 BAHAN EVALUASI & ANTREAN VERIFIKASI */}
-            <div className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-[#0D1322] p-5 space-y-4">
-              <h3 className="text-sm font-black flex items-center gap-2">
-                <FileText className="h-4 w-4 text-indigo-500" />
-                Delapan Bahan Evaluasi & Antrean Pemeriksaan Bukti
-              </h3>
+          {/* LANGKAH 1: DELAPAN BAHAN EVALUASI & ANTREAN PEMERIKSAAN BUKTI */}
+          {activeStep === 1 && (
+          <div className="space-y-6">
+            <div className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-[#0D1322] p-6 space-y-4">
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <div>
+                  <h3 className="text-base font-black flex items-center gap-2">
+                    <FileText className="h-4 w-4 text-indigo-500" />
+                    Langkah 1: Unggah Bahan Evaluasi &amp; Ekstrak Matriks Otomatis
+                  </h3>
+                  <p className="text-xs text-slate-500 mt-0.5">
+                    Unggah file PDF atau CSV LKPJ/APBD/RPJMD agar POLARIS otomatis mengekstrak angka dan isu ke Matriks Temuan (Langkah 2).
+                  </p>
+                </div>
+                <Button type="button" variant="outline" onClick={() => setActiveStep(2)}>
+                  Lanjut ke Langkah 2: Matriks Temuan &rarr;
+                </Button>
+              </div>
 
-              <div className="grid grid-cols-2 gap-2 text-[11px]">
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-2.5 text-xs">
                 {Object.entries(MATERIAL_CATEGORY_LABELS).map(([catKey, label]) => (
                   <div
                     key={catKey}
-                    className="p-2 rounded-lg border border-slate-200/80 dark:border-slate-800 flex items-center justify-between"
+                    className="p-2.5 rounded-xl border border-slate-200/80 dark:border-slate-800 flex items-center justify-between gap-2"
                   >
                     <span className="truncate font-semibold">{label}</span>
-                    <span className="px-1.5 py-0.5 rounded font-black bg-slate-100 dark:bg-slate-800">
+                    <span className="px-2 py-0.5 rounded font-black bg-slate-100 dark:bg-slate-800 shrink-0">
                       {dashboard.materialsByCategoryCount[catKey as LkpjMaterialCategory] || 0}
                     </span>
                   </div>
                 ))}
               </div>
 
-              <div className="p-3.5 rounded-xl border border-slate-200 dark:border-slate-800 space-y-2.5 text-xs">
-                <div className="font-extrabold">Registrasi Bahan Evaluasi & Indeks Halaman/Pasal</div>
-                <select
-                  value={matCategory}
-                  onChange={(e) => setMatCategory(e.target.value as LkpjMaterialCategory)}
-                  className="w-full px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900"
-                >
-                  {Object.entries(MATERIAL_CATEGORY_LABELS).map(([k, v]) => (
-                    <option key={k} value={k}>
-                      {v}
-                    </option>
-                  ))}
-                </select>
-                <div className="grid grid-cols-2 gap-2">
-                  <input
-                    type="text"
-                    placeholder="Judul Dokumen / Risalah"
-                    value={matTitle}
-                    onChange={(e) => setMatTitle(e.target.value)}
-                    className="px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900"
-                  />
-                  <input
-                    type="text"
-                    placeholder="Halaman / Pasal (misal: Hal. 110-125)"
-                    value={matPageRange}
-                    onChange={(e) => setMatPageRange(e.target.value)}
-                    className="px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900"
-                  />
-                </div>
-                <div className="grid grid-cols-3 gap-2">
-                  <input
-                    type="text"
-                    placeholder="Versi (FINAL-V1)"
-                    value={matVersion}
-                    onChange={(e) => setMatVersion(e.target.value)}
-                    className="px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900"
-                  />
-                  <input
-                    type="number"
-                    placeholder="Tahun"
-                    value={matYear}
-                    onChange={(e) => setMatYear(Number(e.target.value))}
-                    className="px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900"
-                  />
-                  <input
-                    type="number"
-                    step="0.05"
-                    min="0"
-                    max="1"
-                    placeholder="Confidence (0.0-1.0)"
-                    value={matConfidence}
-                    onChange={(e) => setMatConfidence(Number(e.target.value))}
-                    className="px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900"
-                    title="Jika < 0.85 otomatis masuk Antrean Pemeriksaan Penelaah"
-                  />
+              <div className="p-4 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/40 space-y-3 text-xs">
+                <div className="font-extrabold">Registrasi Bahan Evaluasi &amp; Indeks Halaman/Pasal</div>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                  <div>
+                    <label className="block font-bold mb-1">Kategori Bahan Evaluasi</label>
+                    <select
+                      value={matCategory}
+                      onChange={(e) => setMatCategory(e.target.value as LkpjMaterialCategory)}
+                      className="w-full px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900"
+                    >
+                      {Object.entries(MATERIAL_CATEGORY_LABELS).map(([k, v]) => (
+                        <option key={k} value={k}>
+                          {v}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block font-bold mb-1">Judul Dokumen / Risalah</label>
+                    <input
+                      type="text"
+                      placeholder="Contoh: Buku LKPJ Bupati TA 2025"
+                      value={matTitle}
+                      onChange={(e) => setMatTitle(e.target.value)}
+                      className="w-full px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900"
+                    />
+                  </div>
+                  <div>
+                    <label className="block font-bold mb-1">Halaman / Pasal Rujukan</label>
+                    <input
+                      type="text"
+                      placeholder="Misal: Bab IV Hal. 110-125"
+                      value={matPageRange}
+                      onChange={(e) => setMatPageRange(e.target.value)}
+                      className="w-full px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900"
+                    />
+                  </div>
+                  <div>
+                    <label className="block font-bold mb-1">Versi Dokumen</label>
+                    <input
+                      type="text"
+                      placeholder="FINAL-V1"
+                      value={matVersion}
+                      onChange={(e) => setMatVersion(e.target.value)}
+                      className="w-full px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900"
+                    />
+                  </div>
+                  <div>
+                    <label className="block font-bold mb-1">Tahun Anggaran</label>
+                    <input
+                      type="number"
+                      placeholder="2025"
+                      value={matYear}
+                      onChange={(e) => setMatYear(Number(e.target.value))}
+                      className="w-full px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900"
+                    />
+                  </div>
+                  <div>
+                    <label className="block font-bold mb-1">Skor Keyakinan Ekstraksi (0–1)</label>
+                    <input
+                      type="number"
+                      step="0.05"
+                      min="0"
+                      max="1"
+                      placeholder="0.95"
+                      value={matConfidence}
+                      onChange={(e) => setMatConfidence(Number(e.target.value))}
+                      className="w-full px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900"
+                      title="Jika < 0.85 otomatis masuk Antrean Pemeriksaan Penelaah"
+                    />
+                  </div>
                 </div>
                 <div className="flex flex-col sm:flex-row gap-2">
                   <Button onClick={handleRegisterMaterial} variant="outline" className="flex-1">
@@ -1300,8 +1523,12 @@ export function LkpjEvaluationWorkspacePanel({
                 ))}
               </div>
             </div>
+          </div>
+          )}
 
-            {/* KANAN: MATRIKS USULAN FRAKSI, TITIK TEMU & PERBEDAAN PANDANGAN */}
+          {/* LANGKAH 3: MATRIKS USULAN FRAKSI, TITIK TEMU & PERBEDAAN PANDANGAN */}
+          {activeStep === 3 && (
+          <div className="space-y-6">
             <div className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-[#0D1322] p-5 space-y-4">
               <h3 className="text-sm font-black flex items-center gap-2">
                 <Scale className="h-4 w-4 text-indigo-500" />
@@ -1401,11 +1628,13 @@ export function LkpjEvaluationWorkspacePanel({
               </div>
             </div>
           </div>
+          )}
 
-          {/* 4. ENAM AGEN SPESIALIS AI LKPJ & GENERATOR 4 PAKET RAPAT PARIPURNA */}
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          {/* LANGKAH 4: ENAM AGEN SPESIALIS AI LKPJ & GENERATOR 4 PAKET RAPAT PARIPURNA */}
+          {activeStep === 4 && (
+          <div className="space-y-6">
             {/* 6 AGEN SPESIALIS AI LKPJ */}
-            <div className="rounded-2xl border border-indigo-200 dark:border-indigo-900/60 bg-white dark:bg-[#0D1322] p-5 space-y-4">
+            <div className="rounded-2xl border border-indigo-200 dark:border-indigo-900/60 bg-white dark:bg-[#0D1322] p-6 space-y-4">
               <div className="flex items-center gap-2">
                 <Sparkles className="h-5 w-5 text-indigo-600" />
                 <h3 className="text-sm font-black">
@@ -1442,7 +1671,7 @@ export function LkpjEvaluationWorkspacePanel({
                   <Send className="h-4 w-4 mr-1.5" />
                   {specialistLoading
                     ? 'Menjalankan Agen Spesialis LKPJ...'
-                    : `Jalankan ${SPECIALIST_ROLE_LABELS[selectedSpecialist]}`}
+                    : `Jalankan ${SPECIALIST_ROLE_LABELS[selectedSpecialist]} (Pakai 1 Kuota LKPJ)`}
                 </Button>
               </div>
 
@@ -1456,8 +1685,8 @@ export function LkpjEvaluationWorkspacePanel({
                       Trace: {specialistResult.telemetry.traceId} ({specialistResult.telemetry.totalTokens} token)
                     </span>
                   </div>
-                  <div className="p-3.5 rounded-xl bg-slate-50 dark:bg-slate-900/60 border border-slate-200/70 dark:border-slate-800 text-xs whitespace-pre-wrap leading-relaxed">
-                    {specialistResult.analysisMarkdown}
+                  <div className="p-4 rounded-xl bg-slate-50 dark:bg-slate-900/60 border border-slate-200/70 dark:border-slate-800">
+                    <MarkdownReportView content={specialistResult.analysisMarkdown} />
                   </div>
                 </div>
               )}
@@ -1472,7 +1701,7 @@ export function LkpjEvaluationWorkspacePanel({
                 </h3>
               </div>
 
-              <div className="grid grid-cols-2 gap-2 text-xs">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2.5 text-xs">
                 <Button
                   variant={
                     selectedPackageType === LkpjMeetingPackageType.CLARIFICATION_MEETING
@@ -1482,6 +1711,7 @@ export function LkpjEvaluationWorkspacePanel({
                   onClick={() =>
                     handleGenerateMeetingPackage(LkpjMeetingPackageType.CLARIFICATION_MEETING)
                   }
+                  className="h-auto py-2.5 whitespace-normal text-left justify-start"
                 >
                   1. Paket Rapat Klarifikasi OPD
                 </Button>
@@ -1494,6 +1724,7 @@ export function LkpjEvaluationWorkspacePanel({
                   onClick={() =>
                     handleGenerateMeetingPackage(LkpjMeetingPackageType.PRE_PLENARY_MEETING)
                   }
+                  className="h-auto py-2.5 whitespace-normal text-left justify-start"
                 >
                   2. Paket Persiapan Paripurna
                 </Button>
@@ -1506,6 +1737,7 @@ export function LkpjEvaluationWorkspacePanel({
                   onClick={() =>
                     handleGenerateMeetingPackage(LkpjMeetingPackageType.PLENARY_DECISION_PACKAGE)
                   }
+                  className="h-auto py-2.5 whitespace-normal text-left justify-start"
                 >
                   3. Paket Paripurna Hasil Pembahasan
                 </Button>
@@ -1518,6 +1750,7 @@ export function LkpjEvaluationWorkspacePanel({
                   onClick={() =>
                     handleGenerateMeetingPackage(LkpjMeetingPackageType.POST_PLENARY_REGISTER)
                   }
+                  className="h-auto py-2.5 whitespace-normal text-left justify-start"
                 >
                   4. Register Pascaparipurna
                 </Button>
@@ -1546,8 +1779,8 @@ export function LkpjEvaluationWorkspacePanel({
                       </Button>
                     </div>
                   </div>
-                  <div className="p-3 rounded-xl bg-slate-50 dark:bg-slate-900/60 border border-slate-200/70 dark:border-slate-800 whitespace-pre-wrap">
-                    {meetingPackage.executiveSummaryMarkdown}
+                  <div className="p-4 rounded-xl bg-slate-50 dark:bg-slate-900/60 border border-slate-200/70 dark:border-slate-800">
+                    <MarkdownReportView content={meetingPackage.executiveSummaryMarkdown} />
                   </div>
 
                   {meetingPackage.openDataRequests.length > 0 && (
@@ -1560,7 +1793,7 @@ export function LkpjEvaluationWorkspacePanel({
                           key={req.findingId}
                           className="p-2.5 rounded-lg border border-amber-200 dark:border-amber-900/50 bg-amber-50/40 dark:bg-amber-950/20 text-[11px]"
                         >
-                          <strong>{req.opdName}</strong> — {req.indicatorOrIssue} [{req.evidenceStatus}]:{' '}
+                          <strong>{req.opdName}</strong> — {req.indicatorOrIssue} [{EVIDENCE_STATUS_LABELS[req.evidenceStatus] || req.evidenceStatus}]:{' '}
                           {req.opdClarificationQuestion}
                         </div>
                       ))}
@@ -1579,7 +1812,9 @@ export function LkpjEvaluationWorkspacePanel({
                         >
                           <div className="font-bold">
                             [{rec.governmentAffair} &rarr; {rec.responsibleOpd}] Status Tindak Lanjut:{' '}
-                            <span className="text-indigo-600">{rec.followupStatus}</span>
+                            <span className="text-indigo-600">
+                              {FOLLOWUP_STATUS_LABELS[rec.followupStatus] || rec.followupStatus}
+                            </span>
                           </div>
                           <div>&ldquo;{rec.recommendationText}&rdquo;</div>
                         </div>
@@ -1590,6 +1825,7 @@ export function LkpjEvaluationWorkspacePanel({
               )}
             </div>
           </div>
+          )}
         </>
       )}
     </div>

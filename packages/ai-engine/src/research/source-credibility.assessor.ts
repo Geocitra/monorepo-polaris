@@ -132,7 +132,7 @@ Keluarkan JSON murni:
     try {
       const { client, resolveModel } = getTextCompletionClient();
       const completion = await client.chat.completions.create({
-        model: resolveModel('gpt-4o-mini', 'gemini-2.5-flash'),
+        model: resolveModel('gpt-4o-mini', 'gemini-3.8-flash'),
         temperature: 0.1,
         response_format: { type: 'json_object' },
         messages: [{ role: 'user', content: evaluationPrompt }],

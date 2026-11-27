@@ -33,14 +33,16 @@ export class IdentityService {
     private readonly authService: IdentityAuthService,
     private readonly profileService: IdentityProfileService,
     private readonly securityService: IdentitySecurityService,
-  ) {}
+  ) { }
 
   // --- Domain: Autentikasi & Otorisasi 2FA ---
   async registerTenant(dto: RegisterRequestDto): Promise<AuthResponseDto> {
     return await this.authService.registerTenant(dto);
   }
 
-  async login(dto: LoginRequestDto): Promise<LoginInitiateResponseDto> {
+  async login(
+    dto: LoginRequestDto
+  ): Promise<LoginInitiateResponseDto | (AuthResponseDto & { requireOtp: false; step: 'AUTHENTICATED' })> {
     return await this.authService.login(dto);
   }
 

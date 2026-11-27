@@ -1,13 +1,15 @@
 'use client';
 
-import { FabricObject, Textbox } from 'fabric';
+import { FabricImage, FabricObject, Line, Rect, Textbox } from 'fabric';
 import {
   AlignCenter,
   AlignLeft,
   AlignRight,
   Bold,
+  Circle,
   Copy,
   Edit3,
+  FlipHorizontal2,
   Italic,
   Loader2,
   Sparkles,
@@ -37,6 +39,13 @@ interface MagicLayersFormattingBarProps {
   onMoveLayerToBack: () => void;
   onDuplicateSelected: () => void;
   onDeleteSelectedObject: () => void;
+  onApplyShapeFill: (color: string) => void;
+  onApplyShapeStroke: (color: string) => void;
+  onApplyShapeStrokeWidth: (width: number) => void;
+  onApplyShapeRadius: (radius: number) => void;
+  onApplyObjectOpacity: (opacity: number) => void;
+  onToggleFlipHorizontal: () => void;
+  onToggleImageCircleMask: () => void;
   isCuttingOut: boolean;
 }
 
@@ -62,6 +71,13 @@ export function MagicLayersFormattingBar({
   onMoveLayerToBack,
   onDuplicateSelected,
   onDeleteSelectedObject,
+  onApplyShapeFill,
+  onApplyShapeStroke,
+  onApplyShapeStrokeWidth,
+  onApplyShapeRadius,
+  onApplyObjectOpacity,
+  onToggleFlipHorizontal,
+  onToggleImageCircleMask,
   isCuttingOut,
 }: MagicLayersFormattingBarProps) {
   const isTextEditable =
@@ -219,28 +235,129 @@ export function MagicLayersFormattingBar({
           </div>
         </div>
       ) : selectedObject ? (
-        <div className="flex items-center justify-between w-full">
-          <div className="flex items-center gap-2">
-            <span className="text-xs font-bold text-slate-700">
-              Layer Terpilih: {(selectedObject as any).customData?.name || 'Objek Kanvas'}
-            </span>
-            <span className="text-[11px] text-slate-400">
-              (Tarik sudut untuk mengubah ukuran, atau geser untuk memindahkan posisi objek)
-            </span>
+        <div className="flex items-center gap-2.5 shrink-0 w-full animate-in fade-in duration-150">
+          <span className="text-xs font-bold text-slate-700 truncate max-w-[140px]">
+            {(selectedObject as any).customData?.name || 'Objek Kanvas'}
+          </span>
+
+          <div className="h-5 w-px bg-slate-200" />
+
+          {!(selectedObject instanceof FabricImage) ? (
+            <>
+              <div className="flex items-center gap-1 bg-slate-50 px-2 py-1 rounded-lg border border-slate-200" title="Warna Isi Bentuk">
+                <span className="text-[10px] font-bold text-slate-500 uppercase mr-0.5">Isi:</span>
+                {PRESET_COLORS.slice(0, 6).map((col) => (
+                  <button
+                    key={col}
+                    onClick={() => onApplyShapeFill(col)}
+                    className="h-4 w-4 rounded-full border border-slate-300 transition-transform hover:scale-125"
+                    style={{ backgroundColor: col }}
+                    title={`Isi: ${col}`}
+                  />
+                ))}
+                <input
+                  type="color"
+                  value={typeof selectedObject.fill === 'string' && selectedObject.fill.startsWith('#') ? selectedObject.fill : '#7C3AED'}
+                  onChange={(e) => onApplyShapeFill(e.target.value)}
+                  className="h-4 w-5 p-0 border-0 bg-transparent cursor-pointer"
+                  title="Pilih warna kustom"
+                />
+              </div>
+
+              {!(selectedObject instanceof Line) && (
+                <div className="flex items-center gap-1.5 bg-slate-50 px-2 py-1 rounded-lg border border-slate-200">
+                  <span className="text-[10px] font-bold text-slate-500 uppercase">Garis:</span>
+                  <input
+                    type="color"
+                    value={typeof selectedObject.stroke === 'string' && selectedObject.stroke.startsWith('#') ? selectedObject.stroke : '#0F172A'}
+                    onChange={(e) => onApplyShapeStroke(e.target.value)}
+                    className="h-4 w-5 p-0 border-0 bg-transparent cursor-pointer"
+                    title="Warna garis tepi"
+                  />
+                  <select
+                    value={selectedObject.strokeWidth || 0}
+                    onChange={(e) => onApplyShapeStrokeWidth(Number(e.target.value))}
+                    className="bg-white border border-slate-200 text-slate-700 text-[11px] rounded px-1.5 py-0.5 font-semibold"
+                    title="Ketebalan garis tepi"
+                  >
+                    <option value={0}>0px</option>
+                    <option value={2}>2px</option>
+                    <option value={4}>4px</option>
+                    <option value={8}>8px</option>
+                  </select>
+                </div>
+              )}
+
+              {selectedObject instanceof Rect && (
+                <div className="flex items-center gap-1.5 bg-slate-50 px-2 py-1 rounded-lg border border-slate-200" title="Kelengkungan Sudut">
+                  <span className="text-[10px] font-bold text-slate-500 uppercase">Sudut:</span>
+                  <input
+                    type="range"
+                    min={0}
+                    max={60}
+                    value={Math.round(selectedObject.rx || 0)}
+                    onChange={(e) => onApplyShapeRadius(Number(e.target.value))}
+                    className="w-16 accent-purple-600 cursor-pointer"
+                  />
+                </div>
+              )}
+            </>
+          ) : (
+            <>
+              <button
+                onClick={onToggleFlipHorizontal}
+                className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg border border-slate-200 hover:bg-slate-50 text-xs font-bold text-slate-700"
+                title="Balik Horizontal"
+              >
+                <FlipHorizontal2 className="h-3.5 w-3.5" strokeWidth={1.75} />
+                <span>Balik</span>
+              </button>
+              <button
+                onClick={onToggleImageCircleMask}
+                className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-lg border text-xs font-bold transition-colors ${
+                  selectedObject.clipPath
+                    ? 'border-purple-500 bg-purple-50 text-purple-700'
+                    : 'border-slate-200 hover:bg-slate-50 text-slate-700'
+                }`}
+                title="Potong Bingkai Lingkaran"
+              >
+                <Circle className="h-3.5 w-3.5" strokeWidth={1.75} />
+                <span>Bingkai Bulat</span>
+              </button>
+            </>
+          )}
+
+          <div className="flex items-center gap-1.5 bg-slate-50 px-2 py-1 rounded-lg border border-slate-200" title="Transparansi">
+            <span className="text-[10px] font-bold text-slate-500 uppercase">Opasitas:</span>
+            <input
+              type="range"
+              min={10}
+              max={100}
+              value={Math.round((selectedObject.opacity ?? 1) * 100)}
+              onChange={(e) => onApplyObjectOpacity(Number(e.target.value) / 100)}
+              className="w-16 accent-purple-600 cursor-pointer"
+            />
           </div>
 
-          <div className="flex items-center gap-1.5">
+          <div className="flex items-center gap-1 ml-auto">
             <button
               onClick={onMoveLayerToFront}
-              className="px-2.5 py-1 rounded-lg border border-slate-200 hover:bg-slate-50 text-xs font-bold text-slate-700"
+              className="px-2 py-1 rounded-lg border border-slate-200 hover:bg-slate-50 text-[11px] font-bold text-slate-700"
             >
               Ke Depan
             </button>
             <button
               onClick={onMoveLayerToBack}
-              className="px-2.5 py-1 rounded-lg border border-slate-200 hover:bg-slate-50 text-xs font-bold text-slate-700"
+              className="px-2 py-1 rounded-lg border border-slate-200 hover:bg-slate-50 text-[11px] font-bold text-slate-700"
             >
               Ke Belakang
+            </button>
+            <button
+              onClick={onDuplicateSelected}
+              className="p-1.5 rounded-lg border border-slate-200 hover:bg-slate-50 text-slate-600 transition-colors"
+              title="Gandakan Elemen Ini"
+            >
+              <Copy className="h-3.5 w-3.5" strokeWidth={1.75} />
             </button>
             <button
               onClick={onDeleteSelectedObject}

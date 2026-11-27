@@ -12,6 +12,8 @@ import {
   invoiceTransactions,
   subscriptions,
   tenantQuotaLedgers,
+  tenantQuotaWallets,
+  tenantQuotaTransactions,
   tenantMembers,
   subscriptionPriceMatrices,
 } from '@polaris/database';
@@ -26,6 +28,8 @@ import {
   DiscrepancyResolutionStatus,
   PaymentStatus,
   SubscriptionStatus,
+  QuotaTransactionType,
+  QuotaConsumptionChannel,
 } from '@polaris/shared-types';
 import { MidtransFeeCalculator } from '@polaris/payment';
 import { RedisService } from '../redis/redis.service.js';
@@ -451,14 +455,68 @@ export class ReconciliationEngineService {
       })
       .where(eq(subscriptions.id, sub.id));
 
+    const allocatedQuota =
+      durationDays >= 365 ? 144 : durationDays >= 180 ? 72 : 12;
+
+    const [existingWallet] = await tx
+      .select()
+      .from(tenantQuotaWallets)
+      .where(eq(tenantQuotaWallets.tenantId, sub.tenantId))
+      .for('update')
+      .limit(1);
+
+    let newAllocated: number;
+    let newRemaining: number;
+    const now = new Date();
+
+    if (existingWallet) {
+      newAllocated = existingWallet.totalQuotaAllocated + allocatedQuota;
+      newRemaining = existingWallet.remainingQuota + allocatedQuota;
+
+      await tx
+        .update(tenantQuotaWallets)
+        .set({
+          totalQuotaAllocated: newAllocated,
+          remainingQuota: newRemaining,
+          weeklyAllowanceLimit: 3,
+          currentPeriodEnd: periodEnd,
+          updatedAt: now,
+        })
+        .where(eq(tenantQuotaWallets.id, existingWallet.id));
+    } else {
+      newAllocated = allocatedQuota;
+      newRemaining = allocatedQuota;
+
+      await tx.insert(tenantQuotaWallets).values({
+        tenantId: sub.tenantId,
+        totalQuotaAllocated: newAllocated,
+        remainingQuota: newRemaining,
+        weeklyAllowanceLimit: 3,
+        currentPeriodEnd: periodEnd,
+        createdAt: now,
+        updatedAt: now,
+      });
+    }
+
+    await tx.insert(tenantQuotaTransactions).values({
+      tenantId: sub.tenantId,
+      channel: QuotaConsumptionChannel.ADMIN,
+      activityType: 'RECONCILIATION_AUTO_HEAL',
+      transactionType: QuotaTransactionType.PACKAGE_PURCHASE,
+      amountDelta: allocatedQuota,
+      balanceAfter: newRemaining,
+      notes: `Auto-heal rekonsiliasi settlement (+${allocatedQuota} kuota)`,
+      createdAt: now,
+    });
+
     await tx
       .insert(tenantQuotaLedgers)
       .values({
         tenantId: sub.tenantId,
         billingCycleMonth: currentMonth,
-        articleLimit: 0,
+        articleLimit: newAllocated,
         articleUsed: 0,
-        dalleLimit: 0,
+        dalleLimit: newAllocated,
         dalleUsed: 0,
         totalTokensConsumed: 0,
         estimatedCostUsd: '0.0000',

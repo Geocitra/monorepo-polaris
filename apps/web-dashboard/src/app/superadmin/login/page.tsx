@@ -17,8 +17,8 @@ function SuperadminLoginFormContent() {
   const { resolvedMode, setMode } = useTheme();
 
   const [step, setStep] = useState<'CREDENTIALS' | 'OTP'>('CREDENTIALS');
-  const [email, setEmail] = useState('admin@polaris.id');
-  const [password, setPassword] = useState('polaris_admin_2026');
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
   const [otpCode, setOtpCode] = useState('');
   const [countdown, setCountdown] = useState(0);
 
@@ -65,6 +65,11 @@ function SuperadminLoginFormContent() {
             }
             router.replace(redirectUrl || '/superadmin');
           } else if (profile?.role === 'CONTENT_OPERATOR' || profile?.role === 'SUPPORT_OPERATOR') {
+            if (typeof window !== 'undefined') {
+              try {
+                localStorage.setItem('polaris_admin_user', JSON.stringify(profile));
+              } catch {}
+            }
             router.replace('/operator');
           } else {
             AdminApiClient.logout();

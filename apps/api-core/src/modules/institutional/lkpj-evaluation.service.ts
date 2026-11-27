@@ -27,6 +27,7 @@ import {
   InstitutionalMembershipStatus,
   DatahubPrivacyScope,
   DatahubCategory,
+  InstitutionalQuotaFeatureScope,
   LkpjWorkspaceStatus,
   LkpjMaterialCategory,
   LkpjExtractionVerificationStatus,
@@ -49,6 +50,7 @@ import {
 import { LkpjEvaluationAiService } from '@polaris/ai-engine';
 import { DatahubService } from '../datahub/datahub.service.js';
 import { InstitutionalGovernanceService } from './institutional-governance.service.js';
+import { InstitutionalQuotaService } from './institutional-quota.service.js';
 import type {
   CreateLkpjWorkspaceRequestDto,
   UpdateLkpjWorkspaceStatusRequestDto,
@@ -118,8 +120,9 @@ const ALLOWED_FINDING_REVIEW_TRANSITIONS: Record<
 export class LkpjEvaluationService {
   constructor(
     private readonly governance: InstitutionalGovernanceService,
-    private readonly datahubService: DatahubService
-  ) {}
+    private readonly datahubService: DatahubService,
+    private readonly quotaService: InstitutionalQuotaService
+  ) { }
 
   private async hasReviewerCapabilityOnUnitOrOrg(params: {
     orgId: string;
@@ -252,7 +255,7 @@ export class LkpjEvaluationService {
       myOrgRole !== OrganizationMemberRole.LEADERSHIP
     ) {
       throw new ForbiddenException(
-        'Hanya Sekretariat DPRD (ORG_ADMIN) atau Pimpinan DPRD yang berwenang membuka siklus ruang kerja LKPJ baru.'
+        'Hanya Admin Sekretariat DPRD atau Pimpinan DPRD yang berwenang membuka siklus ruang kerja LKPJ baru.'
       );
     }
 
@@ -361,7 +364,7 @@ export class LkpjEvaluationService {
       myOrgRole !== OrganizationMemberRole.LEADERSHIP
     ) {
       throw new ForbiddenException(
-        'Hanya Sekretariat DPRD (ORG_ADMIN) atau Pimpinan DPRD yang berwenang mengubah tahapan resmi siklus pembahasan LKPJ.'
+        'Hanya Admin Sekretariat DPRD atau Pimpinan DPRD yang berwenang mengubah tahapan resmi siklus pembahasan LKPJ.'
       );
     }
 
@@ -380,11 +383,18 @@ export class LkpjEvaluationService {
       throw new NotFoundException('Ruang kerja evaluasi LKPJ tidak ditemukan.');
     }
 
+    const statusLabels: Record<LkpjWorkspaceStatus, string> = {
+      [LkpjWorkspaceStatus.REGISTERED]: 'Terdaftar (Diterima DPRD)',
+      [LkpjWorkspaceStatus.IN_DISCUSSION]: 'Dalam Pembahasan',
+      [LkpjWorkspaceStatus.PRE_PLENARY_CONSOLIDATION]: 'Konsolidasi Praparipurna',
+      [LkpjWorkspaceStatus.PLENARY_ADOPTED]: 'Disahkan Paripurna',
+      [LkpjWorkspaceStatus.POST_PLENARY_MONITORING]: 'Pemantauan Pascaparipurna',
+    };
     const currentStatus = ws.status as LkpjWorkspaceStatus;
     const allowedNext = ALLOWED_WORKSPACE_TRANSITIONS[currentStatus] || [];
     if (!allowedNext.includes(dto.status)) {
       throw new BadRequestException(
-        `Transisi tahapan siklus LKPJ tidak diizinkan dari "${currentStatus}" langsung ke "${dto.status}". Ikuti urutan: REGISTERED → IN_DISCUSSION → PRE_PLENARY_CONSOLIDATION → PLENARY_ADOPTED → POST_PLENARY_MONITORING.`
+        `Transisi tahapan siklus LKPJ tidak diizinkan dari "${statusLabels[currentStatus] || currentStatus}" langsung ke "${statusLabels[dto.status] || dto.status}". Ikuti urutan: Terdaftar → Dalam Pembahasan → Konsolidasi Praparipurna → Disahkan Paripurna → Pemantauan Pascaparipurna.`
       );
     }
 
@@ -1064,7 +1074,7 @@ export class LkpjEvaluationService {
         myOrgRole !== OrganizationMemberRole.LEADERSHIP
       ) {
         throw new ForbiddenException(
-          'Hanya Pimpinan DPRD atau Sekretariat DPRD (ORG_ADMIN) yang berwenang mengesahkan Rekomendasi Resmi Paripurna.'
+          'Hanya Pimpinan DPRD atau Admin Sekretariat DPRD yang berwenang mengesahkan Rekomendasi Resmi Paripurna.'
         );
       }
     } else {
@@ -1077,7 +1087,7 @@ export class LkpjEvaluationService {
       });
       if (!canReview) {
         throw new ForbiddenException(
-          'Hanya Penelaah (REVIEWER), Ketua Bidang (UNIT_LEAD), Tenaga Ahli, Pimpinan, atau Sekretariat yang berwenang melakukan telaah/verifikasi temuan LKPJ.'
+          'Hanya Penelaah, Ketua Bidang, Tenaga Ahli, Pimpinan, atau Sekretariat yang berwenang melakukan telaah/verifikasi temuan LKPJ.'
         );
       }
     }
@@ -1689,23 +1699,38 @@ export class LkpjEvaluationService {
       ? dashboard.findings.find((f) => f.id === dto.targetFindingId) || null
       : null;
 
-    const aiResponse = await LkpjEvaluationAiService.executeSpecialistAgent({
-      tenantId: actorTenantId,
-      organizationId: org.id,
-      organizationName: org.name,
-      legislativeLevel: org.legislativeLevel,
-      regionName: org.regionName,
-      activeUnitId:
-        dto.activeUnitId || dashboard.workspace.assignedDiscussionUnitId || null,
-      workspaceTitle: dashboard.workspace.title,
-      fiscalYear: dashboard.workspace.fiscalYear,
-      specialistRole: dto.specialistRole,
-      customInstruction: dto.customInstruction,
-      targetFinding,
-      findings: dashboard.findings,
-      materials: dashboard.materials,
-      factionConsolidation: dashboard.factionConsolidationMatrix,
-    });
+    await this.quotaService.consumeGenerateQuota(
+      orgId,
+      actorTenantId,
+      InstitutionalQuotaFeatureScope.LKPJ_EVALUATION
+    );
+    let aiResponse: Awaited<ReturnType<typeof LkpjEvaluationAiService.executeSpecialistAgent>>;
+    try {
+      aiResponse = await LkpjEvaluationAiService.executeSpecialistAgent({
+        tenantId: actorTenantId,
+        organizationId: org.id,
+        organizationName: org.name,
+        legislativeLevel: org.legislativeLevel,
+        regionName: org.regionName,
+        activeUnitId:
+          dto.activeUnitId || dashboard.workspace.assignedDiscussionUnitId || null,
+        workspaceTitle: dashboard.workspace.title,
+        fiscalYear: dashboard.workspace.fiscalYear,
+        specialistRole: dto.specialistRole,
+        customInstruction: dto.customInstruction,
+        targetFinding,
+        findings: dashboard.findings,
+        materials: dashboard.materials,
+        factionConsolidation: dashboard.factionConsolidationMatrix,
+      });
+    } catch (err) {
+      await this.quotaService.refundGenerateQuota(
+        orgId,
+        actorTenantId,
+        InstitutionalQuotaFeatureScope.LKPJ_EVALUATION
+      );
+      throw err;
+    }
 
     await this.governance.recordAudit({
       organizationId: orgId,
@@ -1800,20 +1825,20 @@ Berdasarkan pembahasan terhadap LKPJ Kepala Daerah Tahun Anggaran ${ws.fiscalYea
 
     const executiveSummaryMarkdown = actorTenantId
       ? await LkpjEvaluationAiService.synthesizeMeetingPackageSummary({
-          tenantId: actorTenantId,
-          organizationId: orgId,
-          organizationName: ws.organizationName || 'DPRD',
-          unitId: activeUnitId || ws.assignedDiscussionUnitId || null,
-          workspaceTitle: ws.title,
-          fiscalYear: ws.fiscalYear,
-          packageType,
-          daysRemaining: ws.daysRemainingForDiscussion,
-          discussionDeadlineIso: ws.discussionDeadlineAt.slice(0, 10),
-          includedFindings,
-          openDataRequestsCount: openDataRequests.length,
-          factionNeedDecisionCount: needDecisionCount,
-          defaultExecutiveSummaryMarkdown,
-        })
+        tenantId: actorTenantId,
+        organizationId: orgId,
+        organizationName: ws.organizationName || 'DPRD',
+        unitId: activeUnitId || ws.assignedDiscussionUnitId || null,
+        workspaceTitle: ws.title,
+        fiscalYear: ws.fiscalYear,
+        packageType,
+        daysRemaining: ws.daysRemainingForDiscussion,
+        discussionDeadlineIso: ws.discussionDeadlineAt.slice(0, 10),
+        includedFindings,
+        openDataRequestsCount: openDataRequests.length,
+        factionNeedDecisionCount: needDecisionCount,
+        defaultExecutiveSummaryMarkdown,
+      })
       : defaultExecutiveSummaryMarkdown;
 
     const officialRecommendationsRegister = includedFindings

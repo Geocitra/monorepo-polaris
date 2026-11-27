@@ -31,12 +31,12 @@ export class ApiClient {
         this.removeToken();
         return null;
       }
-    } catch {}
+    } catch { }
 
     let token: string | null = null;
     try {
       token = localStorage.getItem('polaris_token');
-    } catch {}
+    } catch { }
 
     if (!token) {
       const match = document.cookie.match(/(?:^|;\s*)polaris_session=([^;]+)/);
@@ -47,7 +47,7 @@ export class ApiClient {
           if (!localStorage.getItem(this.EXPIRES_KEY)) {
             localStorage.setItem(this.EXPIRES_KEY, String(Date.now() + this.SESSION_DURATION_SEC * 1000));
           }
-        } catch {}
+        } catch { }
       }
     } else {
       const hasCookie = document.cookie.includes('polaris_session=');
@@ -59,6 +59,15 @@ export class ApiClient {
     return token && token.trim().length > 0 ? token : null;
   }
 
+  private static clearInstitutionalSessionState(): void {
+    try {
+      sessionStorage.removeItem('polaris_sidebar_profile');
+      sessionStorage.removeItem('polaris_active_org_id');
+      sessionStorage.removeItem('polaris_active_unit_id');
+      sessionStorage.removeItem('polaris_pending_session_id');
+    } catch { }
+  }
+
   public static setToken(token: string): void {
     if (typeof window !== 'undefined') {
       try {
@@ -66,7 +75,8 @@ export class ApiClient {
         localStorage.setItem(this.EXPIRES_KEY, String(Date.now() + this.SESSION_DURATION_SEC * 1000));
         localStorage.setItem('polaris_last_activity', String(Date.now()));
         localStorage.removeItem('polaris_acting_tenant_id');
-      } catch {}
+      } catch { }
+      this.clearInstitutionalSessionState();
       document.cookie = `polaris_session=${encodeURIComponent(token)}; path=/; max-age=${this.SESSION_DURATION_SEC}; SameSite=Lax`;
     }
   }
@@ -80,7 +90,8 @@ export class ApiClient {
         localStorage.removeItem(this.EXPIRES_KEY);
         localStorage.removeItem('polaris_last_activity');
         localStorage.removeItem('polaris_acting_tenant_id');
-      } catch {}
+      } catch { }
+      this.clearInstitutionalSessionState();
       document.cookie = 'polaris_session=; path=/; max-age=0; SameSite=Lax';
     }
   }
@@ -123,6 +134,7 @@ export class ApiClient {
     this.applyInstitutionalHeaders(endpoint, headers);
 
     const response = await fetch(`${API_URL}${endpoint}`, {
+      cache: options.cache ?? 'no-store',
       ...options,
       headers,
     });
@@ -214,12 +226,12 @@ export class AdminApiClient {
         this.logout();
         return null;
       }
-    } catch {}
+    } catch { }
 
     let token: string | null = null;
     try {
       token = localStorage.getItem(this.TOKEN_KEY);
-    } catch {}
+    } catch { }
 
     if (!token) {
       const match = document.cookie.match(/(?:^|;\s*)polaris_admin_session=([^;]+)/);
@@ -230,7 +242,7 @@ export class AdminApiClient {
           if (!localStorage.getItem(this.ADMIN_EXPIRES_KEY)) {
             localStorage.setItem(this.ADMIN_EXPIRES_KEY, String(Date.now() + this.ADMIN_SESSION_DURATION_SEC * 1000));
           }
-        } catch {}
+        } catch { }
       }
     }
 
@@ -255,7 +267,7 @@ export class AdminApiClient {
         localStorage.setItem(this.ADMIN_EXPIRES_KEY, String(Date.now() + this.ADMIN_SESSION_DURATION_SEC * 1000));
         localStorage.setItem('polaris_last_activity', String(Date.now()));
         localStorage.removeItem('polaris_acting_tenant_id');
-      } catch {}
+      } catch { }
       document.cookie = `polaris_admin_session=${encodeURIComponent(token)}; path=/; max-age=${this.ADMIN_SESSION_DURATION_SEC}; SameSite=Lax`;
     }
   }
@@ -268,7 +280,7 @@ export class AdminApiClient {
         localStorage.removeItem(this.ADMIN_EXPIRES_KEY);
         localStorage.removeItem('polaris_last_activity');
         localStorage.removeItem('polaris_acting_tenant_id');
-      } catch {}
+      } catch { }
       document.cookie = 'polaris_admin_session=; path=/; max-age=0; SameSite=Lax';
     }
   }
@@ -316,7 +328,7 @@ export class AdminApiClient {
     if (typeof window !== 'undefined') {
       try {
         this.actingTenantId = localStorage.getItem('polaris_acting_tenant_id');
-      } catch {}
+      } catch { }
     }
     return this.actingTenantId;
   }
@@ -338,6 +350,7 @@ export class AdminApiClient {
     }
 
     const response = await fetch(`${API_URL}${endpoint}`, {
+      cache: options.cache ?? 'no-store',
       ...options,
       headers,
     });

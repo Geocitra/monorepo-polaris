@@ -27,6 +27,17 @@ export class SubscriptionGuard implements CanActivate {
       throw new ForbiddenException(msg);
     }
 
+    const now = new Date();
+    if (sub.currentPeriodEnd && new Date(sub.currentPeriodEnd) <= now) {
+      const graceEnd = sub.gracePeriodEnd ? new Date(sub.gracePeriodEnd) : null;
+      if (!graceEnd || graceEnd <= now) {
+        const msg = request.user?.isOperator
+          ? `Akses AI dibatasi: Masa aktif langganan tokoh "${request.user?.tenantId}" telah berakhir.`
+          : 'Masa aktif langganan Anda telah berakhir. Silakan perpanjang lisensi di menu Billing.';
+        throw new ForbiddenException(msg);
+      }
+    }
+
     return true;
   }
 }

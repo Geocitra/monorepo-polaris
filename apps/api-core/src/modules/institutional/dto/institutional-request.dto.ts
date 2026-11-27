@@ -8,10 +8,14 @@ import {
   IsArray,
   IsUUID,
   IsDateString,
+  IsEmail,
+  IsIn,
+  ValidateNested,
   Min,
   MaxLength,
   IsObject,
 } from 'class-validator';
+import { Type } from 'class-transformer';
 import {
   LegislativeLevel,
   OrganizationStatus,
@@ -24,10 +28,31 @@ import {
   type StandingOrdersConfigDto,
 } from '@polaris/shared-types';
 
+export class CreateInitialOrgAdminDto {
+  @IsString()
+  @MaxLength(150)
+  fullName!: string;
+
+  @IsEmail()
+  @MaxLength(180)
+  email!: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(30)
+  phoneNumber?: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(120)
+  titleOrPosition?: string;
+}
+
 export class CreateInstitutionRequestDto {
+  @IsOptional()
   @IsString()
   @MaxLength(50)
-  code!: string;
+  code?: string;
 
   @IsString()
   @MaxLength(200)
@@ -49,9 +74,10 @@ export class CreateInstitutionRequestDto {
   standingOrdersConfig?: StandingOrdersConfigDto;
 
   // Initial B2G Annual Contract
+  @IsOptional()
   @IsString()
   @MaxLength(100)
-  contractNumber!: string;
+  contractNumber?: string;
 
   @IsInt()
   @Min(2024)
@@ -75,8 +101,18 @@ export class CreateInstitutionRequestDto {
 
   @IsOptional()
   @IsNumber()
-  @Min(10000)
+  @Min(0)
   annualTokenPoolLimit?: number;
+
+  @IsOptional()
+  @IsInt()
+  @Min(1)
+  weeklyGenerateLimitPerMember?: number;
+
+  @IsOptional()
+  @IsInt()
+  @Min(0)
+  revisionLimitPerItem?: number;
 
   @IsOptional()
   @IsNumber()
@@ -86,6 +122,15 @@ export class CreateInstitutionRequestDto {
   @IsOptional()
   @IsUUID()
   initialOrgAdminTenantId?: string;
+
+  @IsOptional()
+  @IsEmail()
+  initialOrgAdminEmail?: string;
+
+  @IsOptional()
+  @ValidateNested()
+  @Type(() => CreateInitialOrgAdminDto)
+  createInitialOrgAdmin?: CreateInitialOrgAdminDto;
 }
 
 export class UpdateInstitutionRequestDto {
@@ -143,8 +188,18 @@ export class UpsertOrganizationContractRequestDto {
 
   @IsOptional()
   @IsNumber()
-  @Min(10000)
+  @Min(0)
   annualTokenPoolLimit?: number;
+
+  @IsOptional()
+  @IsInt()
+  @Min(1)
+  weeklyGenerateLimitPerMember?: number;
+
+  @IsOptional()
+  @IsInt()
+  @Min(0)
+  revisionLimitPerItem?: number;
 
   @IsOptional()
   @IsNumber()
@@ -154,6 +209,12 @@ export class UpsertOrganizationContractRequestDto {
   @IsOptional()
   @IsString()
   notes?: string;
+}
+
+export class ReviseInstitutionalItemDto {
+  @IsString()
+  @MaxLength(2000)
+  revisionInstruction!: string;
 }
 
 export class AssignOrganizationMemberRequestDto {
@@ -172,6 +233,37 @@ export class AssignOrganizationMemberRequestDto {
   @IsString()
   @MaxLength(150)
   titleOrPosition?: string;
+}
+
+export class CreateOrganizationMemberAccountDto {
+  @IsString()
+  @MaxLength(150)
+  fullName!: string;
+
+  @IsEmail()
+  @MaxLength(180)
+  email!: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(30)
+  phoneNumber?: string;
+
+  @IsEnum(OrganizationMemberRole)
+  orgRole!: OrganizationMemberRole;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(150)
+  titleOrPosition?: string;
+
+  @IsOptional()
+  @IsUUID()
+  initialUnitId?: string;
+
+  @IsOptional()
+  @IsEnum(OrganizationUnitMemberRole)
+  initialUnitRole?: OrganizationUnitMemberRole;
 }
 
 export class CreateOrganizationUnitRequestDto {
@@ -304,4 +396,64 @@ export class InstitutionalAiAssistBodyDto {
   @IsString()
   @MaxLength(255)
   saveAsSharedNoteTitle?: string;
+
+  @IsOptional()
+  @IsBoolean()
+  skipClarification?: boolean;
+}
+
+export class CoordinatorChatTurnDto {
+  @IsString()
+  @IsIn(['user', 'assistant'])
+  role!: 'user' | 'assistant';
+
+  @IsString()
+  @MaxLength(12000)
+  content!: string;
+}
+
+export class CoordinatorChatRequestDto {
+  @IsOptional()
+  @IsUUID('4')
+  sessionId?: string;
+
+  @IsString()
+  @MaxLength(6000)
+  message!: string;
+
+  @IsOptional()
+  @IsIn(['AUTO', 'LKPJ_FINANCE', 'LEGISLATION', 'BRIEFING', 'ARTICLE', 'IMAGE'])
+  mode?: 'AUTO' | 'LKPJ_FINANCE' | 'LEGISLATION' | 'BRIEFING' | 'ARTICLE' | 'IMAGE';
+
+  @IsOptional()
+  @IsArray()
+  @ValidateNested({ each: true })
+  @Type(() => CoordinatorChatTurnDto)
+  history?: CoordinatorChatTurnDto[];
+
+  @IsOptional()
+  @IsArray()
+  @IsUUID('4', { each: true })
+  selectedFileIds?: string[];
+
+  @IsOptional()
+  @IsBoolean()
+  includeOrgSharedDocuments?: boolean;
+
+  @IsOptional()
+  @IsBoolean()
+  includeNationalAndRegionalRegulations?: boolean;
+
+  @IsOptional()
+  @IsIn(['1:1', '4:5', '16:9', '9:16'])
+  imageAspectRatio?: '1:1' | '4:5' | '16:9' | '9:16';
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(255)
+  saveAsSharedNoteTitle?: string;
+
+  @IsOptional()
+  @IsBoolean()
+  skipClarification?: boolean;
 }

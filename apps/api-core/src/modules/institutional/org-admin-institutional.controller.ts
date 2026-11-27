@@ -27,23 +27,51 @@ import {
 } from './guards/institutional-workspace.guard.js';
 import { InstitutionalGovernanceService } from './institutional-governance.service.js';
 import { InstitutionalKnowledgeService } from './institutional-knowledge.service.js';
+import { InstitutionalQuotaService } from './institutional-quota.service.js';
 import {
   CreateOrganizationUnitRequestDto,
   UpdateOrganizationUnitRequestDto,
   AssignOrganizationMemberRequestDto,
+  CreateOrganizationMemberAccountDto,
   AssignUnitMemberRequestDto,
   InstitutionalDocumentUploadMetaDto,
 } from './dto/institutional-request.dto.js';
 
 @Controller('institutions/:orgId/admin')
 @UseGuards(AuthGuard, InstitutionalWorkspaceGuard)
-@RequireOrgRoles(OrganizationMemberRole.ORG_ADMIN, OrganizationMemberRole.LEADERSHIP)
+@RequireOrgRoles(OrganizationMemberRole.ORG_ADMIN)
 @AllowOrgAdminUnitManagement()
 export class OrgAdminInstitutionalController {
   constructor(
     private readonly governance: InstitutionalGovernanceService,
-    private readonly knowledge: InstitutionalKnowledgeService
+    private readonly knowledge: InstitutionalKnowledgeService,
+    private readonly quotaService: InstitutionalQuotaService
   ) {}
+
+  @Get('usage-analytics')
+  @RequireOrgRoles(OrganizationMemberRole.ORG_ADMIN, OrganizationMemberRole.LEADERSHIP)
+  async getUsageAnalytics(@Param('orgId') orgId: string) {
+    return await this.quotaService.getOrganizationUsageAnalytics(orgId);
+  }
+
+  @Post('members/:tenantId/reset-quota')
+  @HttpCode(HttpStatus.OK)
+  async resetMemberQuota(
+    @Param('orgId') orgId: string,
+    @Param('tenantId') targetTenantId: string,
+    @CurrentTenant() actor: AuthenticatedTenantPayload
+  ) {
+    const updated = await this.quotaService.resetMemberWeeklyQuota(orgId, targetTenantId);
+    await this.governance.recordAudit({
+      organizationId: orgId,
+      actorTenantId: actor.tenantId,
+      action: 'ADMIN_RESET_MEMBER_AI_QUOTA',
+      targetEntity: 'organization_member_quota_wallets',
+      targetEntityId: targetTenantId,
+      details: { weeklyPeriodKey: updated.weeklyPeriodKey },
+    });
+    return updated;
+  }
 
   @Post('units')
   @HttpCode(HttpStatus.CREATED)
@@ -88,6 +116,20 @@ export class OrgAdminInstitutionalController {
     @Body() dto: AssignOrganizationMemberRequestDto
   ) {
     return await this.governance.assignOrganizationMember(
+      orgId,
+      { tenantId: user.tenantId },
+      dto
+    );
+  }
+
+  @Post('members/create')
+  @HttpCode(HttpStatus.CREATED)
+  async createOrgMemberAccount(
+    @Param('orgId') orgId: string,
+    @CurrentTenant() user: AuthenticatedTenantPayload,
+    @Body() dto: CreateOrganizationMemberAccountDto
+  ) {
+    return await this.governance.createOrganizationMemberAccount(
       orgId,
       { tenantId: user.tenantId },
       dto

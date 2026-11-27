@@ -16,7 +16,7 @@ import {
   Sparkles,
 } from 'lucide-react';
 import { toast } from '@/components/ui/toast';
-import { ApiClient } from '@/lib/api-client';
+import { AdminApiClient } from '@/lib/api-client';
 import { AssignedTenant, GeneratedFullResult } from './types';
 
 interface OperatorSocialDistributionTabProps {
@@ -160,7 +160,7 @@ _Diproduksi oleh Tim Redaksi Polaris Media Studio via Bot Resmi_`;
     try {
       const packageText = compileFullPackage();
 
-      const response = await ApiClient.request<{
+      const response = await AdminApiClient.request<{
         success: boolean;
         message: string;
         recipientName: string;

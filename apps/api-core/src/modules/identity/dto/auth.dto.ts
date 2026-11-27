@@ -77,6 +77,13 @@ export interface AuthResponseDto {
     subdomain: string;
     mustChangePassword?: boolean;
     legislativeLevel?: LegislativeLevel;
+    accountMode?: 'B2B_ONLY' | 'B2C_ONLY' | 'HYBRID';
+    primaryOrganization?: {
+      organizationId: string;
+      organizationName: string;
+      orgRole: string;
+      hasAssignedUnits?: boolean;
+    } | null;
   };
 }
 

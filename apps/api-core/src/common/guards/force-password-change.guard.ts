@@ -31,8 +31,7 @@ export class ForcePasswordChangeGuard implements CanActivate {
     if (
       path.includes('/auth/force-change-password') ||
       path.includes('/auth/change-password') ||
-      path.includes('/auth/me') ||
-      path.includes('/auth/logout')
+      path.includes('/auth/me')
     ) {
       return true;
     }

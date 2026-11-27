@@ -47,6 +47,8 @@ import { useToast } from '@/components/ui/toast';
 import { ApiClient } from '@/lib/api-client';
 import {
   attachComponentOutlineOverlay,
+  attachSnapGuides,
+  buildAsyncMediaLayersFromManifest,
   buildGranularObjectsFromComponentDefs,
   buildObjectsFromManifest,
   ensurePosterFontsLoaded,
@@ -54,6 +56,10 @@ import {
   rehydrateMlObjects,
   type PosterLayerManifest,
 } from './poster-layer-builder';
+import {
+  uploadEditorAssetToCdn,
+  useCanvaShapeActions,
+} from './magic-layers/useCanvaShapeActions';
 import {
   type MagicLayersModalProps,
   type PosterArchetype,
@@ -138,6 +144,7 @@ export function MagicLayersModal({
   const [isCuttingOut, setIsCuttingOut] = useState(false);
   const [cutoutSuccess, setCutoutSuccess] = useState(false);
   const [hasGrabbedText, setHasGrabbedText] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
 
   // ─── UNDO / REDO HISTORY STACK (CTRL+Z & CTRL+Y) ───
   const historyStackRef = useRef<string[]>([]);
@@ -310,7 +317,14 @@ export function MagicLayersModal({
       setFontFamily(obj.fontFamily || "'Inter', sans-serif");
       setFontSize(obj.fontSize || 36);
       setFillColor(typeof obj.fill === 'string' ? obj.fill : '#0F172A');
-      setBgColor(typeof obj.backgroundColor === 'string' ? obj.backgroundColor : 'transparent');
+      const mlBoxFill = (obj as any).customData?.mlStyle?.box?.fill;
+      const effectiveBg =
+        typeof obj.backgroundColor === 'string' && obj.backgroundColor
+          ? obj.backgroundColor
+          : typeof mlBoxFill === 'string' && mlBoxFill
+            ? mlBoxFill
+            : 'transparent';
+      setBgColor(effectiveBg);
       setIsBold(obj.fontWeight === 'bold' || (typeof obj.fontWeight === 'number' && obj.fontWeight >= 700));
       setIsItalic(obj.fontStyle === 'italic');
       setTextAlign((obj.textAlign as any) || 'left');
@@ -344,10 +358,10 @@ export function MagicLayersModal({
     const naturalH = canvasNaturalSizeRef.current.height;
     if (!naturalW || !naturalH) return;
 
-    const paddingX = 48;
-    const paddingY = 48;
-    const availW = Math.max(100, clientWidth - paddingX);
-    const availH = Math.max(100, clientHeight - paddingY);
+    const paddingX = 64;
+    const paddingY = 64;
+    const availW = Math.max(120, clientWidth - paddingX);
+    const availH = Math.max(120, clientHeight - paddingY);
 
     const calculatedFit = Math.min(availW / naturalW, availH / naturalH);
     setFitScale(calculatedFit);
@@ -376,14 +390,24 @@ export function MagicLayersModal({
     updateResponsiveFit();
     window.addEventListener('resize', updateResponsiveFit);
 
+    const wsEl = workspaceRef.current;
+    const handleWheelZoom = (e: WheelEvent) => {
+      if (!(e.ctrlKey || e.metaKey)) return;
+      e.preventDefault();
+      const delta = e.deltaY < 0 ? 0.1 : -0.1;
+      setZoomLevel((prev) => Math.max(0.25, Math.min(3.0, Number((prev + delta).toFixed(2)))));
+    };
+    wsEl?.addEventListener('wheel', handleWheelZoom, { passive: false });
+
     let observer: ResizeObserver | null = null;
-    if (workspaceRef.current) {
+    if (wsEl) {
       observer = new ResizeObserver(() => updateResponsiveFit());
-      observer.observe(workspaceRef.current);
+      observer.observe(wsEl);
     }
 
     return () => {
       window.removeEventListener('resize', updateResponsiveFit);
+      wsEl?.removeEventListener('wheel', handleWheelZoom);
       observer?.disconnect();
     };
   }, [isOpen, updateResponsiveFit]);
@@ -448,7 +472,7 @@ export function MagicLayersModal({
       try {
         (fabricRef.current as any).isDisposed = true;
         fabricRef.current.dispose();
-      } catch {}
+      } catch { }
       fabricRef.current = null;
     }
 
@@ -490,6 +514,7 @@ export function MagicLayersModal({
         canvas.on('object:added', () => refreshLayersList(canvas));
         canvas.on('object:removed', () => refreshLayersList(canvas));
         attachComponentOutlineOverlay(canvas, () => isExportingRef.current);
+        attachSnapGuides(canvas, () => isExportingRef.current);
         canvas.on('text:changed', (e) => {
           if (e.target instanceof Textbox) {
             setCurrentTextContent(e.target.text || '');
@@ -524,6 +549,13 @@ export function MagicLayersModal({
             await canvas.loadFromJSON(sanitizedJson);
             // Pulihkan renderer dekorasi (kotak badge, border kartu) yang tidak ikut terserialisasi
             rehydrateMlObjects(canvas);
+            // Pastikan layer background selalu terkunci & berada di paling belakang
+            canvas.getObjects().forEach((o) => {
+              if ((o as any).customData?.isBackground || (o as any).customId === 'layer_background') {
+                o.set({ selectable: false, evented: false, lockMovementX: true, lockMovementY: true });
+                canvas.sendObjectToBack(o);
+              }
+            });
             canvas.renderAll();
             if (!isDisposed) {
               refreshLayersList(canvas);
@@ -574,7 +606,7 @@ export function MagicLayersModal({
         try {
           (fabricRef.current as any).isDisposed = true;
           fabricRef.current.dispose();
-        } catch {}
+        } catch { }
         fabricRef.current = null;
       }
     };
@@ -598,22 +630,13 @@ export function MagicLayersModal({
       // ════════════════════════════════════════════════════════════════════════
       setPipelineStep(1);
       setPipelineStatusText('1/4 Menganalisis elemen visual & OCR teks asli dari poster...');
-      let layerData = await fetchPosterLayerData(imageUrl, publicationId, naturalW, naturalH, isForce);
-      let effectiveRawCanvasUrl =
+      const layerData = await fetchPosterLayerData(imageUrl, publicationId, naturalW, naturalH, isForce);
+      const effectiveRawCanvasUrl =
         rawCanvasUrl && rawCanvasUrl !== imageUrl
           ? rawCanvasUrl
           : layerData.rawCanvasUrl && layerData.rawCanvasUrl !== imageUrl
             ? layerData.rawCanvasUrl
             : undefined;
-
-      // Jika manifest belum ada di DB atau defective, paksa ekstrak dinamis via Vision AI
-      if (!layerData.manifest) {
-        setPipelineStatusText('1/4 Ekstraksi Vision AI dinamis: mendeteksi posisi & teks komponen asli...');
-        layerData = await fetchPosterLayerData(imageUrl, publicationId, naturalW, naturalH, true);
-        if (layerData.rawCanvasUrl && !effectiveRawCanvasUrl) {
-          effectiveRawCanvasUrl = layerData.rawCanvasUrl;
-        }
-      }
 
       if (layerData.manifest) {
         const manifest = layerData.manifest;
@@ -623,8 +646,9 @@ export function MagicLayersModal({
         await ensurePosterFontsLoaded(manifest);
 
         setPipelineStep(3);
-        setPipelineStatusText('3/4 Memisahkan kotak kartu dan setiap teks asli menjadi komponen mandiri...');
+        setPipelineStatusText('3/4 Memisahkan kotak kartu, gambar, dan setiap teks asli menjadi komponen mandiri...');
         const objects = buildObjectsFromManifest(manifest, naturalW, naturalH);
+        const mediaObjects = await buildAsyncMediaLayersFromManifest(manifest, naturalW, naturalH);
 
         setPipelineStep(4);
         setPipelineStatusText('4/4 Inpainting cerdas latar belakang bersih (menghapus teks lama)...');
@@ -635,17 +659,19 @@ export function MagicLayersModal({
           layerData.detectedArchetype || archetype
         );
 
+        const hasImageLayers = manifest.layers.some((l) => l.kind === 'image');
         const cleanBgToUse =
-          effectiveRawCanvasUrl ||
-          (await createCleanPosterBackground(
-            imageUrl,
-            naturalW,
-            naturalH,
-            inpaintDefs,
-            layerData.detectedArchetype || archetype,
-            publicationId,
-            effectiveRawCanvasUrl
-          ));
+          !isForce && !hasImageLayers && effectiveRawCanvasUrl
+            ? effectiveRawCanvasUrl
+            : await createCleanPosterBackground(
+                imageUrl,
+                naturalW,
+                naturalH,
+                inpaintDefs,
+                layerData.detectedArchetype || archetype,
+                publicationId,
+                isForce || hasImageLayers ? undefined : effectiveRawCanvasUrl
+              );
 
         const rawImg = await loadResilientFabricImage(resolveSafeImageUrl(cleanBgToUse));
         placeImageCover(rawImg, naturalW, naturalH);
@@ -657,6 +683,7 @@ export function MagicLayersModal({
         canvas.add(rawImg);
         canvas.sendObjectToBack(rawImg);
         objects.forEach((o) => canvas.add(o));
+        mediaObjects.forEach((o) => canvas.add(o));
 
         canvas.requestRenderAll();
         refreshLayersList(canvas);
@@ -664,90 +691,23 @@ export function MagicLayersModal({
         setIsDecomposed(true);
 
         const textCount = objects.filter((o) => o instanceof Textbox).length;
+        const totalNonText = objects.length - textCount + mediaObjects.length;
         toast({
           type: 'success',
           title: 'Magic Layers Selesai',
-          description: `${textCount} teks dan ${objects.length - textCount} kotak berhasil dipisahkan sesuai isi konten asli poster Anda.`,
+          description: `${textCount} teks dan ${totalNonText} elemen grafis/gambar berhasil dipisahkan sesuai isi konten asli poster Anda.`,
         });
         return;
       }
 
-      console.warn(
-        '[MagicLayers] Layer manifest tidak tersedia untuk poster ini (poster lama). Menggunakan pemetaan archetype.'
-      );
-
-      // ════════════════════════════════════════════════════════════════════════
-      // TAHAP 1: DETEKSI TEKS (OCR) & ISOLASI BOUNDING BOX
-      // ════════════════════════════════════════════════════════════════════════
-      setPipelineStep(1);
-      setPipelineStatusText('1/4 Menjalankan OCR: mendeteksi kotak koordinat teks, tipografi & mask biner...');
-      const layoutArchetype = detectPosterLayout(archetype, initialTitle, initialSubtitle);
-      await new Promise((resolve) => setTimeout(resolve, 500));
-
-      // ════════════════════════════════════════════════════════════════════════
-      // TAHAP 2: SEGMENTASI SEMANTIK & PANOPTIC DOCUMENT LAYOUT
-      // ════════════════════════════════════════════════════════════════════════
-      setPipelineStep(2);
-      setPipelineStatusText('2/4 Segmentasi Panoptic: memetakan container kartu, banner aksi, dan frame visual...');
-      await new Promise((resolve) => setTimeout(resolve, 500));
-
-      // ════════════════════════════════════════════════════════════════════════
-      // TAHAP 3: PENGGABUNGAN HEURISTIK (POST-PROCESSING GROUPING)
-      // ════════════════════════════════════════════════════════════════════════
-      setPipelineStep(3);
-      setPipelineStatusText('3/4 Post-processing: menggabungkan badge, teks & tag menjadi 1 container kartu utuh...');
-      const componentDefs = getArchetypeComponentDefs(
-        layoutArchetype,
-        naturalW,
-        naturalH,
-        initialTitle,
-        initialSubtitle,
-        initialAuthor
-      );
-      await new Promise((resolve) => setTimeout(resolve, 500));
-
-      // ════════════════════════════════════════════════════════════════════════
-      // TAHAP 4: INPAINTING CERDAS TEKSTUR LATAR BELAKANG & STRUKTUR LAYER
-      // ════════════════════════════════════════════════════════════════════════
-      setPipelineStep(4);
-      setPipelineStatusText('4/4 Inpainting cerdas latar belakang (tekstur & gradien) & menyusun layer Canva...');
-      const cleanBgUrl = await createCleanPosterBackground(
-        imageUrl,
-        naturalW,
-        naturalH,
-        componentDefs,
-        layoutArchetype,
-        publicationId,
-        rawCanvasUrl
-      );
-      await new Promise((resolve) => setTimeout(resolve, 500));
-
-      // Perbarui latar belakang kanvas dengan hasil inpainting AI yang bersih
-      const cleanImg = await loadResilientFabricImage(cleanBgUrl);
-      const existingBg = canvas.getObjects().find((o) => (o as any).customData?.isBackground);
-      if (existingBg) {
-        canvas.remove(existingBg);
-      }
-      placeImageCover(cleanImg, naturalW, naturalH);
-      (cleanImg as any).customId = 'layer_background';
-      (cleanImg as any).customData = { name: 'Poster Bersih (Latar Belakang Inpainted)', isBackground: true };
-      canvas.add(cleanImg);
-      canvas.sendObjectToBack(cleanImg);
-
-      // Pecah setiap kartu & isinya menjadi komponen Kotak Kartu (Rect) + Teks Terpisah (Textbox)
-      // sehingga user bisa langsung klik & edit kalimat di masing-masing kotak komponen (gaya Canva)
-      const granularObjects = buildGranularObjectsFromComponentDefs(componentDefs, naturalW, naturalH);
-      granularObjects.forEach((obj) => canvas.add(obj));
-
-      canvas.renderAll();
+      setIsDecomposed(true);
       refreshLayersList(canvas);
       pushHistorySnapshot(canvas, true);
-      setIsDecomposed(true);
 
       toast({
-        type: 'success',
-        title: 'Magic Layers Selesai (4 Tahap Sukses)',
-        description: 'Segmentasi objek, deteksi teks, inpainting latar belakang, dan struktur layer Canva telah terbentuk sempurna.',
+        type: 'info',
+        title: 'Ekstraksi Otomatis Tidak Menemukan Teks Terstruktur',
+        description: 'Anda tetap dapat menambahkan teks, badge, atau mengunggah gambar secara manual di panel kiri.',
       });
     } catch (err: any) {
       console.error('[MagicLayers] Gagal mengurai layer:', err);
@@ -845,9 +805,14 @@ export function MagicLayersModal({
       // 2. Jalankan pemisahan subjek depan AI (@imgly/background-removal)
       const { removeBackground } = await import('@imgly/background-removal');
       const blob = await removeBackground(imageInput);
-      const cutoutUrl = URL.createObjectURL(blob);
+      const dataUrl = await new Promise<string>((resolve) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(String(reader.result || ''));
+        reader.readAsDataURL(blob);
+      });
+      const cdnOrLocalUrl = dataUrl ? await uploadEditorAssetToCdn(dataUrl, 'cutout.png') : URL.createObjectURL(blob);
 
-      const cutoutImg = await loadResilientFabricImage(cutoutUrl);
+      const cutoutImg = await loadResilientFabricImage(cdnOrLocalUrl);
       if (!fabricRef.current) return;
 
       const naturalW = canvasNaturalSizeRef.current.width;
@@ -1020,66 +985,54 @@ export function MagicLayersModal({
     }
   };
 
-  // ─── 🪄 URAI TEKS MENJADI LAYER INTERAKTIF (CANVA GRAB TEXT) ───
-  const handleGrabText = () => {
+  // ─── 🪄 URAI TEKS MENJADI LAYER INTERAKTIF VIA AI VISION ───
+  const handleGrabText = async () => {
     if (!fabricRef.current) return;
-    const canvas = fabricRef.current;
-    const { width: w, height: h } = canvasNaturalSizeRef.current;
-
-    const titleText = initialTitle || 'PENURUNAN PENGANGGURAN MELALUI PELATIHAN';
-
-    // 1. Layer Judul Utama yang rapi dan sesuai gaya poster Gambar 2
-    const headline = new Textbox(titleText.toUpperCase(), {
-      originX: 'left',
-      originY: 'top',
-      left: w * 0.07,
-      top: h * 0.08,
-      width: w * 0.86,
-      fontSize: Math.round(w * 0.042),
-      fontFamily: "'Inter', sans-serif",
-      fontWeight: 'bold',
-      fill: '#0F172A',
-      backgroundColor: '#FFFFFF',
-      padding: 6,
-      editable: true,
-      shadow: new Shadow({ color: 'rgba(0,0,0,0.1)', blur: 4, offsetX: 0, offsetY: 1 }),
-    });
-    headline.setCoords();
-    (headline as any).customId = `grabbed_headline_${Date.now()}`;
-    (headline as any).customData = { name: 'Judul Utama (Dapat Diedit)' };
-    canvas.add(headline);
-
-    // 2. Kartu Tonggak Pembahasan (Gaya Kartu Putih & Badge Oranye persis Gambar 2)
-    const cardTonggak = new Textbox('TONGGAK 01: 15.000 PESERTA PELATIHAN\nBalai Latihan Kerja telah melatih 15.000 peserta dengan kurikulum kebutuhan industri.', {
-      originX: 'left',
-      originY: 'top',
-      left: w * 0.50,
-      top: h * 0.28,
-      width: w * 0.44,
-      fontSize: Math.round(w * 0.018),
-      fontFamily: "'Inter', sans-serif",
-      fontWeight: 'normal',
-      fill: '#1E293B',
-      backgroundColor: '#FFFFFF',
-      padding: 10,
-      editable: true,
-      shadow: new Shadow({ color: 'rgba(0,0,0,0.12)', blur: 8, offsetX: 0, offsetY: 2 }),
-    });
-    cardTonggak.setCoords();
-    (cardTonggak as any).customId = `grabbed_tonggak_${Date.now()}`;
-    (cardTonggak as any).customData = { name: 'Kartu Tonggak (Dapat Diedit)' };
-    canvas.add(cardTonggak);
-
-    canvas.setActiveObject(headline);
-    canvas.renderAll();
-    refreshLayersList(canvas);
+    await handleTriggerMagicLayers(true);
     setHasGrabbedText(true);
+  };
 
-    toast({
-      type: 'success',
-      title: 'Teks Berhasil Diurai!',
-      description: 'Elemen teks kini dapat digeser bebas atau diklik ganda untuk mengubah kalimatnya.',
-    });
+  // ─── 🖼️ UNGGAH GAMBAR / FOTO KE KANVAS ───
+  const handleUploadImageToCanvas = (file: File) => {
+    if (!fabricRef.current) return;
+    const reader = new FileReader();
+    reader.onload = async () => {
+      const dataUrl = reader.result as string;
+      if (!dataUrl || !fabricRef.current) return;
+      try {
+        const assetUrl = await uploadEditorAssetToCdn(dataUrl, file.name);
+        const img = await FabricImage.fromURL(assetUrl, { crossOrigin: 'anonymous' });
+        const { width: canvasW, height: canvasH } = canvasNaturalSizeRef.current;
+        const maxW = canvasW * 0.45;
+        const maxH = canvasH * 0.45;
+        const scale = Math.min(maxW / (img.width || 400), maxH / (img.height || 400), 1);
+        img.set({
+          left: canvasW / 2 - ((img.width || 400) * scale) / 2,
+          top: canvasH / 2 - ((img.height || 400) * scale) / 2,
+          scaleX: scale,
+          scaleY: scale,
+        });
+        (img as any).customId = `uploaded_img_${Date.now()}`;
+        (img as any).customData = { name: file.name.slice(0, 28) || 'Gambar Unggahan' };
+        fabricRef.current.add(img);
+        fabricRef.current.setActiveObject(img);
+        fabricRef.current.renderAll();
+        refreshLayersList(fabricRef.current);
+        pushHistorySnapshot(fabricRef.current);
+        toast({
+          type: 'success',
+          title: 'Gambar Ditambahkan ke Kanvas',
+          description: 'Anda dapat menggeser, memperbesar, atau mengubah urutan layernya.',
+        });
+      } catch (err: any) {
+        toast({
+          type: 'error',
+          title: 'Gagal Memuat Gambar',
+          description: err?.message || 'Format gambar tidak dapat dibaca.',
+        });
+      }
+    };
+    reader.readAsDataURL(file);
   };
 
   // ─── ADD NEW ELEMENTS ───
@@ -1106,6 +1059,7 @@ export function MagicLayersModal({
     fabricRef.current.add(txt);
     fabricRef.current.setActiveObject(txt);
     fabricRef.current.renderAll();
+    pushHistorySnapshot(fabricRef.current);
   };
 
   const addTextBody = () => {
@@ -1129,6 +1083,7 @@ export function MagicLayersModal({
     fabricRef.current.add(txt);
     fabricRef.current.setActiveObject(txt);
     fabricRef.current.renderAll();
+    pushHistorySnapshot(fabricRef.current);
   };
 
   const addDimensiCard = () => {
@@ -1152,6 +1107,7 @@ export function MagicLayersModal({
     fabricRef.current.add(txt);
     fabricRef.current.setActiveObject(txt);
     fabricRef.current.renderAll();
+    pushHistorySnapshot(fabricRef.current);
   };
 
   const addBadgeShape = () => {
@@ -1177,6 +1133,7 @@ export function MagicLayersModal({
     fabricRef.current.add(txt);
     fabricRef.current.setActiveObject(txt);
     fabricRef.current.renderAll();
+    pushHistorySnapshot(fabricRef.current);
   };
 
   // Duplicate Object
@@ -1187,18 +1144,99 @@ export function MagicLayersModal({
         left: (cloned.left || 0) + 20,
         top: (cloned.top || 0) + 20,
       });
+      const origData = (selectedObject as any).customData || {};
       (cloned as any).customId = `clone_${Date.now()}`;
-      (cloned as any).customData = { name: `Salinan ${(selectedObject as any).customData?.name || 'Layer'}` };
+      (cloned as any).customData = {
+        ...origData,
+        name: `Salinan ${origData?.name || 'Layer'}`,
+      };
       fabricRef.current?.add(cloned);
+      if (fabricRef.current) {
+        rehydrateMlObjects(fabricRef.current);
+      }
       fabricRef.current?.setActiveObject(cloned);
       fabricRef.current?.renderAll();
-    pushHistorySnapshot();
+      pushHistorySnapshot();
     });
   };
 
+  const {
+    addBasicShape,
+    addSvgPreset,
+    applyShapeFill,
+    applyShapeStroke,
+    applyShapeStrokeWidth,
+    applyShapeRadius,
+    applyObjectOpacity,
+    toggleFlipHorizontal,
+    toggleImageCircleMask,
+  } = useCanvaShapeActions({
+    fabricRef,
+    canvasNaturalSizeRef,
+    selectedObject,
+    refreshLayersList,
+    pushHistorySnapshot,
+    setSelectedObject,
+  });
+
+  useEffect(() => {
+    if (!isOpen) return;
+    const onKeyDown = (e: KeyboardEvent) => {
+      const tag = (e.target as HTMLElement | null)?.tagName;
+      if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') return;
+      const canvas = fabricRef.current;
+      const active = canvas?.getActiveObject();
+      if (!canvas || !active) return;
+      if (active instanceof Textbox && active.isEditing) return;
+
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'd') {
+        e.preventDefault();
+        handleDuplicateSelected();
+        return;
+      }
+      if (e.key === 'Delete' || e.key === 'Backspace') {
+        if (!(active as any).customData?.isBackground) {
+          e.preventDefault();
+          canvas.remove(active);
+          canvas.discardActiveObject();
+          canvas.renderAll();
+          setSelectedObject(null);
+          pushHistorySnapshot(canvas);
+        }
+        return;
+      }
+      const step = e.shiftKey ? 10 : 1;
+      if (e.key === 'ArrowLeft') {
+        e.preventDefault();
+        active.set('left', (active.left || 0) - step);
+        active.setCoords();
+        canvas.renderAll();
+      } else if (e.key === 'ArrowRight') {
+        e.preventDefault();
+        active.set('left', (active.left || 0) + step);
+        active.setCoords();
+        canvas.renderAll();
+      } else if (e.key === 'ArrowUp') {
+        e.preventDefault();
+        active.set('top', (active.top || 0) - step);
+        active.setCoords();
+        canvas.renderAll();
+      } else if (e.key === 'ArrowDown') {
+        e.preventDefault();
+        active.set('top', (active.top || 0) + step);
+        active.setCoords();
+        canvas.renderAll();
+      }
+    };
+    window.addEventListener('keydown', onKeyDown);
+    return () => window.removeEventListener('keydown', onKeyDown);
+  }, [isOpen, pushHistorySnapshot]);
+
   // Layer Operations
   const selectLayer = (layer: LayerItem) => {
-    if (!fabricRef.current) return;
+    const isBgLayer =
+      Boolean((layer.object as any)?.customData?.isBackground) || layer.id === 'layer_background';
+    if (!fabricRef.current || isBgLayer) return;
     fabricRef.current.setActiveObject(layer.object);
     fabricRef.current.renderAll();
     updateStylePanelFromObject(layer.object);
@@ -1279,8 +1317,9 @@ export function MagicLayersModal({
   };
 
   // ─── SAVE & APPLY (PIXEL-PERFECT EXPORT) ───
-  const handleSaveAndApply = () => {
+  const handleSaveAndApply = async () => {
     if (!fabricRef.current) return;
+    setIsSaving(true);
     try {
       const canvas = fabricRef.current;
       const sliceObjects = canvas.getObjects().filter((o) => (o as any).customData?.isComponentSlice);
@@ -1299,15 +1338,34 @@ export function MagicLayersModal({
         isExportingRef.current = false;
       }
 
-      // Sertakan customId/customData agar nama layer & dekorasi komponen bisa dipulihkan
-      const layersJson = JSON.stringify(fabricRef.current.toObject(['customId', 'customData']));
+      // Sertakan seluruh properti serialize (customId, customData, lock, visibility, selectability)
+      const layersJson = JSON.stringify((fabricRef.current as any).toObject(SERIALIZED_FABRIC_PROPS));
 
-      onApplyChanges(renderedUrl, layersJson);
+      let finalUrl = renderedUrl;
+      if (publicationId) {
+        const saveRes = await ApiClient.request<{
+          success: boolean;
+          posterUrl: string;
+        }>(`/studio/articles/${publicationId}/poster/save-layers`, {
+          method: 'POST',
+          body: JSON.stringify({
+            imageDataUrl: renderedUrl,
+            layersJson,
+          }),
+        });
+        if (saveRes?.posterUrl) {
+          finalUrl = saveRes.posterUrl;
+        }
+      }
+
+      onApplyChanges(finalUrl, layersJson);
 
       toast({
         type: 'success',
-        title: 'Desain Berhasil Diterapkan',
-        description: 'Perubahan layer dan kalimat berhasil disimpan ke infografis Anda.',
+        title: 'Desain Berhasil Disimpan',
+        description: publicationId
+          ? 'Perubahan layer & poster telah tersimpan permanen ke server.'
+          : 'Perubahan layer visual berhasil diterapkan pada draf.',
       });
 
       onClose();
@@ -1317,6 +1375,8 @@ export function MagicLayersModal({
         title: 'Gagal Menyimpan',
         description: err?.message || 'Terjadi kendala saat mengekspor kanvas.',
       });
+    } finally {
+      setIsSaving(false);
     }
   };
 
@@ -1373,9 +1433,9 @@ export function MagicLayersModal({
         onUndo={handleUndo}
         onRedo={handleRedo}
         zoomLevel={zoomLevel}
-        onZoomOut={() => setZoomLevel((prev) => Math.max(0.4, prev - 0.15))}
+        onZoomOut={() => setZoomLevel((prev) => Math.max(0.25, Number((prev - 0.15).toFixed(2))))}
         onZoomFit={() => setZoomLevel(1.0)}
-        onZoomIn={() => setZoomLevel((prev) => Math.min(2.5, prev + 0.15))}
+        onZoomIn={() => setZoomLevel((prev) => Math.min(3.0, Number((prev + 0.15).toFixed(2))))}
         isDecomposed={isDecomposed}
         isScanning={isScanning}
         onTriggerMagicLayers={handleTriggerMagicLayers}
@@ -1406,10 +1466,17 @@ export function MagicLayersModal({
         onMoveLayerToBack={moveLayerToBack}
         onDuplicateSelected={handleDuplicateSelected}
         onDeleteSelectedObject={deleteSelectedObject}
+        onApplyShapeFill={applyShapeFill}
+        onApplyShapeStroke={applyShapeStroke}
+        onApplyShapeStrokeWidth={applyShapeStrokeWidth}
+        onApplyShapeRadius={applyShapeRadius}
+        onApplyObjectOpacity={applyObjectOpacity}
+        onToggleFlipHorizontal={toggleFlipHorizontal}
+        onToggleImageCircleMask={toggleImageCircleMask}
         isCuttingOut={isCuttingOut}
       />
 
-      <div className="flex-1 flex overflow-hidden">
+      <div className="flex-1 min-h-0 flex overflow-hidden">
         <MagicLayersSidebar
           activeTab={activeTab}
           onChangeTab={setActiveTab}
@@ -1427,6 +1494,9 @@ export function MagicLayersModal({
           onAddTextBody={addTextBody}
           onAddDimensiCard={addDimensiCard}
           onAddBadgeShape={addBadgeShape}
+          onAddBasicShape={addBasicShape}
+          onAddSvgPreset={addSvgPreset}
+          onUploadImage={handleUploadImageToCanvas}
           onMagicCutout={handleMagicCutout}
           isCuttingOut={isCuttingOut}
           cutoutSuccess={cutoutSuccess}

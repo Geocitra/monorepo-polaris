@@ -1,5 +1,14 @@
-import { IsString, IsNotEmpty, IsOptional, IsBoolean, IsUUID, IsEnum } from 'class-validator';
-import { OperatorAssignmentStatus } from '@polaris/shared-types';
+import {
+  IsString,
+  IsNotEmpty,
+  IsOptional,
+  IsBoolean,
+  IsUUID,
+  IsArray,
+  IsEmail,
+  MinLength,
+  IsIn,
+} from 'class-validator';
 
 export class AssignOperatorDto {
   @IsUUID('4', { message: 'Operator ID harus berupa UUID v4 yang valid.' })
@@ -29,31 +38,28 @@ export class UnassignOperatorDto {
   tenantId!: string;
 }
 
-export class UpdateAssignmentStatusDto {
-  @IsEnum(OperatorAssignmentStatus, { message: 'Status penugasan tidak valid.' })
-  @IsNotEmpty({ message: 'Status tidak boleh kosong.' })
-  status!: OperatorAssignmentStatus;
-
-  @IsBoolean()
-  @IsOptional()
-  canDirectPublish?: boolean;
-
-  @IsString()
-  @IsOptional()
-  notes?: string;
-}
-
 export class CreateOperatorAccountDto {
+  @IsEmail({}, { message: 'Format email tidak valid.' })
   @IsNotEmpty({ message: 'Email tidak boleh kosong.' })
   email!: string;
 
+  @IsString({ message: 'Password harus berupa teks.' })
+  @MinLength(6, { message: 'Password minimal 6 karakter.' })
   @IsNotEmpty({ message: 'Password tidak boleh kosong.' })
   password!: string;
 
+  @IsString({ message: 'Nama lengkap harus berupa teks.' })
   @IsNotEmpty({ message: 'Nama lengkap tidak boleh kosong.' })
   fullName!: string;
 
   @IsOptional()
+  @IsIn(['CONTENT_OPERATOR', 'SUPPORT_OPERATOR'], {
+    message: 'Role operator harus CONTENT_OPERATOR atau SUPPORT_OPERATOR.',
+  })
+  role?: 'CONTENT_OPERATOR' | 'SUPPORT_OPERATOR';
+
+  @IsOptional()
+  @IsString()
   avatarUrl?: string;
 }
 
@@ -62,11 +68,12 @@ export class UpdateOperatorAccountDto {
   @IsOptional()
   fullName?: string;
 
-  @IsString({ message: 'Email harus berupa teks.' })
+  @IsEmail({}, { message: 'Format email tidak valid.' })
   @IsOptional()
   email?: string;
 
   @IsString({ message: 'Password harus berupa teks.' })
+  @MinLength(6, { message: 'Password baru minimal 6 karakter.' })
   @IsOptional()
   password?: string;
 
@@ -77,5 +84,36 @@ export class UpdateOperatorAccountDto {
   @IsString({ message: 'Avatar URL harus berupa teks.' })
   @IsOptional()
   avatarUrl?: string;
+}
+
+export class OperatorUpdateTenantProfileDto {
+  @IsOptional()
+  @IsString()
+  fullName?: string;
+
+  @IsOptional()
+  @IsString()
+  partyAffiliation?: string;
+
+  @IsOptional()
+  @IsString()
+  customDapilName?: string;
+
+  @IsOptional()
+  @IsString()
+  commissionName?: string;
+
+  @IsOptional()
+  @IsString()
+  photoUrl?: string;
+
+  @IsOptional()
+  @IsString()
+  education?: string;
+
+  @IsOptional()
+  @IsArray()
+  @IsString({ each: true })
+  issueInterests?: string[];
 }
 

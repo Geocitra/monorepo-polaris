@@ -1,4 +1,4 @@
-import { pgTable, uuid, varchar, timestamp, text, boolean, integer, jsonb, unique } from 'drizzle-orm/pg-core';
+import { pgTable, uuid, varchar, timestamp, text, boolean, integer, jsonb, unique, index } from 'drizzle-orm/pg-core';
 import { legislativeLevelEnum, operatorAssignmentStatusEnum, superadminRoleEnum } from './enums.js';
 
 export const electoralDistricts = pgTable('electoral_districts', {
@@ -119,6 +119,8 @@ export const operatorTenantAssignments = pgTable('operator_tenant_assignments', 
   updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
 }, (t) => ({
   unqOperatorTenant: unique().on(t.operatorId, t.tenantId),
+  idxOpAssignOperatorStatus: index('idx_op_assign_operator_status').on(t.operatorId, t.status),
+  idxOpAssignTenantStatus: index('idx_op_assign_tenant_status').on(t.tenantId, t.status),
 }));
 
 export const operatorAuditLogs = pgTable('operator_audit_logs', {
@@ -132,5 +134,7 @@ export const operatorAuditLogs = pgTable('operator_audit_logs', {
   ipAddress: varchar('ip_address', { length: 50 }),
   userAgent: text('user_agent'),
   createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
-});
+}, (t) => ({
+  idxOpAuditOperatorCreated: index('idx_op_audit_operator_created').on(t.operatorId, t.createdAt),
+}));
 

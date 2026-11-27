@@ -3,6 +3,7 @@ import {
   Logger,
   NotFoundException,
   ForbiddenException,
+  BadRequestException,
 } from '@nestjs/common';
 import * as crypto from 'node:crypto';
 import {
@@ -58,7 +59,7 @@ export class WhatsAppOperatorBrokerService {
     private readonly waClient: WhatsAppCloudClient,
     private readonly helper: WhatsAppBriefHelperService,
     private readonly quotaWalletService: QuotaWalletService
-  ) {}
+  ) { }
 
   public async listBriefsForOperator(
     operatorId: string,
@@ -161,6 +162,12 @@ export class WhatsAppOperatorBrokerService {
 
     await this.helper.assertOperatorCanAccessTenant(operatorId, row.brief.tenantId, isSuperadmin);
 
+    if (['REJECTED', 'CANCELLED', 'PUBLISHED', 'APPROVED'].includes(row.brief.status)) {
+      throw new BadRequestException(
+        `Tiket #${row.brief.briefCode} sudah berstatus "${row.brief.status}" dan tidak dapat ditolak atau di-refund ulang.`
+      );
+    }
+
     const msgs = await db
       .select()
       .from(contentBriefMessages)
@@ -203,6 +210,12 @@ export class WhatsAppOperatorBrokerService {
     }
 
     await this.helper.assertOperatorCanAccessTenant(operatorId, row.brief.tenantId, isSuperadmin);
+
+    if (['REJECTED', 'CANCELLED', 'PUBLISHED', 'APPROVED'].includes(row.brief.status)) {
+      throw new BadRequestException(
+        `Tiket #${row.brief.briefCode} sudah berstatus "${row.brief.status}" dan tidak dapat ditolak atau di-refund ulang.`
+      );
+    }
 
     let currentBriefDto: ContentBriefDto;
     let currentQuota: TenantWeeklyBriefQuotaDto;
@@ -264,7 +277,7 @@ export class WhatsAppOperatorBrokerService {
       combinedParts.length > 0
         ? combinedParts.join('\n\n')
         : this.helper.cleanTopicParts([currentBriefDto.topicSummary]).join('\n\n') ||
-          currentBriefDto.topicSummary;
+        currentBriefDto.topicSummary;
 
     const mediaMsgs = msgs.filter(
       (m) =>
@@ -289,8 +302,7 @@ export class WhatsAppOperatorBrokerService {
         const mimeType = m.mediaMimeType || 'application/octet-stream';
         const fileName =
           m.mediaFileName ||
-          `Lampiran_${m.messageType}_${m.id.slice(0, 6)}.${
-            mimeType.includes('pdf') ? 'pdf' : 'jpg'
+          `Lampiran_${m.messageType}_${m.id.slice(0, 6)}.${mimeType.includes('pdf') ? 'pdf' : 'jpg'
           }`;
         const base64DataUrl = `data:${mimeType};base64,${buffer.toString('base64')}`;
 
@@ -339,6 +351,12 @@ export class WhatsAppOperatorBrokerService {
     }
 
     await this.helper.assertOperatorCanAccessTenant(operatorId, row.brief.tenantId, isSuperadmin);
+
+    if (['REJECTED', 'CANCELLED', 'PUBLISHED', 'APPROVED'].includes(row.brief.status)) {
+      throw new BadRequestException(
+        `Tiket #${row.brief.briefCode} sudah berstatus "${row.brief.status}" dan tidak dapat ditolak atau di-refund ulang.`
+      );
+    }
 
     const quotaBefore = await this.helper.getTenantWeeklyQuota(row.brief.tenantId);
     const alreadyConsumedQuota = (QUOTA_CONSUMING_STATUSES as readonly string[]).includes(
@@ -453,6 +471,12 @@ export class WhatsAppOperatorBrokerService {
 
     await this.helper.assertOperatorCanAccessTenant(operatorId, row.brief.tenantId, isSuperadmin);
 
+    if (['REJECTED', 'CANCELLED', 'PUBLISHED', 'APPROVED'].includes(row.brief.status)) {
+      throw new BadRequestException(
+        `Tiket #${row.brief.briefCode} sudah berstatus "${row.brief.status}" dan tidak dapat ditolak atau di-refund ulang.`
+      );
+    }
+
     const updatedBrief = await withTenantContext(row.brief.tenantId, async (tx) => {
       const [updated] = await tx
         .update(contentBriefs)
@@ -488,7 +512,7 @@ export class WhatsAppOperatorBrokerService {
       auditMeta,
     });
 
-        const refundResult = await this.quotaWalletService.refundQuota({
+    const refundResult = await this.quotaWalletService.refundQuota({
       tenantId: row.brief.tenantId,
       briefId: row.brief.id,
       reason: dto.reason,
@@ -532,6 +556,12 @@ export class WhatsAppOperatorBrokerService {
     }
 
     await this.helper.assertOperatorCanAccessTenant(operatorId, row.brief.tenantId, isSuperadmin);
+
+    if (['REJECTED', 'CANCELLED', 'PUBLISHED', 'APPROVED'].includes(row.brief.status)) {
+      throw new BadRequestException(
+        `Tiket #${row.brief.briefCode} sudah berstatus "${row.brief.status}" dan tidak dapat ditolak atau di-refund ulang.`
+      );
+    }
 
     const leakCheck = detectOperatorContactLeak(dto.questionText);
     if (leakCheck.hasLeak) {
@@ -838,10 +868,10 @@ export class WhatsAppOperatorBrokerService {
       pkgType === 'POSTER_ONLY'
         ? '🎨 Poster Visual'
         : pkgType === 'INFOGRAPHIC_ONLY'
-        ? '📊 Infografis Publik'
-        : pkgType === 'ARTICLE_ONLY'
-        ? '📝 Naskah Artikel'
-        : '📦 Paket Lengkap';
+          ? '📊 Infografis Publik'
+          : pkgType === 'ARTICLE_ONLY'
+            ? '📝 Naskah Artikel'
+            : '📦 Paket Lengkap';
 
     if (shouldDirectPublish) {
       await this.waClient.sendTextMessage(
@@ -883,14 +913,14 @@ export class WhatsAppOperatorBrokerService {
       const reviewButtons =
         remainingRevs > 0
           ? [
-              { id: `REV_APPROVE:${briefId}`, title: '✅ Setujui & Tayang' },
-              { id: `REV_START:${briefId}`, title: '✏️ Minta Revisi' },
-              { id: 'MENU_OPEN_MAIN', title: '📋 Menu Utama' },
-            ]
+            { id: `REV_APPROVE:${briefId}`, title: '✅ Setujui & Tayang' },
+            { id: `REV_START:${briefId}`, title: '✏️ Minta Revisi' },
+            { id: 'MENU_OPEN_MAIN', title: '📋 Menu Utama' },
+          ]
           : [
-              { id: `REV_APPROVE:${briefId}`, title: '✅ Setujui & Tayang' },
-              { id: 'MENU_OPEN_MAIN', title: '📋 Menu Utama' },
-            ];
+            { id: `REV_APPROVE:${briefId}`, title: '✅ Setujui & Tayang' },
+            { id: 'MENU_OPEN_MAIN', title: '📋 Menu Utama' },
+          ];
 
       await this.waClient.sendInteractiveButtons(
         row.phoneNumber,
@@ -936,6 +966,12 @@ export class WhatsAppOperatorBrokerService {
     }
 
     await this.helper.assertOperatorCanAccessTenant(operatorId, row.brief.tenantId, isSuperadmin);
+
+    if (['REJECTED', 'CANCELLED', 'PUBLISHED', 'APPROVED'].includes(row.brief.status)) {
+      throw new BadRequestException(
+        `Tiket #${row.brief.briefCode} sudah berstatus "${row.brief.status}" dan tidak dapat ditolak atau di-refund ulang.`
+      );
+    }
 
     const [msg] = await db
       .select()

@@ -575,7 +575,7 @@ export default function InfografisStudioPage() {
         }),
       });
 
-      const portalHost = getPortalUrl(profile?.subdomain);
+      const portalHost = getPortalUrl(profile?.subdomain, profile?.customDomain);
 
       const finalUrl = res?.slug
         ? `${portalHost}/artikel/${res.slug}`

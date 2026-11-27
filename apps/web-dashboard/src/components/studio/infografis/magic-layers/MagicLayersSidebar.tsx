@@ -1,10 +1,13 @@
 'use client';
 
+import { useState } from 'react';
 import type React from 'react';
 import { FabricImage, FabricObject, Textbox } from 'fabric';
 import {
   ArrowDown,
+  ArrowRight,
   ArrowUp,
+  Circle as CircleIcon,
   Edit3,
   Eye,
   EyeOff,
@@ -12,14 +15,23 @@ import {
   Layers,
   Loader2,
   Lock,
+  Minus,
+  PanelLeftClose,
+  PanelLeftOpen,
   Sparkles,
   Square,
+  Triangle as TriangleIcon,
   Type,
   Unlock,
   Wand2,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import type { LayerItem } from './magic-layers.types';
+import {
+  CANVA_SVG_ICON_PRESETS,
+  type CanvaBasicShapeKind,
+  type CanvaSvgPreset,
+} from './useCanvaShapeActions';
 
 interface MagicLayersSidebarProps {
   activeTab: 'layers' | 'text' | 'elements' | 'magic';
@@ -38,6 +50,9 @@ interface MagicLayersSidebarProps {
   onAddTextBody: () => void;
   onAddDimensiCard: () => void;
   onAddBadgeShape: () => void;
+  onAddBasicShape: (kind: CanvaBasicShapeKind) => void;
+  onAddSvgPreset: (preset: CanvaSvgPreset) => void;
+  onUploadImage: (file: File) => void;
   onMagicCutout: () => void;
   isCuttingOut: boolean;
   cutoutSuccess: boolean;
@@ -62,12 +77,24 @@ export function MagicLayersSidebar({
   onAddTextBody,
   onAddDimensiCard,
   onAddBadgeShape,
+  onAddBasicShape,
+  onAddSvgPreset,
+  onUploadImage,
   onMagicCutout,
   isCuttingOut,
   cutoutSuccess,
   onGrabText,
   hasGrabbedText,
 }: MagicLayersSidebarProps) {
+  const [isDrawerOpen, setIsDrawerOpen] = useState(true);
+  const handleTabClick = (tab: 'layers' | 'text' | 'elements' | 'magic') => {
+    if (activeTab === tab && isDrawerOpen) {
+      setIsDrawerOpen(false);
+    } else {
+      onChangeTab(tab);
+      setIsDrawerOpen(true);
+    }
+  };
   const isTextEditable =
     Boolean(selectedObject) &&
     (selectedObject instanceof Textbox || Boolean((selectedObject as any)?.customData?.isComponentSlice));
@@ -77,12 +104,11 @@ export function MagicLayersSidebar({
       {/* SISI KIRI: TAB ICON NAVIGATOR */}
       <aside className="w-16 bg-white border-r border-slate-200 flex flex-col items-center py-3 gap-2 shrink-0 z-10 shadow-2xs">
         <button
-          onClick={() => onChangeTab('layers')}
-          className={`flex flex-col items-center justify-center w-12 h-12 rounded-xl transition-all ${
-            activeTab === 'layers'
+          onClick={() => handleTabClick('layers')}
+          className={`flex flex-col items-center justify-center w-12 h-12 rounded-xl transition-all ${activeTab === 'layers'
               ? 'bg-purple-50 text-purple-700 font-bold'
               : 'text-slate-500 hover:bg-slate-50 hover:text-slate-800'
-          }`}
+            }`}
           title="Susunan Lapisan (Z-Index)"
         >
           <Layers className="h-5 w-5" strokeWidth={1.75} />
@@ -90,12 +116,11 @@ export function MagicLayersSidebar({
         </button>
 
         <button
-          onClick={() => onChangeTab('text')}
-          className={`flex flex-col items-center justify-center w-12 h-12 rounded-xl transition-all ${
-            activeTab === 'text'
+          onClick={() => handleTabClick('text')}
+          className={`flex flex-col items-center justify-center w-12 h-12 rounded-xl transition-all ${activeTab === 'text'
               ? 'bg-purple-50 text-purple-700 font-bold'
               : 'text-slate-500 hover:bg-slate-50 hover:text-slate-800'
-          }`}
+            }`}
           title="Tambah Elemen Teks"
         >
           <Type className="h-5 w-5" strokeWidth={1.75} />
@@ -103,12 +128,11 @@ export function MagicLayersSidebar({
         </button>
 
         <button
-          onClick={() => onChangeTab('elements')}
-          className={`flex flex-col items-center justify-center w-12 h-12 rounded-xl transition-all ${
-            activeTab === 'elements'
+          onClick={() => handleTabClick('elements')}
+          className={`flex flex-col items-center justify-center w-12 h-12 rounded-xl transition-all ${activeTab === 'elements'
               ? 'bg-purple-50 text-purple-700 font-bold'
               : 'text-slate-500 hover:bg-slate-50 hover:text-slate-800'
-          }`}
+            }`}
           title="Tambah Bentuk & Kartu Tonggak"
         >
           <Square className="h-5 w-5" strokeWidth={1.75} />
@@ -116,21 +140,33 @@ export function MagicLayersSidebar({
         </button>
 
         <button
-          onClick={() => onChangeTab('magic')}
-          className={`flex flex-col items-center justify-center w-12 h-12 rounded-xl transition-all ${
-            activeTab === 'magic'
+          onClick={() => handleTabClick('magic')}
+          className={`flex flex-col items-center justify-center w-12 h-12 rounded-xl transition-all ${activeTab === 'magic'
               ? 'bg-purple-50 text-purple-700 font-bold'
               : 'text-slate-500 hover:bg-slate-50 hover:text-slate-800'
-          }`}
+            }`}
           title="Fitur AI Magic Layers"
         >
           <Wand2 className="h-5 w-5" strokeWidth={1.75} />
           <span className="text-[9.5px] mt-0.5">Magic AI</span>
         </button>
+
+        <button
+          onClick={() => setIsDrawerOpen((prev) => !prev)}
+          className="mt-auto flex flex-col items-center justify-center w-12 h-10 rounded-xl text-slate-400 hover:bg-slate-100 hover:text-slate-700 transition-all cursor-pointer"
+          title={isDrawerOpen ? 'Tutup Panel Samping (Perluas Kanvas)' : 'Buka Panel Samping'}
+        >
+          {isDrawerOpen ? (
+            <PanelLeftClose className="h-4 w-4" strokeWidth={1.75} />
+          ) : (
+            <PanelLeftOpen className="h-4 w-4" strokeWidth={1.75} />
+          )}
+        </button>
       </aside>
 
       {/* DRAWER KONTEN SIDEBAR */}
-      <div className="w-72 bg-white border-r border-slate-200 flex flex-col shrink-0 overflow-y-auto">
+      {isDrawerOpen && (
+      <div className="w-64 lg:w-72 bg-white border-r border-slate-200 flex flex-col shrink-0 overflow-y-auto">
         {activeTab === 'layers' && (
           <div className="flex flex-col h-full">
             <div className="px-4 py-3.5 border-b border-slate-100 flex items-center justify-between bg-slate-50/60">
@@ -151,15 +187,14 @@ export function MagicLayersSidebar({
                   <div
                     key={layer.id}
                     onClick={() => onSelectLayer(layer)}
-                    className={`flex items-center justify-between p-2.5 rounded-xl text-xs transition-all cursor-pointer border ${
-                      isSelected
+                    className={`flex items-center justify-between p-2.5 rounded-xl text-xs transition-all cursor-pointer border ${isSelected
                         ? 'bg-purple-50/80 border-purple-300 text-purple-950 font-bold shadow-2xs'
                         : isCutout
-                        ? 'bg-purple-50/40 border-purple-200 text-purple-800 font-semibold'
-                        : isBg
-                        ? 'bg-slate-50 border-slate-200 text-slate-500'
-                        : 'bg-white hover:bg-slate-50 border-slate-200 text-slate-700'
-                    }`}
+                          ? 'bg-purple-50/40 border-purple-200 text-purple-800 font-semibold'
+                          : isBg
+                            ? 'bg-slate-50 border-slate-200 text-slate-500'
+                            : 'bg-white hover:bg-slate-50 border-slate-200 text-slate-700'
+                      }`}
                   >
                     <div className="flex items-center gap-2 overflow-hidden mr-2">
                       {isCutout ? (
@@ -282,13 +317,86 @@ export function MagicLayersSidebar({
         )}
 
         {activeTab === 'elements' && (
-          <div className="p-4 space-y-4">
+          <div className="p-4 space-y-5">
             <div>
-              <h3 className="text-xs font-black uppercase tracking-wider text-slate-800">Elemen Visual</h3>
-              <p className="text-[11px] text-slate-400">Sisipkan lencana dan kartu penegas</p>
+              <h3 className="text-xs font-black uppercase tracking-wider text-slate-800">Bentuk Vektor</h3>
+              <p className="text-[11px] text-slate-400">Klik bentuk untuk ditambahkan, lalu ubah ukuran, warna, &amp; sudutnya</p>
+              <div className="grid grid-cols-3 gap-2 mt-2.5">
+                <button
+                  onClick={() => onAddBasicShape('rect')}
+                  className="flex flex-col items-center justify-center gap-1.5 p-2.5 rounded-xl border border-slate-200 hover:border-purple-300 hover:bg-purple-50/50 transition-all cursor-pointer"
+                  title="Kotak Vektor"
+                >
+                  <Square className="h-5 w-5 text-purple-600" strokeWidth={2} />
+                  <span className="text-[10px] font-bold text-slate-700">Kotak</span>
+                </button>
+                <button
+                  onClick={() => onAddBasicShape('rounded-rect')}
+                  className="flex flex-col items-center justify-center gap-1.5 p-2.5 rounded-xl border border-slate-200 hover:border-purple-300 hover:bg-purple-50/50 transition-all cursor-pointer"
+                  title="Kotak Sudut Tumpul"
+                >
+                  <div className="h-5 w-5 rounded-md border-2 border-slate-700 bg-slate-100" />
+                  <span className="text-[10px] font-bold text-slate-700">Tumpul</span>
+                </button>
+                <button
+                  onClick={() => onAddBasicShape('circle')}
+                  className="flex flex-col items-center justify-center gap-1.5 p-2.5 rounded-xl border border-slate-200 hover:border-purple-300 hover:bg-purple-50/50 transition-all cursor-pointer"
+                  title="Lingkaran"
+                >
+                  <CircleIcon className="h-5 w-5 text-orange-600" strokeWidth={2} />
+                  <span className="text-[10px] font-bold text-slate-700">Lingkaran</span>
+                </button>
+                <button
+                  onClick={() => onAddBasicShape('triangle')}
+                  className="flex flex-col items-center justify-center gap-1.5 p-2.5 rounded-xl border border-slate-200 hover:border-purple-300 hover:bg-purple-50/50 transition-all cursor-pointer"
+                  title="Segitiga"
+                >
+                  <TriangleIcon className="h-5 w-5 text-blue-800" strokeWidth={2} />
+                  <span className="text-[10px] font-bold text-slate-700">Segitiga</span>
+                </button>
+                <button
+                  onClick={() => onAddBasicShape('line')}
+                  className="flex flex-col items-center justify-center gap-1.5 p-2.5 rounded-xl border border-slate-200 hover:border-purple-300 hover:bg-purple-50/50 transition-all cursor-pointer"
+                  title="Garis Pemisah"
+                >
+                  <Minus className="h-5 w-5 text-slate-800" strokeWidth={2.5} />
+                  <span className="text-[10px] font-bold text-slate-700">Garis</span>
+                </button>
+                <button
+                  onClick={() => onAddBasicShape('arrow')}
+                  className="flex flex-col items-center justify-center gap-1.5 p-2.5 rounded-xl border border-slate-200 hover:border-purple-300 hover:bg-purple-50/50 transition-all cursor-pointer"
+                  title="Panah Vektor"
+                >
+                  <ArrowRight className="h-5 w-5 text-orange-600" strokeWidth={2} />
+                  <span className="text-[10px] font-bold text-slate-700">Panah</span>
+                </button>
+              </div>
+            </div>
+
+            <div>
+              <h3 className="text-xs font-black uppercase tracking-wider text-slate-800">Ikon &amp; Aksen SVG</h3>
+              <div className="grid grid-cols-3 gap-2 mt-2">
+                {CANVA_SVG_ICON_PRESETS.map((preset) => (
+                  <button
+                    key={preset.id}
+                    onClick={() => onAddSvgPreset(preset)}
+                    className="flex flex-col items-center justify-center gap-1 p-2 rounded-xl border border-slate-200 hover:border-purple-300 hover:bg-purple-50/50 transition-all cursor-pointer"
+                    title={preset.label}
+                  >
+                    <span
+                      className="h-5 w-5 flex items-center justify-center [&>svg]:w-5 [&>svg]:h-5"
+                      dangerouslySetInnerHTML={{ __html: preset.svg }}
+                    />
+                    <span className="text-[10px] font-semibold text-slate-700 truncate w-full text-center">
+                      {preset.label}
+                    </span>
+                  </button>
+                ))}
+              </div>
             </div>
 
             <div className="space-y-2.5">
+              <h3 className="text-xs font-black uppercase tracking-wider text-slate-800">Kartu &amp; Media</h3>
               <button
                 onClick={onAddBadgeShape}
                 className="w-full text-left p-3 rounded-xl border border-slate-200 hover:border-purple-300 hover:bg-purple-50/50 transition-all cursor-pointer group"
@@ -306,6 +414,28 @@ export function MagicLayersSidebar({
                 <span className="block font-bold text-xs text-slate-800">Kartu Putih Elegan</span>
                 <span className="text-[11px] text-slate-400">Untuk menaruh kutipan atau rangkuman data</span>
               </button>
+
+              <label className="block w-full text-left p-3 rounded-xl border border-dashed border-purple-300 bg-purple-50/40 hover:bg-purple-50 transition-all cursor-pointer">
+                <div className="flex items-center gap-2 text-xs font-bold text-purple-800">
+                  <ImageIcon className="h-4 w-4 text-purple-600" strokeWidth={1.75} />
+                  <span>Unggah Foto / Logo</span>
+                </div>
+                <span className="block text-[11px] text-slate-500 mt-0.5">
+                  Sisipkan foto tokoh, logo partai, atau stiker PNG/JPG ke kanvas
+                </span>
+                <input
+                  type="file"
+                  accept="image/png,image/jpeg,image/webp"
+                  className="hidden"
+                  onChange={(e) => {
+                    const file = e.target.files?.[0];
+                    if (file) {
+                      onUploadImage(file);
+                      e.target.value = '';
+                    }
+                  }}
+                />
+              </label>
             </div>
           </div>
         )}
@@ -367,6 +497,7 @@ export function MagicLayersSidebar({
           </div>
         )}
       </div>
+      )}
     </>
   );
 }

@@ -101,13 +101,13 @@ export class InstitutionalAiService {
     // 2. Tarik dokumen DataHub dengan pre-filter SQL ketat (UNIT_BIDANG = activeUnitId + ORG_SHARED = organizationId)
     const scopedChunks = queryEmbedding
       ? await findInstitutionalScopedDatahubChunks({
-          queryEmbedding,
-          organizationId,
-          activeUnitId,
-          includeOrgSharedDocuments,
-          limit: 8,
-          minSimilarityScore: 0.25,
-        })
+        queryEmbedding,
+        organizationId,
+        activeUnitId,
+        includeOrgSharedDocuments,
+        limit: 8,
+        minSimilarityScore: 0.25,
+      })
       : [];
 
     const unitChunks = scopedChunks.filter((c) => c.privacyScope === 'UNIT_BIDANG');
@@ -129,42 +129,42 @@ export class InstitutionalAiService {
     const unitDocsBlock =
       unitChunks.length > 0
         ? unitChunks
-            .map(
-              (c, idx) =>
-                `[DOKUMEN_BIDANG_${idx + 1}] Judul: "${c.customTitle}" | Kategori: ${c.categoryTag} | Bagian: ${c.sectionTitle || `Chunk #${c.chunkIndex + 1}`}:\n${c.chunkContent}`
-            )
-            .join('\n\n')
+          .map(
+            (c, idx) =>
+              `[DOKUMEN_BIDANG_${idx + 1}] Judul: "${c.customTitle}" | Kategori: ${c.categoryTag} | Bagian: ${c.sectionTitle || `Chunk #${c.chunkIndex + 1}`}:\n${c.chunkContent}`
+          )
+          .join('\n\n')
         : 'Belum ada potongan dokumen khusus Bidang ini yang cocok dengan pertanyaan.';
 
     const orgDocsBlock =
       orgSharedChunks.length > 0
         ? orgSharedChunks
-            .map(
-              (c, idx) =>
-                `[DOKUMEN_RESMI_SEKRETARIAT_${idx + 1}] Judul: "${c.customTitle}" | Kategori: ${c.categoryTag} | Bagian: ${c.sectionTitle || `Chunk #${c.chunkIndex + 1}`}:\n${c.chunkContent}`
-            )
-            .join('\n\n')
+          .map(
+            (c, idx) =>
+              `[DOKUMEN_RESMI_SEKRETARIAT_${idx + 1}] Judul: "${c.customTitle}" | Kategori: ${c.categoryTag} | Bagian: ${c.sectionTitle || `Chunk #${c.chunkIndex + 1}`}:\n${c.chunkContent}`
+          )
+          .join('\n\n')
         : 'Belum ada potongan dokumen resmi Sekretariat (LKPJ/RPJMD/APBD) yang cocok dengan pertanyaan.';
 
     const notesBlock =
       unitSharedNotes.length > 0
         ? unitSharedNotes
-            .slice(0, 6)
-            .map(
-              (n, idx) =>
-                `[CATATAN_BERSAMA_BIDANG_${idx + 1}] Judul: "${n.title}" | Oleh: ${n.authorName} | Status: ${n.visibility}:\n${n.contentMarkdown}`
-            )
-            .join('\n\n')
+          .slice(0, 6)
+          .map(
+            (n, idx) =>
+              `[CATATAN_BERSAMA_BIDANG_${idx + 1}] Judul: "${n.title}" | Oleh: ${n.authorName} | Status: ${n.visibility}:\n${n.contentMarkdown}`
+          )
+          .join('\n\n')
         : 'Belum ada catatan kerja bersama di Bidang ini.';
 
     const regulationsBlock =
       regulationChunks.length > 0
         ? regulationChunks
-            .map(
-              (r, idx) =>
-                `[REGULASI_${idx + 1}] Rujukan: ${r.structuralReference}:\n${r.chunkContent}`
-            )
-            .join('\n\n')
+          .map(
+            (r, idx) =>
+              `[REGULASI_${idx + 1}] Rujukan: ${r.structuralReference}:\n${r.chunkContent}`
+          )
+          .join('\n\n')
         : 'Belum ada potongan pasal spesifik di basis pengetahuan hukum lokal untuk topik ini.';
 
     const systemPrompt = `Anda adalah POLARIS (Parliamentary Intelligence & Legislative Assistance) — Tenaga Ahli Digital Parlemen yang bertugas di dalam ruang kerja terisolasi:
@@ -203,7 +203,7 @@ Susun analisis yang sistematis dengan struktur:
 3. **Daftar Pertanyaan Klarifikasi / Tindak Lanjut terhadap OPD Mitra**`;
 
     const { client, resolveModel } = getTextCompletionClient();
-    const modelName = resolveModel('gpt-4o-mini', 'gemini-2.5-flash');
+    const modelName = resolveModel('gpt-4o-mini', 'gemini-3.8-flash');
 
     const telemetry = AiTelemetryService.startTrace({
       operation: 'institutional-bidang-ai-assist',
@@ -231,47 +231,43 @@ Susun analisis yang sistematis dengan struktur:
       const deterministicResponse = `### 1. Pokok Temuan & Analisis Bidang (${unitHierarchyLabel})
 Berdasarkan penelusuran pengetahuan terisolasi pada ruang kerja **${unitHierarchyLabel}** di **${organizationName}**:
 - Ditemukan **${unitChunks.length} rujukan dokumen internal Bidang**, **${unitSharedNotes.length} catatan kerja bersama Bidang**, dan **${orgSharedChunks.length} rujukan dokumen resmi Sekretariat**.
-${
-  unitChunks.length > 0
-    ? unitChunks
-        .map(
-          (c, i) =>
-            `- **[DOKUMEN_BIDANG_${i + 1}] (${c.customTitle})**: ${c.chunkContent.slice(0, 260)}...`
-        )
-        .join('\n')
-    : '- Belum ada dokumen khusus yang diunggah ke Bidang ini untuk topik tersebut.'
-}
-${
-  unitSharedNotes.length > 0
-    ? unitSharedNotes
-        .slice(0, 3)
-        .map(
-          (n, i) =>
-            `- **[CATATAN_BERSAMA_BIDANG_${i + 1}] (${n.title} — oleh ${n.authorName})**: ${n.contentMarkdown.slice(0, 220)}...`
-        )
-        .join('\n')
-    : ''
-}
-${
-  orgSharedChunks.length > 0
-    ? orgSharedChunks
-        .map(
-          (c, i) =>
-            `- **[DOKUMEN_RESMI_SEKRETARIAT_${i + 1}] (${c.customTitle})**: ${c.chunkContent.slice(0, 240)}...`
-        )
-        .join('\n')
-    : ''
-}
+${unitChunks.length > 0
+          ? unitChunks
+            .map(
+              (c, i) =>
+                `- **[DOKUMEN_BIDANG_${i + 1}] (${c.customTitle})**: ${c.chunkContent.slice(0, 260)}...`
+            )
+            .join('\n')
+          : '- Belum ada dokumen khusus yang diunggah ke Bidang ini untuk topik tersebut.'
+        }
+${unitSharedNotes.length > 0
+          ? unitSharedNotes
+            .slice(0, 3)
+            .map(
+              (n, i) =>
+                `- **[CATATAN_BERSAMA_BIDANG_${i + 1}] (${n.title} — oleh ${n.authorName})**: ${n.contentMarkdown.slice(0, 220)}...`
+            )
+            .join('\n')
+          : ''
+        }
+${orgSharedChunks.length > 0
+          ? orgSharedChunks
+            .map(
+              (c, i) =>
+                `- **[DOKUMEN_RESMI_SEKRETARIAT_${i + 1}] (${c.customTitle})**: ${c.chunkContent.slice(0, 240)}...`
+            )
+            .join('\n')
+          : ''
+        }
 
 ### 2. Keterkaitan Dasar Hukum & Kewenangan
 - Ruang lingkup pengawasan mengikuti Tata Tertib **${organizationName}** (${legislativeLevel}) dan PP Nomor 12 Tahun 2018 / PP Nomor 13 Tahun 2019.
-${
-  regulationChunks.length > 0
-    ? regulationChunks
-        .map((r, i) => `- **[REGULASI_${i + 1}] (${r.structuralReference})**: ${r.chunkContent.slice(0, 200)}...`)
-        .join('\n')
-    : '- Dokumen regulasi teknis tambahan perlu diverifikasi pada tanggal pengerjaan.'
-}
+${regulationChunks.length > 0
+          ? regulationChunks
+            .map((r, i) => `- **[REGULASI_${i + 1}] (${r.structuralReference})**: ${r.chunkContent.slice(0, 200)}...`)
+            .join('\n')
+          : '- Dokumen regulasi teknis tambahan perlu diverifikasi pada tanggal pengerjaan.'
+        }
 
 ### 3. Daftar Pertanyaan Klarifikasi / Tindak Lanjut terhadap OPD Mitra (${partnerOpds.length > 0 ? partnerOpds.join(', ') : 'OPD Terkait'})
 1. Mohon klarifikasi tertulis beserta bukti pendukung atas kesenjangan target dan realisasi terkait: *"${prompt}"*.

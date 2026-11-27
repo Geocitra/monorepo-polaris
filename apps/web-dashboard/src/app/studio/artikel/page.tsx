@@ -76,6 +76,7 @@ function AIArticleStudioContent() {
 
   const [promptInput, setPromptInput] = useState('');
   const [publishedUrl, setPublishedUrl] = useState<string | null>(null);
+  const [activePublicationId, setActivePublicationId] = useState<string | null>(null);
 
   // Omnichannel Export & Lockout Modals
   const [exportModalOpen, setExportModalOpen] = useState(false);
@@ -210,6 +211,9 @@ function AIArticleStudioContent() {
       }
 
       if (refinedText) {
+        if (publicationId) {
+          setActivePublicationId(publicationId);
+        }
         setArticleContent(refinedText);
         setPreviewIteration(null);
         recordIteration(
@@ -244,19 +248,31 @@ function AIArticleStudioContent() {
       return;
     }
 
+    if (!activePublicationId) {
+      toast({
+        type: 'error',
+        title: 'Belum Ada Naskah Tersimpan',
+        description: 'Silakan generate naskah via Asisten AI terlebih dahulu atau publikasikan dari Arsip Studio.',
+      });
+      return;
+    }
+
     setPublishing(true);
     try {
-      await ApiClient.request<any>('/studio/articles/publish', {
-        method: 'POST',
+      await ApiClient.request<any>(`/studio/articles/${activePublicationId}`, {
+        method: 'PUT',
         body: JSON.stringify({
-          title: 'Kajian Kebijakan Publik Parlemen',
           bodyContentMarkdown: articleContent,
         }),
       });
 
+      const res = await ApiClient.request<any>(`/studio/articles/${activePublicationId}/publish`, {
+        method: 'POST',
+      });
+
       const portalDomain = getPortalUrl(profile?.subdomain, profile?.customDomain);
-      const cleanSlug = 'kajian-kebijakan-publik';
-      setPublishedUrl(`${portalDomain}/artikel/${cleanSlug}`);
+      const cleanSlug = res?.slug || res?.article?.slug || activePublicationId;
+      setPublishedUrl(res?.canonicalUrl || `${portalDomain}/artikel/${cleanSlug}`);
 
       toast({
         type: 'success',

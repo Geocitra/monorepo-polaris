@@ -32,6 +32,7 @@ import {
   OrganizationMemberRole,
   OrganizationUnitMemberRole,
   InstitutionalMembershipStatus,
+  InstitutionalQuotaFeatureScope,
   ParliamentaryDocumentCategory,
   LegislationStage,
   ClauseInspectionStatus,
@@ -52,6 +53,7 @@ import {
 } from '@polaris/shared-types';
 import { ParliamentarySpecialistAiService } from '@polaris/ai-engine';
 import { InstitutionalGovernanceService } from './institutional-governance.service.js';
+import { InstitutionalQuotaService } from './institutional-quota.service.js';
 import type {
   UpsertLegalKnowledgeVersionRequestDto,
   CreateLegislationDraftRequestDto,
@@ -77,7 +79,10 @@ const STAGE_SEQUENCE: LegislationStage[] = [
 
 @Injectable()
 export class ParliamentaryLegislationService {
-  constructor(private readonly governance: InstitutionalGovernanceService) {}
+  constructor(
+    private readonly governance: InstitutionalGovernanceService,
+    private readonly quotaService: InstitutionalQuotaService
+  ) {}
 
   private async hasReviewerCapability(params: {
     orgId: string;
@@ -187,7 +192,7 @@ export class ParliamentaryLegislationService {
       myOrgRole !== OrganizationMemberRole.SECRETARIAT_STAFF
     ) {
       throw new ForbiddenException(
-        'Hanya Sekretariat (ORG_ADMIN), Pimpinan, atau Tenaga Ahli Hukum yang berwenang mendaftarkan/memperbarui Basis Pengetahuan Hukum Daerah.'
+        'Hanya Admin Sekretariat, Pimpinan, atau Tenaga Ahli Hukum yang berwenang mendaftarkan/memperbarui Basis Pengetahuan Hukum Daerah.'
       );
     }
 
@@ -354,7 +359,29 @@ export class ParliamentaryLegislationService {
     return this.getLegislationDraftDetail(orgId, created.id);
   }
 
-  async listLegislationDrafts(orgId: string): Promise<LegislationDraftDto[]> {
+  async listLegislationDrafts(
+    orgId: string,
+    actorTenantId?: string,
+    myOrgRole?: OrganizationMemberRole
+  ): Promise<LegislationDraftDto[]> {
+    const canViewAllUnits =
+      !actorTenantId ||
+      myOrgRole === OrganizationMemberRole.ORG_ADMIN ||
+      myOrgRole === OrganizationMemberRole.LEADERSHIP;
+
+    const unitScopeCondition = canViewAllUnits
+      ? sql``
+      : sql`AND (
+          d.origin_unit_id IS NULL
+          OR EXISTS (
+            SELECT 1 FROM organization_unit_memberships um
+            WHERE um.organization_id = d.organization_id
+              AND um.unit_id = d.origin_unit_id
+              AND um.tenant_id = ${actorTenantId}::uuid
+              AND um.status = 'ACTIVE'
+          )
+        )`;
+
     const rows = await db.execute(sql`
       SELECT
         d.*,
@@ -366,6 +393,7 @@ export class ParliamentaryLegislationService {
       LEFT JOIN organization_units u ON d.origin_unit_id = u.id
       LEFT JOIN tenant_members tm ON d.created_by_tenant_id = tm.id
       WHERE d.organization_id = ${orgId}::uuid
+      ${unitScopeCondition}
       ORDER BY d.updated_at DESC;
     `);
 
@@ -703,17 +731,32 @@ export class ParliamentaryLegislationService {
 
     const legalRules = await this.listApplicableLegalRules(orgId);
 
-    const criticResult = await ParliamentarySpecialistAiService.runClauseComplianceCritic({
-      tenantId: actorTenantId,
-      organizationId: org.id,
-      organizationName: org.name,
-      legislativeLevel: org.legislativeLevel,
-      regionName: org.regionName,
-      activeUnitId: detail.originUnitId || null,
-      draftTitle: detail.title,
-      clause,
-      legalRules,
-    });
+    await this.quotaService.consumeGenerateQuota(
+      orgId,
+      actorTenantId,
+      InstitutionalQuotaFeatureScope.LEGISLATION
+    );
+    let criticResult: Awaited<ReturnType<typeof ParliamentarySpecialistAiService.runClauseComplianceCritic>>;
+    try {
+      criticResult = await ParliamentarySpecialistAiService.runClauseComplianceCritic({
+        tenantId: actorTenantId,
+        organizationId: org.id,
+        organizationName: org.name,
+        legislativeLevel: org.legislativeLevel,
+        regionName: org.regionName,
+        activeUnitId: detail.originUnitId || null,
+        draftTitle: detail.title,
+        clause,
+        legalRules,
+      });
+    } catch (err) {
+      await this.quotaService.refundGenerateQuota(
+        orgId,
+        actorTenantId,
+        InstitutionalQuotaFeatureScope.LEGISLATION
+      );
+      throw err;
+    }
 
     await db
       .update(legislationClauses)
@@ -943,23 +986,37 @@ export class ParliamentaryLegislationService {
 
     const legalRules = await this.listApplicableLegalRules(orgId);
 
-    return await ParliamentarySpecialistAiService.generateDailyMemberBriefing({
-      tenantId: actorTenantId,
-      organizationId: org.id,
-      organizationName: org.name,
-      legislativeLevel: org.legislativeLevel,
-      regionName: org.regionName,
-      unitId: unit.id,
-      unitName: unit.name,
-      agendaTitle: dto.agendaTitle.trim(),
-      focusOpds: unit.partnerOpds || [],
-      recentNotesSummary: notes.map((n) => `${n.title}: ${n.contentMarkdown.slice(0, 160)}`),
-      openFindingsSummary: openFindings.map(
-        (f) =>
-          `[${f.opdName}] ${f.indicatorOrIssue} — Target: ${f.targetValue ?? '-'}, Realisasi: ${f.realizationValue ?? '-'} (${f.evidenceStatus})`
-      ),
-      legalRules,
-    });
+    await this.quotaService.consumeGenerateQuota(
+      orgId,
+      actorTenantId,
+      InstitutionalQuotaFeatureScope.LEGISLATION
+    );
+    try {
+      return await ParliamentarySpecialistAiService.generateDailyMemberBriefing({
+        tenantId: actorTenantId,
+        organizationId: org.id,
+        organizationName: org.name,
+        legislativeLevel: org.legislativeLevel,
+        regionName: org.regionName,
+        unitId: unit.id,
+        unitName: unit.name,
+        agendaTitle: dto.agendaTitle.trim(),
+        focusOpds: unit.partnerOpds || [],
+        recentNotesSummary: notes.map((n) => `${n.title}: ${n.contentMarkdown.slice(0, 160)}`),
+        openFindingsSummary: openFindings.map(
+          (f) =>
+            `[${f.opdName}] ${f.indicatorOrIssue} — Target: ${f.targetValue ?? '-'}, Realisasi: ${f.realizationValue ?? '-'} (${f.evidenceStatus})`
+        ),
+        legalRules,
+      });
+    } catch (err) {
+      await this.quotaService.refundGenerateQuota(
+        orgId,
+        actorTenantId,
+        InstitutionalQuotaFeatureScope.LEGISLATION
+      );
+      throw err;
+    }
   }
 
   // ============================================================================
@@ -1078,7 +1135,7 @@ export class ParliamentaryLegislationService {
     });
     if (!canVerify) {
       throw new ForbiddenException(
-        'Hanya Penelaah (REVIEWER), Ketua Bidang (UNIT_LEAD), Tenaga Ahli, Pimpinan, atau Sekretariat yang berwenang memverifikasi register bukti kinerja.'
+        'Hanya Penelaah, Ketua Bidang, Tenaga Ahli, Pimpinan, atau Sekretariat yang berwenang memverifikasi register bukti kinerja.'
       );
     }
 
@@ -1206,15 +1263,30 @@ export class ParliamentaryLegislationService {
       .where(eq(tenantMembers.id, actorTenantId))
       .limit(1);
 
-    const draftResult = await ParliamentarySpecialistAiService.draftVerifiedPerformancePublication({
-      tenantId: actorTenantId,
-      organizationId: org.id,
-      organizationName: org.name,
-      unitId: evidence.unitId,
-      unitName: evidence.unitName,
-      authorName: author?.fullName || evidence.authorName || 'Anggota Dewan',
-      evidence,
-    });
+    await this.quotaService.consumeGenerateQuota(
+      orgId,
+      actorTenantId,
+      InstitutionalQuotaFeatureScope.LEGISLATION
+    );
+    let draftResult: Awaited<ReturnType<typeof ParliamentarySpecialistAiService.draftVerifiedPerformancePublication>>;
+    try {
+      draftResult = await ParliamentarySpecialistAiService.draftVerifiedPerformancePublication({
+        tenantId: actorTenantId,
+        organizationId: org.id,
+        organizationName: org.name,
+        unitId: evidence.unitId,
+        unitName: evidence.unitName,
+        authorName: author?.fullName || evidence.authorName || 'Anggota Dewan',
+        evidence,
+      });
+    } catch (err) {
+      await this.quotaService.refundGenerateQuota(
+        orgId,
+        actorTenantId,
+        InstitutionalQuotaFeatureScope.LEGISLATION
+      );
+      throw err;
+    }
 
     let linkedPublicationId = evidence.linkedPublicationId;
     if (createStudioDraft && !linkedPublicationId) {

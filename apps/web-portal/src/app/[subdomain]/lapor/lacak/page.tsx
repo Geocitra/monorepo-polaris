@@ -25,10 +25,12 @@ export default function TrackTicketPage() {
       rawTicket = `#${rawTicket}`;
     }
 
-    const API_BASE_URL =
+    const rawApiBase = (
       process.env.NEXT_PUBLIC_API_URL ||
       process.env.INTERNAL_API_URL ||
-      'http://localhost:4000/api/v1';
+      'http://localhost:4000/api/v1'
+    ).replace(/\/+$/, '');
+    const API_BASE_URL = rawApiBase.endsWith('/api/v1') ? rawApiBase : `${rawApiBase}/api/v1`;
 
     try {
       const res = await fetch(`${API_BASE_URL}/constituent/track/${encodeURIComponent(rawTicket)}`);

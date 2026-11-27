@@ -1,11 +1,17 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger, BadRequestException } from '@nestjs/common';
 import * as fs from 'fs';
-import { openaiClient } from '@polaris/ai-engine';
+import * as path from 'path';
+import {
+  googleGenAiClient,
+  createGoogleGenAiClient,
+  normalizeGeminiModel,
+  AiTelemetryService,
+} from '@polaris/ai-engine';
 import type { PosterLayerManifest, PosterLayer } from '@polaris/storage';
 
 export interface ExtractedPosterElement {
   id: string;
-  kind: 'frame' | 'text';
+  kind: 'frame' | 'text' | 'image';
   role: string;
   name?: string;
   text?: string;
@@ -20,15 +26,15 @@ export interface ExtractedPosterElement {
 
 export interface ExtractedPosterContent {
   detectedArchetype:
-    | 'INFOGRAPHIC_VISIONARY_TIMELINE'
-    | 'INFOGRAPHIC_ADVOCACY_PILLARS'
-    | 'INFOGRAPHIC_NARRATIVE_WAVE'
-    | 'INFOGRAPHIC_CHRONICLE_GRID'
-    | 'INFOGRAPHIC_RADIAL_CLOCK'
-    | 'INFOGRAPHIC_EDITORIAL_COLLAGE'
-    | 'INFOGRAPHIC_HISTORICAL_EXPEDITION'
-    | 'GENERIC_INFOGRAPHIC'
-    | string;
+  | 'INFOGRAPHIC_VISIONARY_TIMELINE'
+  | 'INFOGRAPHIC_ADVOCACY_PILLARS'
+  | 'INFOGRAPHIC_NARRATIVE_WAVE'
+  | 'INFOGRAPHIC_CHRONICLE_GRID'
+  | 'INFOGRAPHIC_RADIAL_CLOCK'
+  | 'INFOGRAPHIC_EDITORIAL_COLLAGE'
+  | 'INFOGRAPHIC_HISTORICAL_EXPEDITION'
+  | 'GENERIC_INFOGRAPHIC'
+  | string;
   elements?: ExtractedPosterElement[];
   topBar?: { left: string; right: string };
   kicker?: string;
@@ -57,42 +63,98 @@ export class PosterVisionExtractorService {
    * Mengekstrak 100% teks dan struktur asli dari gambar poster menggunakan Vision AI.
    * Tidak pernah menggunakan data dummy atau template statis.
    */
+  private isPrivateOrForbiddenHost(hostname: string): boolean {
+    const h = hostname.toLowerCase().replace(/^\[|\]$/g, '');
+    if (
+      h === 'localhost' ||
+      h === '0.0.0.0' ||
+      h === '::1' ||
+      h.endsWith('.local') ||
+      h.endsWith('.internal') ||
+      h.startsWith('127.') ||
+      h.startsWith('10.') ||
+      h.startsWith('192.168.') ||
+      h.startsWith('169.254.') ||
+      h.startsWith('fc') ||
+      h.startsWith('fd') ||
+      h.startsWith('fe80:')
+    ) {
+      return true;
+    }
+    const octets = h.split('.').map(Number);
+    if (octets.length === 4 && octets[0] === 172 && octets[1] >= 16 && octets[1] <= 31) {
+      return true;
+    }
+    return false;
+  }
+
+  private resolveSafeLocalUploadPath(imageUrl: string): string | null {
+    const strippedRelative = imageUrl
+      .replace(/^https?:\/\/[^/]+\//, '')
+      .replace(/[?#].*$/, '')
+      .replace(/^\/+/, '');
+    if (!strippedRelative.startsWith('uploads/')) return null;
+
+    let decodedRelative = strippedRelative;
+    try {
+      decodedRelative = decodeURIComponent(strippedRelative);
+    } catch {
+      return null;
+    }
+
+    const candidateRoots = Array.from(
+      new Set([
+        path.resolve(process.cwd(), 'uploads'),
+        path.resolve(process.cwd(), '../../uploads'),
+      ])
+    );
+
+    for (const uploadsRoot of candidateRoots) {
+      const resolvedFile = path.resolve(path.dirname(uploadsRoot), decodedRelative);
+      if (
+        resolvedFile.startsWith(uploadsRoot + path.sep) &&
+        fs.existsSync(resolvedFile) &&
+        fs.statSync(resolvedFile).isFile()
+      ) {
+        return resolvedFile;
+      }
+    }
+
+    return null;
+  }
+
   async extractContentFromImage(imageUrl: string): Promise<ExtractedPosterContent> {
     this.logger.log(`[VisionExtractor] Menjalankan OCR AI Vision pada gambar: ${imageUrl.slice(0, 80)}...`);
 
     let targetDataUrl = imageUrl;
 
-    // 1. Cek jika file path lokal atau file:// atau URL lokal /uploads/...
-    const cleanLocalPath = imageUrl.replace(/^file:\/\/\/?/, '').replace(/^https?:\/\/[^/]+\//, '').replace(/^\//, '');
-    if (cleanLocalPath && fs.existsSync(cleanLocalPath)) {
+    // 1. Cek jika URL/path mengarah ke direktori resmi /uploads/ (baik di cwd maupun root monorepo; tolak path traversal)
+    const resolvedLocalFile = this.resolveSafeLocalUploadPath(imageUrl);
+    if (resolvedLocalFile) {
       try {
-        const buf = fs.readFileSync(cleanLocalPath);
-        const ext = cleanLocalPath.toLowerCase().split('.').pop();
+        const buf = fs.readFileSync(resolvedLocalFile);
+        const ext = resolvedLocalFile.toLowerCase().split('.').pop();
         const mime = ext === 'png' ? 'image/png' : ext === 'webp' ? 'image/webp' : 'image/jpeg';
         targetDataUrl = `data:${mime};base64,${buf.toString('base64')}`;
-        this.logger.log(`[VisionExtractor] Berhasil membaca file lokal langsung: ${cleanLocalPath} (${buf.length} bytes)`);
+        this.logger.log(`[VisionExtractor] Berhasil membaca berkas uploads resmi: ${resolvedLocalFile} (${buf.length} bytes)`);
       } catch (fsErr) {
-        this.logger.warn(`[VisionExtractor] Gagal membaca path lokal: ${fsErr}`);
-      }
-    } else if (imageUrl.startsWith('file://') || /^[a-zA-Z]:\\/.test(imageUrl) || imageUrl.startsWith('/')) {
-      try {
-        const cleanPath = imageUrl.replace(/^file:\/\/\/?/, '');
-        if (fs.existsSync(cleanPath)) {
-          const buf = fs.readFileSync(cleanPath);
-          const ext = cleanPath.toLowerCase().split('.').pop();
-          const mime = ext === 'png' ? 'image/png' : ext === 'webp' ? 'image/webp' : 'image/jpeg';
-          targetDataUrl = `data:${mime};base64,${buf.toString('base64')}`;
-          this.logger.log(`[VisionExtractor] Berhasil membaca file lokal: ${cleanPath} (${buf.length} bytes)`);
-        }
-      } catch (fsErr) {
-        this.logger.warn(`[VisionExtractor] Gagal membaca path lokal: ${fsErr}`);
+        this.logger.warn(`[VisionExtractor] Gagal membaca berkas uploads: ${fsErr}`);
       }
     }
 
-    // 2. Jika URL HTTP/HTTPS remote, download dan convert ke data URL
+    // 2. Jika URL HTTP/HTTPS remote, validasi anti-SSRF lalu download ke data URL
     if (!targetDataUrl.startsWith('data:') && (imageUrl.startsWith('http://') || imageUrl.startsWith('https://'))) {
+      let parsedUrl: URL;
       try {
-        const fetchRes = await fetch(imageUrl);
+        parsedUrl = new URL(imageUrl);
+      } catch {
+        throw new BadRequestException('Format URL gambar tidak valid.');
+      }
+      if (this.isPrivateOrForbiddenHost(parsedUrl.hostname)) {
+        throw new BadRequestException('Host URL gambar tidak diizinkan (SSRF Protection).');
+      }
+      try {
+        const fetchRes = await fetch(parsedUrl.toString());
         if (fetchRes.ok) {
           const ab = await fetchRes.arrayBuffer();
           const b64 = Buffer.from(ab).toString('base64');
@@ -112,8 +174,8 @@ PERINGATAN KERAS & ATURAN MUTLAK:
    - JANGAN PERNAH menambahkan teks dummy seperti "PETA JALAN TARGET & REALISASI CAPAIAN" jika tidak tertulis di gambar!
    - JANGAN PERNAH menambahkan garis timeline jika di gambar aslinya tidak ada!
 2. PERHATIKAN WARNA LATAR & TEKS SECARA PRESISI DARI GAMBAR ASLI:
-   - Jika kotak kartu/kolom/header berlatar belakang PUTIH BERSIH (#FFFFFF), isi "fill": "#FFFFFF"! JANGAN biarkan null atau diisi warna kertas kraft!
-   - Kotak banner pita merah ("banner-box" dengan "fill": "#DC2626") HANYA dibuat jika di gambar benar-benar ada kotak pita merah (seperti seksi "PILAR AKSI & ADVOKASI BERKELANJUTAN" di tengah), dengan teks "banner-text" textColor "#FFFFFF"! Untuk kicker atas, itu adalah teks kicker biasa dengan textColor aksen, BUKAN banner box!
+   - JANGAN membuat elemen "frame" putih jika teks berada langsung di atas kertas polos/bertekstur (misal kertas krem/abu/gelap)! Buat "frame" HANYA jika di gambar benar-benar terlihat kotak kartu yang terpisah warnanya dari latar poster.
+   - Kotak banner pita merah ("banner-box" dengan "fill": "#DC2626") HANYA dibuat jika di gambar benar-benar ada kotak pita merah, dengan teks "banner-text" textColor "#FFFFFF"!
    - Jika ada badge penomoran (seperti "◆ 01"), sertakan simbol berlian "◆" dan warnanya!
    - Jika di bawah setiap kartu ada tombol tag indikator (seperti "+ INDIKATOR 01"), deteksi sebagai elemen teks terpisah ("card-tag") dengan text persis kata demi kata!
 3. PERHATIKAN KOLOM & POSISI HORISONTAL (xmin, xmax) SECARA PRESISI:
@@ -121,10 +183,10 @@ PERINGATAN KERAS & ATURAN MUTLAK:
    - Jika di sebelah KANAN atas ada kartu metrik / kpi / cards, catat posisi xmin dan xmax aslinya di sisi kanan (misal xmin ~ 480 s.d. xmax ~ 950).
    - Jika ada kartu-kartu berjejer ke samping (horizontal 4 atau 5 kolom), catat setiap kotak kartu secara terpisah dengan xmin dan xmax masing-masing kartu!
 4. DETEKSI SETIAP ELEMEN VISUAL KE DALAM ARRAY "elements":
-   Untuk setiap elemen (kotak kartu atau teks), berikan objek:
+   Untuk setiap elemen (kotak kartu nyata, teks, foto subjek, atau ornamen grafis seperti cipratan cat/selotip/panah/stiker), berikan objek:
    - id: string unik ("el_1", "el_2", ...)
-   - kind: "frame" (untuk kotak container / kartu) atau "text" (untuk teks)
-   - role: peran elemen ("topbar", "header-card", "kicker", "headline", "deck", "kpi-card", "kpi-box", "kpi-val", "kpi-lbl", "banner-box", "banner-text", "card-box", "card-badge", "card-title", "card-desc", "card-tag", "synthesis-box", "synthesis-text", "footer-bar", "signature", "year")
+   - kind: "frame" (hanya kotak container/kartu yang kontras dengan background), "text" (untuk teks), atau "image" (foto subjek utama, foto kolase, logo, ilustrasi, cipratan cat/paint splash, selotip/tape, panah/arrow, stiker)
+   - role: peran elemen ("topbar", "header-card", "kicker", "headline", "deck", "kpi-card", "kpi-box", "kpi-val", "kpi-lbl", "banner-box", "banner-text", "card-box", "card-badge", "card-title", "card-desc", "card-tag", "synthesis-box", "synthesis-text", "footer-bar", "signature", "year", "subject-photo", "logo", "illustration", "paint-splash", "tape", "arrow", "sticker")
    - text: teks persis kata per kata (hanya jika kind === "text")
    - box_2d: [ymin, xmin, ymax, xmax] koordinat bounding box dalam skala normalisasi 0 sampai 1000
    - fill: warna latar jika ada container frame (misal "#FFFFFF", "#DC2626", "#0F172A")
@@ -173,39 +235,59 @@ Format JSON yang wajib dihasilkan (hanya JSON murni):
 }`;
 
     let rawJson = '{}';
+    const geminiClient = googleGenAiClient ?? createGoogleGenAiClient();
+    if (!geminiClient) {
+      throw new BadRequestException('Klien Google Gemini Vision belum dikonfigurasi.');
+    }
+
+    const primaryModel = normalizeGeminiModel(
+      process.env.GOOGLE_VISION_MODEL || 'gemini-3.8-flash'
+    );
+    const dataMatch = targetDataUrl.match(/^data:([^;]+);base64,(.+)$/);
+    if (!dataMatch) {
+      throw new BadRequestException('Gambar tidak dapat dikonversi ke format base64 untuk analisis Vision.');
+    }
+    const mimeType = dataMatch[1];
+    const imageBase64 = dataMatch[2];
+
+    const trace = await AiTelemetryService.startTrace({
+      operation: 'poster_vision_manifest_extraction',
+      model: primaryModel,
+      activityType: 'VISION_EXTRACTION',
+    });
+
     try {
-      const completion = await openaiClient.chat.completions.create({
-        model: 'gpt-4o',
-        response_format: { type: 'json_object' },
-        messages: [
+      const response = await geminiClient.models.generateContent({
+        model: primaryModel,
+        contents: [
           {
             role: 'user',
-            content: [
-              { type: 'text', text: prompt },
-              { type: 'image_url', image_url: { url: targetDataUrl } },
-            ],
+            parts: [{ inlineData: { mimeType, data: imageBase64 } }, { text: prompt }],
           },
         ],
-        temperature: 0.1,
+        config: { responseMimeType: 'application/json', temperature: 0.1 } as any,
       });
-      rawJson = completion.choices[0]?.message?.content || '{}';
-    } catch (gpt4Err) {
-      this.logger.warn(`[VisionExtractor] GPT-4o gagal, fallback ke GPT-4o-mini: ${gpt4Err}`);
-      const completion = await openaiClient.chat.completions.create({
-        model: 'gpt-4o-mini',
-        response_format: { type: 'json_object' },
-        messages: [
-          {
-            role: 'user',
-            content: [
-              { type: 'text', text: prompt },
-              { type: 'image_url', image_url: { url: targetDataUrl } },
-            ],
-          },
-        ],
-        temperature: 0.1,
+
+      rawJson = response.text || '{}';
+      const usage = AiTelemetryService.extractGeminiUsage(
+        response,
+        prompt.length,
+        rawJson.length
+      );
+      await trace.endTrace({
+        status: 'SUCCESS',
+        actualModel: primaryModel,
+        inputTokens: usage.inputTokens,
+        outputTokens: usage.outputTokens,
       });
-      rawJson = completion.choices[0]?.message?.content || '{}';
+    } catch (err: any) {
+      await trace.endTrace({
+        status: 'FAILED',
+        inputTokens: 0,
+        outputTokens: 0,
+        errorMessage: err?.message || String(err),
+      });
+      throw err;
     }
 
     const parsed: ExtractedPosterContent = JSON.parse(rawJson);
@@ -323,6 +405,7 @@ Format JSON yang wajib dihasilkan (hanya JSON murni):
     let seq = 0;
 
     const frameElements = elements.filter((e) => e.kind === 'frame');
+    const imageElements = elements.filter((e) => e.kind === 'image');
     const textElements = elements.filter((e) => e.kind === 'text');
 
     const toPixels = (box_2d: [number, number, number, number]) => {
@@ -345,9 +428,7 @@ Format JSON yang wajib dihasilkan (hanya JSON murni):
       if (w < 10 || h < 10) continue;
 
       const isBannerFrame = el.role.includes('banner');
-      const isCardFrame = el.role.includes('card');
-      const isHeaderFrame = el.role.includes('header');
-      const isFooterFrame = el.role.includes('footer');
+      if (!el.fill || el.fill === 'transparent') continue;
 
       layers.push({
         kind: 'frame',
@@ -357,94 +438,52 @@ Format JSON yang wajib dihasilkan (hanya JSON murni):
         y,
         w,
         h,
-        fill: isBannerFrame ? (el.fill || '#DC2626') : (el.fill || '#FFFFFF'),
+        fill: el.fill,
         radius: 4,
         borders: isBannerFrame
           ? { top: null, right: null, bottom: null, left: null }
           : {
-              top: { w: isHeaderFrame ? 3 : 1, color: isHeaderFrame ? '#DC2626' : '#E2E8F0' },
-              right: { w: 1, color: '#E2E8F0' },
-              bottom: { w: isCardFrame ? 3 : 1, color: isCardFrame ? '#DC2626' : '#E2E8F0' },
-              left: { w: 1, color: '#E2E8F0' },
-            },
-        shadow: { color: 'rgba(0,0,0,0.06)', offsetX: 0, offsetY: 2, blur: 8 },
+            top: { w: 1, color: '#E2E8F0' },
+            right: { w: 1, color: '#E2E8F0' },
+            bottom: { w: 1, color: '#E2E8F0' },
+            left: { w: 1, color: '#E2E8F0' },
+          },
+        shadow: { color: 'rgba(0,0,0,0.05)', offsetX: 0, offsetY: 2, blur: 8 },
       });
     }
 
-    // Jika Vision AI tidak mengekstrak kotak frame secara eksplisit, sintesiskan kotak frame solid #FFFFFF
-    // di belakang teks kartu dan judul agar teks tidak pernah mengambang di atas foto!
-    if (frameElements.length === 0 && textElements.length > 0) {
-      // a. Sintesis kotak header jika ada kicker/headline/deck
-      const headerTexts = textElements.filter((e) =>
-        e.role.includes('headline') || e.role.includes('kicker') || e.role.includes('deck')
-      );
-      if (headerTexts.length > 0) {
-        const boxes = headerTexts.map((e) => toPixels(e.box_2d));
-        const minX = Math.max(20, Math.min(...boxes.map((b) => b.x)) - 20);
-        const minY = Math.max(20, Math.min(...boxes.map((b) => b.y)) - 16);
-        const maxX = Math.min(width - 20, Math.max(...boxes.map((b) => b.x + b.w)) + 20);
-        const maxY = Math.min(height - 20, Math.max(...boxes.map((b) => b.y + b.h)) + 16);
-        layers.push({
-          kind: 'frame',
-          id: `f_auto_header_${seq++}`,
-          role: 'header-box',
-          x: minX,
-          y: minY,
-          w: maxX - minX,
-          h: maxY - minY,
-          fill: '#FFFFFF',
-          radius: 4,
-          borders: { top: { w: 3.5, color: '#D7261E' }, right: null, bottom: { w: 1.5, color: '#E2E8F0' }, left: null },
-          shadow: { color: 'rgba(0,0,0,0.06)', offsetX: 0, offsetY: 4, blur: 18 },
-        });
-      }
+    // Tidak ada sintesis kotak putih #FFFFFF buatan di belakang teks agar poster
+    // yang teksnya menempel langsung di atas kertas/tekstur tetap setia dengan desain asli.
 
-      // b. Sintesis kotak kartu untuk setiap card-box atau card cluster
-      const cardTexts = textElements.filter((e) =>
-        e.role.includes('card') || e.role.includes('desc') || e.role.includes('body')
-      );
-      // Kelompokkan berdasarkan posisi vertikal berdekatan (selisih < 120px)
-      const sortedCards = [...cardTexts].sort((a, b) => a.box_2d[0] - b.box_2d[0]);
-      const cardClusters: ExtractedPosterElement[][] = [];
-      let currentCluster: ExtractedPosterElement[] = [];
-      for (const el of sortedCards) {
-        if (currentCluster.length === 0) {
-          currentCluster.push(el);
-        } else {
-          const prevY = currentCluster[currentCluster.length - 1].box_2d[2];
-          if (el.box_2d[0] - prevY < 120) {
-            currentCluster.push(el);
-          } else {
-            cardClusters.push(currentCluster);
-            currentCluster = [el];
-          }
-        }
-      }
-      if (currentCluster.length > 0) cardClusters.push(currentCluster);
+    // 2. Render Image Layers terlebih dahulu sebelum Text agar teks selalu di atas foto/ornamen
+    const ornamentRoles = new Set(['paint-splash', 'tape', 'arrow', 'sticker']);
+    const sortedImages = [...imageElements].sort((a, b) => {
+      const aOrn = ornamentRoles.has(a.role || '') ? 1 : 0;
+      const bOrn = ornamentRoles.has(b.role || '') ? 1 : 0;
+      return aOrn - bOrn;
+    });
+    for (const el of sortedImages) {
+      if (!el.box_2d || el.box_2d.length < 4) continue;
+      const { x, y, w, h } = toPixels(el.box_2d);
+      if (w < 16 || h < 16) continue;
+      if (w >= width * 0.92 && h >= height * 0.92) continue;
 
-      for (const cluster of cardClusters) {
-        const boxes = cluster.map((e) => toPixels(e.box_2d));
-        const minX = Math.max(20, Math.min(...boxes.map((b) => b.x)) - 16);
-        const minY = Math.max(20, Math.min(...boxes.map((b) => b.y)) - 14);
-        const maxX = Math.min(width - 20, Math.max(...boxes.map((b) => b.x + b.w)) + 16);
-        const maxY = Math.min(height - 20, Math.max(...boxes.map((b) => b.y + b.h)) + 14);
-        layers.push({
-          kind: 'frame',
-          id: `f_auto_card_${seq++}`,
-          role: 'card-box',
-          x: minX,
-          y: minY,
-          w: maxX - minX,
-          h: maxY - minY,
-          fill: '#FFFFFF',
-          radius: 4,
-          borders: { top: { w: 1, color: '#E2E8F0' }, right: { w: 1, color: '#E2E8F0' }, bottom: { w: 1, color: '#E2E8F0' }, left: { w: 1, color: '#E2E8F0' } },
-          shadow: { color: 'rgba(0,0,0,0.06)', offsetX: 0, offsetY: 2, blur: 12 },
-        });
-      }
+      layers.push({
+        kind: 'image',
+        id: el.id || `img_${seq++}`,
+        role: el.role || 'subject-photo',
+        src: '',
+        x,
+        y,
+        w,
+        h,
+        radius: 0,
+        opacity: 1,
+        objectFit: 'cover',
+      });
     }
 
-    // 2. Render Text Layers (Judul, Subjudul, Kartu, KPI, Footer)
+    // 3. Render Text Layers (Judul, Subjudul, Kartu, KPI, Footer)
     for (const el of textElements) {
       if (!el.box_2d || el.box_2d.length < 4 || !el.text?.trim()) continue;
       const { x, y, w, h } = toPixels(el.box_2d);
@@ -489,25 +528,15 @@ Format JSON yang wajib dihasilkan (hanya JSON murni):
           shadow: null,
           padding: { t: 4, r: 10, b: 4, l: 10 },
         };
-      } else if (isBadge) {
+      } else if (isBadge && el.fill) {
         box = {
-          fill: el.fill || '#DC2626',
+          fill: el.fill,
           radius: 3,
           borders: { top: null, right: null, bottom: null, left: null },
           shadow: null,
           padding: { t: 3, r: 8, b: 3, l: 8 },
         };
-        finalTextColor = '#FFFFFF';
-      } else if (isTag) {
-        box = {
-          fill: '#FEE2E2',
-          radius: 3,
-          borders: { top: null, right: null, bottom: null, left: null },
-          shadow: null,
-          padding: { t: 3, r: 8, b: 3, l: 8 },
-        };
-        finalTextColor = el.textColor || '#DC2626';
-      } else if (isBanner) {
+      } else if (isBanner && !el.textColor) {
         finalTextColor = '#FFFFFF';
       }
 
@@ -532,7 +561,8 @@ Format JSON yang wajib dihasilkan (hanya JSON murni):
       });
     }
 
-    return { version: 1, width, height, layers };
+    const hasImages = layers.some((l) => l.kind === 'image');
+    return { version: hasImages ? 2 : 1, width, height, layers };
   }
 
   /**
@@ -740,9 +770,9 @@ Format JSON yang wajib dihasilkan (hanya JSON murni):
     const cards = content.cards || [];
     const cardPositions = [
       { x: 586, y: 270, isRight: true, roleSuffix: 'wave-pos-0' },
-      { x: 54,  y: 490, isRight: false, roleSuffix: 'wave-pos-1' },
+      { x: 54, y: 490, isRight: false, roleSuffix: 'wave-pos-1' },
       { x: 586, y: 710, isRight: true, roleSuffix: 'wave-pos-2' },
-      { x: 54,  y: 930, isRight: false, roleSuffix: 'wave-pos-3' },
+      { x: 54, y: 930, isRight: false, roleSuffix: 'wave-pos-3' },
     ];
 
     cards.slice(0, 4).forEach((card, idx) => {

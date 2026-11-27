@@ -4,6 +4,7 @@ import {
   ForbiddenException,
   NotFoundException,
   Logger,
+  OnModuleDestroy,
 } from '@nestjs/common';
 import * as crypto from 'node:crypto';
 import { eq, and } from 'drizzle-orm';
@@ -41,7 +42,7 @@ interface InstagramProfileResponse {
 }
 
 @Injectable()
-export class InstagramService {
+export class InstagramService implements OnModuleDestroy {
   private readonly logger = new Logger(InstagramService.name);
 
   private readonly appId = process.env.INSTAGRAM_APP_ID || process.env.META_APP_ID || '';
@@ -50,6 +51,7 @@ export class InstagramService {
     process.env.INSTAGRAM_REDIRECT_URI ||
     'http://localhost:4000/api/v1/social/instagram/callback';
   private readonly stateSecret = process.env.JWT_SECRET || 'polaris-secret-state-2026';
+  private readonly redisClient: Redis;
   private readonly publishingQueue: Queue;
 
   constructor(
@@ -57,10 +59,15 @@ export class InstagramService {
     private readonly platformSettingsService: PlatformSettingsService
   ) {
     const redisUrl = process.env.REDIS_URL || 'redis://localhost:6379';
-    const redisClient = new Redis(redisUrl, { maxRetriesPerRequest: null });
+    this.redisClient = new Redis(redisUrl, { maxRetriesPerRequest: null });
     this.publishingQueue = new Queue('social-content-publishing-queue', {
-      connection: redisClient,
+      connection: this.redisClient,
     });
+  }
+
+  async onModuleDestroy() {
+    await this.publishingQueue.close().catch(() => { });
+    await this.redisClient.quit().catch(() => { });
   }
 
   public async triggerPublishContent(
@@ -81,6 +88,23 @@ export class InstagramService {
       throw new ForbiddenException(
         'Publikasi otomatis ke Instagram dinonaktifkan oleh administrator platform. Silakan gunakan mode manual asisten.'
       );
+    }
+
+    // 0. Verifikasi kepemilikan accountId oleh tenantId (anti-IDOR)
+    const [ownedAccount] = await withTenantContext(tenantId, async (tx) => {
+      return await tx
+        .select({ id: connectedSocialAccounts.id })
+        .from(connectedSocialAccounts)
+        .where(
+          and(
+            eq(connectedSocialAccounts.id, dto.accountId),
+            eq(connectedSocialAccounts.tenantId, tenantId)
+          )
+        )
+        .limit(1);
+    });
+    if (!ownedAccount) {
+      throw new NotFoundException('Akun Instagram tujuan tidak ditemukan atau bukan milik Anda.');
     }
 
     const primaryMediaUrl =

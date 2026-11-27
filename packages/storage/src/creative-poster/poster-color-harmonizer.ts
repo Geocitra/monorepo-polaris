@@ -1,5 +1,6 @@
 import sharp from 'sharp';
 import * as fs from 'fs';
+import * as path from 'node:path';
 import type { PosterLayerManifest, PosterLayer } from './poster-layer-manifest.js';
 
 /**
@@ -67,6 +68,169 @@ export function isColorNeutral(colorStr?: string | null): boolean {
 }
 
 export class PosterColorHarmonizer {
+  private static resolveSafeLocalUpload(imageInput: string): string | null {
+    const cleanRel = imageInput
+      .replace(/^https?:\/\/[^/]+\//, '')
+      .replace(/^file:\/\/\/?/, '')
+      .replace(/[?#].*$/, '')
+      .replace(/^\/+/, '');
+    if (!cleanRel.startsWith('uploads/')) return null;
+
+    let decodedRel = cleanRel;
+    try {
+      decodedRel = decodeURIComponent(cleanRel);
+    } catch {
+      return null;
+    }
+
+    const candidateRoots = Array.from(
+      new Set([
+        path.resolve(process.cwd(), 'uploads'),
+        path.resolve(process.cwd(), '../../uploads'),
+      ])
+    );
+
+    for (const uploadsRoot of candidateRoots) {
+      const candidate = path.resolve(path.dirname(uploadsRoot), decodedRel);
+      if (candidate.startsWith(uploadsRoot + path.sep) && fs.existsSync(candidate)) {
+        return candidate;
+      }
+    }
+    return null;
+  }
+
+  private static async loadSharp(imageInput: Buffer | string): Promise<sharp.Sharp | null> {
+    if (typeof imageInput === 'string') {
+      const localUpload = this.resolveSafeLocalUpload(imageInput);
+      if (localUpload) {
+        return sharp(localUpload);
+      }
+      if (imageInput.startsWith('data:')) {
+        const b64 = imageInput.split(',')[1] || '';
+        return sharp(Buffer.from(b64, 'base64'));
+      }
+      if (imageInput.startsWith('http://') || imageInput.startsWith('https://')) {
+        try {
+          const res = await fetch(imageInput);
+          if (!res.ok) return null;
+          const ab = await res.arrayBuffer();
+          return sharp(Buffer.from(ab));
+        } catch {
+          return null;
+        }
+      }
+      if (fs.existsSync(imageInput)) {
+        return sharp(imageInput);
+      }
+      return null;
+    }
+    return sharp(imageInput);
+  }
+
+  /**
+   * Memotong area tertentu dari gambar poster menjadi buffer PNG
+   * untuk mengekstrak elemen foto/ilustrasi/logo menjadi layer gambar terpisah.
+   */
+  static async cropRegionToPng(
+    imageInput: Buffer | string,
+    box: { x: number; y: number; w: number; h: number; refWidth: number; refHeight: number }
+  ): Promise<Buffer | null> {
+    try {
+      const imageSharp = await this.loadSharp(imageInput);
+      if (!imageSharp) return null;
+
+      const meta = await imageSharp.metadata();
+      const imgW = meta.width || box.refWidth || 1080;
+      const imgH = meta.height || box.refHeight || 1350;
+      const scaleX = imgW / (box.refWidth || 1080);
+      const scaleY = imgH / (box.refHeight || 1350);
+
+      const left = Math.max(0, Math.min(imgW - 2, Math.round(box.x * scaleX)));
+      const top = Math.max(0, Math.min(imgH - 2, Math.round(box.y * scaleY)));
+      const width = Math.max(2, Math.min(imgW - left, Math.round(box.w * scaleX)));
+      const height = Math.max(2, Math.min(imgH - top, Math.round(box.h * scaleY)));
+
+      return await imageSharp.clone().extract({ left, top, width, height }).png().toBuffer();
+    } catch {
+      return null;
+    }
+  }
+
+  /**
+   * Memotong ornamen grafis (cipratan cat, panah, stiker) menjadi PNG RGBA transparan
+   * dengan menghapus warna kertas di perimeter luar menggunakan Soft Alpha Matting.
+   */
+  static async cropOrnamentWithAlpha(
+    imageInput: Buffer | string,
+    box: { x: number; y: number; w: number; h: number; refWidth: number; refHeight: number }
+  ): Promise<Buffer | null> {
+    try {
+      const imageSharp = await this.loadSharp(imageInput);
+      if (!imageSharp) return null;
+
+      const meta = await imageSharp.metadata();
+      const imgW = meta.width || box.refWidth || 1080;
+      const imgH = meta.height || box.refHeight || 1350;
+      const scaleX = imgW / (box.refWidth || 1080);
+      const scaleY = imgH / (box.refHeight || 1350);
+
+      const left = Math.max(0, Math.min(imgW - 2, Math.round(box.x * scaleX)));
+      const top = Math.max(0, Math.min(imgH - 2, Math.round(box.y * scaleY)));
+      const width = Math.max(2, Math.min(imgW - left, Math.round(box.w * scaleX)));
+      const height = Math.max(2, Math.min(imgH - top, Math.round(box.h * scaleY)));
+
+      const { data: raw } = await imageSharp
+        .clone()
+        .extract({ left, top, width, height })
+        .ensureAlpha()
+        .raw()
+        .toBuffer({ resolveWithObject: true });
+
+      const borderR: number[] = [];
+      const borderG: number[] = [];
+      const borderB: number[] = [];
+      const pushBorder = (x: number, y: number) => {
+        const idx = (y * width + x) * 4;
+        borderR.push(raw[idx]);
+        borderG.push(raw[idx + 1]);
+        borderB.push(raw[idx + 2]);
+      };
+      for (let x = 0; x < width; x++) {
+        pushBorder(x, 0);
+        pushBorder(x, height - 1);
+      }
+      for (let y = 0; y < height; y++) {
+        pushBorder(0, y);
+        pushBorder(width - 1, y);
+      }
+      borderR.sort((a, b) => a - b);
+      borderG.sort((a, b) => a - b);
+      borderB.sort((a, b) => a - b);
+      const mid = Math.floor(borderR.length / 2);
+      const bgR = borderR[mid] ?? 240;
+      const bgG = borderG[mid] ?? 236;
+      const bgB = borderB[mid] ?? 228;
+
+      const SOFT_LOW = 26;
+      const SOFT_HIGH = 50;
+      for (let i = 0; i < raw.length; i += 4) {
+        const dr = raw[i] - bgR;
+        const dg = raw[i + 1] - bgG;
+        const db = raw[i + 2] - bgB;
+        const dist = Math.sqrt(dr * dr + dg * dg + db * db);
+        if (dist <= SOFT_LOW) {
+          raw[i + 3] = 0;
+        } else if (dist < SOFT_HIGH) {
+          raw[i + 3] = Math.round(((dist - SOFT_LOW) / (SOFT_HIGH - SOFT_LOW)) * 255);
+        }
+      }
+
+      return await sharp(raw, { raw: { width, height, channels: 4 } }).png().toBuffer();
+    } catch {
+      return null;
+    }
+  }
+
   /**
    * Menyelaraskan seluruh warna frame dan teks dalam PosterLayerManifest 1:1 dengan piksel asli gambar.
    * Mendeteksi otomatis apakah kartu dan container di gambar poster aslinya berwarna gelap atau terang,
@@ -81,29 +245,8 @@ export class PosterColorHarmonizer {
     }
 
     try {
-      let imageSharp: sharp.Sharp;
-      if (typeof imageInput === 'string') {
-        const cleanPath = imageInput.replace(/^file:\/\/\/?/, '').replace(/^https?:\/\/[^/]+\//, '').replace(/^\//, '');
-        if (cleanPath && fs.existsSync(cleanPath)) {
-          imageSharp = sharp(cleanPath);
-        } else if (imageInput.startsWith('data:')) {
-          const b64 = imageInput.split(',')[1] || '';
-          imageSharp = sharp(Buffer.from(b64, 'base64'));
-        } else if (imageInput.startsWith('http://') || imageInput.startsWith('https://')) {
-          try {
-            const res = await fetch(imageInput);
-            if (!res.ok) return manifest;
-            const ab = await res.arrayBuffer();
-            imageSharp = sharp(Buffer.from(ab));
-          } catch {
-            return manifest;
-          }
-        } else {
-          imageSharp = sharp(imageInput);
-        }
-      } else {
-        imageSharp = sharp(imageInput);
-      }
+      const imageSharp = await this.loadSharp(imageInput);
+      if (!imageSharp) return manifest;
 
       const meta = await imageSharp.metadata();
       const imgW = meta.width || manifest.width || 1080;
@@ -200,9 +343,28 @@ export class PosterColorHarmonizer {
             }
           } else {
             // Latar kartu pada gambar ASLI adalah TERANG (misal #FFFFFF / cream)
-            // JANGAN timpa jika frame sudah memiliki warna solid dari analisis AI (seperti #FFFFFF atau #DC2626)
-            if (!frame.fill || frame.fill.startsWith('rgb(')) {
-              frame.fill = luminance > 160 ? '#FFFFFF' : `rgb(${r}, ${g}, ${b})`;
+            // Cek apakah frame ini sebenarnya menyatu dengan background kertas sekitar (tidak punya warna kartu berbeda)
+            const outerY = Math.max(0, fy - 6);
+            const outerX = Math.max(0, fx - 6);
+            let isRedundantPaperFrame = false;
+            if (!frame.role.includes('banner') && (outerY !== fy || outerX !== fx)) {
+              try {
+                const outerStats = await imageSharp
+                  .clone()
+                  .extract({ left: outerX, top: outerY, width: Math.min(20, imgW - outerX), height: 4 })
+                  .stats();
+                const [or, og, ob] = outerStats.channels.map((c) => Math.round(c.mean));
+                const colorDiff = Math.abs(r - or) + Math.abs(g - og) + Math.abs(b - ob);
+                if (colorDiff < 20) {
+                  isRedundantPaperFrame = true;
+                }
+              } catch {}
+            }
+
+            if (isRedundantPaperFrame) {
+              (frame as any)._dropRedundant = true;
+            } else if (!frame.fill || frame.fill.startsWith('rgb(')) {
+              frame.fill = `rgb(${r}, ${g}, ${b})`;
             }
 
             // Selaraskan semua teks yang berada di dalam frame terang ini
@@ -241,9 +403,11 @@ export class PosterColorHarmonizer {
         }
       }
 
+      const finalLayers = harmonizedLayers.filter((l) => !(l as any)._dropRedundant);
+
       return {
         ...manifest,
-        layers: harmonizedLayers,
+        layers: finalLayers,
       };
     } catch {
       return manifest;

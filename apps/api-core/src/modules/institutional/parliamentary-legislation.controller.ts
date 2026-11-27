@@ -63,8 +63,16 @@ export class ParliamentaryLegislationController {
 
   // 2. RUANG KERJA LEGISLASI (9 TAHAP, PASAL, CRITIC & DIM)
   @Get('drafts')
-  async listDrafts(@Param('orgId') orgId: string) {
-    return await this.parliamentaryService.listLegislationDrafts(orgId);
+  async listDrafts(
+    @Param('orgId') orgId: string,
+    @CurrentTenant() user: AuthenticatedTenantPayload,
+    @CurrentInstitutionalContext() instCtx: VerifiedInstitutionalContext | undefined
+  ) {
+    return await this.parliamentaryService.listLegislationDrafts(
+      orgId,
+      user.tenantId,
+      instCtx?.orgRole || OrganizationMemberRole.MEMBER
+    );
   }
 
   @Post('drafts')

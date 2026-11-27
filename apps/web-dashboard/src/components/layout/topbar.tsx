@@ -73,9 +73,12 @@ export function Topbar({
     currentPeriodEnd: string | null;
   } | null>(null);
 
+  const [accountMode, setAccountMode] = useState<'B2B_ONLY' | 'B2C_ONLY' | 'HYBRID' | null>(null);
   const pathname = usePathname();
   const isInstitutionalMode =
-    workspaceMode === 'INSTITUTIONAL' || Boolean(pathname?.startsWith('/institutional'));
+    workspaceMode === 'INSTITUTIONAL' ||
+    accountMode === 'B2B_ONLY' ||
+    Boolean(pathname?.startsWith('/institutional'));
   const [subdomain, setSubdomain] = useState<string | undefined>(propSubdomain);
   const [customDomain, setCustomDomain] = useState<string | null | undefined>(propCustomDomain);
 
@@ -85,17 +88,17 @@ export function Topbar({
   }, [propSubdomain, propCustomDomain]);
 
   useEffect(() => {
-    if (propSubdomain && propCustomDomain !== undefined) return;
     async function hydrateDomain() {
       try {
         const profile = await ApiClient.request<any>('/auth/me');
         if (profile) {
+          if (profile.accountMode) setAccountMode(profile.accountMode);
           if (profile.subdomain && !propSubdomain) setSubdomain(profile.subdomain);
           if (profile.customDomain !== undefined && propCustomDomain === undefined) {
             setCustomDomain(profile.customDomain);
           }
         }
-      } catch {}
+      } catch { }
     }
     hydrateDomain();
   }, [propSubdomain, propCustomDomain]);
@@ -114,7 +117,7 @@ export function Topbar({
             });
           }
         })
-        .catch(() => {});
+        .catch(() => { });
     }
   }, [isInstitutionalMode, propSubStatus, propPeriodEnd]);
 
@@ -194,7 +197,7 @@ export function Topbar({
         />
       )}
 
-      <header className="h-16 border-b border-slate-200 dark:border-slate-800/80 bg-white/90 dark:bg-[#07090E]/90 backdrop-blur-md px-4 sm:px-6 flex items-center justify-between sticky top-0 z-40 transition-colors duration-300">
+      <header className="h-16 border-b border-slate-200 dark:border-slate-800/80 bg-white/90 dark:bg-[#07090E]/90 backdrop-blur-md px-4 sm:px-6 flex items-center justify-between sticky top-0 z-40 transition-colors duration-300 print:hidden">
         <div className="flex items-center space-x-3">
           {/* HAMBURGER TOGGLE KHUSUS LAYAR MOBILE & TABLET */}
           <button
@@ -213,7 +216,11 @@ export function Topbar({
             </h2>
             <p className="text-[11px] text-slate-500 dark:text-slate-400 font-semibold flex items-center gap-1 transition-colors">
               <ShieldCheck className="h-3 w-3" style={{ color: 'var(--color-primary)' }} />
-              <span>Fraksi {party || 'Parlemen'}</span>
+              <span>
+                {isInstitutionalMode
+                  ? party || 'Ruang Kerja Instansi B2G'
+                  : `Fraksi ${party || 'Parlemen'}`}
+              </span>
             </p>
           </Link>
         </div>
@@ -294,25 +301,33 @@ export function Topbar({
               </div>
 
               <nav className="mt-4 space-y-1">
-                {navItems.map((item) => {
-                  const Icon = item.icon;
-                  const isActive = pathname === item.href;
-                  return (
-                    <Link
-                      key={item.href}
-                      href={item.href}
-                      onClick={() => setMobileMenuOpen(false)}
-                      className="flex items-center space-x-3 px-3.5 py-2.5 rounded-xl text-xs font-bold transition-all"
-                      style={{
-                        backgroundColor: isActive ? 'var(--sidebar-active-bg)' : 'transparent',
-                        color: isActive ? 'var(--sidebar-active-fg)' : 'var(--sidebar-fg-muted)',
-                      }}
-                    >
-                      <Icon className="h-4 w-4" />
-                      <span>{item.name}</span>
-                    </Link>
-                  );
-                })}
+                {navItems
+                  .filter((item) => {
+                    if (accountMode === 'B2C_ONLY') return item.href !== '/institutional';
+                    if (accountMode === 'B2B_ONLY') {
+                      return item.href === '/institutional' || item.href === '/profile';
+                    }
+                    return true;
+                  })
+                  .map((item) => {
+                    const Icon = item.icon;
+                    const isActive = pathname === item.href;
+                    return (
+                      <Link
+                        key={item.href}
+                        href={item.href}
+                        onClick={() => setMobileMenuOpen(false)}
+                        className="flex items-center space-x-3 px-3.5 py-2.5 rounded-xl text-xs font-bold transition-all"
+                        style={{
+                          backgroundColor: isActive ? 'var(--sidebar-active-bg)' : 'transparent',
+                          color: isActive ? 'var(--sidebar-active-fg)' : 'var(--sidebar-fg-muted)',
+                        }}
+                      >
+                        <Icon className="h-4 w-4" />
+                        <span>{item.name}</span>
+                      </Link>
+                    );
+                  })}
               </nav>
             </div>
 

@@ -243,6 +243,7 @@ export default function OperatorCockpitPage() {
       // 2. Deteksi apakah tiket / publikasi ini khusus untuk poster/infografis (tanpa naskah utuh)
       const isPosterOnly =
         briefContext?.articleStatus === 'NOT_APPLICABLE' ||
+        (briefContext as any)?.packageType === 'POSTER_ONLY' ||
         (briefContext as any)?.packageType === 'POSTER' ||
         (briefContext?.imageStatus !== 'NOT_APPLICABLE' && briefContext?.articleStatus === 'NOT_APPLICABLE') ||
         (!briefContext && Boolean(detail?.asset?.cdnPublicUrl || detail?.asset?.r2StorageUrl || art.posterUrl) && (art.wordCount <= 35 || (art.bodyContentMarkdown || '').includes('Studio Infografis Polaris Gov')));
@@ -396,22 +397,30 @@ export default function OperatorCockpitPage() {
       let finalSocialPack: any = null;
 
       if (jobId && publicationId) {
+        let jobFailedReason: string | null = null;
         for (let i = 0; i < 60; i++) {
           await new Promise((resolve) => setTimeout(resolve, 1500));
+          let statusRes: any = null;
           try {
-            const statusRes = await AdminApiClient.request<any>(`/studio/jobs/${jobId}`);
-            if (statusRes?.percent && statusRes.percent >= 45) {
-              setGenerationStep(3);
-            }
-            if (statusRes?.status === 'COMPLETED' || (statusRes?.percent && statusRes.percent >= 100)) {
-              break;
-            }
-            if (statusRes?.status === 'FAILED') {
-              throw new Error(statusRes.failedReason || 'Pemrosesan antrean gagal.');
-            }
+            statusRes = await AdminApiClient.request<any>(`/studio/jobs/${jobId}`);
           } catch {
-            // Polling retry
+            // Polling retry untuk transient network error
+            continue;
           }
+          if (statusRes?.percent && statusRes.percent >= 45) {
+            setGenerationStep(3);
+          }
+          if (statusRes?.status === 'COMPLETED' || (statusRes?.percent && statusRes.percent >= 100)) {
+            break;
+          }
+          if (statusRes?.status === 'FAILED') {
+            jobFailedReason = statusRes.failedReason || 'Pemrosesan antrean gagal.';
+            break;
+          }
+        }
+
+        if (jobFailedReason) {
+          throw new Error(jobFailedReason);
         }
 
         const detail = await AdminApiClient.request<any>(`/studio/articles/${publicationId}`);
@@ -583,18 +592,26 @@ export default function OperatorCockpitPage() {
       );
       const jobId = res?.jobId;
       if (jobId) {
+        let regenerated = false;
         for (let i = 0; i < 30; i++) {
           await new Promise((r) => setTimeout(r, 1500));
           const st = await AdminApiClient.request<any>(`/studio/jobs/${jobId}`);
+          if (st?.status === 'FAILED') {
+            throw new Error(st?.failedReason || 'Regenerasi poster gagal di antrean AI.');
+          }
           if (st?.status === 'COMPLETED') {
             const detail = await AdminApiClient.request<any>(`/studio/articles/${generatedResult.publication.id}`);
             const newUrl = detail?.asset?.cdnPublicUrl || detail?.asset?.r2StorageUrl;
             if (newUrl) {
               setGeneratedResult((prev) => (prev ? { ...prev, posterUrl: newUrl } : null));
               alert('Poster visual AI baru berhasil diperbarui!');
+              regenerated = true;
               break;
             }
           }
+        }
+        if (!regenerated) {
+          throw new Error('Waktu tunggu regenerasi poster habis. Silakan muat ulang daftar artikel.');
         }
       }
     } catch (err: any) {
@@ -656,8 +673,8 @@ export default function OperatorCockpitPage() {
     setSavingProfile(true);
     setProfileSaveSuccess(null);
     try {
-      await AdminApiClient.request(`/operator/tenant-context/${selectedTenantId}/profile`, {
-        method: 'PUT',
+      await AdminApiClient.request(`/operator/tenant-profile/${selectedTenantId}`, {
+        method: 'PATCH',
         body: JSON.stringify(profileForm),
       });
       setProfileSaveSuccess('Profil publik tokoh berhasil diperbarui.');

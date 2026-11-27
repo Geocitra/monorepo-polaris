@@ -145,6 +145,13 @@ const SPECIALIST_META: Record<
   },
 };
 
+const PACKAGE_TYPE_LABELS: Record<LkpjMeetingPackageType, string> = {
+  [LkpjMeetingPackageType.CLARIFICATION_MEETING]: 'Paket Rapat Klarifikasi OPD',
+  [LkpjMeetingPackageType.PRE_PLENARY_MEETING]: 'Paket Persiapan Paripurna & Konsolidasi Fraksi',
+  [LkpjMeetingPackageType.PLENARY_DECISION_PACKAGE]: 'Paket Laporan Hasil Pembahasan Paripurna DPRD',
+  [LkpjMeetingPackageType.POST_PLENARY_REGISTER]: 'Register Tindak Lanjut Pascaparipurna',
+};
+
 export class LkpjEvaluationAiService {
   /**
    * Menghitung selisih kinerja (gap), persentase capaian indikator, dan persentase penyerapan anggaran
@@ -464,7 +471,7 @@ Hasilkan keluaran dalam format JSON valid persis dengan skema berikut:
     const preferredRouterModel =
       specialistRole === LkpjAiSpecialistRole.LEGAL_REVIEWER_AND_DRAFTER
         ? 'gemini-2.5-pro'
-        : 'gemini-2.5-flash';
+        : 'gemini-3.8-flash';
     const modelName = resolveModel(preferredOpenAiModel, preferredRouterModel);
 
     const telemetry = AiTelemetryService.startTrace({
@@ -648,7 +655,7 @@ ${
     const { client, resolveModel } = getTextCompletionClient();
     const modelName = resolveModel(
       process.env.AI_PARLIAMENTARY_MODEL || 'gpt-4o-mini',
-      'gemini-2.5-flash'
+      'gemini-3.8-flash'
     );
 
     const systemPrompt = `Anda adalah Pengelola Dokumen dan Bukti POLARIS (Evaluasi LKPJ DPRD TA ${params.fiscalYear}).
@@ -768,7 +775,7 @@ Ekstrak maksimal 12 kandidat temuan/indikator kinerja yang paling material.`;
     const { client, resolveModel } = getTextCompletionClient();
     const modelName = resolveModel(
       process.env.AI_PARLIAMENTARY_MODEL || 'gpt-4o-mini',
-      'gemini-2.5-flash'
+      'gemini-3.8-flash'
     );
 
     const findingsBrief = params.includedFindings
@@ -779,8 +786,10 @@ Ekstrak maksimal 12 kandidat temuan/indikator kinerja yang paling material.`;
       )
       .join('\n');
 
+    const packageLabel = PACKAGE_TYPE_LABELS[params.packageType] || params.packageType;
+
     const systemPrompt = `Anda adalah Sekretariat Persidangan & Tenaga Ahli Parlemen POLARIS untuk ${params.organizationName}.
-Susun Ringkasan Eksekutif / Naskah Pengantar resmi untuk paket rapat "${params.packageType}" (${params.workspaceTitle}, TA ${params.fiscalYear}) berbahasa Indonesia baku kelembagaan DPRD (sesuai PP Nomor 13 Tahun 2019).
+Susun Ringkasan Eksekutif / Naskah Pengantar resmi untuk "${packageLabel}" (${params.workspaceTitle}, TA ${params.fiscalYear}) berbahasa Indonesia baku kelembagaan DPRD (sesuai PP Nomor 13 Tahun 2019). Jangan pernah menuliskan kode enum teknis seperti CLARIFICATION_MEETING di dalam naskah.
 ATURAN KETAT:
 1. Gunakan HANYA angka dan fakta dari <UNTRUSTED_EVALUATION_MATRIX>. Dilarang mengubah angka target/realisasi/serapan.
 2. Soroti isu dengan bukti terbuka (${params.openDataRequestsCount} isu) dan isu konsolidasi fraksi yang memerlukan keputusan rapat (${params.factionNeedDecisionCount} isu).

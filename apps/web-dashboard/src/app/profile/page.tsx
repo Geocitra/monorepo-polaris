@@ -125,7 +125,10 @@ function ProfileContent() {
     async function loadData() {
       try {
         const userProfile = await ApiClient.request<any>('/auth/me');
-        const billingStatus = await ApiClient.request<any>('/billing/status').catch(() => null);
+        const billingStatus =
+          userProfile?.accountMode === 'B2B_ONLY'
+            ? null
+            : await ApiClient.request<any>('/billing/status').catch(() => null);
 
         setProfile(userProfile);
         setBilling(billingStatus);
@@ -344,6 +347,7 @@ function ProfileContent() {
           subdomain={profile?.subdomain} customDomain={profile?.customDomain}
           subscriptionStatus={billing?.subscriptionStatus}
           currentPeriodEnd={billing?.currentPeriodEnd}
+          workspaceMode={profile?.accountMode === 'B2B_ONLY' ? 'INSTITUTIONAL' : undefined}
         />
 
         <main className="flex-1 px-3.5 sm:px-5 md:px-6 py-3.5 sm:py-4 space-y-3 max-w-7xl w-full mx-auto transition-all duration-200">
@@ -388,8 +392,10 @@ function ProfileContent() {
             </div>
           </div>
 
-          {/* BANNER STATUS LISENSI */}
-          <LicenseStatusBanner isUnpaid={isUnpaid} dapilName={dapilName} />
+          {/* BANNER STATUS LISENSI (Hanya untuk akun B2C/Hybrid) */}
+          {profile?.accountMode !== 'B2B_ONLY' && (
+            <LicenseStatusBanner isUnpaid={isUnpaid} dapilName={dapilName} />
+          )}
 
           {/* MODE 1: TAMPILAN PREVIEW (COMPACT & ALIGNED THEME) */}
           {activeTabMode === 'PREVIEW' && (
@@ -413,6 +419,7 @@ function ProfileContent() {
               regencyCoverage={regencyCoverage}
               subdomain={profile?.subdomain} customDomain={profile?.customDomain}
               isUnpaid={isUnpaid}
+              hideSocialChannels={profile?.accountMode === 'B2B_ONLY'}
               onEditClick={() => setActiveTabMode('EDIT')}
               onOpenSecurity={handleOpenSecurity}
             />

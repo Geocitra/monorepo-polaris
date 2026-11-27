@@ -157,7 +157,17 @@ export class StudioService {
   }
 
   // --- Domain: Infografis Publikasi & Manajemen ---
-  async publishInfographic(tenantId: string, dto: PublishInfographicDto) {
+  async publishInfographic(
+    tenantId: string,
+    dto: PublishInfographicDto,
+    caller?: { isOperator?: boolean; canDirectPublish?: boolean }
+  ) {
+    if (caller?.isOperator && !caller.canDirectPublish) {
+      throw new ForbiddenException(
+        'Operator tidak memiliki izin Direct Publish untuk menerbitkan infografis secara langsung tanpa persetujuan klien.'
+      );
+    }
+
     const [sub] = await db
       .select({ status: subscriptions.status })
       .from(subscriptions)

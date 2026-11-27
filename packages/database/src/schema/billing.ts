@@ -34,11 +34,12 @@ export const invoiceTransactions = pgTable('invoice_transactions', {
   paidAt: timestamp('paid_at', { withTimezone: true }),
   settlementTime: timestamp('settlement_time', { withTimezone: true }),
   reconciliationStatus: varchar('reconciliation_status', { length: 30 }).default('UNRECONCILED').notNull(),
-  reconciliationBatchId: uuid('reconciliation_batch_id'),
+  reconciliationBatchId: uuid('reconciliation_batch_id').references((): any => reconciliationBatches.id, { onDelete: 'set null' }),
   createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
 }, (t) => ({
   idxInvoiceReconStatusTime: index('idx_invoice_recon_status_time').on(t.reconciliationStatus, t.paymentStatus, t.settlementTime),
-  idxInvoiceGatewayOrder: index('idx_invoice_gateway_order').on(t.gatewayOrderId),
+  idxInvoiceSubscriptionId: index('idx_invoice_subscription_id').on(t.subscriptionId),
+  idxInvoiceReconBatchId: index('idx_invoice_recon_batch_id').on(t.reconciliationBatchId),
 }));
 
 export const tenantQuotaLedgers = pgTable('tenant_quota_ledgers', {
@@ -103,6 +104,7 @@ export const tenantQuotaTransactions = pgTable('tenant_quota_transactions', {
   idxQuotaTxPublication: index('idx_quota_tx_publication').on(t.publicationId),
   idxQuotaTxLedger: index('idx_quota_tx_ledger').on(t.ledgerId),
   idxQuotaTxOperator: index('idx_quota_tx_operator').on(t.operatorId),
+  idxQuotaTxInvoice: index('idx_quota_tx_invoice_id').on(t.invoiceId),
   idxQuotaTxRequest: index('idx_quota_tx_request').on(t.requestId),
   idxQuotaTxTenantWeek: index('idx_quota_tx_tenant_week').on(t.tenantId, t.weeklyQuotaPeriod),
 }));
@@ -209,12 +211,13 @@ export const reconciliationDiscrepancies = pgTable('reconciliation_discrepancies
   discrepancyAmountIdr: numeric('discrepancy_amount_idr', { precision: 12, scale: 2 }).default('0.00').notNull(),
   resolutionStatus: varchar('resolution_status', { length: 30 }).default('UNRESOLVED').notNull(),
   resolutionNotes: text('resolution_notes'),
-  resolvedBy: uuid('resolved_by'),
+  resolvedBy: uuid('resolved_by').references(() => systemAdmins.id, { onDelete: 'set null' }),
   resolvedAt: timestamp('resolved_at', { withTimezone: true }),
   createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
 }, (t) => ({
   idxDiscrepancyBatchRes: index('idx_recon_discrepancy_batch_res').on(t.batchId, t.resolutionStatus),
   idxDiscrepancyGatewayOrder: index('idx_recon_discrepancy_gateway_order').on(t.gatewayOrderId),
+  idxDiscrepancyInvoiceId: index('idx_recon_discrepancy_invoice_id').on(t.invoiceId),
 }));
 
 export type TenantQuotaWalletRecord = typeof tenantQuotaWallets.$inferSelect;

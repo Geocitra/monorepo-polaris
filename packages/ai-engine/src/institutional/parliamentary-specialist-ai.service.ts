@@ -421,7 +421,7 @@ Berikan catatan kritik hukum sistematis (kewenangan, kesesuaian UU 1/2026 & Perd
     const { client, resolveModel } = getTextCompletionClient();
     const modelName = resolveModel(
       process.env.AI_PARLIAMENTARY_MODEL || 'gpt-4o-mini',
-      'gemini-2.5-flash'
+      'gemini-3.8-flash'
     );
 
     const telemetry = AiTelemetryService.startTrace({
@@ -633,7 +633,7 @@ ${evidence.summaryText}
     const { client, resolveModel } = getTextCompletionClient();
     const modelName = resolveModel(
       process.env.AI_PARLIAMENTARY_MODEL || 'gpt-4o-mini',
-      'gemini-2.5-flash'
+      'gemini-3.8-flash'
     );
 
     const telemetry = AiTelemetryService.startTrace({

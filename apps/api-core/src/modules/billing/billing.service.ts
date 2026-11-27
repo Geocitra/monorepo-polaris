@@ -2,6 +2,7 @@ import {
   Injectable,
   NotFoundException,
   ForbiddenException,
+  BadRequestException,
   Logger,
 } from '@nestjs/common';
 import { eq, and, desc } from 'drizzle-orm';
@@ -203,6 +204,16 @@ export class BillingService {
     // 4. Proses Pelunasan (Settlement Ingress)
     if (domainPaymentStatus === PaymentStatus.SETTLEMENT) {
       const grossAmount = payload.gross_amount ? parseFloat(payload.gross_amount) : Number(invoice.amountIdr);
+      if (
+        payload.gross_amount !== undefined &&
+        Number.isFinite(grossAmount) &&
+        Math.abs(grossAmount - Number(invoice.amountIdr)) > 1
+      ) {
+        this.logger.warn(
+          `[Webhook Amount Mismatch] Order ID ${orderId}: gross_amount=${grossAmount}, invoice=${invoice.amountIdr}`
+        );
+        throw new BadRequestException('Nominal pembayaran tidak sesuai dengan tagihan.');
+      }
       const paymentType = payload.payment_type || 'midtrans';
       const settlementTime = payload.settlement_time ? new Date(payload.settlement_time) : new Date();
 
@@ -243,7 +254,22 @@ export class BillingService {
     // Hitung rincian potongan fee MDR & PPN 11% secara presisi
     const feeBreakdown = MidtransFeeCalculator.calculate(grossAmountIdr, paymentMethod);
 
-    await db.transaction(async (tx) => {
+    const settledContext = await db.transaction(async (tx) => {
+      // 0. Lock baris invoice untuk mencegah race condition webhook ganda / sync bersamaan
+      const [lockedInvoice] = await tx
+        .select()
+        .from(invoiceTransactions)
+        .where(eq(invoiceTransactions.id, invoice.id))
+        .for('update')
+        .limit(1);
+
+      if (!lockedInvoice || lockedInvoice.paymentStatus === PaymentStatus.SETTLEMENT) {
+        this.logger.log(
+          `[Webhook Idempotent TX] Invoice ${invoice.invoiceNumber} sudah berstatus SETTLEMENT.`
+        );
+        return null;
+      }
+
       // 1. Mutasi status tagihan dengan pembukuan kas bersih (Net Ingress)
       await tx
         .update(invoiceTransactions)
@@ -267,7 +293,7 @@ export class BillingService {
         .where(eq(subscriptions.id, subscriptionId))
         .limit(1);
 
-      if (!sub) return;
+      if (!sub) return null;
 
       const now = new Date();
 
@@ -447,37 +473,43 @@ export class BillingService {
           target: [tenantQuotaLedgers.tenantId, tenantQuotaLedgers.billingCycleMonth],
         });
 
-      // 4. Siarkan Event Real-Time ke Dashboard Anggota Dewan
-      if (this.redisService) {
-        await this.redisService.emitUserNotification(sub.tenantId, {
-          id: `bill_${Date.now()}`,
-          title: '🎉 Pembayaran Lisensi Terverifikasi Lunas!',
-          message: `Lisensi Parlemen Anda aktif hingga ${periodEnd.toLocaleDateString('id-ID')}. Kas bersih: Rp ${feeBreakdown.netAmountIdr.toLocaleString('id-ID')}. Akses AI terbuka penuh.`,
-          category: 'BILLING',
-          link: '/billing',
-        });
-
-        await this.redisService.emitUserProgress(sub.tenantId, {
-          jobId: `checkout_${invoice.gatewayOrderId}`,
-          percent: 100,
-          step: 'Pembayaran Terverifikasi & Lisensi Aktif!',
-          status: 'COMPLETED',
-          resultUrl: '/billing',
-        });
-
-        await this.redisService.publish('billing:payment_settled', {
-          tenantId: sub.tenantId,
-          invoiceNumber: invoice.invoiceNumber,
-          amountIdr: invoice.amountIdr,
-          allocatedQuota,
-          newPeriodEnd: periodEnd.toISOString(),
-        });
-      }
-
       this.logger.log(
         `[BillingSettled] Invoice ${invoice.invoiceNumber} LUNAS. Gross: Rp ${feeBreakdown.grossAmountIdr}, MDR: Rp ${feeBreakdown.mdrFeeIdr}, PPN: Rp ${feeBreakdown.vatFeeIdr}, Net Kas: Rp ${feeBreakdown.netAmountIdr}. Aktif s.d: ${periodEnd.toISOString()}`
       );
+
+      return {
+        tenantId: sub.tenantId,
+        periodEnd,
+        allocatedQuota,
+      };
     });
+
+    // 4. Siarkan Event Real-Time ke Dashboard SETELAH transaksi DB berhasil commit
+    if (settledContext && this.redisService) {
+      await this.redisService.emitUserNotification(settledContext.tenantId, {
+        id: `bill_${Date.now()}`,
+        title: '🎉 Pembayaran Lisensi Terverifikasi Lunas!',
+        message: `Lisensi Parlemen Anda aktif hingga ${settledContext.periodEnd.toLocaleDateString('id-ID')}. Kas bersih: Rp ${feeBreakdown.netAmountIdr.toLocaleString('id-ID')}. Akses AI terbuka penuh.`,
+        category: 'BILLING',
+        link: '/billing',
+      });
+
+      await this.redisService.emitUserProgress(settledContext.tenantId, {
+        jobId: `checkout_${invoice.gatewayOrderId}`,
+        percent: 100,
+        step: 'Pembayaran Terverifikasi & Lisensi Aktif!',
+        status: 'COMPLETED',
+        resultUrl: '/billing',
+      });
+
+      await this.redisService.publish('billing:payment_settled', {
+        tenantId: settledContext.tenantId,
+        invoiceNumber: invoice.invoiceNumber,
+        amountIdr: invoice.amountIdr,
+        allocatedQuota: settledContext.allocatedQuota,
+        newPeriodEnd: settledContext.periodEnd.toISOString(),
+      });
+    }
   }
 
   /**
@@ -529,27 +561,20 @@ export class BillingService {
   }
 
   async getBillingStatus(tenantId: string): Promise<BillingStatusDto> {
-    let [sub] = await db
+    const [existingSub] = await db
       .select()
       .from(subscriptions)
       .where(eq(subscriptions.tenantId, tenantId))
       .limit(1);
 
-    if (!sub) {
-      const now = new Date();
-      const [newSub] = await db
-        .insert(subscriptions)
-        .values({
-          tenantId,
-          planTier: PlanTier.PRO,
-          status: SubscriptionStatus.ACTIVE,
-          currentPeriodStart: now,
-          currentPeriodEnd: new Date(now.getTime() + 365 * 24 * 60 * 60 * 1000),
-        })
-        .onConflictDoNothing()
-        .returning();
-      sub = newSub || (await db.select().from(subscriptions).where(eq(subscriptions.tenantId, tenantId)).limit(1))[0];
-    }
+    // Read-only: Jika akun belum pernah checkout atau belum diaktifkan oleh admin, kembalikan status INACTIVE (bukan auto-PRO 365 hari)
+    const sub = existingSub || {
+      id: null as string | null,
+      tenantId,
+      planTier: PlanTier.STARTER,
+      status: SubscriptionStatus.INACTIVE,
+      currentPeriodEnd: null as Date | null,
+    };
 
     const currentMonth = new Date().toISOString().slice(0, 7);
     const fxSnapshot = await DynamicExchangeRate.getLiveUsdToIdrSnapshot();
@@ -577,21 +602,25 @@ export class BillingService {
       )
       .limit(1);
 
-    // Ambil riwayat invoice terakhir dewan
-    const [lastInvoice] = await db
-      .select({
-        invoiceNumber: invoiceTransactions.invoiceNumber,
-        grossAmountIdr: invoiceTransactions.grossAmountIdr,
-        netAmountIdr: invoiceTransactions.netAmountIdr,
-        paymentMethod: invoiceTransactions.paymentMethod,
-        paymentStatus: invoiceTransactions.paymentStatus,
-        settlementTime: invoiceTransactions.settlementTime,
-        reconciliationStatus: invoiceTransactions.reconciliationStatus,
-      })
-      .from(invoiceTransactions)
-      .where(eq(invoiceTransactions.subscriptionId, sub.id))
-      .orderBy(desc(invoiceTransactions.createdAt))
-      .limit(1);
+    // Ambil riwayat invoice terakhir dewan (hanya jika langganan sudah ada)
+    const lastInvoice = sub.id
+      ? (
+          await db
+            .select({
+              invoiceNumber: invoiceTransactions.invoiceNumber,
+              grossAmountIdr: invoiceTransactions.grossAmountIdr,
+              netAmountIdr: invoiceTransactions.netAmountIdr,
+              paymentMethod: invoiceTransactions.paymentMethod,
+              paymentStatus: invoiceTransactions.paymentStatus,
+              settlementTime: invoiceTransactions.settlementTime,
+              reconciliationStatus: invoiceTransactions.reconciliationStatus,
+            })
+            .from(invoiceTransactions)
+            .where(eq(invoiceTransactions.subscriptionId, sub.id))
+            .orderBy(desc(invoiceTransactions.createdAt))
+            .limit(1)
+        )[0] || null
+      : null;
 
     const tokens = quota?.totalTokensConsumed || 0;
     const articles = quota?.articleUsed || 0;
@@ -795,11 +824,12 @@ export class BillingService {
       });
     }
 
-    const totalAllocated = walletQuota?.totalQuotaAllocated || 12;
+    const isActiveSub = sub.status === SubscriptionStatus.ACTIVE;
+    const totalAllocated = walletQuota?.totalQuotaAllocated ?? (isActiveSub ? 12 : 0);
     const effectiveRemaining =
       (walletQuota as any)?.effectiveRemaining !== undefined
         ? (walletQuota as any).effectiveRemaining
-        : (walletQuota?.remainingQuota ?? 12);
+        : (walletQuota?.remainingQuota ?? (isActiveSub ? 12 : 0));
     const weeklyAllowanceLimit = walletQuota?.weeklyAllowanceLimit || 3;
     const weeklyUsed = (walletQuota as any)?.weeklyUsed ?? 0;
     const weeklyRemaining =

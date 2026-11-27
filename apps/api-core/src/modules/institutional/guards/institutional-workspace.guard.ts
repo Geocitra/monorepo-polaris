@@ -135,15 +135,6 @@ export class InstitutionalWorkspaceGuard implements CanActivate {
           `Akses ruang kerja Instansi "${org.name}" terkunci: Kontrak tahunan B2G belum aktif atau telah berakhir.`
         );
       }
-
-      if (
-        contract.annualTokenPoolLimit > 0 &&
-        contract.tokensConsumed >= contract.annualTokenPoolLimit
-      ) {
-        throw new ForbiddenException(
-          `Pagu kuota token AI tahunan untuk Instansi "${org.name}" telah mencapai batas kontrak.`
-        );
-      }
     }
 
     // 3. Verifikasi Keanggotaan User di Instansi (organization_memberships)

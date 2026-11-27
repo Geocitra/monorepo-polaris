@@ -54,7 +54,10 @@ export function CommentSection({ publicationId }: { publicationId: string }) {
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
 
-  const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000/api/v1';
+  const API_BASE_URL =
+    (process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000/api/v1').replace(/\/+$/, '').endsWith('/api/v1')
+      ? (process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000/api/v1').replace(/\/+$/, '')
+      : `${(process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000').replace(/\/+$/, '')}/api/v1`;
   const googleClientId = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID || '';
 
   function notifyError(msg: string) {
@@ -301,9 +304,18 @@ export function CommentSection({ publicationId }: { publicationId: string }) {
     );
 
     try {
-      await fetch(`${API_BASE_URL}/comments/${commentId}/like`, { method: 'POST' });
+      const res = await fetch(`${API_BASE_URL}/comments/${commentId}/like`, {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+      if (!res.ok) {
+        notifyError('Gagal menyukai komentar. Silakan coba lagi.');
+      }
     } catch (err) {
       console.error(err);
+      notifyError('Terjadi kendala jaringan saat menyukai komentar.');
     }
   }
 

@@ -221,6 +221,7 @@ export default function ArticleEditorPage() {
             <div className="lg:col-span-4 space-y-5 sticky top-24">
               <ArticlePosterSidebar
                 posterUrl={posterUrl}
+                publicationId={articleId}
                 title={title}
                 isRegenerating={regeneratingPoster}
                 onRegenerate={handleRegeneratePoster}

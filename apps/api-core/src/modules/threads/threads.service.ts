@@ -401,6 +401,23 @@ export class ThreadsService {
         'Publikasi otomatis ke Threads dinonaktifkan oleh administrator platform. Silakan gunakan mode manual asisten.'
       );
     }
+    // 0. Verifikasi kepemilikan accountId oleh tenantId (anti-IDOR)
+    const [ownedAccount] = await withTenantContext(tenantId, async (tx) => {
+      return await tx
+        .select({ id: connectedSocialAccounts.id })
+        .from(connectedSocialAccounts)
+        .where(
+          and(
+            eq(connectedSocialAccounts.id, dto.accountId),
+            eq(connectedSocialAccounts.tenantId, tenantId)
+          )
+        )
+        .limit(1);
+    });
+    if (!ownedAccount) {
+      throw new NotFoundException('Akun Threads tujuan tidak ditemukan atau bukan milik Anda.');
+    }
+
     // 1. Simpan record pekerjaan di database
     const [createdJob] = await withTenantContext(tenantId, async (tx) => {
       return await tx

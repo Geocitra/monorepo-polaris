@@ -1,8 +1,17 @@
-import { Injectable, Logger } from '@nestjs/common';
-import { PosterInpainter, ChromiumPosterCompositor, PosterColorHarmonizer, type PosterLayerManifest } from '@polaris/storage';
+import { Injectable, Logger, ForbiddenException, BadRequestException, NotFoundException } from '@nestjs/common';
+import * as fs from 'node:fs/promises';
+import * as path from 'node:path';
+import { randomUUID } from 'node:crypto';
+import {
+  PosterInpainter,
+  ChromiumPosterCompositor,
+  PosterColorHarmonizer,
+  CloudinaryStorageAdapter,
+  type PosterLayerManifest,
+} from '@polaris/storage';
 import { PosterVisionExtractorService } from './poster-vision-extractor.service.js';
 import { db, mediaAssets, contentPublications } from '@polaris/database';
-import { eq } from 'drizzle-orm';
+import { eq, and } from 'drizzle-orm';
 import { AssetType } from '@polaris/shared-types';
 
 export interface OCRBoundingBox {
@@ -11,17 +20,17 @@ export interface OCRBoundingBox {
   bbox: { x: number; y: number; w: number; h: number };
   confidence: number;
   semanticRole:
-    | 'kicker'
-    | 'headline'
-    | 'deck'
-    | 'stat_val'
-    | 'stat_lbl'
-    | 'badge'
-    | 'card_title'
-    | 'card_body'
-    | 'card_tag'
-    | 'footer'
-    | 'banner';
+  | 'kicker'
+  | 'headline'
+  | 'deck'
+  | 'stat_val'
+  | 'stat_lbl'
+  | 'badge'
+  | 'card_title'
+  | 'card_body'
+  | 'card_tag'
+  | 'footer'
+  | 'banner';
   fontSize?: number;
   textColor?: string;
   fontFamily?: string;
@@ -31,12 +40,12 @@ export interface OCRBoundingBox {
 export interface PanopticDocumentBlock {
   id: string;
   semanticType:
-    | 'MASTHEAD_CARD'
-    | 'STAT_METRIC_ROW'
-    | 'COLUMN_CONTAINER_CARD'
-    | 'ACCENT_BANNER'
-    | 'HERO_PHOTO_FRAME'
-    | 'FOOTER_BAR';
+  | 'MASTHEAD_CARD'
+  | 'STAT_METRIC_ROW'
+  | 'COLUMN_CONTAINER_CARD'
+  | 'ACCENT_BANNER'
+  | 'HERO_PHOTO_FRAME'
+  | 'FOOTER_BAR';
   bbox: { x: number; y: number; w: number; h: number };
   cardBg?: string;
   isDraggableComponent: boolean;
@@ -64,7 +73,7 @@ export class StudioMagicLayersService {
 
   constructor(
     private readonly visionExtractor: PosterVisionExtractorService,
-  ) {}
+  ) { }
 
   /**
    * SOLUSI 1 & 2: Deteksi Teks (OCR) Bounding Box & Segmentasi Semantik / Panoptic Layout.
@@ -376,6 +385,19 @@ export class StudioMagicLayersService {
    * OPSI C: Backend Image Inpainting Engine (Generative / Context-Aware Texture Synthesis)
    * Merekonstruksi latar belakang foto & kertas asli di balik komponen yang diangkat.
    */
+  private async assertPublicationOwnership(publicationId: string, tenantId?: string): Promise<void> {
+    if (!tenantId) return;
+    const [pub] = await db
+      .select({ tenantId: contentPublications.tenantId })
+      .from(contentPublications)
+      .where(eq(contentPublications.id, publicationId))
+      .limit(1);
+
+    if (pub && pub.tenantId !== tenantId) {
+      throw new ForbiddenException('Anda tidak memiliki izin mengakses aset publikasi milik akun lain.');
+    }
+  }
+
   async inpaintPosterBackground(params: {
     imageUrl: string;
     naturalW?: number;
@@ -383,6 +405,7 @@ export class StudioMagicLayersService {
     componentBounds: Array<{ x: number; y: number; w: number; h: number; cardBg?: string; name?: string; text?: string }>;
     archetype?: string;
     publicationId?: string;
+    tenantId?: string;
   }): Promise<{
     success: boolean;
     cleanBackgroundUrl: string;
@@ -421,6 +444,7 @@ export class StudioMagicLayersService {
     }
 
     if (effectivePubId) {
+      await this.assertPublicationOwnership(effectivePubId, params.tenantId);
       try {
         const assets = await db
           .select()
@@ -436,7 +460,7 @@ export class StudioMagicLayersService {
             try {
               const parsed = JSON.parse(posterAsset.promptUsed);
               if (parsed.rawCanvasUrl) rawCanvasUrl = parsed.rawCanvasUrl;
-            } catch {}
+            } catch { }
           }
         }
 
@@ -473,7 +497,22 @@ export class StudioMagicLayersService {
         const base64Data = params.imageUrl.split(',')[1] || '';
         inputBuffer = Buffer.from(base64Data, 'base64');
       } else {
-        const res = await fetch(params.imageUrl);
+        const parsedUrl = new URL(params.imageUrl);
+        const h = parsedUrl.hostname.toLowerCase().replace(/^\[|\]$/g, '');
+        if (
+          h === 'localhost' ||
+          h === '0.0.0.0' ||
+          h === '::1' ||
+          h.startsWith('127.') ||
+          h.startsWith('10.') ||
+          h.startsWith('192.168.') ||
+          h.startsWith('169.254.') ||
+          h.endsWith('.local') ||
+          h.endsWith('.internal')
+        ) {
+          throw new ForbiddenException('Host URL gambar tidak diizinkan (SSRF Protection).');
+        }
+        const res = await fetch(parsedUrl.toString());
         if (!res.ok) {
           throw new Error(`Failed to fetch poster image: ${res.statusText}`);
         }
@@ -540,6 +579,7 @@ export class StudioMagicLayersService {
     naturalW?: number;
     naturalH?: number;
     forceReExtract?: boolean;
+    tenantId?: string;
   }): Promise<{
     success: boolean;
     manifest: PosterLayerManifest | null;
@@ -562,12 +602,13 @@ export class StudioMagicLayersService {
             effectivePubId = uuidMatches[uuidMatches.length - 1];
           }
         }
-      } catch {}
+      } catch { }
     }
 
     let existingAsset: any = null;
     let rawCanvasUrl = '';
     if (effectivePubId) {
+      await this.assertPublicationOwnership(effectivePubId, params.tenantId);
       try {
         const assets = await db
           .select()
@@ -607,6 +648,8 @@ export class StudioMagicLayersService {
               parsedPromptUsed: parsed,
               rawCanvasUrl,
               imageUrl: params.imageUrl,
+              naturalW: params.naturalW,
+              naturalH: params.naturalH,
             });
             if (recomposed.manifest && recomposed.manifest.layers.length >= 3) {
               return {
@@ -616,7 +659,7 @@ export class StudioMagicLayersService {
                 detectedArchetype: recomposed.detectedArchetype || parsed.archetype,
               };
             }
-          } catch {}
+          } catch { }
         }
       } catch (err) {
         this.logger.warn(`[MagicLayers] Gagal query media_assets: ${err}`);
@@ -630,7 +673,7 @@ export class StudioMagicLayersService {
       if (existingAsset?.promptUsed) {
         try {
           existingArchetype = JSON.parse(existingAsset.promptUsed).archetype;
-        } catch {}
+        } catch { }
       }
 
       const rawManifest = this.visionExtractor.convertContentToManifest(
@@ -640,7 +683,12 @@ export class StudioMagicLayersService {
         existingArchetype
       );
 
-      const manifest = await PosterColorHarmonizer.harmonizeManifest(rawManifest, params.imageUrl);
+      const harmonizedRaw = await PosterColorHarmonizer.harmonizeManifest(rawManifest, params.imageUrl);
+      const manifest = await this.materializeVisionImageLayers(
+        harmonizedRaw,
+        params.imageUrl,
+        params.tenantId || existingAsset?.tenantId || 'default'
+      );
 
       // Simpan manifest ini ke database media_assets agar tidak perlu dianalisis ulang
       if (existingAsset?.id) {
@@ -687,6 +735,8 @@ export class StudioMagicLayersService {
     parsedPromptUsed: any;
     rawCanvasUrl: string;
     imageUrl: string;
+    naturalW?: number;
+    naturalH?: number;
   }): Promise<{ manifest: PosterLayerManifest | null; rawCanvasUrl?: string; detectedArchetype?: string }> {
     try {
       this.logger.log(`[MagicLayers] Dynamic visual extraction untuk publication ${params.effectivePubId}...`);
@@ -695,12 +745,17 @@ export class StudioMagicLayersService {
 
       const rawManifest = this.visionExtractor.convertContentToManifest(
         extractedContent,
-        1080,
-        1350,
+        params.naturalW || 1080,
+        params.naturalH || 1350,
         params.parsedPromptUsed?.archetype
       );
 
-      const harmonized = await PosterColorHarmonizer.harmonizeManifest(rawManifest, params.imageUrl);
+      const harmonizedRaw = await PosterColorHarmonizer.harmonizeManifest(rawManifest, params.imageUrl);
+      const harmonized = await this.materializeVisionImageLayers(
+        harmonizedRaw,
+        params.imageUrl,
+        params.existingAsset?.tenantId || 'default'
+      );
 
       if (harmonized && harmonized.layers.length >= 3) {
         params.parsedPromptUsed.layoutManifest = harmonized;
@@ -729,5 +784,205 @@ export class StudioMagicLayersService {
       this.logger.warn(`[MagicLayers] Gagal mengekstrak dynamic manifest: ${reErr}`);
     }
     return { manifest: null };
+  }
+
+  /**
+   * Helper bersama untuk mengunggah buffer gambar ke Cloudinary (atau fallback disk lokal /uploads/posters/).
+   */
+  private async uploadBufferToPosterStorage(
+    tenantId: string,
+    buffer: Buffer,
+    mimeType: string,
+    prefix: string
+  ): Promise<string> {
+    const ext = mimeType.includes('webp') ? 'webp' : mimeType.includes('jpeg') || mimeType.includes('jpg') ? 'jpg' : 'png';
+    const filename = `${prefix}-${Date.now()}-${randomUUID().slice(0, 8)}.${ext}`;
+
+    const cloudinary = new CloudinaryStorageAdapter();
+    if (cloudinary.isConfigured()) {
+      try {
+        const uploaded = await cloudinary.uploadBuffer(buffer, {
+          folder: `polaris/posters/${tenantId}`,
+          publicId: `${prefix}-${Date.now()}-${randomUUID().slice(0, 6)}`,
+          contentType: mimeType,
+        });
+        return uploaded.publicUrl;
+      } catch (cloudErr: any) {
+        this.logger.warn(`[MagicLayers] Gagal upload ke Cloudinary, fallback ke disk lokal: ${cloudErr?.message}`);
+      }
+    }
+
+    const rootDir = process.cwd().includes('apps')
+      ? path.resolve(process.cwd(), '../../')
+      : process.cwd();
+    const rootUploadDir = path.resolve(rootDir, 'uploads', 'posters', tenantId);
+    await fs.mkdir(rootUploadDir, { recursive: true });
+    await fs.writeFile(path.join(rootUploadDir, filename), buffer);
+
+    const localUploadDir = path.resolve(process.cwd(), 'uploads', 'posters', tenantId);
+    if (localUploadDir !== rootUploadDir) {
+      await fs.mkdir(localUploadDir, { recursive: true });
+      await fs.writeFile(path.join(localUploadDir, filename), buffer);
+    }
+
+    const apiHost =
+      process.env.PUBLIC_API_URL ||
+      process.env.NEXT_PUBLIC_API_URL ||
+      'http://localhost:4000';
+    const cleanHost = apiHost.replace(/\/api\/v1\/?$/, '');
+    return `${cleanHost}/uploads/posters/${tenantId}/${filename}`;
+  }
+
+  /**
+   * Memotong elemen `kind: 'image'` yang dideteksi Vision AI dari gambar sumber
+   * dan mengunggahnya ke storage agar memiliki URL CDN valid (bukan placeholder kosong).
+   */
+  private async materializeVisionImageLayers(
+    manifest: PosterLayerManifest,
+    sourceImageUrl: string,
+    tenantId: string
+  ): Promise<PosterLayerManifest> {
+    if (!manifest?.layers?.length) return manifest;
+    const hasPendingImages = manifest.layers.some((l) => l.kind === 'image' && !l.src);
+    if (!hasPendingImages) return manifest;
+
+    const ornamentRoles = new Set(['paint-splash', 'tape', 'arrow', 'sticker']);
+    const nextLayers = [];
+    for (const layer of manifest.layers) {
+      if (layer.kind !== 'image' || layer.src) {
+        nextLayers.push(layer);
+        continue;
+      }
+      const cropBox = {
+        x: layer.x,
+        y: layer.y,
+        w: layer.w,
+        h: layer.h,
+        refWidth: manifest.width,
+        refHeight: manifest.height,
+      };
+      const cropped = ornamentRoles.has(layer.role)
+        ? await PosterColorHarmonizer.cropOrnamentWithAlpha(sourceImageUrl, cropBox)
+        : await PosterColorHarmonizer.cropRegionToPng(sourceImageUrl, cropBox);
+      if (!cropped || cropped.length === 0) continue;
+
+      try {
+        const url = await this.uploadBufferToPosterStorage(tenantId, cropped, 'image/png', 'crop');
+        nextLayers.push({ ...layer, src: url });
+      } catch (err: any) {
+        this.logger.warn(`[MagicLayers] Gagal upload crop image layer ${layer.id}: ${err?.message}`);
+      }
+    }
+
+    return { ...manifest, layers: nextLayers };
+  }
+
+  /**
+   * Mengunggah aset gambar/cutout editor (PNG/JPG/WebP) ke Cloudinary/storage
+   * agar `editorLayersJson` hanya menyimpan URL CDN ringan, bukan base64.
+   */
+  async uploadEditorAsset(
+    tenantId: string,
+    dto: { imageDataUrl: string; filename?: string }
+  ): Promise<{ success: boolean; url: string }> {
+    const base64Match = dto.imageDataUrl.match(/^data:(image\/[a-zA-Z0-9+.-]+);base64,(.+)$/);
+    if (!base64Match) {
+      throw new BadRequestException('Format imageDataUrl harus berupa Data URI gambar base64 yang valid.');
+    }
+
+    const mimeType = base64Match[1];
+    const buffer = Buffer.from(base64Match[2], 'base64');
+    if (buffer.length === 0 || buffer.length > 10 * 1024 * 1024) {
+      throw new BadRequestException('Ukuran gambar aset tidak valid atau melebihi batas 10MB.');
+    }
+
+    const url = await this.uploadBufferToPosterStorage(tenantId, buffer, mimeType, 'asset');
+    return { success: true, url };
+  }
+
+  /**
+   * Menyimpan PNG hasil edit kanvas Editor Layer secara permanen ke Cloudinary (atau fallback lokal /uploads/)
+   * serta menyimpan editorLayersJson ke tabel media_assets.prompt_used agar tetap bisa diedit ulang pasca refresh.
+   */
+  async saveEditedPosterLayers(
+    tenantId: string,
+    publicationId: string,
+    dto: { imageDataUrl: string; layersJson: string }
+  ): Promise<{ success: boolean; publicationId: string; posterUrl: string }> {
+    const [pub] = await db
+      .select({ id: contentPublications.id, tenantId: contentPublications.tenantId })
+      .from(contentPublications)
+      .where(eq(contentPublications.id, publicationId))
+      .limit(1);
+
+    if (!pub) {
+      throw new NotFoundException('Publikasi poster tidak ditemukan.');
+    }
+    if (pub.tenantId !== tenantId) {
+      throw new ForbiddenException('Anda tidak memiliki izin mengubah aset publikasi milik akun lain.');
+    }
+
+    const base64Match = dto.imageDataUrl.match(/^data:(image\/[a-zA-Z0-9+.-]+);base64,(.+)$/);
+    if (!base64Match) {
+      throw new BadRequestException('Format imageDataUrl harus berupa Data URI gambar base64 yang valid.');
+    }
+
+    const mimeType = base64Match[1];
+    const buffer = Buffer.from(base64Match[2], 'base64');
+    if (buffer.length === 0 || buffer.length > 15 * 1024 * 1024) {
+      throw new BadRequestException('Ukuran gambar hasil edit tidak valid atau melebihi batas 15MB.');
+    }
+
+    const posterUrl = await this.uploadBufferToPosterStorage(tenantId, buffer, mimeType, `${publicationId}-edited`);
+
+    const assets = await db
+      .select()
+      .from(mediaAssets)
+      .where(eq(mediaAssets.publicationId, publicationId));
+
+    const existingPosterAsset = assets.find(
+      (a) => a.assetType === AssetType.DALLE_POSTER || a.assetType === AssetType.INFOGRAPHIC_PNG
+    );
+
+    if (existingPosterAsset) {
+      let parsedPrompt: Record<string, any> = {};
+      if (existingPosterAsset.promptUsed) {
+        try {
+          parsedPrompt = JSON.parse(existingPosterAsset.promptUsed);
+        } catch {
+          parsedPrompt = { rawPrompt: existingPosterAsset.promptUsed };
+        }
+      }
+      parsedPrompt.editorLayersJson = dto.layersJson;
+      parsedPrompt.lastEditedAt = new Date().toISOString();
+
+      await db
+        .update(mediaAssets)
+        .set({
+          r2StorageUrl: posterUrl,
+          cdnPublicUrl: posterUrl,
+          promptUsed: JSON.stringify(parsedPrompt),
+        })
+        .where(eq(mediaAssets.id, existingPosterAsset.id));
+    } else {
+      await db.insert(mediaAssets).values({
+        publicationId,
+        assetType: AssetType.INFOGRAPHIC_PNG,
+        r2StorageUrl: posterUrl,
+        cdnPublicUrl: posterUrl,
+        fileSizeBytes: buffer.length,
+        mimeType,
+        promptUsed: JSON.stringify({
+          editorLayersJson: dto.layersJson,
+          lastEditedAt: new Date().toISOString(),
+        }),
+      });
+    }
+
+    return {
+      success: true,
+      publicationId,
+      posterUrl,
+    };
   }
 }

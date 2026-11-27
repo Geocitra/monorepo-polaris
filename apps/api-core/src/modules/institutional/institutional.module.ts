@@ -2,6 +2,7 @@ import { Module } from '@nestjs/common';
 import { DatahubModule } from '../datahub/datahub.module.js';
 import { BillingModule } from '../billing/billing.module.js';
 import { InstitutionalGovernanceService } from './institutional-governance.service.js';
+import { InstitutionalQuotaService } from './institutional-quota.service.js';
 import { InstitutionalKnowledgeService } from './institutional-knowledge.service.js';
 import { LkpjEvaluationService } from './lkpj-evaluation.service.js';
 import { ParliamentaryLegislationService } from './parliamentary-legislation.service.js';
@@ -23,6 +24,7 @@ import { ParliamentaryLegislationController } from './parliamentary-legislation.
   ],
   providers: [
     InstitutionalGovernanceService,
+    InstitutionalQuotaService,
     InstitutionalKnowledgeService,
     LkpjEvaluationService,
     ParliamentaryLegislationService,
@@ -30,6 +32,7 @@ import { ParliamentaryLegislationController } from './parliamentary-legislation.
   ],
   exports: [
     InstitutionalGovernanceService,
+    InstitutionalQuotaService,
     InstitutionalKnowledgeService,
     LkpjEvaluationService,
     ParliamentaryLegislationService,

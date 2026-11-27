@@ -4,6 +4,7 @@ import {
   NotFoundException,
   ForbiddenException,
 } from '@nestjs/common';
+import * as bcrypt from 'bcrypt';
 import {
   db,
   organizations,
@@ -13,6 +14,8 @@ import {
   organizationUnitMemberships,
   institutionalAuditLogs,
   tenantMembers,
+  subscriptions,
+  systemAdmins,
   eq,
   and,
   desc,
@@ -29,6 +32,9 @@ import {
   InstitutionalMembershipStatus,
   DatahubPrivacyScope,
   LegislativeLevel,
+  SubscriptionStatus,
+  PlanTier,
+  INDONESIA_REGIONS,
   type OrganizationDto,
   type OrganizationContractDto,
   type OrganizationUnitNodeDto,
@@ -37,12 +43,15 @@ import {
   type InstitutionalScopedDocumentDto,
   type SuperadminInstitutionSummaryDto,
   type SuperadminInstitutionDetailDto,
+  type ProvisionedAdminCredentialsDto,
+  type ProvisionedOrgMemberResultDto,
 } from '@polaris/shared-types';
 import type {
   CreateInstitutionRequestDto,
   UpdateInstitutionRequestDto,
   UpsertOrganizationContractRequestDto,
   AssignOrganizationMemberRequestDto,
+  CreateOrganizationMemberAccountDto,
   CreateOrganizationUnitRequestDto,
   UpdateOrganizationUnitRequestDto,
   AssignUnitMemberRequestDto,
@@ -83,6 +92,8 @@ export class InstitutionalGovernanceService {
       maxStorageBytes: Number(row.maxStorageBytes),
       annualTokenPoolLimit: Number(row.annualTokenPoolLimit),
       tokensConsumed: Number(row.tokensConsumed),
+      weeklyGenerateLimitPerMember: Number(row.weeklyGenerateLimitPerMember ?? 3),
+      revisionLimitPerItem: Number(row.revisionLimitPerItem ?? 3),
       contractValueIdr: Number(row.contractValueIdr),
       notes: row.notes,
       createdAt: row.createdAt.toISOString(),
@@ -208,24 +219,185 @@ export class InstitutionalGovernanceService {
     }
   }
 
+  async assertUserIsUnitLeadOrOrgAdmin(
+    orgId: string,
+    unitId: string,
+    tenantId: string,
+    orgRole: OrganizationMemberRole
+  ): Promise<void> {
+    await this.assertUserUnitMembershipOrOrgAdmin(orgId, unitId, tenantId, orgRole);
+
+    if (
+      orgRole === OrganizationMemberRole.ORG_ADMIN ||
+      orgRole === OrganizationMemberRole.LEADERSHIP
+    ) {
+      return;
+    }
+
+    const [leadRow] = await db
+      .select({ id: organizationUnitMemberships.id })
+      .from(organizationUnitMemberships)
+      .where(
+        and(
+          eq(organizationUnitMemberships.organizationId, orgId),
+          eq(organizationUnitMemberships.unitId, unitId),
+          eq(organizationUnitMemberships.tenantId, tenantId),
+          eq(organizationUnitMemberships.status, InstitutionalMembershipStatus.ACTIVE),
+          eq(organizationUnitMemberships.unitRole, OrganizationUnitMemberRole.UNIT_LEAD)
+        )
+      )
+      .limit(1);
+
+    if (!leadRow) {
+      throw new ForbiddenException(
+        'Hanya Ketua/Pimpinan Unit atau Admin Sekretariat yang berwenang mengelola anggota di Unit/Bidang ini.'
+      );
+    }
+  }
+
+  async listUnitMembersForLead(orgId: string, unitId: string) {
+    const unitMembersRes = await db.execute(sql`
+      SELECT
+        um.tenant_id AS "tenantId",
+        tm.full_name AS "fullName",
+        tm.email AS "email",
+        um.unit_role AS "unitRole",
+        om.org_role AS "orgRole"
+      FROM organization_unit_memberships um
+      INNER JOIN tenant_members tm ON um.tenant_id = tm.id
+      INNER JOIN organization_memberships om
+        ON om.organization_id = um.organization_id AND om.tenant_id = um.tenant_id
+      WHERE um.organization_id = ${orgId}::uuid
+        AND um.unit_id = ${unitId}::uuid
+        AND um.status = 'ACTIVE'
+        AND om.status = 'ACTIVE'
+      ORDER BY tm.full_name ASC;
+    `);
+
+    const allOrgMembers = await this.getOrganizationMembers(orgId);
+    const unitMembers = ((unitMembersRes as any)?.rows || unitMembersRes || []) as Array<{
+      tenantId: string;
+      fullName: string;
+      email: string;
+      unitRole: string;
+      orgRole: string;
+    }>;
+    const assignedIds = new Set(unitMembers.map((u) => u.tenantId));
+
+    return {
+      unitMembers,
+      availableOrgMembers: allOrgMembers
+        .filter((m) => !assignedIds.has(m.tenantId))
+        .map((m) => ({
+          tenantId: m.tenantId,
+          fullName: m.fullName,
+          email: m.email,
+          orgRole: m.orgRole,
+        })),
+    };
+  }
+
   // ============================================================================
   // 1. SUPERADMIN INSTITUTIONAL CONTROL TOWER
   // ============================================================================
+
+  private generateInstitutionCode(level: LegislativeLevel, regionName: string): string {
+    const prefixMap: Record<LegislativeLevel, string> = {
+      [LegislativeLevel.DPR_RI]: 'DPR-RI',
+      [LegislativeLevel.DPD_RI]: 'DPD-RI',
+      [LegislativeLevel.MPR_RI]: 'MPR-RI',
+      [LegislativeLevel.DPRD_PROVINSI]: 'DPRD-PROV',
+      [LegislativeLevel.DPRD_KABUPATEN_KOTA]: 'DPRD',
+      [LegislativeLevel.KEPALA_DAERAH_GUBERNUR]: 'PEMPROV',
+      [LegislativeLevel.KEPALA_DAERAH_WALIKOTA_BUPATI]: 'PEMDA',
+      [LegislativeLevel.PEJABAT_BIROKRAT_DIRJEN_SEKJEN_OPD]: 'OPD',
+      [LegislativeLevel.PIMPINAN_LEMBAGA_REKTOR_SWASTA]: 'LEMBAGA',
+    };
+
+    const prefix = prefixMap[level] || 'INST';
+    const cleanRegion = regionName
+      .trim()
+      .toUpperCase()
+      .replace(/\bKABUPATEN\b/g, 'KAB')
+      .replace(/\bPROVINSI\b/g, '')
+      .replace(/[^A-Z0-9]+/g, '-')
+      .replace(/^-|-$/g, '')
+      .slice(0, 28);
+
+    const combined = cleanRegion ? `${prefix}-${cleanRegion}` : prefix;
+    return combined.slice(0, 45);
+  }
+
+  private generateSecureTempPassword(): string {
+    const uppercase = 'ABCDEFGHJKLMNPQRSTUVWXYZ';
+    const lowercase = 'abcdefghijkmnpqrstuvwxyz';
+    const numbers = '23456789';
+    const symbols = '!@#$%&*';
+    const all = uppercase + lowercase + numbers + symbols;
+
+    let pwd = '';
+    pwd += uppercase[Math.floor(Math.random() * uppercase.length)];
+    pwd += lowercase[Math.floor(Math.random() * lowercase.length)];
+    pwd += numbers[Math.floor(Math.random() * numbers.length)];
+    pwd += symbols[Math.floor(Math.random() * symbols.length)];
+
+    for (let i = 0; i < 6; i++) {
+      pwd += all[Math.floor(Math.random() * all.length)];
+    }
+
+    return pwd.split('').sort(() => 0.5 - Math.random()).join('');
+  }
+
+  private normalizeRegionAndProvince(
+    level: LegislativeLevel,
+    rawRegion: string,
+    rawProvince: string
+  ): { regionName: string; provinceName: string } {
+    const isNational =
+      level === LegislativeLevel.DPR_RI ||
+      level === LegislativeLevel.DPD_RI ||
+      level === LegislativeLevel.MPR_RI;
+
+    const matchedProv = INDONESIA_REGIONS.find(
+      (p) => p.province.toLowerCase() === rawProvince.trim().toLowerCase()
+    );
+    const provinceName = matchedProv
+      ? matchedProv.province
+      : rawProvince.trim() || (isNational ? 'Nasional' : '');
+
+    let regionName = rawRegion.trim();
+    if (matchedProv && regionName) {
+      const matchedRegency = matchedProv.regencies.find(
+        (r) => r.toLowerCase() === regionName.toLowerCase()
+      );
+      if (matchedRegency) {
+        regionName = matchedRegency;
+      }
+    }
+
+    if (!regionName) {
+      regionName =
+        level === LegislativeLevel.DPRD_PROVINSI ||
+        level === LegislativeLevel.KEPALA_DAERAH_GUBERNUR
+          ? provinceName
+          : isNational
+          ? 'Nasional'
+          : provinceName;
+    }
+
+    return { regionName, provinceName };
+  }
 
   async createInstitution(
     adminId: string | undefined,
     dto: CreateInstitutionRequestDto
   ): Promise<SuperadminInstitutionDetailDto> {
-    const cleanCode = dto.code.trim().toUpperCase();
-    const [existing] = await db
-      .select({ id: organizations.id })
-      .from(organizations)
-      .where(eq(organizations.code, cleanCode))
-      .limit(1);
-
-    if (existing) {
-      throw new BadRequestException(`Kode Instansi "${cleanCode}" sudah terdaftar.`);
-    }
+    const { regionName: normalizedRegion, provinceName: normalizedProvince } =
+      this.normalizeRegionAndProvince(
+        dto.legislativeLevel,
+        dto.regionName || '',
+        dto.provinceName || ''
+      );
 
     const startDate = new Date(dto.startDate);
     const endDate = new Date(dto.endDate);
@@ -233,67 +405,215 @@ export class InstitutionalGovernanceService {
       throw new BadRequestException('Tanggal akhir kontrak wajib lebih besar dari tanggal mulai.');
     }
 
-    const [createdOrg] = await db
-      .insert(organizations)
-      .values({
-        code: cleanCode,
-        name: dto.name.trim(),
-        legislativeLevel: dto.legislativeLevel,
-        regionName: dto.regionName.trim(),
-        provinceName: dto.provinceName.trim(),
-        standingOrdersConfig: dto.standingOrdersConfig || {
-          lkpjDiscussionDaysLimit: 30,
-          defaultDiscussionBodyType: OrganizationUnitType.PANJA,
-          requireReviewerApprovalBeforeConsolidation: true,
-        },
-        status: OrganizationStatus.ACTIVE,
-        createdByAdminId: adminId || null,
-      })
-      .returning();
-
-    await db.insert(organizationContracts).values({
-      organizationId: createdOrg.id,
-      contractNumber: dto.contractNumber.trim(),
-      fiscalYear: dto.fiscalYear,
-      status: OrganizationContractStatus.ACTIVE,
-      startDate,
-      endDate,
-      maxSeats: dto.maxSeats ?? 50,
-      maxStorageBytes: dto.maxStorageBytes ?? 10737418240,
-      annualTokenPoolLimit: dto.annualTokenPoolLimit ?? 50000000,
-      tokensConsumed: 0,
-      contractValueIdr: (dto.contractValueIdr ?? 0).toFixed(2),
-      createdByAdminId: adminId || null,
-    });
-
-    if (dto.initialOrgAdminTenantId) {
-      const [member] = await db
-        .select({ id: tenantMembers.id })
-        .from(tenantMembers)
-        .where(eq(tenantMembers.id, dto.initialOrgAdminTenantId))
+    // Validasi opsional adminId terhadap tabel system_admins agar tidak terkena FK violation
+    let resolvedAdminId: string | null = null;
+    if (adminId) {
+      const [sysAdmin] = await db
+        .select({ id: systemAdmins.id })
+        .from(systemAdmins)
+        .where(eq(systemAdmins.id, adminId))
         .limit(1);
-
-      if (member) {
-        await db.insert(organizationMemberships).values({
-          organizationId: createdOrg.id,
-          tenantId: member.id,
-          orgRole: OrganizationMemberRole.ORG_ADMIN,
-          status: InstitutionalMembershipStatus.ACTIVE,
-          titleOrPosition: 'Admin Instansi / Sekretariat DPRD',
-        });
+      if (sysAdmin) {
+        resolvedAdminId = sysAdmin.id;
       }
     }
 
+    // 1. Resolusi Kode Instansi (auto-generate jika tidak diisi manual)
+    const explicitCode = dto.code?.trim().toUpperCase();
+    let cleanCode =
+      explicitCode || this.generateInstitutionCode(dto.legislativeLevel, normalizedRegion);
+
+    const [existingOrg] = await db
+      .select({ id: organizations.id })
+      .from(organizations)
+      .where(eq(organizations.code, cleanCode))
+      .limit(1);
+
+    if (existingOrg) {
+      if (explicitCode) {
+        throw new BadRequestException(`Kode Instansi "${cleanCode}" sudah terdaftar.`);
+      }
+      cleanCode = `${cleanCode.slice(0, 42)}-${Math.floor(10 + Math.random() * 90)}`;
+    }
+
+    // 2. Resolusi Nomor Kontrak B2G (auto-generate jika tidak diisi manual & cek unik sebelum insert)
+    const explicitContract = dto.contractNumber?.trim();
+    let cleanContractNumber =
+      explicitContract ||
+      `SPK/POLARIS/${cleanCode}/${dto.fiscalYear}/${String(Math.floor(100 + Math.random() * 900))}`;
+
+    const [existingContract] = await db
+      .select({ id: organizationContracts.id })
+      .from(organizationContracts)
+      .where(eq(organizationContracts.contractNumber, cleanContractNumber))
+      .limit(1);
+
+    if (existingContract) {
+      if (explicitContract) {
+        throw new BadRequestException(`Nomor kontrak "${cleanContractNumber}" sudah terdaftar.`);
+      }
+      cleanContractNumber = `${cleanContractNumber}-${Math.floor(100 + Math.random() * 900)}`;
+    }
+
+    const { org: createdOrg, provisionedAdminCredentials } = await db.transaction(async (tx) => {
+      let txProvisionedAdminCredentials: ProvisionedAdminCredentialsDto | null = null;
+
+      const [org] = await tx
+        .insert(organizations)
+        .values({
+          code: cleanCode,
+          name: dto.name.trim(),
+          legislativeLevel: dto.legislativeLevel,
+          regionName: normalizedRegion,
+          provinceName: normalizedProvince,
+          standingOrdersConfig: dto.standingOrdersConfig || {
+            lkpjDiscussionDaysLimit: 30,
+            defaultDiscussionBodyType: OrganizationUnitType.PANJA,
+            requireReviewerApprovalBeforeConsolidation: true,
+          },
+          status: OrganizationStatus.ACTIVE,
+          createdByAdminId: resolvedAdminId,
+        })
+        .returning();
+
+      await tx.insert(organizationContracts).values({
+        organizationId: org.id,
+        contractNumber: cleanContractNumber,
+        fiscalYear: dto.fiscalYear,
+        status: OrganizationContractStatus.ACTIVE,
+        startDate,
+        endDate,
+        maxSeats: dto.maxSeats ?? 50,
+        maxStorageBytes: dto.maxStorageBytes ?? 10737418240,
+        annualTokenPoolLimit: dto.annualTokenPoolLimit ?? 0,
+        tokensConsumed: 0,
+        weeklyGenerateLimitPerMember: dto.weeklyGenerateLimitPerMember ?? 3,
+        revisionLimitPerItem: dto.revisionLimitPerItem ?? 3,
+        contractValueIdr: (dto.contractValueIdr ?? 0).toFixed(2),
+        createdByAdminId: resolvedAdminId,
+      });
+
+      // 3. Penunjukan / Pembuatan Akun Admin Instansi (ORG_ADMIN) secara atomik
+      if (dto.createInitialOrgAdmin) {
+        const adminEmail = dto.createInitialOrgAdmin.email.trim().toLowerCase();
+        const [existingEmail] = await tx
+          .select({ id: tenantMembers.id })
+          .from(tenantMembers)
+          .where(eq(tenantMembers.email, adminEmail))
+          .limit(1);
+
+        if (existingEmail) {
+          throw new BadRequestException(
+            `Email "${adminEmail}" sudah terdaftar di POLARIS. Gunakan opsi "Tautkan Akun yang Sudah Ada" atau pakai email lain.`
+          );
+        }
+
+        const prefix = adminEmail.split('@')[0].replace(/[^a-z0-9]/g, '-').slice(0, 15) || 'admin';
+        let cleanUsername = `${prefix}-${Math.floor(100 + Math.random() * 900)}`;
+        const [existingUsername] = await tx
+          .select({ id: tenantMembers.id })
+          .from(tenantMembers)
+          .where(eq(tenantMembers.username, cleanUsername))
+          .limit(1);
+        if (existingUsername) {
+          cleanUsername = `${cleanUsername}-${Math.floor(100 + Math.random() * 900)}`;
+        }
+
+        const tempPassword = this.generateSecureTempPassword();
+        const passwordHash = await bcrypt.hash(tempPassword, 10);
+
+        const [createdMember] = await tx
+          .insert(tenantMembers)
+          .values({
+            email: adminEmail,
+            username: cleanUsername,
+            passwordHash,
+            fullName: dto.createInitialOrgAdmin.fullName.trim(),
+            phoneNumber: dto.createInitialOrgAdmin.phoneNumber?.trim() || '-',
+            partyAffiliation: 'Sekretariat / Instansi',
+            legislativeLevel: dto.legislativeLevel,
+            customDapilName: dto.regionName.trim(),
+            isVerified: true,
+            accountStatus: 'ACTIVE',
+            mustChangePassword: true,
+            temporaryPasswordPlaintextPreview: tempPassword,
+            internalNotes: `Auto-provisioned ORG_ADMIN untuk ${org.name} (${cleanCode})`,
+          })
+          .returning();
+
+        await tx.insert(subscriptions).values({
+          tenantId: createdMember.id,
+          status: SubscriptionStatus.ACTIVE,
+          planTier: PlanTier.PRO,
+          currentPeriodStart: startDate,
+          currentPeriodEnd: endDate,
+        });
+
+        await tx.insert(organizationMemberships).values({
+          organizationId: org.id,
+          tenantId: createdMember.id,
+          orgRole: OrganizationMemberRole.ORG_ADMIN,
+          status: InstitutionalMembershipStatus.ACTIVE,
+          titleOrPosition:
+            dto.createInitialOrgAdmin.titleOrPosition?.trim() ||
+            'Admin Instansi / Sekretariat',
+        });
+
+        txProvisionedAdminCredentials = {
+          tenantId: createdMember.id,
+          fullName: createdMember.fullName,
+          email: createdMember.email,
+          username: createdMember.username || cleanUsername,
+          temporaryPassword: tempPassword,
+        };
+      } else if (dto.initialOrgAdminTenantId || dto.initialOrgAdminEmail) {
+        const cleanAdminEmail = dto.initialOrgAdminEmail?.trim().toLowerCase();
+        const [member] = await tx
+          .select({ id: tenantMembers.id })
+          .from(tenantMembers)
+          .where(
+            dto.initialOrgAdminTenantId
+              ? eq(tenantMembers.id, dto.initialOrgAdminTenantId)
+              : eq(tenantMembers.email, cleanAdminEmail!)
+          )
+          .limit(1);
+
+        if (!member) {
+          throw new BadRequestException(
+            'Akun pengguna untuk Admin Instansi tidak ditemukan di POLARIS. Pilih opsi "Buat Akun Baru Sekaligus" jika belum memiliki akun.'
+          );
+        }
+
+        await tx.insert(organizationMemberships).values({
+          organizationId: org.id,
+          tenantId: member.id,
+          orgRole: OrganizationMemberRole.ORG_ADMIN,
+          status: InstitutionalMembershipStatus.ACTIVE,
+          titleOrPosition: 'Admin Instansi / Sekretariat',
+        });
+      }
+
+      return { org, provisionedAdminCredentials: txProvisionedAdminCredentials };
+    });
+
     await this.recordAudit({
       organizationId: createdOrg.id,
-      actorAdminId: adminId || null,
+      actorAdminId: resolvedAdminId,
       action: 'CREATE_INSTITUTION_AND_CONTRACT',
       targetEntity: 'organizations',
       targetEntityId: createdOrg.id,
-      details: { code: cleanCode, contractNumber: dto.contractNumber },
+      details: {
+        code: cleanCode,
+        contractNumber: cleanContractNumber,
+        provisionedAdminEmail: provisionedAdminCredentials?.email || dto.initialOrgAdminEmail || null,
+      },
     });
 
-    return this.getSuperadminInstitutionDetail(createdOrg.id);
+    const detail = await this.getSuperadminInstitutionDetail(createdOrg.id);
+    return {
+      ...detail,
+      provisionedAdminCredentials,
+    };
   }
 
   async listSuperadminInstitutions(): Promise<SuperadminInstitutionSummaryDto[]> {
@@ -546,6 +866,12 @@ export class InstitutionalGovernanceService {
           ...(dto.annualTokenPoolLimit !== undefined
             ? { annualTokenPoolLimit: dto.annualTokenPoolLimit }
             : {}),
+          ...(dto.weeklyGenerateLimitPerMember !== undefined
+            ? { weeklyGenerateLimitPerMember: dto.weeklyGenerateLimitPerMember }
+            : {}),
+          ...(dto.revisionLimitPerItem !== undefined
+            ? { revisionLimitPerItem: dto.revisionLimitPerItem }
+            : {}),
           ...(dto.contractValueIdr !== undefined
             ? { contractValueIdr: dto.contractValueIdr.toFixed(2) }
             : {}),
@@ -567,7 +893,9 @@ export class InstitutionalGovernanceService {
           endDate,
           maxSeats: dto.maxSeats ?? 50,
           maxStorageBytes: dto.maxStorageBytes ?? 10737418240,
-          annualTokenPoolLimit: dto.annualTokenPoolLimit ?? 50000000,
+          annualTokenPoolLimit: dto.annualTokenPoolLimit ?? 0,
+          weeklyGenerateLimitPerMember: dto.weeklyGenerateLimitPerMember ?? 3,
+          revisionLimitPerItem: dto.revisionLimitPerItem ?? 3,
           contractValueIdr: (dto.contractValueIdr ?? 0).toFixed(2),
           notes: dto.notes || null,
           createdByAdminId: adminId || null,
@@ -927,6 +1255,185 @@ export class InstitutionalGovernanceService {
       throw new NotFoundException('Gagal memuat data anggota instansi setelah penugasan.');
     }
     return matched;
+  }
+
+  /**
+   * Self-service pembuatan akun anggota baru oleh Admin Instansi (ORG_ADMIN) di bawah kuota maxSeats kontrak B2G.
+   */
+  async createOrganizationMemberAccount(
+    orgId: string,
+    actorId: { tenantId?: string; adminId?: string },
+    dto: CreateOrganizationMemberAccountDto
+  ): Promise<ProvisionedOrgMemberResultDto> {
+    const cleanEmail = dto.email.trim().toLowerCase();
+    if (!cleanEmail) {
+      throw new BadRequestException('Email anggota tidak boleh kosong.');
+    }
+
+    const [org] = await db
+      .select()
+      .from(organizations)
+      .where(eq(organizations.id, orgId))
+      .limit(1);
+
+    if (!org) {
+      throw new NotFoundException('Instansi tidak ditemukan.');
+    }
+
+    const credentials = await db.transaction(async (tx) => {
+      // Lock kontrak terbaru untuk mencegah race condition kuota kursi maxSeats
+      const lockedContractRows = await tx.execute(sql`
+        SELECT id, max_seats AS "maxSeats", start_date AS "startDate", end_date AS "endDate"
+        FROM organization_contracts
+        WHERE organization_id = ${orgId}::uuid
+        ORDER BY end_date DESC
+        LIMIT 1
+        FOR UPDATE;
+      `);
+      const contract = ((lockedContractRows as any)?.rows?.[0] || lockedContractRows?.[0]) as
+        | { id: string; maxSeats: number; startDate: Date; endDate: Date }
+        | undefined;
+
+      if (contract) {
+        const [seatStats] = await tx.execute(sql`
+          SELECT COUNT(*)::integer AS "activeSeats"
+          FROM organization_memberships
+          WHERE organization_id = ${orgId}::uuid AND status = 'ACTIVE';
+        `);
+        const activeSeats = Number(((seatStats as any)?.activeSeats) || 0);
+        if (activeSeats >= Number(contract.maxSeats || 0)) {
+          throw new BadRequestException(
+            `Kuota kursi (maxSeats: ${contract.maxSeats}) pada kontrak Instansi ini telah penuh. Hubungi Superadmin untuk penambahan kursi.`
+          );
+        }
+      }
+
+      const [existingEmail] = await tx
+        .select({ id: tenantMembers.id })
+        .from(tenantMembers)
+        .where(eq(tenantMembers.email, cleanEmail))
+        .limit(1);
+
+      if (existingEmail) {
+        throw new BadRequestException(
+          `Email "${cleanEmail}" sudah terdaftar di POLARIS. Gunakan tab "Tautkan Akun yang Sudah Ada" untuk memasukkannya ke instansi ini.`
+        );
+      }
+
+      if (dto.initialUnitId) {
+        const [unit] = await tx
+          .select({ id: organizationUnits.id })
+          .from(organizationUnits)
+          .where(
+            and(
+              eq(organizationUnits.id, dto.initialUnitId),
+              eq(organizationUnits.organizationId, orgId)
+            )
+          )
+          .limit(1);
+
+        if (!unit) {
+          throw new BadRequestException('Unit/Bidang awal tidak ditemukan di instansi ini.');
+        }
+      }
+
+      const prefix = cleanEmail.split('@')[0].replace(/[^a-z0-9]/g, '-').slice(0, 15) || 'member';
+      let cleanUsername = `${prefix}-${Math.floor(100 + Math.random() * 900)}`;
+      const [existingUsername] = await tx
+        .select({ id: tenantMembers.id })
+        .from(tenantMembers)
+        .where(eq(tenantMembers.username, cleanUsername))
+        .limit(1);
+      if (existingUsername) {
+        cleanUsername = `${cleanUsername}-${Math.floor(100 + Math.random() * 900)}`;
+      }
+
+      const tempPassword = this.generateSecureTempPassword();
+      const passwordHash = await bcrypt.hash(tempPassword, 10);
+
+      const [createdMember] = await tx
+        .insert(tenantMembers)
+        .values({
+          email: cleanEmail,
+          username: cleanUsername,
+          passwordHash,
+          fullName: dto.fullName.trim(),
+          phoneNumber: dto.phoneNumber?.trim() || '-',
+          partyAffiliation: 'Sekretariat / Instansi',
+          legislativeLevel: org.legislativeLevel,
+          customDapilName: org.regionName,
+          isVerified: true,
+          accountStatus: 'ACTIVE',
+          mustChangePassword: true,
+          temporaryPasswordPlaintextPreview: tempPassword,
+          internalNotes: `Diterbitkan oleh Admin Instansi untuk ${org.name} (${org.code})`,
+        })
+        .returning();
+
+      await tx.insert(subscriptions).values({
+        tenantId: createdMember.id,
+        status: SubscriptionStatus.ACTIVE,
+        planTier: PlanTier.PRO,
+        currentPeriodStart: contract?.startDate ? new Date(contract.startDate) : new Date(),
+        currentPeriodEnd: contract?.endDate
+          ? new Date(contract.endDate)
+          : new Date(Date.now() + 365 * 24 * 60 * 60 * 1000),
+      });
+
+      await tx.insert(organizationMemberships).values({
+        organizationId: orgId,
+        tenantId: createdMember.id,
+        orgRole: dto.orgRole,
+        status: InstitutionalMembershipStatus.ACTIVE,
+        titleOrPosition: dto.titleOrPosition?.trim() || null,
+      });
+
+      if (dto.initialUnitId) {
+        await tx.insert(organizationUnitMemberships).values({
+          organizationId: orgId,
+          unitId: dto.initialUnitId,
+          tenantId: createdMember.id,
+          unitRole: dto.initialUnitRole || OrganizationUnitMemberRole.MEMBER,
+          status: InstitutionalMembershipStatus.ACTIVE,
+          assignedByTenantId: actorId.tenantId || null,
+          assignedByAdminId: actorId.adminId || null,
+        });
+      }
+
+      return {
+        tenantId: createdMember.id,
+        fullName: createdMember.fullName,
+        email: createdMember.email,
+        username: createdMember.username || cleanUsername,
+        temporaryPassword: tempPassword,
+      };
+    });
+
+    await this.recordAudit({
+      organizationId: orgId,
+      unitId: dto.initialUnitId || null,
+      actorTenantId: actorId.tenantId || null,
+      actorAdminId: actorId.adminId || null,
+      action: 'CREATE_AND_ASSIGN_ORG_MEMBER',
+      targetEntity: 'organization_memberships',
+      targetEntityId: credentials.tenantId,
+      details: {
+        email: credentials.email,
+        orgRole: dto.orgRole,
+        initialUnitId: dto.initialUnitId || null,
+      },
+    });
+
+    const allMembers = await this.getOrganizationMembers(orgId);
+    const matched = allMembers.find((m) => m.tenantId === credentials.tenantId);
+    if (!matched) {
+      throw new NotFoundException('Gagal memuat data anggota instansi setelah pembuatan akun.');
+    }
+
+    return {
+      member: matched,
+      credentials,
+    };
   }
 
   async assignUnitMember(

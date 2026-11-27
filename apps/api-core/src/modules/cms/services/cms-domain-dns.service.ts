@@ -3,6 +3,7 @@ import {
   NotFoundException,
   ConflictException,
   BadRequestException,
+  ForbiddenException,
   Logger,
 } from '@nestjs/common';
 import * as crypto from 'crypto';
@@ -15,9 +16,11 @@ import {
   domainRequests,
   subdomainAliases,
   tenantMembers,
+  subscriptions,
   withTenantContext,
 } from '@polaris/database';
-import { SubdomainSlug } from '@polaris/core-domain';
+import { SubdomainSlug, EntitlementPolicy } from '@polaris/core-domain';
+import { PlanTier } from '@polaris/shared-types';
 import { UpdateDomainConfigDto, CreateDomainRequestDto } from '../dto/cms.dto.js';
 import { RedisService } from '../../redis/redis.service.js';
 
@@ -146,6 +149,19 @@ export class CmsDomainDnsService {
         : null;
 
       if (cleanCustomDomain) {
+        const [sub] = await db
+          .select({ planTier: subscriptions.planTier })
+          .from(subscriptions)
+          .where(eq(subscriptions.tenantId, tenantId))
+          .limit(1);
+        const tier = (sub?.planTier as PlanTier) || PlanTier.STARTER;
+        const entitlement = EntitlementPolicy.getEntitlement(tier);
+        if (!entitlement.customDomainEnabled) {
+          throw new ForbiddenException(
+            'Fitur Custom Domain hanya tersedia untuk paket PRO atau ENTERPRISE. Silakan upgrade paket Anda di menu Billing.'
+          );
+        }
+
         const [exists] = await db
           .select({ id: portalConfigs.id })
           .from(portalConfigs)

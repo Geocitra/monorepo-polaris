@@ -18,6 +18,7 @@ import {
   UnassignOperatorDto,
   CreateOperatorAccountDto,
   UpdateOperatorAccountDto,
+  OperatorUpdateTenantProfileDto,
 } from './dto/operator.dto.js';
 import type { Request } from 'express';
 
@@ -35,7 +36,7 @@ interface AuthenticatedRequest extends Request {
 @Controller('operator')
 @UseGuards(AuthGuard)
 export class OperatorController {
-  constructor(private readonly operatorService: OperatorService) {}
+  constructor(private readonly operatorService: OperatorService) { }
 
   /**
    * Mengambil daftar seluruh tokoh / anggota dewan yang ditugaskan ke operator ini.
@@ -71,15 +72,7 @@ export class OperatorController {
   @Patch('tenant-profile/:tenantId')
   async updateTenantProfile(
     @Param('tenantId') tenantId: string,
-    @Body() dto: {
-      fullName?: string;
-      partyAffiliation?: string;
-      customDapilName?: string;
-      commissionName?: string;
-      photoUrl?: string;
-      education?: string;
-      issueInterests?: string[];
-    },
+    @Body() dto: OperatorUpdateTenantProfileDto,
     @Req() req: AuthenticatedRequest
   ) {
     const operatorId = req.user.operatorId || req.user.tenantId;
@@ -96,6 +89,9 @@ export class OperatorController {
    */
   @Get('audit-logs')
   async getAuditLogs(@Req() req: AuthenticatedRequest) {
+    if (!req.user.isOperator && !req.user.isSuperadmin) {
+      throw new ForbiddenException('Hanya akun Operator atau Superadmin yang berwenang mengakses log audit.');
+    }
     const operatorId = req.user.operatorId || req.user.tenantId;
     return await this.operatorService.getAuditLogs(operatorId);
   }

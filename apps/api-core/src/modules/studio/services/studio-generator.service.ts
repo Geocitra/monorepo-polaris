@@ -229,12 +229,19 @@ export class StudioGeneratorService implements OnModuleDestroy {
           )
           .limit(1);
 
+        if (!existingBrief) {
+          throw new NotFoundException(
+            'Tiket Content Brief tidak ditemukan atau bukan milik akun ini.'
+          );
+        }
+
         if (
-          existingBrief &&
-          ['PUBLISHED', 'APPROVED', 'REJECTED'].includes(existingBrief.status)
+          ['PUBLISHED', 'APPROVED', 'REJECTED', 'CANCELLED', 'CLOSED_UNPUBLISHED'].includes(
+            existingBrief.status
+          )
         ) {
           throw new ForbiddenException(
-            `Tiket #${existingBrief.briefCode} telah selesai/tayang dan terkunci permanen.`
+            `Tiket #${existingBrief.briefCode} telah selesai/dibatalkan dan terkunci permanen.`
           );
         }
 

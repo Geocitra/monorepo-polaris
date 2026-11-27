@@ -60,20 +60,24 @@ export class AuthGuard implements CanActivate {
         const reqMethod = (request.method || 'GET').toUpperCase();
 
         const isRestrictedPath =
-          (reqPath.includes('/identity') && reqMethod !== 'GET') ||
+          ((reqPath.includes('/identity') || (reqPath.includes('/auth/') && !reqPath.includes('/auth/me'))) && reqMethod !== 'GET') ||
           (reqPath.includes('/billing') && reqMethod !== 'GET') ||
+          reqPath.includes('/institutional') ||
           reqPath.includes('/social/connect') ||
+          reqPath.includes('/auth-url') ||
+          reqPath.includes('/exchange') ||
+          reqPath.includes('/disconnect') ||
           reqPath.includes('/pii-vault') ||
           (reqPath.includes('/tenant') && reqMethod === 'DELETE');
 
         if (isRestrictedPath && !isSuperadminRole) {
           throw new ForbiddenException(
-            'Akses Ditolak: Operator dilarang memodifikasi kredensial, struktur profil, paket billing, atau data privat dewan.'
+            'Akses Ditolak: Operator dilarang memodifikasi kredensial, OAuth sosmed, ruang kerja instansi, paket billing, atau data privat dewan.'
           );
         }
 
-        // Verifikasi penugasan aktif jika pemanggil adalah CONTENT_OPERATOR
-        // Kecualikan rute live-chat meja redaksi terpusat agar operator dapat melayani antrean bantuan tanpa terblokir konteks dewan aktif
+        // Verifikasi penugasan aktif jika pemanggil adalah CONTENT_OPERATOR / SUPPORT_OPERATOR
+        // Kecualikan rute live-chat meja redaksi terpusat, namun tetap jangan berikan canDirectPublish
         let canDirectPublish = false;
         const isLiveChatRoute = reqPath.includes('/whatsapp/live-chat');
         if (isOperatorRole && !isSuperadminRole && !isLiveChatRoute) {
@@ -95,7 +99,7 @@ export class AuthGuard implements CanActivate {
             );
           }
           canDirectPublish = assignment.canDirectPublish;
-        } else if (isSuperadminRole || isLiveChatRoute) {
+        } else if (isSuperadminRole) {
           canDirectPublish = true;
         }
 
@@ -118,6 +122,7 @@ export class AuthGuard implements CanActivate {
         tenantId: payload.sub,
         email: payload.email,
         subdomainSlug: payload.subdomainSlug,
+        accountMode: payload.accountMode,
         role: role,
         isSuperadmin: isSuperadminRole,
         isOperator: isOperatorRole,

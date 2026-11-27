@@ -349,7 +349,7 @@ export class Img2ImgPassAdapter {
       const primaryModel = normalizeGeminiModel(
         process.env.POSTER_COLLAGE_IMAGE_MODEL ||
         process.env.GOOGLE_IMAGE_MODEL ||
-        'ag/gemini-3.1-flash-image'
+        'gemini-3.1-flash-image'
       );
 
       const modelsToTry = [primaryModel].filter((m) => !m.startsWith('imagen-'));

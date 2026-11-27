@@ -25,7 +25,7 @@ export function MagicLayersCanvasStage({
   return (
     <main
       ref={workspaceRef}
-      className="flex-1 bg-[#F1F3F5] relative flex items-center justify-center p-4 sm:p-8 overflow-auto"
+      className="flex-1 min-w-0 min-h-0 bg-[#E9ECEF] relative flex overflow-auto p-6 sm:p-10 select-none"
     >
       {isLoading && (
         <div className="absolute inset-0 z-20 flex flex-col items-center justify-center bg-white/80 backdrop-blur-xs gap-3">
@@ -35,7 +35,7 @@ export function MagicLayersCanvasStage({
       )}
 
       <div
-        className="shadow-2xl ring-1 ring-slate-900/10 bg-white transition-all duration-75 overflow-hidden flex items-center justify-center shrink-0 relative"
+        className="m-auto shadow-2xl ring-1 ring-slate-900/10 bg-white transition-all duration-75 overflow-hidden flex items-center justify-center shrink-0 relative"
         style={{
           width: displayDimensions.width > 0 ? `${displayDimensions.width}px` : 'auto',
           height: displayDimensions.height > 0 ? `${displayDimensions.height}px` : 'auto',
